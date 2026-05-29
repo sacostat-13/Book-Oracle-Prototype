@@ -80,3 +80,42 @@ export function parseGoodreadsCSV(text) {
   }
   return books;
 }
+
+// Parses the "to-read" shelf (and "currently-reading") from a Goodreads CSV.
+// Used to populate the wishlist on import.
+export function parseGoodreadsToReadCSV(text) {
+  const lines = splitCSVLines(text);
+  if (lines.length < 2) return [];
+  const headers = parseCSVLine(lines[0]).map((h) => h.trim());
+  const titleIdx = headers.indexOf('Title');
+  const authorIdx = headers.indexOf('Author');
+  const shelfIdx = headers.indexOf('Exclusive Shelf');
+  const bookshelvesIdx = headers.indexOf('Bookshelves');
+
+  if (titleIdx === -1 || authorIdx === -1) return [];
+
+  const books = [];
+  for (let i = 1; i < lines.length; i++) {
+    if (!lines[i].trim()) continue;
+    const fields = parseCSVLine(lines[i]);
+    const title = (fields[titleIdx] || '').trim();
+    const author = (fields[authorIdx] || '').trim();
+    const shelf = (fields[shelfIdx] || '').trim().toLowerCase();
+    const bookshelves = (fields[bookshelvesIdx] || '').toLowerCase();
+
+    if (!title || !author) continue;
+    // Accept the to-read shelf, or anything tagged to-read / want-to-read in bookshelves
+    const isToRead = shelf === 'to-read' ||
+                     shelf === 'currently-reading' ||
+                     /\b(to-read|want-to-read|wishlist)\b/.test(bookshelves);
+    if (!isToRead) continue;
+
+    books.push({
+      t: title,
+      a: author,
+      fromGoodreads: true,
+      manuallyAdded: true, // surface the ✎ icon in the wishlist row
+    });
+  }
+  return books;
+}

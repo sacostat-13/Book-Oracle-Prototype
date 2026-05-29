@@ -2,13 +2,15 @@ import { useState, useMemo } from 'react';
 import { useData } from '../lib/DataContext';
 import { useRouter } from '../lib/RouterContext';
 import { GENRES, bookKey } from '../lib/bookHelpers';
+import BulkImport from '../components/BulkImport';
 
 export default function Wishlist({ onOpenBook }) {
-  const { state, addToReadNext, removeFromWishlist, addToWishlist, showToast } = useData();
+  const { state, addToReadNext, removeFromWishlist, addToWishlist, seedWishlistIfNeeded, showToast } = useData();
   const { go } = useRouter();
   const [search, setSearch] = useState('');
   const [genreFilter, setGenreFilter] = useState('all');
   const [formOpen, setFormOpen] = useState(false);
+  const [bulkOpen, setBulkOpen] = useState(false);
   const [form, setForm] = useState({ t: '', a: '', g: '', d: '', amazonUrl: '' });
 
   const wl = state.wishlist;
@@ -72,7 +74,7 @@ export default function Wishlist({ onOpenBook }) {
         <h1 className="page-title">
           Books I <span className="accent">want to read</span>
         </h1>
-        <p className="page-subtitle">{wl.length} books on the shelf. Pulled from your initial catalog plus anything you've added.</p>
+        <p className="page-subtitle">{wl.length} books on the shelf.</p>
       </div>
 
       <div className="wishlist-toolbar">
@@ -96,10 +98,17 @@ export default function Wishlist({ onOpenBook }) {
             ))}
           </select>
         </div>
-        <button className="btn btn-gilt" onClick={() => setFormOpen((v) => !v)}>
-          + Add a book
-        </button>
+        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+          <button className="btn btn-ghost" onClick={() => { setBulkOpen((v) => !v); setFormOpen(false); }}>
+            ⇪ Bulk import
+          </button>
+          <button className="btn btn-gilt" onClick={() => { setFormOpen((v) => !v); setBulkOpen(false); }}>
+            + Add a book
+          </button>
+        </div>
       </div>
+
+      {bulkOpen && <BulkImport onClose={() => setBulkOpen(false)} />}
 
       {formOpen && (
         <div className="manual-add-form">
@@ -146,7 +155,24 @@ export default function Wishlist({ onOpenBook }) {
         <div className="empty-state">
           <div className="ornament">❦</div>
           <div className="empty-state-title">Your wishlist is empty</div>
-          <div className="empty-state-text">Add books manually with the button above, or use the Oracle to discover new ones.</div>
+          <div className="empty-state-text">
+            Start building it your way. You can add books one at a time, import in bulk from Goodreads or Amazon, or browse our curated library of horror, gothic, and literary fiction.
+          </div>
+          <div style={{ marginTop: '1.5rem', display: 'flex', gap: '0.5rem', flexWrap: 'wrap', justifyContent: 'center' }}>
+            <button className="btn btn-gilt" onClick={() => setFormOpen(true)}>+ Add a book</button>
+            <button className="btn" onClick={() => setBulkOpen(true)}>⇪ Bulk import</button>
+            <button
+              className="btn btn-ghost"
+              onClick={() => {
+                if (confirm('Add ~280 curated books to your wishlist? You can remove any you don\'t want afterwards.')) {
+                  seedWishlistIfNeeded();
+                  showToast('Curated catalog added to your wishlist');
+                }
+              }}
+            >
+              Browse curated catalog
+            </button>
+          </div>
         </div>
       ) : filtered.length === 0 ? (
         <div className="empty-state">

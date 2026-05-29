@@ -3,6 +3,8 @@ import { useData } from '../lib/DataContext';
 import { useRouter } from '../lib/RouterContext';
 import { parseGoodreadsCSV } from '../lib/goodreadsImport';
 import { findBookByTitle } from '../lib/bookHelpers';
+// NOTE: Wishlist seeding from the catalog is now opt-in. The Onboarding flow
+// leaves the wishlist empty; users can browse and seed from the Wishlist page.
 
 const LEVELS = [
   { v: 1, title: 'Casual companion', sub: "A book a month or two. I like a story that pulls me along — cozy fantasy, thrillers, page-turners." },
@@ -18,7 +20,7 @@ const GOALS = [
 ];
 
 export default function Onboarding() {
-  const { setProfile, setOnboarded, importGoodreads, seedWishlistIfNeeded, showToast } = useData();
+  const { setProfile, setOnboarded, importGoodreads, showToast } = useData();
   const { go } = useRouter();
   const [step, setStep] = useState(1);
   const [readingLevel, setReadingLevel] = useState(null);
@@ -54,11 +56,9 @@ export default function Onboarding() {
       });
       await importGoodreads(enriched);
     }
-    // Seed wishlist on next tick after onboarded flips true
-    setTimeout(() => {
-      seedWishlistIfNeeded();
-      go('dashboard');
-    }, 50);
+    // Wishlist starts empty — user can seed from the curated catalog
+    // via the Wishlist page if they want.
+    setTimeout(() => go('dashboard'), 50);
   }
 
   return (
