@@ -4,7 +4,7 @@
 //   p: genre depth (1-5)
 //   s: { name: "series name", n: position_in_series, total: total_books } [optional]
 // 1 = approachable, 5 = challenging
-window.BOOKS_DATA = [
+export const BOOKS_DATA = [
   // FOLK HORROR
   { t: "The Ritual", a: "Adam Nevill", g: "Folk Horror", c: 3, p: 4, d: "Four friends on a Scandinavian hiking trip take a shortcut through ancient woods that conceal something pagan and patient." },
   { t: "Starve Acre", a: "Andrew Michael Hurley", g: "Folk Horror", c: 4, p: 4, d: "After their son's death, a couple unearths something terrible from the soil of their Yorkshire farm." },

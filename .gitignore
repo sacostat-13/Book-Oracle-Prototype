@@ -1,19 +1,7 @@
-# Visual Studio
-.vs/
-.vscode/
-*.suo
-*.user
-*.userosscache
-*.sln.docstates
-
-# Node / npm (in case you add tooling later)
-node_modules/
-npm-debug.log*
-
-# OS junk
+node_modules
+dist
+.env
+.env.local
 .DS_Store
-Thumbs.db
-
-# Editor
-.idea/
-*.swp
+*.log
+.vite
