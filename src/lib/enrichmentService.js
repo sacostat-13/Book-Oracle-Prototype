@@ -101,6 +101,17 @@ export async function fetchSeriesBooks(seriesName) {
   if (!seriesName) return [];
   if (seriesBooksCache[seriesName]) return seriesBooksCache[seriesName];
 
+  // Try Hardcover first — best structured series data with explicit positions.
+  try {
+    const { hardcoverFetchSeriesBooks } = await import('./hardcoverService');
+    const hc = await hardcoverFetchSeriesBooks(seriesName);
+    if (hc && hc.length > 0) {
+      seriesBooksCache[seriesName] = hc;
+      return hc;
+    }
+  } catch {}
+
+  // Fall back to OpenLibrary.
   try {
     const q = `q=${encodeURIComponent(`series:"${seriesName}"`)}&limit=30&fields=title,author_name,series,number_of_pages_median,first_publish_year,cover_i`;
     const resp = await fetch(`https://openlibrary.org/search.json?${q}`);

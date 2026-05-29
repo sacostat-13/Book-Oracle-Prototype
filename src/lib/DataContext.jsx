@@ -49,33 +49,79 @@ function saveLocal(state) {
   } catch {}
 }
 
+// Convert a v2 `books` row joined into a wishlist/library row into the
+// flat client shape the rest of the app expects.
+function bookRowToClient(b, extra = {}) {
+  if (!b) return null;
+  return {
+    t: b.title,
+    a: b.author,
+    g: b.genre || undefined,
+    c: b.complexity || undefined,
+    p: b.depth || undefined,
+    d: b.description || undefined,
+    pp: b.pages || undefined,
+    coverUrl: b.cover_url || undefined,
+    isbn: b.isbn || undefined,
+    s: b.series_name
+      ? {
+          name: b.series_name,
+          n: b.series_position || null,
+          fromHardcover: b.source === 'hardcover',
+          fromOpenLibrary: b.source === 'openlibrary',
+        }
+      : undefined,
+    verified: b.verified || false,
+    source: b.source,
+    bookId: b.id,
+    ...extra,
+  };
+}
+
 // ---------- Supabase loaders ----------
 async function loadFromSupabase(userId) {
   const [profileRes, wishlistRes, readBooksRes, plansRes] = await Promise.all([
     supabase.from('profiles').select('*').eq('id', userId).maybeSingle(),
-    supabase.from('wishlist_items').select('*').eq('user_id', userId),
-    supabase.from('read_books').select('*').eq('user_id', userId),
-    supabase.from('plans').select('*').eq('user_id', userId).order('created_at', { ascending: false }).limit(1),
+    supabase
+      .from('wishlist_items')
+      .select('id, added_at, notes, book:books(*)')
+      .eq('user_id', userId),
+    supabase
+      .from('read_books')
+      .select('id, rating, read_at, source, book:books(*)')
+      .eq('user_id', userId),
+    supabase
+      .from('plans')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .limit(1),
   ]);
 
   const profile = profileRes.data || {};
-  const wishlist = (wishlistRes.data || []).map((r) => ({
-    t: r.book_title,
-    a: r.book_author,
-    ...(r.book_metadata || {}),
-    notes: r.notes || undefined,
-    addedAt: r.added_at,
-    _id: r.id,
-  }));
-  const library = (readBooksRes.data || []).map((r) => ({
-    t: r.book_title,
-    a: r.book_author,
-    ...(r.book_metadata || {}),
-    rating: r.rating,
-    dateRead: r.read_at,
-    fromGoodreads: r.source === 'goodreads_import',
-    _id: r.id,
-  }));
+  const wishlist = (wishlistRes.data || [])
+    .map((r) =>
+      r.book
+        ? bookRowToClient(r.book, {
+            notes: r.notes || undefined,
+            addedAt: r.added_at,
+            _id: r.id,
+          })
+        : null
+    )
+    .filter(Boolean);
+  const library = (readBooksRes.data || [])
+    .map((r) =>
+      r.book
+        ? bookRowToClient(r.book, {
+            rating: r.rating || undefined,
+            dateRead: r.read_at || undefined,
+            fromGoodreads: r.source === 'goodreads_import',
+            _id: r.id,
+          })
+        : null
+    )
+    .filter(Boolean);
   const currentPlan =
     plansRes.data && plansRes.data[0]
       ? {
@@ -168,66 +214,120 @@ export function DataProvider({ children }) {
   }, []);
 
   // ---------- Mutations ----------
-  const seedWishlistIfNeeded = useCallback(() => {
-    setState((s) => {
-      if (!s.onboarded) return s;
-      if (s.wishlist && s.wishlist.length > 0) return s;
-      const libraryKeys = new Set(s.library.map(bookKey));
-      const wishlist = ALL_BOOKS.filter((b) => !libraryKeys.has(bookKey(b))).map((b) => ({ ...b }));
-      // Bulk-insert into Supabase (fire and forget)
-      if (user) {
-        const rows = wishlist.map((b) => ({
-          user_id: user.id,
-          book_title: b.t,
-          book_author: b.a,
-          book_metadata: { g: b.g, c: b.c, p: b.p, d: b.d, s: b.s },
-        }));
-        supabase.from('wishlist_items').upsert(rows, { onConflict: 'user_id,book_title' }).then(({ error }) => {
-          if (error) console.error('seedWishlist upsert failed', error);
-        });
+
+  // Calls the upsert_book RPC and returns the book_id of the inserted/existing row.
+  // Also returns the source so the caller knows whether this book was new.
+  const upsertBookOnServer = useCallback(
+    async (book, source = 'user_manual') => {
+      if (!user) return null;
+      const args = {
+        _title: book.t,
+        _author: book.a || null,
+        _isbn: book.isbn || null,
+        _hardcover_id: book.hardcoverId || null,
+        _series_name: book.s?.name || null,
+        _series_position: book.s?.n || null,
+        _pages: book.pp || null,
+        _description: book.d || null,
+        _cover_url: book.coverUrl || null,
+        _genre: book.g || null,
+        _complexity: book.c || null,
+        _depth: book.p || null,
+        _source: book.fromHardcover
+          ? 'hardcover'
+          : book.fromOpenLibrary
+            ? 'openlibrary'
+            : book.fromGoodreads
+              ? 'goodreads_import'
+              : source,
+        _verified: false, // never auto-verify; curated seed sets this directly
+        _metadata: {
+          amazonUrl: book.amazonUrl || null,
+          manuallyAdded: book.manuallyAdded || false,
+        },
+      };
+      const { data, error } = await supabase.rpc('upsert_book', args);
+      if (error) {
+        console.error('upsert_book failed', error);
+        return null;
       }
-      return { ...s, wishlist };
-    });
-  }, [user]);
+      return data; // book_id (uuid)
+    },
+    [user]
+  );
+
+  const seedWishlistIfNeeded = useCallback(async () => {
+    if (!state.onboarded) return;
+    if (state.wishlist && state.wishlist.length > 0) return;
+    const libraryKeys = new Set(state.library.map(bookKey));
+    const seedBooks = ALL_BOOKS.filter((b) => !libraryKeys.has(bookKey(b)));
+
+    if (!user) {
+      // Guest mode: just stuff them into local state
+      setState((s) => ({ ...s, wishlist: seedBooks.map((b) => ({ ...b, verified: true, source: 'curated' })) }));
+      return;
+    }
+
+    // Upsert each book into the shared catalog, then link via wishlist_items.
+    // Done serially to be gentle on the RPC.
+    const linked = [];
+    for (const b of seedBooks) {
+      const bookId = await upsertBookOnServer(b, 'curated');
+      if (!bookId) continue;
+      const { error } = await supabase
+        .from('wishlist_items')
+        .insert({ user_id: user.id, book_id: bookId })
+        .select()
+        .single();
+      if (!error) linked.push({ ...b, bookId, verified: true, source: 'curated' });
+    }
+    setState((s) => ({ ...s, wishlist: [...s.wishlist, ...linked] }));
+  }, [state.onboarded, state.wishlist, state.library, user, upsertBookOnServer]);
 
   const addToWishlist = useCallback(
     async (book) => {
-      let added = false;
-      setState((s) => {
-        const k = bookKey(book);
-        if (s.wishlist.some((b) => bookKey(b) === k)) return s;
-        if (s.library.some((b) => bookKey(b) === k)) return s;
-        added = true;
-        return { ...s, wishlist: [...s.wishlist, { ...book }] };
-      });
-      if (added && user) {
-        await supabase.from('wishlist_items').insert({
-          user_id: user.id,
-          book_title: book.t,
-          book_author: book.a,
-          book_metadata: { g: book.g, c: book.c, p: book.p, d: book.d, s: book.s, amazonUrl: book.amazonUrl, manuallyAdded: book.manuallyAdded },
-          notes: book.notes || null,
-        });
+      const k = bookKey(book);
+      // local dedup
+      if (state.wishlist.some((b) => bookKey(b) === k)) return false;
+      if (state.library.some((b) => bookKey(b) === k)) return false;
+
+      if (!user) {
+        // Guest path
+        setState((s) => ({ ...s, wishlist: [...s.wishlist, { ...book }] }));
         showToast(`"${book.t}" added to your wishlist`);
-      } else if (added) {
-        showToast(`"${book.t}" added to your wishlist`);
+        return true;
       }
-      return added;
+
+      // Server path: upsert into books, then link
+      const bookId = await upsertBookOnServer(book);
+      if (!bookId) {
+        showToast(`Couldn't save "${book.t}"`, true);
+        return false;
+      }
+      const { error } = await supabase
+        .from('wishlist_items')
+        .insert({ user_id: user.id, book_id: bookId, notes: book.notes || null });
+      if (error && error.code !== '23505') {
+        console.error('wishlist insert failed', error);
+        return false;
+      }
+      setState((s) => ({ ...s, wishlist: [...s.wishlist, { ...book, bookId }] }));
+      showToast(`"${book.t}" added to your wishlist`);
+      return true;
     },
-    [user, showToast]
+    [user, state.wishlist, state.library, showToast, upsertBookOnServer]
   );
 
   const removeFromWishlist = useCallback(
     async (book, silent = false) => {
       const k = bookKey(book);
       setState((s) => ({ ...s, wishlist: s.wishlist.filter((b) => bookKey(b) !== k) }));
-      if (user) {
+      if (user && book.bookId) {
         await supabase
           .from('wishlist_items')
           .delete()
           .eq('user_id', user.id)
-          .eq('book_title', book.t)
-          .eq('book_author', book.a);
+          .eq('book_id', book.bookId);
       }
       if (!silent) showToast(`"${book.t}" removed from wishlist`);
     },
@@ -255,49 +355,71 @@ export function DataProvider({ children }) {
   const markAsRead = useCallback(
     async (book) => {
       const k = bookKey(book);
-      setState((s) => {
-        if (s.library.some((b) => bookKey(b) === k)) return s;
-        return {
+      if (state.library.some((b) => bookKey(b) === k)) return;
+      const today = new Date().toISOString().slice(0, 10);
+
+      if (!user) {
+        setState((s) => ({
           ...s,
           readNext: s.readNext.filter((b) => bookKey(b) !== k),
           wishlist: s.wishlist.filter((b) => bookKey(b) !== k),
-          library: [...s.library, { ...book, dateRead: new Date().toISOString() }],
-        };
-      });
-      if (user) {
-        await supabase.from('read_books').upsert(
+          library: [...s.library, { ...book, dateRead: today }],
+        }));
+        showToast(`"${book.t}" added to your library`);
+        return;
+      }
+
+      // Make sure the book exists in the catalog
+      const bookId = book.bookId || (await upsertBookOnServer(book));
+      if (!bookId) {
+        showToast(`Couldn't save "${book.t}"`, true);
+        return;
+      }
+
+      // Insert into read_books (or update if it exists somehow)
+      const { error: rbErr } = await supabase
+        .from('read_books')
+        .upsert(
           {
             user_id: user.id,
-            book_title: book.t,
-            book_author: book.a,
-            book_metadata: { g: book.g, c: book.c, p: book.p, d: book.d },
-            read_at: new Date().toISOString().slice(0, 10),
+            book_id: bookId,
+            read_at: today,
             source: book.fromGoodreads ? 'goodreads_import' : 'manual',
             rating: book.rating || null,
           },
-          { onConflict: 'user_id,book_title' }
+          { onConflict: 'user_id,book_id' }
         );
-        await supabase
-          .from('wishlist_items')
-          .delete()
-          .eq('user_id', user.id)
-          .eq('book_title', book.t);
+      if (rbErr) {
+        console.error('read_books upsert failed', rbErr);
       }
+      // Remove from wishlist
+      await supabase
+        .from('wishlist_items')
+        .delete()
+        .eq('user_id', user.id)
+        .eq('book_id', bookId);
+
+      setState((s) => ({
+        ...s,
+        readNext: s.readNext.filter((b) => bookKey(b) !== k),
+        wishlist: s.wishlist.filter((b) => bookKey(b) !== k),
+        library: [...s.library, { ...book, bookId, dateRead: today }],
+      }));
       showToast(`"${book.t}" added to your library`);
     },
-    [user, showToast]
+    [user, state.library, showToast, upsertBookOnServer]
   );
 
   const removeFromLibrary = useCallback(
     async (book) => {
       const k = bookKey(book);
       setState((s) => ({ ...s, library: s.library.filter((b) => bookKey(b) !== k) }));
-      if (user) {
+      if (user && book.bookId) {
         await supabase
           .from('read_books')
           .delete()
           .eq('user_id', user.id)
-          .eq('book_title', book.t);
+          .eq('book_id', book.bookId);
       }
     },
     [user]
@@ -306,32 +428,48 @@ export function DataProvider({ children }) {
   // Bulk-import from Goodreads CSV
   const importGoodreads = useCallback(
     async (books) => {
-      setState((s) => {
-        const existingKeys = new Set(s.library.map(bookKey));
-        const toAdd = books.filter((b) => !existingKeys.has(bookKey(b)));
-        return {
+      const existingKeys = new Set(state.library.map(bookKey));
+      const toAdd = books.filter((b) => !existingKeys.has(bookKey(b)));
+
+      if (!user) {
+        setState((s) => ({
           ...s,
           library: [...s.library, ...toAdd.map((b) => ({ ...b, dateRead: b.dateRead || new Date().toISOString() }))],
           profile: { ...s.profile, goodreadsImported: true },
-        };
-      });
-      if (user && books.length > 0) {
-        const rows = books.map((b) => ({
-          user_id: user.id,
-          book_title: b.t,
-          book_author: b.a,
-          rating: b.rating || null,
-          read_at: b.dateRead || null,
-          source: 'goodreads_import',
         }));
-        await supabase.from('read_books').upsert(rows, {
-          onConflict: 'user_id,book_title',
-          ignoreDuplicates: true,
-        });
+        showToast(`Imported ${toAdd.length} books from Goodreads`);
+        return;
       }
-      showToast(`Imported ${books.length} books from Goodreads`);
+
+      // For each, upsert book + insert read_books row
+      const linked = [];
+      for (const b of toAdd) {
+        const bookId = await upsertBookOnServer(
+          { ...b, fromGoodreads: true },
+          'goodreads_import'
+        );
+        if (!bookId) continue;
+        const { error } = await supabase.from('read_books').upsert(
+          {
+            user_id: user.id,
+            book_id: bookId,
+            rating: b.rating || null,
+            read_at: b.dateRead || null,
+            source: 'goodreads_import',
+          },
+          { onConflict: 'user_id,book_id' }
+        );
+        if (!error) linked.push({ ...b, bookId, dateRead: b.dateRead || new Date().toISOString() });
+      }
+
+      setState((s) => ({
+        ...s,
+        library: [...s.library, ...linked],
+        profile: { ...s.profile, goodreadsImported: true },
+      }));
+      showToast(`Imported ${linked.length} books from Goodreads`);
     },
-    [user, showToast]
+    [user, state.library, showToast, upsertBookOnServer]
   );
 
   const setProfile = useCallback((patch) => {
@@ -383,6 +521,35 @@ export function DataProvider({ children }) {
     }
   }, [user]);
 
+  // ---------- The Vault: query the curated catalog ----------
+  // Fetched lazily on demand. Cached in memory for the session.
+  const [vault, setVault] = useState(null);
+  const loadVault = useCallback(async () => {
+    if (vault) return vault;
+    if (!user) {
+      // Guest: use bundled BOOKS_DATA as a stand-in
+      const v = ALL_BOOKS.map((b) => ({ ...b, verified: true, source: 'curated' }));
+      setVault(v);
+      return v;
+    }
+    const { data, error } = await supabase
+      .from('books')
+      .select('*')
+      .eq('source', 'curated')
+      .eq('verified', true)
+      .order('title', { ascending: true });
+    if (error || !data) {
+      console.error('Vault fetch failed', error);
+      // Fallback to bundled catalog
+      const v = ALL_BOOKS.map((b) => ({ ...b, verified: true, source: 'curated' }));
+      setVault(v);
+      return v;
+    }
+    const v = data.map((b) => bookRowToClient(b));
+    setVault(v);
+    return v;
+  }, [user, vault]);
+
   const value = {
     state,
     loading,
@@ -403,6 +570,9 @@ export function DataProvider({ children }) {
     setOracleMode,
     setCurrentPlan,
     resetAll,
+    // vault
+    vault,
+    loadVault,
   };
 
   return <DataContext.Provider value={value}>{children}</DataContext.Provider>;

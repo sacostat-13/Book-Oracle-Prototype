@@ -175,6 +175,15 @@ export default function BookModal({ book, onClose, onOpenBook }) {
                 <span className="level-pill">depth {'●'.repeat(display.p)}{'○'.repeat(5 - display.p)}</span>
               )}
               {display.pp && <span className="level-pill">📄 {display.pp} pages</span>}
+              {display.verified && (
+                <span
+                  className="level-pill"
+                  style={{ background: 'rgba(176, 140, 63, 0.18)', borderColor: 'var(--gilt)', color: 'var(--gilt-bright)' }}
+                  title="Curated · verified by our editors"
+                >
+                  ☩ Verified
+                </span>
+              )}
               {inLib && (
                 <span className="level-pill" style={{ background: 'var(--moss)', color: 'var(--paper)', borderColor: 'var(--moss)' }}>
                   ✓ Read

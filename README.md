@@ -2,7 +2,9 @@
 
 A reading companion — wishlist, library, reading plans, and an AI-powered "oracle"
 for book discovery. Built with React + Vite + SCSS, backed by Supabase for auth
-and cross-device sync.
+and cross-device sync, and Netlify Functions for API proxying.
+
+> **Upgrading from v0.2?** Read `MIGRATION.md` for the schema migration and env-var changes.
 
 ## What's in here
 
@@ -94,18 +96,15 @@ oracle/
 
 ## A note on the AI Oracle
 
-The Oracle's "AI mode" (in both Categories and Similar Books) calls the
-Anthropic API directly from the browser. This works inside Claude's artifact
-runner but **will fail on a public deployment** because the API requires an
-authorized key.
+The Oracle's "AI mode" (in both Categories and Similar Books) calls Anthropic via
+a Netlify Function proxy at `/.netlify/functions/claude`. The function holds the
+`ANTHROPIC_API_KEY` server-side — it never reaches the browser. Same pattern for
+Hardcover via `/.netlify/functions/hardcover`.
 
-For production, move `src/lib/claudeApi.js` behind a server function:
-
-- **Netlify Function** at `netlify/functions/claude.js` that holds
-  `ANTHROPIC_API_KEY` server-side, or
-- **Supabase Edge Function** at `supabase/functions/claude/index.ts`.
-
-Then update `callClaude()` to POST to your function instead of api.anthropic.com.
+For local development, use `netlify dev` (instead of `npm run dev`) to run Vite
+and the functions together on one port. Without it, AI Oracle and Hardcover
+lookups won't work locally — but everything else will, and Hardcover gracefully
+falls back to OpenLibrary.
 
 ## Data model
 

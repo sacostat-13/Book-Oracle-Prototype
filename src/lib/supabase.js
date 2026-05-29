@@ -1,11 +1,7 @@
-import {
-  createClient
-} from '@supabase/supabase-js';
+import { createClient } from '@supabase/supabase-js';
 
-const url =
-  import.meta.env.VITE_SUPABASE_URL;
-const anonKey =
-  import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+const url = import.meta.env.VITE_SUPABASE_URL;
+const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
 if (!url || !anonKey) {
   console.warn(
@@ -13,11 +9,4 @@ if (!url || !anonKey) {
   );
 }
 
-export const supabase = createClient(url || 'http://localhost', anonKey || 'placeholder', {
-  auth: {
-    persistSession: true,
-    autoRefreshToken: true,
-    detectSessionInUrl: true,
-    flowType: 'implicit',
-  },
-});
+export const supabase = createClient(url || 'http://localhost', anonKey || 'placeholder');

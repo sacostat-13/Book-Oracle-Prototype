@@ -17,6 +17,28 @@ export default function BookCard({ book, reason, onClick }) {
         <BookCover title={book.t} author={book.a} />
       </div>
       {book.g && <div className="card-tag">{book.g}</div>}
+      {book.verified && (
+        <div
+          className="card-verified"
+          title="Curated · verified by our editors"
+          style={{
+            position: 'absolute',
+            top: '0.5rem',
+            right: '0.5rem',
+            background: 'rgba(176, 140, 63, 0.9)',
+            color: 'var(--ink)',
+            fontFamily: "'Special Elite', monospace",
+            fontSize: '0.6rem',
+            letterSpacing: '0.1em',
+            padding: '0.2rem 0.4rem',
+            borderRadius: '1px',
+            textTransform: 'uppercase',
+            zIndex: 2,
+          }}
+        >
+          ☩ Verified
+        </div>
+      )}
       <div className="card-meta">
         {book.c && <span>prose {'●'.repeat(book.c)}{'○'.repeat(5 - book.c)}</span>}
         {book.p && <span>depth {'●'.repeat(book.p)}{'○'.repeat(5 - book.p)}</span>}

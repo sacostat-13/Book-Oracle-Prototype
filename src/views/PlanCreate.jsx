@@ -13,7 +13,7 @@ const LEVEL_BLURB = {
 };
 
 export default function PlanCreate() {
-  const { state, setCurrentPlan, showToast } = useData();
+  const { state, setCurrentPlan, showToast, vault, loadVault } = useData();
   const { go, route } = useRouter();
   const [type, setType] = useState(null);
   const [target, setTarget] = useState(route.params?.seriesName || null);
@@ -96,20 +96,24 @@ export default function PlanCreate() {
     };
   }
 
-  function buildFallbackPlan() {
+  function buildFallbackPlan(poolBooks) {
+    // poolBooks is the candidate pool — prefer Vault (curated), fall back to
+    // bundled ALL_BOOKS for guest sessions or if Vault hasn't loaded.
+    const candidates = poolBooks && poolBooks.length > 0 ? poolBooks : ALL_BOOKS;
+
     if (type === 'level') {
       const start = state.profile.readingLevel || 1;
       const end = target;
-      const sorted = [...ALL_BOOKS].sort((a, b) => (a.c || 3) - (b.c || 3));
+      const sorted = [...candidates].sort((a, b) => (a.c || 3) - (b.c || 3));
       const steps = [];
       for (let i = 0; i < timeline; i++) {
         const targetC = start + ((end - start) * (i / Math.max(1, timeline - 1)));
-        const candidates = sorted.filter(
+        const cands = sorted.filter(
           (b) => Math.abs((b.c || 3) - targetC) <= 0.7 &&
                  !steps.some((s) => s.t === b.t) &&
                  !state.library.some((l) => bookKey(l) === bookKey(b))
         );
-        const picked = candidates[Math.floor(Math.random() * Math.min(candidates.length, 5))];
+        const picked = cands[Math.floor(Math.random() * Math.min(cands.length, 5))];
         if (picked) steps.push({ ...picked, month: i + 1, reason: `A measured step toward level ${end} prose.` });
       }
       return {
@@ -120,7 +124,7 @@ export default function PlanCreate() {
         type: 'level',
       };
     }
-    const pool = ALL_BOOKS.filter((b) => b.g === target).sort((a, b) => (a.c || 3) - (b.c || 3));
+    const pool = candidates.filter((b) => b.g === target).sort((a, b) => (a.c || 3) - (b.c || 3));
     const steps = pool.slice(0, timeline).map((b, i) => ({
       month: i + 1,
       title: b.t,
@@ -149,6 +153,11 @@ export default function PlanCreate() {
         return;
       }
 
+      // Prefer the Vault (curated catalog from DB) over the bundled ALL_BOOKS
+      // for the AI prompt context. This keeps the curated set as the source
+      // of truth even as the bundled file ages.
+      const catalogSource = vault && vault.length > 0 ? vault : (await loadVault()) || ALL_BOOKS;
+
       const libraryContext = state.library.slice(-30).map((b) => `- ${b.t} by ${b.a}`).join('\n') || '(none)';
       let prompt;
       if (type === 'level') {
@@ -164,8 +173,8 @@ Reading levels are based on prose complexity:
 Books they've read recently:
 ${libraryContext}
 
-Available books from their wishlist (title | author | genre | prose complexity 1-5):
-${ALL_BOOKS.map((b) => `${b.t} | ${b.a} | ${b.g} | c=${b.c}`).join('\n')}
+Available books from the curated catalog (title | author | genre | prose complexity 1-5):
+${catalogSource.map((b) => `${b.t} | ${b.a} | ${b.g} | c=${b.c}`).join('\n')}
 
 Build a ${timeline}-month plan that gradually escalates from level ${state.profile.readingLevel || 1} to level ${target}. One book per month. Each step should be a meaningful but achievable jump.
 
@@ -183,11 +192,11 @@ Return ONLY valid JSON in this exact format:
 Books they've read recently:
 ${libraryContext}
 
-Available books from their wishlist matching this genre (title | author | prose complexity 1-5 | genre depth 1-5 | description):
-${ALL_BOOKS.filter((b) => b.g === target).map((b) => `${b.t} | ${b.a} | c=${b.c} | p=${b.p} | ${b.d || ''}`).join('\n')}
+Available books from the curated catalog matching this genre (title | author | prose complexity 1-5 | genre depth 1-5 | description):
+${catalogSource.filter((b) => b.g === target).map((b) => `${b.t} | ${b.a} | c=${b.c} | p=${b.p} | ${b.d || ''}`).join('\n')}
 
 Also available from related genres:
-${ALL_BOOKS.filter((b) => b.g !== target).slice(0, 30).map((b) => `${b.t} | ${b.a} | ${b.g}`).join('\n')}
+${catalogSource.filter((b) => b.g !== target).slice(0, 30).map((b) => `${b.t} | ${b.a} | ${b.g}`).join('\n')}
 
 Build a ${timeline}-month tour of this genre. Start with the most accessible foundational works and progress to deeper, more challenging, or more representative texts. One book per month.
 
@@ -207,8 +216,8 @@ Return ONLY valid JSON in this exact format:
       );
       let plan = response ? parseJSONResponse(response) : null;
       if (!plan?.books?.length) {
-        showToast("Couldn't reach the AI. Built a fallback plan from your wishlist.", true);
-        plan = buildFallbackPlan();
+        showToast("Couldn't reach the AI. Built a fallback plan from the Vault.", true);
+        plan = buildFallbackPlan(catalogSource);
       }
       plan.books = plan.books.slice(0, timeline);
       plan.timeline = timeline;

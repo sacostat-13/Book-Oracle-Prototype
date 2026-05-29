@@ -1,24 +1,21 @@
-// Calls Anthropic's API directly from the browser.
-// NOTE: This pattern only works in environments that proxy/authorize the call
-// (e.g. inside Claude's artifact runner). For a public deployment you should
-// move this behind a Netlify Function or Supabase Edge Function that holds
-// the API key server-side.
+// Calls Anthropic via our Netlify Function proxy. The API key stays server-side.
+// In local dev, run `netlify dev` instead of `npm run dev` to make the function
+// available at /.netlify/functions/claude.
+
 export async function callClaude(prompt, systemPrompt) {
   try {
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
+    const response = await fetch('/.netlify/functions/claude', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 2000,
-        system:
-          systemPrompt ||
-          'You are a literary book recommendation expert with deep knowledge of horror, gothic, literary fiction, and Latin American literature.',
-        messages: [{ role: 'user', content: prompt }],
-      }),
+      body: JSON.stringify({ prompt, systemPrompt }),
     });
-    if (!response.ok) throw new Error('API request failed');
+    if (!response.ok) {
+      const errText = await response.text();
+      console.error('Claude proxy error:', response.status, errText);
+      return null;
+    }
     const data = await response.json();
+    if (!data.content) return null;
     return data.content
       .filter((b) => b.type === 'text')
       .map((b) => b.text)

@@ -1,11 +1,29 @@
-// Book lookup helpers for bulk import. Talks to OpenLibrary's search API.
+// Book lookup helpers for bulk import.
 //
-// We use OL because it's free, CORS-friendly, and has decent ASIN/ISBN coverage
-// for popular books. Goodreads URL scraping is not viable (no public API, hard
-// rate-limiting). Amazon scraping is also not viable from the browser (CORS).
-// Instead, we extract the ASIN from an Amazon URL and look the book up in OL.
+// Lookup chain: Hardcover (best metadata + series) → OpenLibrary (broader
+// coverage, no auth). Hardcover requires our Netlify Function proxy; if
+// `netlify dev` isn't running locally the proxy 404s and we fall through
+// to OL gracefully.
 
 import { cleanTitle, cleanAuthor } from './bookHelpers';
+import {
+  hardcoverLookupByIsbn,
+  hardcoverLookupByAsin,
+  hardcoverSearch,
+} from './hardcoverService';
+
+// Merge two book records, preferring `primary` for every populated field but
+// borrowing from `secondary` for anything `primary` left null.
+function mergeBookData(primary, secondary) {
+  if (!primary) return secondary;
+  if (!secondary) return primary;
+  const out = { ...secondary, ...primary };
+  // Only borrow fields that are actually missing on primary
+  for (const key of ['d', 'pp', 'g', 'coverUrl', 's', 'isbn']) {
+    if (primary[key] == null && secondary[key] != null) out[key] = secondary[key];
+  }
+  return out;
+}
 
 // ---------- Amazon URL parsing ----------
 
@@ -23,12 +41,29 @@ export function extractAsinFromUrl(url) {
   return m ? m[1].toUpperCase() : null;
 }
 
-// ---------- OpenLibrary lookup ----------
+// ---------- OpenLibrary lookup (fallback) ----------
 
 // Look up a book by ASIN (which OL treats as ISBN-10 in many cases) or ISBN.
 // Returns { t, a, g?, d?, pp?, amazonUrl } or null.
 export async function lookupByAsin(asin, amazonUrl) {
   if (!asin) return null;
+
+  // Try Hardcover first
+  const hc = await hardcoverLookupByAsin(asin);
+  if (hc) {
+    hc.amazonUrl = amazonUrl || null;
+    hc.manuallyAdded = true;
+    // If Hardcover gave us complete data, return it. Otherwise also hit OL.
+    if (hc.t && hc.a && hc.pp) return hc;
+    const ol = await _lookupByAsinOL(asin, amazonUrl);
+    return mergeBookData(hc, ol);
+  }
+
+  // Fall back to OpenLibrary
+  return _lookupByAsinOL(asin, amazonUrl);
+}
+
+async function _lookupByAsinOL(asin, amazonUrl) {
   try {
     // Try ISBN endpoint first (works for ASIN when it's actually a valid ISBN-10)
     const isbnLike = /^\d{9}[\dX]$/i.test(asin);
@@ -93,6 +128,21 @@ async function fetchAuthorNames(keys) {
 // Returns { t, a, g?, d?, pp? } or null.
 export async function lookupByTitle(title, author) {
   if (!title) return null;
+
+  // Try Hardcover first
+  const hc = await hardcoverSearch(title, author);
+  if (hc && hc.t) {
+    hc.manuallyAdded = true;
+    if (hc.a && hc.pp) return hc;
+    // Hit OL too for missing fields (e.g. genre, page count)
+    const ol = await _lookupByTitleOL(title, author);
+    return mergeBookData(hc, ol);
+  }
+
+  return _lookupByTitleOL(title, author);
+}
+
+async function _lookupByTitleOL(title, author) {
   try {
     let q = `title=${encodeURIComponent(cleanTitle(title))}`;
     if (author) q += `&author=${encodeURIComponent(cleanAuthor(author))}`;
