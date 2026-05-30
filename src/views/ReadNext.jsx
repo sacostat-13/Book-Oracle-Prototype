@@ -28,7 +28,7 @@ export default function ReadNext() {
         </div>
       ) : (
         state.readNext.map((b, i) => (
-          <div className="list-item" key={bookKey(b)}>
+          <div className="list-item" key={`${bookKey(b)}-${i}`}>
             <div className="li-num">{String(i + 1).padStart(2, '0')}.</div>
             <div className="li-content">
               <div className="li-title">{b.t}</div>

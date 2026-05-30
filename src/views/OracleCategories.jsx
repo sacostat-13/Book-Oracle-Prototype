@@ -184,7 +184,7 @@ Return ONLY valid JSON in this format:
             <div className="empty-state-text">Select a temperament above and draw three books.</div>
           </div>
         ) : (
-          draw.map((b) => <BookCard key={bookKey(b)} book={b} onClick={() => onOpenBook?.(b)} />)
+          draw.map((b, i) => <BookCard key={`${bookKey(b)}-${i}`} book={b} onClick={() => onOpenBook?.(b)} />)
         )}
       </section>
     </>

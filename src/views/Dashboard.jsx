@@ -78,7 +78,7 @@ function Shelves({ onSpineClick }) {
             {shelf.length === 0 ? (
               <div className="shelf-empty">&nbsp;</div>
             ) : (
-              shelf.map((b) => {
+              shelf.map((b, bIdx) => {
                 let color;
                 if (mode === 'genre' && b.g) color = SPINE_COLORS[hashStr(b.g) % SPINE_COLORS.length];
                 else if (mode === 'complexity' && b.c) {
@@ -88,7 +88,7 @@ function Shelves({ onSpineClick }) {
                 const width = 22 + (hashStr(b.a || '') % 14);
                 return (
                   <div
-                    key={bookKey(b)}
+                    key={`${bookKey(b)}-${sIdx}-${bIdx}`}
                     className="book-spine"
                     style={{ '--spine-color': color, minWidth: `${width}px` }}
                     title={`${b.t} — ${b.a}`}

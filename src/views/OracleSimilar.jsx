@@ -194,7 +194,7 @@ Return ONLY valid JSON in this exact format:
           <div className="tray-empty">Select up to 3 books below…</div>
         ) : (
           selection.map((b, i) => (
-            <div className="tray-chip" key={bookKey(b)}>
+            <div className="tray-chip" key={`${bookKey(b)}-${i}`}>
               <span className="chip-title">{b.t}</span>
               <button className="chip-remove" onClick={() => setSelection(selection.filter((_, idx) => idx !== i))}>×</button>
             </div>
@@ -233,9 +233,9 @@ Return ONLY valid JSON in this exact format:
               </span>
             </h2>
             <div className="cards">
-              {results.books.map((b) => (
+              {results.books.map((b, i) => (
                 <BookCard
-                  key={bookKey(b)}
+                  key={`${bookKey(b)}-${i}`}
                   book={b}
                   reason={results.reasons?.[b.t]}
                   onClick={() => onOpenBook?.(b)}
@@ -250,9 +250,9 @@ Return ONLY valid JSON in this exact format:
         {state.library.length > 0 ? 'From your library and wishlist' : 'From your wishlist'}
       </h2>
       <div className="cards">
-        {filteredPicker.map((b) => (
+        {filteredPicker.map((b, i) => (
           <SelectableCard
-            key={bookKey(b)}
+            key={`${bookKey(b)}-${i}`}
             book={b}
             selected={selection.some((s) => bookKey(s) === bookKey(b))}
             onClick={() => toggleSelect(b)}

@@ -35,8 +35,8 @@ export default function Library({ onOpenBook }) {
         genreKeys.map((g) => (
           <div className="list-section" key={g}>
             <h2>{g} <span className="count">· {grouped[g].length}</span></h2>
-            {grouped[g].map((b) => (
-              <div className="list-item" key={bookKey(b)}>
+            {grouped[g].map((b, i) => (
+              <div className="list-item" key={`${bookKey(b)}-${i}`}>
                 <div className="li-num">{b.rating ? '★'.repeat(b.rating) : '❦'}</div>
                 <div className="li-content" onClick={() => onOpenBook?.(b)} style={{ cursor: 'pointer' }}>
                   <div className="li-title">{b.t}</div>

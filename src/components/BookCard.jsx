@@ -14,7 +14,7 @@ export default function BookCard({ book, reason, onClick }) {
   return (
     <div className="card" onClick={onClick}>
       <div className="cover">
-        <BookCover title={book.t} author={book.a} />
+        <BookCover title={book.t} author={book.a} coverUrl={book.coverUrl} />
       </div>
       {book.g && <div className="card-tag">{book.g}</div>}
       {book.verified && (

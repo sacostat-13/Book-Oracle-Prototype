@@ -184,11 +184,11 @@ export default function Wishlist({ onOpenBook }) {
         genreKeys.map((g) => (
           <div className="list-section" key={g}>
             <h2>{g} <span className="count">· {grouped[g].length}</span></h2>
-            {grouped[g].map((b) => {
+            {grouped[g].map((b, i) => {
               const k = bookKey(b);
               const inNext = state.readNext.some((r) => bookKey(r) === k);
               return (
-                <div className="list-item" key={k}>
+                <div className="list-item" key={`${k}-${i}`}>
                   <div className="li-num">{b.manuallyAdded ? '✎' : '❦'}</div>
                   <div className="li-content" onClick={() => onOpenBook?.(b)} style={{ cursor: 'pointer' }}>
                     <div className="li-title">{b.t}</div>

@@ -3,6 +3,9 @@ import { useData } from '../lib/DataContext';
 import { useRouter } from '../lib/RouterContext';
 import { ALL_BOOKS, bookKey, findBookByTitle } from '../lib/bookHelpers';
 import { enrichBookFromOpenLibrary, fetchSeriesBooks } from '../lib/enrichmentService';
+import { lookupByTitle } from '../lib/bookLookup';
+import { fetchCoverURL } from '../lib/coverService';
+import { purchaseLinks } from '../lib/purchaseLinks';
 import BookCover from './BookCover';
 
 function computeSimilarBooks(book, limit = 4) {
@@ -22,10 +25,13 @@ function computeSimilarBooks(book, limit = 4) {
 }
 
 export default function BookModal({ book, onClose, onOpenBook }) {
-  const { state, addToReadNext, removeFromReadNext, markAsRead, removeFromLibrary, addToWishlist } = useData();
+  const { state, addToReadNext, removeFromReadNext, markAsRead, removeFromLibrary, addToWishlist, cacheBookFields } = useData();
   const { go } = useRouter();
   const [enrichment, setEnrichment] = useState(null);
   const [seriesBooks, setSeriesBooks] = useState([]);
+  // Live overlay of newly-enriched fields so the modal shows them immediately
+  // even if the parent state hasn't refreshed yet.
+  const [enrichedOverlay, setEnrichedOverlay] = useState({});
 
   // Lock body scroll while open
   useEffect(() => {
@@ -35,17 +41,62 @@ export default function BookModal({ book, onClose, onOpenBook }) {
     };
   }, []);
 
-  // Fetch OL enrichment
+  // On-demand enrichment: when the modal opens, identify which canonical fields
+  // are missing on this book and fetch them. Anything fetched is persisted to
+  // the shared `books` row via cacheBookFields so future opens are instant.
   useEffect(() => {
     if (!book) return;
     let cancelled = false;
-    enrichBookFromOpenLibrary(book.t, book.a).then((d) => {
-      if (!cancelled) setEnrichment(d);
-    });
+
+    async function runEnrichment() {
+      const needsCover = !book.coverUrl;
+      const needsPages = !book.pp;
+      const needsDescription = !book.d;
+      const needsSeries = !book.s; // we also still try OL series detection
+
+      // Always run the legacy OL enrichment (cached locally) — it covers series
+      // detection for books that don't have it yet.
+      enrichBookFromOpenLibrary(book.t, book.a).then((d) => {
+        if (!cancelled) setEnrichment(d);
+      });
+
+      // Skip the heavier fetches if everything is already present.
+      if (!needsCover && !needsPages && !needsDescription && !needsSeries) return;
+
+      const patch = {};
+
+      // Cover: cheap and high-value, fetch first
+      if (needsCover) {
+        const coverUrl = await fetchCoverURL(book.t, book.a);
+        if (cancelled) return;
+        if (coverUrl) patch.coverUrl = coverUrl;
+      }
+
+      // Pages + description: use Hardcover via lookupByTitle (falls back to OL)
+      if (needsPages || needsDescription) {
+        const found = await lookupByTitle(book.t, book.a);
+        if (cancelled) return;
+        if (found) {
+          if (needsPages && found.pp) patch.pp = found.pp;
+          if (needsDescription && found.d) patch.d = found.d;
+          // Opportunistically catch ISBN + hardcoverId too
+          if (!book.isbn && found.isbn) patch.isbn = found.isbn;
+          if (!book.hardcoverId && found.hardcoverId) patch.hardcoverId = found.hardcoverId;
+        }
+      }
+
+      if (Object.keys(patch).length === 0) return;
+      // Reflect in the open modal immediately
+      setEnrichedOverlay((cur) => ({ ...cur, ...patch }));
+      // Persist to the shared books row (no-op for guest sessions)
+      cacheBookFields?.(book, patch);
+    }
+
+    runEnrichment();
     return () => {
       cancelled = true;
     };
-  }, [book]);
+  }, [book, cacheBookFields]);
 
   // Fetch series books if this book is in a series
   useEffect(() => {
@@ -72,7 +123,9 @@ export default function BookModal({ book, onClose, onOpenBook }) {
   if (!book) return null;
 
   const enriched = findBookByTitle(book.t, state.wishlist) || book;
-  const display = { ...enriched, ...book };
+  // Start with whatever was passed in, layer the local catalog match, layer
+  // the legacy OL enrichment, and finally the on-demand fields we just fetched.
+  const display = { ...enriched, ...book, ...enrichedOverlay };
   if (enrichment) {
     if (!display.s && enrichment.series?.name) {
       display.s = { ...enrichment.series, fromOpenLibrary: true };
@@ -137,9 +190,21 @@ export default function BookModal({ book, onClose, onOpenBook }) {
         );
       }
     }
+
+    // Source label depends on where the series came from. If it's in our DB
+    // we know if it's verified or needs review.
+    let sourceLabel;
+    if (display.s.verified) sourceLabel = 'verified';
+    else if (display.s.seriesId) sourceLabel = 'needs review';
+    else if (display.s.fromHardcover) sourceLabel = 'from Hardcover · unsaved';
+    else if (display.s.fromOpenLibrary) sourceLabel = 'from Open Library · unsaved';
+    else sourceLabel = 'unverified';
+
     seriesBlock = {
       name: seriesName,
-      fromOL: display.s.fromOpenLibrary,
+      sourceLabel,
+      verified: !!display.s.verified,
+      needsReview: !display.s.verified && !!display.s.seriesId,
       dots,
       readCount,
       totalBooks,
@@ -154,7 +219,7 @@ export default function BookModal({ book, onClose, onOpenBook }) {
 
         <div className="book-modal-hero">
           <div className="book-modal-cover">
-            <BookCover title={display.t} author={display.a} eager />
+            <BookCover title={display.t} author={display.a} coverUrl={display.coverUrl} eager />
           </div>
           <div className="book-modal-info">
             {display.g && <div className="book-modal-genre">{display.g}</div>}
@@ -205,9 +270,21 @@ export default function BookModal({ book, onClose, onOpenBook }) {
           {seriesBlock && (
             <div className="book-modal-section">
               <div className="book-modal-section-title">
-                Part of a series · <span style={{ opacity: 0.6, fontSize: '0.65rem' }}>
-                  {seriesBlock.fromOL ? 'detected via Open Library' : 'curated'}
-                </span>
+                Part of a series ·{' '}
+                {seriesBlock.verified ? (
+                  <span style={{ color: 'var(--gilt-bright)', fontSize: '0.65rem', letterSpacing: '0.08em' }}>
+                    ☩ verified
+                  </span>
+                ) : seriesBlock.needsReview ? (
+                  <span
+                    style={{ color: 'var(--blood-bright)', fontSize: '0.65rem', letterSpacing: '0.08em', opacity: 0.85 }}
+                    title="This series is in our catalog but hasn't been editor-verified yet."
+                  >
+                    ⚠ needs review
+                  </span>
+                ) : (
+                  <span style={{ opacity: 0.6, fontSize: '0.65rem' }}>{seriesBlock.sourceLabel}</span>
+                )}
               </div>
               <div className="series-name">{seriesBlock.name}</div>
               <div className="series-progress">
@@ -226,12 +303,12 @@ export default function BookModal({ book, onClose, onOpenBook }) {
             <div className="book-modal-section">
               <div className="book-modal-section-title">Similar books</div>
               <div className="similar-mini">
-                {similar.map((s) => {
+                {similar.map((s, i) => {
                   const sk = bookKey(s);
                   const sRead = state.library.some((l) => bookKey(l) === sk);
                   const sQueued = state.readNext.some((l) => bookKey(l) === sk);
                   return (
-                    <div className="similar-mini-item" key={sk} onClick={() => onOpenBook?.(s)} style={{ cursor: 'pointer' }}>
+                    <div className="similar-mini-item" key={`${sk}-${i}`} onClick={() => onOpenBook?.(s)} style={{ cursor: 'pointer' }}>
                       <div>
                         <div className="similar-mini-title">{s.t}</div>
                         <div className="similar-mini-author">{s.a}{s.g ? ` · ${s.g}` : ''}</div>
@@ -251,18 +328,26 @@ export default function BookModal({ book, onClose, onOpenBook }) {
           )}
         </div>
 
+        <div className="book-modal-purchase">
+          <div className="book-modal-purchase-label">Acquire this book</div>
+          <div className="book-modal-purchase-buttons">
+            {purchaseLinks(display).map((link) => (
+              <a
+                key={link.url}
+                href={link.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="btn btn-ghost"
+                style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}
+                title={link.kind === 'search' ? 'Opens a search — no direct product link available' : null}
+              >
+                ↗ {link.label}
+              </a>
+            ))}
+          </div>
+        </div>
+
         <div className="book-modal-actions">
-          {display.amazonUrl && (
-            <a
-              href={display.amazonUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="btn btn-ghost"
-              style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}
-            >
-              ↗ View on Amazon
-            </a>
-          )}
           {inLib ? (
             <button className="btn btn-ghost" onClick={() => { removeFromLibrary(display); onClose(); }}>
               Remove from library
