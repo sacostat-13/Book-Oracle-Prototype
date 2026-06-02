@@ -1,9 +1,14 @@
 // Book lookup helpers for bulk import.
 //
-// Lookup chain: Hardcover (best metadata + series) → OpenLibrary (broader
-// coverage, no auth). Hardcover requires our Netlify Function proxy; if
-// `netlify dev` isn't running locally the proxy 404s and we fall through
-// to OL gracefully.
+// Lookup chain (per book):
+//   1. PRH (best for Spanish/LatAm titles, ISBN lookups)
+//   2. Hardcover (best metadata + structured series, anglo-fiction skew)
+//   3. OpenLibrary (broadest coverage, no auth, no rate limit)
+// Results are merged — first source wins for each field, others fill nulls.
+//
+// If ALL sources miss, we still return a "raw" book object built from the
+// user's input, marked `unverified=true` so it can be flagged for review.
+// This means users never lose books they typed in.
 
 import { cleanTitle, cleanAuthor } from './bookHelpers';
 import {
@@ -11,28 +16,35 @@ import {
   hardcoverLookupByAsin,
   hardcoverSearch,
 } from './hardcoverService';
+import { prhLookupByIsbn, prhSearch } from './prhService';
 
-// Merge two book records, preferring `primary` for every populated field but
-// borrowing from `secondary` for anything `primary` left null.
+// Merge book records. `primary` is the higher-priority source; `secondary`
+// fills in nulls. Both can be null/undefined.
 function mergeBookData(primary, secondary) {
   if (!primary) return secondary;
   if (!secondary) return primary;
-  const out = { ...secondary, ...primary };
-  // Only borrow fields that are actually missing on primary
-  for (const key of ['d', 'pp', 'g', 'coverUrl', 's', 'isbn']) {
-    if (primary[key] == null && secondary[key] != null) out[key] = secondary[key];
+  // Start with secondary as base, overlay primary on top, but for fields where
+  // primary is null/undefined, keep secondary's value.
+  const out = { ...secondary };
+  for (const key of Object.keys(primary)) {
+    if (primary[key] !== null && primary[key] !== undefined) {
+      out[key] = primary[key];
+    }
   }
+  // Combine source attribution tags so we know what was consulted.
+  out.fromHardcover = primary.fromHardcover || secondary.fromHardcover || false;
+  out.fromOpenLibrary = primary.fromOpenLibrary || secondary.fromOpenLibrary || false;
+  out.fromPrh = primary.fromPrh || secondary.fromPrh || false;
   return out;
+}
+
+// Merge three sources in priority order: a > b > c.
+function mergeThree(a, b, c) {
+  return mergeBookData(a, mergeBookData(b, c));
 }
 
 // ---------- Amazon URL parsing ----------
 
-// Matches the ASIN/ISBN in any Amazon URL we've seen in the wild:
-//   amazon.com/dp/B07XYZ12345
-//   amazon.com/Title-Of-Book/dp/B07XYZ12345
-//   amazon.com/gp/product/B07XYZ12345/ref=...
-//   amzn.to/abc123  ← short link, can't resolve client-side, returns null
-//   smile.amazon.com/.../dp/...
 const ASIN_REGEX = /\/(?:dp|gp\/product|gp\/aw\/d)\/([A-Z0-9]{10})(?:[/?]|$)/i;
 
 export function extractAsinFromUrl(url) {
@@ -41,31 +53,70 @@ export function extractAsinFromUrl(url) {
   return m ? m[1].toUpperCase() : null;
 }
 
-// ---------- OpenLibrary lookup (fallback) ----------
+// ---------- Lookup chain ----------
 
-// Look up a book by ASIN (which OL treats as ISBN-10 in many cases) or ISBN.
-// Returns { t, a, g?, d?, pp?, amazonUrl } or null.
+// Look up by ASIN (Amazon URL identifier). Tries PRH → Hardcover → OL.
+// `amazonUrl` is preserved on the result so "View on Amazon" keeps working.
 export async function lookupByAsin(asin, amazonUrl) {
   if (!asin) return null;
+  const isbnLike = /^\d{9}[\dX]$/i.test(asin);
 
-  // Try Hardcover first
-  const hc = await hardcoverLookupByAsin(asin);
-  if (hc) {
-    hc.amazonUrl = amazonUrl || null;
-    hc.manuallyAdded = true;
-    // If Hardcover gave us complete data, return it. Otherwise also hit OL.
-    if (hc.t && hc.a && hc.pp) return hc;
-    const ol = await _lookupByAsinOL(asin, amazonUrl);
-    return mergeBookData(hc, ol);
-  }
+  // Run all three in parallel — they don't depend on each other and the user
+  // is waiting. We merge results afterwards.
+  const [prh, hc, ol] = await Promise.all([
+    isbnLike ? prhLookupByIsbn(asin).catch(() => null) : Promise.resolve(null),
+    hardcoverLookupByAsin(asin).catch(() => null),
+    _lookupByAsinOL(asin).catch(() => null),
+  ]);
 
-  // Fall back to OpenLibrary
-  return _lookupByAsinOL(asin, amazonUrl);
+  const merged = mergeThree(hc, prh, ol);
+  if (!merged) return null;
+
+  merged.amazonUrl = amazonUrl || null;
+  merged.manuallyAdded = true;
+  return merged;
 }
 
-async function _lookupByAsinOL(asin, amazonUrl) {
+// Look up by title (+ optional author). Used for the title-list paste flow.
+export async function lookupByTitle(title, author) {
+  if (!title) return null;
+
+  // All three in parallel
+  const [prh, hc, ol] = await Promise.all([
+    prhSearch(title, author).catch(() => null),
+    hardcoverSearch(title, author).catch(() => null),
+    _lookupByTitleOL(title, author).catch(() => null),
+  ]);
+
+  // Priority order: Hardcover > PRH > OL for general metadata.
+  // PRH wins on Spanish/LatAm if it's the only one with a hit, since the merge
+  // is null-fill — Hardcover's null fields get replaced by PRH's values.
+  const merged = mergeThree(hc, prh, ol);
+  if (!merged) {
+    // ALL sources missed. Don't lose the user's input — return a raw record
+    // marked as unverified so it surfaces for review.
+    return {
+      t: title.trim(),
+      a: (author || '').trim() || null,
+      g: null,
+      d: null,
+      pp: null,
+      coverUrl: null,
+      s: null,
+      isbn: null,
+      manuallyAdded: true,
+      unverified: true, // flagged for editor review
+      noApiMatch: true, // useful for telemetry / debug
+    };
+  }
+  merged.manuallyAdded = true;
+  return merged;
+}
+
+// ---------- OpenLibrary implementations (fallback) ----------
+
+async function _lookupByAsinOL(asin) {
   try {
-    // Try ISBN endpoint first (works for ASIN when it's actually a valid ISBN-10)
     const isbnLike = /^\d{9}[\dX]$/i.test(asin);
     if (isbnLike) {
       const r = await fetch(`https://openlibrary.org/isbn/${asin}.json`);
@@ -79,14 +130,12 @@ async function _lookupByAsinOL(asin, amazonUrl) {
           a: authors[0] || 'Unknown author',
           d: typeof d.description === 'string' ? d.description : d.description?.value || null,
           pp: d.number_of_pages || null,
-          amazonUrl: amazonUrl || null,
           fromOpenLibrary: true,
           manuallyAdded: true,
         };
       }
     }
 
-    // Fallback: search by ASIN as a generic identifier
     const r = await fetch(
       `https://openlibrary.org/search.json?q=${encodeURIComponent(asin)}&limit=1&fields=title,author_name,subject,number_of_pages_median,first_publish_year`
     );
@@ -99,7 +148,6 @@ async function _lookupByAsinOL(asin, amazonUrl) {
       a: (doc.author_name || [])[0] || 'Unknown author',
       g: pickGenreFromSubjects(doc.subject),
       pp: doc.number_of_pages_median || null,
-      amazonUrl: amazonUrl || null,
       fromOpenLibrary: true,
       manuallyAdded: true,
     };
@@ -124,24 +172,6 @@ async function fetchAuthorNames(keys) {
   }
 }
 
-// Look up a book by title (+ optional author). Used for the title-list paste flow.
-// Returns { t, a, g?, d?, pp? } or null.
-export async function lookupByTitle(title, author) {
-  if (!title) return null;
-
-  // Try Hardcover first
-  const hc = await hardcoverSearch(title, author);
-  if (hc && hc.t) {
-    hc.manuallyAdded = true;
-    if (hc.a && hc.pp) return hc;
-    // Hit OL too for missing fields (e.g. genre, page count)
-    const ol = await _lookupByTitleOL(title, author);
-    return mergeBookData(hc, ol);
-  }
-
-  return _lookupByTitleOL(title, author);
-}
-
 async function _lookupByTitleOL(title, author) {
   try {
     let q = `title=${encodeURIComponent(cleanTitle(title))}`;
@@ -152,7 +182,6 @@ async function _lookupByTitleOL(title, author) {
     const d = await r.json();
     if (!d.docs || d.docs.length === 0) return null;
 
-    // Prefer a doc whose title roughly matches the cleaned input
     const target = cleanTitle(title).toLowerCase();
     const best =
       d.docs.find((x) => x.title?.toLowerCase().includes(target)) || d.docs[0];
@@ -170,8 +199,8 @@ async function _lookupByTitleOL(title, author) {
   }
 }
 
-// OpenLibrary returns a long list of LCSH/BISAC-style subjects. Pull the first
-// recognizable high-level genre from it so the book lands in a sensible bucket.
+// ---------- Genre helper ----------
+
 const GENRE_KEYWORDS = [
   ['Horror', /horror|gothic|ghost|haunt/i],
   ['Fantasy', /fantasy|magic|wizard|dragon/i],
@@ -206,7 +235,6 @@ export function parseTitleList(text) {
     .filter((l) => l.length > 0 && !l.startsWith('#'));
 
   return lines.map((line) => {
-    // Try em-dash, en-dash, " - ", " — ", " by "
     const sep = line.match(/^(.+?)\s+(?:—|–|-|by)\s+(.+)$/i);
     if (sep) {
       return { t: sep[1].trim(), a: sep[2].trim(), raw: line };

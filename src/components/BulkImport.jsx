@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import { useData } from '../lib/DataContext';
 import { parseGoodreadsToReadCSV } from '../lib/goodreadsImport';
-import { findBookByTitle } from '../lib/bookHelpers';
+import { findBookByTitle, bookKey } from '../lib/bookHelpers';
 import {
   extractAsinFromUrl,
   lookupByAsin,
@@ -67,7 +67,7 @@ export default function BulkImport({ onClose }) {
     const out = [];
     for (let i = 0; i < parsed.length; i++) {
       const p = parsed[i];
-      // Try catalog first (instant, no network) before OL
+      // Try catalog first (instant, no network) before lookup chain
       const local = findBookByTitle(p.t, state.wishlist);
       let book;
       if (local) {
@@ -78,14 +78,25 @@ export default function BulkImport({ onClose }) {
       }
       let row;
       if (!book) {
+        // lookupByTitle now always returns at least the raw input,
+        // so this branch should be unreachable. Keep it as safety.
         row = { input: p.raw, status: 'missing' };
-      } else if (isAlreadyInWishlistOrLibrary(book)) {
-        row = { input: p.raw, status: 'duplicate', book };
       } else {
-        row = { input: p.raw, status: 'found', book };
+        // Dedup checks BOTH the user's typed title AND the resolved canonical
+        // title, so translated editions don't slip past as duplicates.
+        const candidate = { t: p.t, a: p.a };
+        const existing = findExistingDuplicate(candidate, book);
+        if (existing) {
+          row = { input: p.raw, status: 'duplicate', book };
+        } else if (book.noApiMatch) {
+          // All APIs missed — flag as a "missing" warning but still let the
+          // user add it (it will be inserted as unverified)
+          row = { input: p.raw, status: 'unmatched', book };
+        } else {
+          row = { input: p.raw, status: 'found', book };
+        }
       }
       out.push(row);
-      // update progressively so the user sees rows fill in
       setResults([...out, ...parsed.slice(i + 1).map((p2) => ({ input: p2.raw, status: 'pending' }))]);
       setProgress({ done: i + 1, total: parsed.length });
     }
@@ -121,11 +132,16 @@ export default function BulkImport({ onClose }) {
       } else {
         const book = await lookupByAsin(asin, url);
         if (!book) {
-          row = { input: url, status: 'missing', error: `ASIN ${asin} not found in OpenLibrary` };
-        } else if (isAlreadyInWishlistOrLibrary(book)) {
-          row = { input: url, status: 'duplicate', book };
+          row = { input: url, status: 'missing', error: `ASIN ${asin} not found in any catalog` };
         } else {
-          row = { input: url, status: 'found', book };
+          // Dedup against both the typed input (which is just an ASIN-bearing URL,
+          // so no useful candidate) and the resolved book.
+          const existing = findExistingDuplicate(book, book);
+          if (existing) {
+            row = { input: url, status: 'duplicate', book };
+          } else {
+            row = { input: url, status: 'found', book };
+          }
         }
       }
       out.push(row);
@@ -135,16 +151,51 @@ export default function BulkImport({ onClose }) {
     setProgress(null);
   }
 
+  // Dedup helper. Takes a `candidate` (typed by user) and optionally the
+  // `resolved` book returned by the lookup. We check BOTH against the
+  // wishlist/library — so typing "Siempre hemos vivido en el castillo"
+  // is recognized as a dup of an existing "We Have Always Lived in the Castle"
+  // entry when the API resolves them to the same canonical book.
+  function findExistingDuplicate(candidate, resolved = null) {
+    const wishKeys = new Set(state.wishlist.map(bookKey));
+    const libKeys = new Set(state.library.map(bookKey));
+
+    const candKey = bookKey(candidate);
+    if (wishKeys.has(candKey)) return state.wishlist.find((b) => bookKey(b) === candKey);
+    if (libKeys.has(candKey)) return state.library.find((b) => bookKey(b) === candKey);
+
+    if (resolved) {
+      const resKey = bookKey(resolved);
+      if (resKey !== candKey) {
+        if (wishKeys.has(resKey)) return state.wishlist.find((b) => bookKey(b) === resKey);
+        if (libKeys.has(resKey)) return state.library.find((b) => bookKey(b) === resKey);
+      }
+      // Also try matching by ISBN if both have one
+      if (resolved.isbn) {
+        const byIsbn =
+          state.wishlist.find((b) => b.isbn && b.isbn === resolved.isbn) ||
+          state.library.find((b) => b.isbn && b.isbn === resolved.isbn);
+        if (byIsbn) return byIsbn;
+      }
+      // Also try matching by hardcoverId
+      if (resolved.hardcoverId) {
+        const byHc =
+          state.wishlist.find((b) => b.hardcoverId === resolved.hardcoverId) ||
+          state.library.find((b) => b.hardcoverId === resolved.hardcoverId);
+        if (byHc) return byHc;
+      }
+    }
+    return null;
+  }
+
   function isAlreadyInWishlistOrLibrary(book) {
-    const norm = (s) => (s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-    const k = norm(book.t) + '|' + norm(book.a).slice(0, 10);
-    if (state.wishlist.some((b) => norm(b.t) + '|' + norm(b.a).slice(0, 10) === k)) return true;
-    if (state.library.some((b) => norm(b.t) + '|' + norm(b.a).slice(0, 10) === k)) return true;
-    return false;
+    return findExistingDuplicate(book) !== null;
   }
 
   async function confirmImport() {
-    const toAdd = results.filter((r) => r.status === 'found' && r.book);
+    const toAdd = results.filter(
+      (r) => (r.status === 'found' || r.status === 'unmatched') && r.book
+    );
     if (toAdd.length === 0) {
       showToast('Nothing to import — every row is missing or already in your library.', true);
       return;
@@ -171,6 +222,7 @@ export default function BulkImport({ onClose }) {
   }
 
   const foundCount = results.filter((r) => r.status === 'found').length;
+  const unmatchedCount = results.filter((r) => r.status === 'unmatched').length;
   const dupCount = results.filter((r) => r.status === 'duplicate').length;
   const missCount = results.filter((r) => r.status === 'missing').length;
   const hasResults = results.length > 0;
@@ -282,6 +334,7 @@ export default function BulkImport({ onClose }) {
               ) : (
                 <>
                   <span style={{ color: 'var(--gilt-bright)' }}>{foundCount} ready</span>
+                  {unmatchedCount > 0 && <> · <span style={{ color: 'var(--gilt)' }}>{unmatchedCount} add as-is</span></>}
                   {dupCount > 0 && <> · <span style={{ opacity: 0.6 }}>{dupCount} already in library/wishlist</span></>}
                   {missCount > 0 && <> · <span style={{ color: 'var(--blood-bright)' }}>{missCount} not found</span></>}
                 </>
@@ -297,13 +350,21 @@ export default function BulkImport({ onClose }) {
 
           <div className="manual-add-actions" style={{ marginTop: '1rem' }}>
             <span className="manual-add-note">
-              Only books marked <strong style={{ color: 'var(--gilt-bright)' }}>ready</strong> will be added.
+              Books marked <strong style={{ color: 'var(--gilt-bright)' }}>ready</strong> or{' '}
+              <strong style={{ color: 'var(--gilt)' }}>add as-is</strong> will be added.{' '}
+              {unmatchedCount > 0 && (
+                <em style={{ opacity: 0.7 }}>
+                  Books we couldn't find in any catalog are added with just your typed title — flagged for review.
+                </em>
+              )}
             </span>
             <button className="btn btn-ghost" onClick={clearResults} disabled={importing}>
               Start over
             </button>
-            <button className="btn" onClick={confirmImport} disabled={foundCount === 0 || importing || progress}>
-              {importing ? 'Adding…' : `Add ${foundCount} to wishlist ❦`}
+            <button className="btn" onClick={confirmImport} disabled={(foundCount + unmatchedCount) === 0 || importing || progress}>
+              {importing
+                ? 'Adding…'
+                : `Add ${foundCount + unmatchedCount} to wishlist ❦`}
             </button>
           </div>
         </>
@@ -318,7 +379,8 @@ function ResultRow({ row, onRemove }) {
     found: { label: 'ready', color: 'var(--gilt-bright)' },
     duplicate: { label: 'already have it', color: 'var(--paper-aged)' },
     missing: { label: 'not found', color: 'var(--blood-bright)' },
-  }[row.status];
+    unmatched: { label: 'add as-is', color: 'var(--gilt)' },
+  }[row.status] || { label: row.status, color: 'var(--paper-aged)' };
 
   return (
     <div

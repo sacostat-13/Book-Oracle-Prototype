@@ -53,9 +53,10 @@ export async function handler(event) {
     };
   }
 
-  // Cap query depth as a basic abuse guard (Hardcover docs mention max depth 3)
+  // Cap query depth as a basic abuse guard. Real queries top out around 9-10
+  // braces (variables + nested where + book → series → fields).
   const depth = (body.query.match(/\{/g) || []).length;
-  if (depth > 8) {
+  if (depth > 15) {
     return {
       statusCode: 400,
       headers: corsHeaders,

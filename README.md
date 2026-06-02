@@ -4,7 +4,7 @@ A reading companion — wishlist, library, reading plans, and an AI-powered "ora
 for book discovery. Built with React + Vite + SCSS, backed by Supabase for auth
 and cross-device sync, and Netlify Functions for API proxying.
 
-> Current version: **v0.7** — see [Releases](#releases) below for changelog.
+> Current version: **v0.8** — see [Releases](#releases) below for changelog.
 > Upgrading from an earlier version? Check the matching `MIGRATION_*.md` / `UPDATE_*.md`.
 
 ---
@@ -81,6 +81,11 @@ and SPA redirect. Just connect the repo and Netlify handles it.
 - `VITE_SUPABASE_ANON_KEY`
 - `HARDCOVER_API_TOKEN` (server-side; for the Hardcover proxy)
 - `ANTHROPIC_API_KEY` (server-side; for the Claude proxy)
+- `PRH_API_KEY` (server-side; for the PRH proxy — sign up at developer.penguinrandomhouse.com)
+
+**Optional Netlify env vars:**
+- `VITE_PRH_DOMAIN` — `PRH.US` (default), `PRH.MX` (Mexico/Latin America), `PRH.ESP` (Spain)
+- `VITE_AMAZON_AFFILIATE_TAG`, `VITE_BOOKSHOP_AFFILIATE_ID`
 
 ---
 
@@ -109,7 +114,8 @@ oracle/
 ├── .env.example
 ├── netlify/functions/
 │   ├── claude.js                   Anthropic API proxy
-│   └── hardcover.js                Hardcover GraphQL proxy
+│   ├── hardcover.js                Hardcover GraphQL proxy
+│   └── prh.js                      Penguin Random House proxy
 ├── scripts/
 │   └── seedCuratedCatalog.mjs      Run once after schema migrations
 ├── supabase/
@@ -127,8 +133,9 @@ oracle/
     │   ├── RouterContext.jsx       Minimal in-memory router
     │   ├── booksData.js            Bundled 280-book catalog
     │   ├── bookHelpers.js          bookKey, genres, palettes
-    │   ├── bookLookup.js           Hardcover → OL lookup chain
+    │   ├── bookLookup.js           PRH → Hardcover → OL lookup chain (parallel + merge)
     │   ├── hardcoverService.js     GraphQL client (via /netlify/functions/hardcover)
+    │   ├── prhService.js           PRH client (via /netlify/functions/prh)
     │   ├── claudeApi.js            AI client (via /netlify/functions/claude)
     │   ├── coverService.js         OL + Google Books cover lookup
     │   ├── enrichmentService.js    Series + pages enrichment
@@ -221,6 +228,66 @@ Free to refactor into partials when needed.
 ---
 
 ## Releases
+
+### v0.8 — PRH integration + Hardcover query fixes + bulk import resilience
+
+This release addresses real user-reported issues from initial testing — primarily
+that bulk imports of Spanish/Latin-American titles were finding only a fraction
+of books, with no clear feedback about what failed or why.
+
+**Hardcover query fixes**
+- The previous queries used `_ilike` for series-name matching, which Hardcover's
+  Hasura backend does not support — every Hardcover call was returning 400 with
+  `{"error":"Method not allowed"}`. Hardcover was effectively offline.
+- Rewritten queries to use `_eq` consistently. Series lookups now go through
+  `search()` first to resolve the series ID, then `series(where: {id: {_eq: ...}})`.
+- Search hits properly handle the Typesense response shape (`hits[].document`).
+- `query_type` passed as a variable instead of literal for cleaner parameterization.
+- Better error logging — the proxy now surfaces the upstream response body
+  when Hardcover returns 400, so future schema issues are easier to diagnose.
+- Depth-guard in `netlify/functions/hardcover.js` bumped from 8 → 15 braces.
+
+**Penguin Random House integration**
+- New `netlify/functions/prh.js` proxy (keeps the API key server-side)
+- New `src/lib/prhService.js` with `prhLookupByIsbn` and `prhSearch`
+- Configurable per-deploy domain via `VITE_PRH_DOMAIN` env var
+  - `PRH.US` (default) — US English
+  - `PRH.MX` — Mexico (best for Costa Rica/LatAm users)
+  - `PRH.ESP` — Spain
+- Strips HTML from flap copy, builds cover URLs from ISBN, preserves PRH title IDs
+
+**Multi-source lookup chain**
+- `bookLookup.js` now queries PRH, Hardcover, and OpenLibrary **in parallel**
+  for every lookup, then merges results. Hardcover wins on canonical metadata,
+  PRH fills in Spanish-edition specifics that Hardcover lacks, OL fills any
+  remaining nulls.
+- Same pattern for ASIN lookups, ISBN lookups, and title searches.
+
+**Always-add-on-miss**
+- When all three sources return nothing, we no longer drop the user's input.
+  Instead, we return a record built from what they typed, marked
+  `unverified: true` and `noApiMatch: true`.
+- BulkImport surfaces these as `"add as-is"` (gilt badge) rather than
+  `"not found"` (red). The user can still import them — they go in with the
+  typed title/author and the unverified flag so editors can review later.
+- Helpful when adding rare LatAm/indie titles that no public API has indexed.
+
+**Cross-language duplicate detection**
+- The dedup logic in BulkImport now checks BOTH the user's typed title AND the
+  resolved canonical title (after API lookup) against the existing wishlist
+  and library. Also matches on `isbn` and `hardcoverId` when available.
+- Fixes a user-reported issue where typing "Siempre hemos vivido en el castillo"
+  wasn't flagged as a duplicate of "We Have Always Lived in the Castle" already
+  in the wishlist.
+
+**Env var changes**
+- New required server-side: `PRH_API_KEY` (Netlify env, server-only).
+  Sign up free at [developer.penguinrandomhouse.com](https://developer.penguinrandomhouse.com/).
+  Without this key, PRH calls silently fail and the chain falls through to
+  Hardcover + OL — no breakage.
+- New optional client-side: `VITE_PRH_DOMAIN` (defaults to `PRH.US`).
+
+No schema migration. All changes are code-only.
 
 ### v0.7 — Cover visibility fix
 
