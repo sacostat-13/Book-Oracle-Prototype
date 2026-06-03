@@ -6,10 +6,14 @@
 //   VITE_BOOKSHOP_AFFILIATE_ID
 // Both are optional — links work fine without them.
 
-import { extractAsinFromUrl } from './bookLookup';
+import {
+  extractAsinFromUrl
+} from './bookLookup';
 
-const AMAZON_TAG = import.meta.env.VITE_AMAZON_AFFILIATE_TAG || null;
-const BOOKSHOP_ID = import.meta.env.VITE_BOOKSHOP_AFFILIATE_ID || null;
+const AMAZON_TAG =
+  import.meta.env.VITE_AMAZON_AFFILIATE_TAG || null;
+const BOOKSHOP_ID =
+  import.meta.env.VITE_BOOKSHOP_AFFILIATE_ID || null;
 
 function appendQuery(url, params) {
   const sep = url.includes('?') ? '&' : '?';
@@ -38,10 +42,10 @@ export function amazonLink(book) {
     // forms are ISBN-10; longer ones are ISBN-13 and need a search query.
     const cleanIsbn = book.isbn.replace(/[-\s]/g, '');
     if (/^\d{9}[\dX]$/i.test(cleanIsbn)) {
-      url = `https://www.amazon.com/dp/${cleanIsbn}`;
+      url = `https://www.amazon.com/s?k=${cleanIsbn}`;
       kind = 'product';
     } else {
-      url = `https://www.amazon.com/s?k=${encodeURIComponent(cleanIsbn)}`;
+      url = `https://bookshop.org/search?keywords=${book.title}`;
       kind = 'search';
     }
   }
@@ -56,9 +60,15 @@ export function amazonLink(book) {
 
   // Add affiliate tag if configured. Don't overwrite an existing tag in a stored URL.
   if (AMAZON_TAG && !url.includes('tag=')) {
-    url = appendQuery(url, { tag: AMAZON_TAG });
+    url = appendQuery(url, {
+      tag: AMAZON_TAG
+    });
   }
-  return { url, kind, label: kind === 'product' ? 'Buy on Amazon' : 'Search on Amazon' };
+  return {
+    url,
+    kind,
+    label: kind === 'product' ? 'Buy on Amazon' : 'Search on Amazon'
+  };
 }
 
 // ---------- Bookshop.org ----------
@@ -91,9 +101,15 @@ export function bookshopLink(book) {
   }
 
   if (BOOKSHOP_ID && !url.includes('aid=')) {
-    url = appendQuery(url, { aid: BOOKSHOP_ID });
+    url = appendQuery(url, {
+      aid: BOOKSHOP_ID
+    });
   }
-  return { url, kind, label: kind === 'product' ? 'Buy on Bookshop.org' : 'Search on Bookshop.org' };
+  return {
+    url,
+    kind,
+    label: kind === 'product' ? 'Buy on Bookshop.org' : 'Search on Bookshop.org'
+  };
 }
 
 // Convenience: build all purchase options for a book at once.
@@ -102,4 +118,6 @@ export function purchaseLinks(book) {
 }
 
 // Re-export so callers can extract ASINs without importing bookLookup
-export { extractAsinFromUrl };
+export {
+  extractAsinFromUrl
+};
