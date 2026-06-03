@@ -1,0 +1,85 @@
+{
+  "lang": {
+    "name": "Español",
+    "code": "ES"
+  },
+  "app": {
+    "loading": "Abriendo la biblioteca…",
+    "brand": "El Oráculo de la {wishlist}",
+    "brandAccent": "Lista"
+  },
+  "nav": {
+    "wishlist": "Lista",
+    "library": "Biblioteca",
+    "readNext": "Por leer",
+    "profile": "Perfil",
+    "about": "Acerca",
+    "signIn": "Entrar",
+    "signOut": "Salir",
+    "switchToSpanish": "Español",
+    "switchToEnglish": "English"
+  },
+  "signIn": {
+    "eyebrow": "Bienvenida",
+    "desc": "Entrá para mantener tu biblioteca, tu lista y tus planes de lectura sincronizados en todos tus dispositivos.",
+    "continueGoogle": "Continuar con Google ❦",
+    "guestPrompt": "¿Preferís probarlo sin cuenta primero? También podés {link} (tus datos quedarán solo en este navegador).",
+    "guestLink": "continuar como invitado"
+  },
+  "about": {
+    "breadcrumb": "Inicio",
+    "eyebrow": "Acerca",
+    "title": "Acerca del {accent}",
+    "titleAccent": "Oráculo",
+    "subtitle": "Por qué existe, qué hace y hacia dónde va.",
+
+    "originHeading": "Por qué existe el Oráculo",
+    "originBody1": "Casi todo lector que conozco tiene una lista en Amazon, una pila en Goodreads, una nota llena de títulos, una torre en la mesita de noche. Cientos de libros en cola — y aun así, cada viernes en la noche, seguimos pasando veinte minutos decidiendo qué leer.",
+    "originBody2": "El Oráculo empezó como un experimento personal para resolver eso. Tenía una lista de unos quinientos libros entre folk horror, gótico, ficción literaria latinoamericana, literatura coreana y japonesa, fantasía suave, gótico feminista oscuro, body horror. Una biblioteca más grande de la que jamás voy a terminar, y sin forma de usarla como herramienta para decidir.",
+    "originBody3": "La premisa: una lista de deseos no debería ser solo una pila acumulada. Debería ser la entrada de un motor de recomendaciones que ya conoce tu gusto, porque vos misma lo construiste.",
+
+    "evolutionHeading": "Cómo evolucionó",
+    "evolutionItem1Title": "v1 — Páginas HTML estáticas",
+    "evolutionItem1Body": "Capturas de Instagram con recomendaciones de libros se convertían en páginas HTML con enlaces de búsqueda en Amazon. Un archivo por sesión, sin estado, solo una forma de meter títulos a una lista más rápido.",
+    "evolutionItem2Title": "v2 — Prototipo en JavaScript",
+    "evolutionItem2Body": "Una aplicación de una sola página en JavaScript puro con localStorage. La primera versión del motor de categorías y similitudes del Oráculo. Funcionaba, pero no pasaba de un solo dispositivo.",
+    "evolutionItem3Title": "v3 — React con sesión de Google",
+    "evolutionItem3Body": "La versión actual. React con Vite, Supabase para sincronizar entre dispositivos, autenticación con Google, la API de Anthropic detrás de una función de Netlify, Open Library para detectar sagas. Se adapta a teléfonos, tabletas y computadoras.",
+
+    "featuresHeading": "Qué podés hacer",
+    "featuresIntro": "Cada función responde a una versión distinta de \"¿qué leo después?\"",
+
+    "featureWishlistTitle": "Lista",
+    "featureWishlistBody": "Tu pila completa de libros que pensás leer algún día. Viene precargada con un catálogo curado, pero es totalmente editable — agregá un libro manualmente con título, autor, género, descripción y un enlace opcional a Amazon. Los libros salen de la lista automáticamente cuando los marcás como leídos.",
+
+    "featureLibraryTitle": "Biblioteca",
+    "featureLibraryBody": "Todo lo que ya terminaste. Funciona como memoria: el Oráculo usa tu biblioteca para entender tu gusto cuando genera recomendaciones. Podés importar un CSV de Goodreads de una sola vez desde el Perfil.",
+
+    "featureReadNextTitle": "Por leer",
+    "featureReadNextBody": "Una cola corta — los tres o cuatro libros que ya te comprometiste a leer enseguida. Distinto de la lista, que es aspiracional. Cuando terminás uno, pasa a la Biblioteca.",
+
+    "featureOracleTitle": "El Oráculo",
+    "featureOracleBody": "El motor de recomendaciones, con dos formas de invocar libros de la bóveda:",
+    "featureOracleCategoriesTitle": "Por categorías",
+    "featureOracleCategoriesBody": "Elegí un temperamento — folk horror, gótico, sáfico, latinoamericano — y el Oráculo te trae tres libros para escoger.",
+    "featureOracleSimilarTitle": "A partir de otros libros",
+    "featureOracleSimilarBody": "Decile al Oráculo uno a tres libros que hayás amado. Encuentra otros con la misma sangre.",
+    "featureOracleModes": "Las dos formas tienen dos modos. El modo solo lista usa únicamente libros que ya tenés (o tenés en espíritu) — rápido, por coincidencia de etiquetas. El modo con IA llama a Claude y puede sugerir libros más allá de tu lista, con su razonamiento.",
+
+    "featurePlansTitle": "Planes de lectura",
+    "featurePlansBody": "Un plan de lectura es un compromiso pequeño y estructurado: \"terminá esta saga,\" \"leé tres libros sobre el duelo,\" \"recorré el catálogo de esta autora.\" Los planes se generan con IA a partir de un mensaje y persisten entre sesiones. El plan \"terminar una saga\" usa Open Library para traer los libros en orden.",
+
+    "featureDashboardTitle": "Inicio",
+    "featureDashboardBody": "La pantalla principal. Muestra tu cola de Por leer, tu plan activo y un camino rápido de vuelta al Oráculo. Es deliberadamente silenciosa — casi toda la acción ocurre en las otras páginas.",
+
+    "roadmapHeading": "Hacia dónde va",
+    "roadmapBody": "El Oráculo no busca convertirse en Goodreads. El destino es algo más pequeño y con más carácter: una compañera de lectura personal que conoce tu gusto a fondo, no te vende nada, y te ayuda a terminar de verdad los libros que dijiste que ibas a leer.",
+    "roadmapItem1": "Notas y citas por sesión de lectura, para que la biblioteca se vuelva un lugar para pensar, no solo una lista.",
+    "roadmapItem2": "Mejor razonamiento de \"por qué te gustaría esto\" que tome en cuenta tu biblioteca, no solo el mensaje.",
+    "roadmapItem3": "Planes compartidos — leer un libro con una amiga, en el mismo calendario.",
+    "roadmapItem4": "Mejor cobertura en español para ediciones costarricenses y latinoamericanas.",
+
+    "feedbackHeading": "Contame qué está roto",
+    "feedbackBody": "Esto es un prototipo con personas probándolo de verdad, y los comentarios moldean lo que se construye después. Si algo se siente raro, si falta algo, o si algo te resulta genuinamente útil — decímelo."
+  }
+}

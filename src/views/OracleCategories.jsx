@@ -3,11 +3,13 @@ import { useData } from '../lib/DataContext';
 import { useRouter } from '../lib/RouterContext';
 import { ALL_BOOKS, bookKey } from '../lib/bookHelpers';
 import { callClaude, parseJSONResponse } from '../lib/claudeApi';
+import { useI18n, langDirective } from '../lib/I18nContext';
 import BookCard from '../components/BookCard';
 
 export default function OracleCategories({ onOpenBook }) {
   const { state, setOracleMode, showToast, vault, loadVault } = useData();
   const { go } = useRouter();
+  const { lang } = useI18n();
   const [genre, setGenre] = useState('all');
   const [draw, setDraw] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -78,7 +80,7 @@ Return ONLY valid JSON in this format:
 
       const response = await callClaude(
         prompt,
-        'You are a literary curator. Recommend books accurately. Always return valid JSON.'
+        `You are a literary curator. Recommend books accurately. Always return valid JSON. ${langDirective(lang)} Any natural-language field in the JSON (description, genre label) MUST be in that language; titles and author names stay in their original language.`
       );
 
       let books = null;

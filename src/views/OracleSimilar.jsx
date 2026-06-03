@@ -3,6 +3,7 @@ import { useData } from '../lib/DataContext';
 import { useRouter } from '../lib/RouterContext';
 import { ALL_BOOKS, bookKey, PALETTES, ORNAMENTS, hashStr } from '../lib/bookHelpers';
 import { callClaude, parseJSONResponse } from '../lib/claudeApi';
+import { useI18n, langDirective } from '../lib/I18nContext';
 import BookCard from '../components/BookCard';
 
 function fallbackSimilar(selection, candidates) {
@@ -46,6 +47,7 @@ function SelectableCard({ book, selected, onClick }) {
 export default function OracleSimilar({ onOpenBook }) {
   const { state, setOracleMode, showToast } = useData();
   const { go } = useRouter();
+  const { lang } = useI18n();
   const [selection, setSelection] = useState([]);
   const [results, setResults] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -130,7 +132,7 @@ Return ONLY valid JSON in this exact format:
 
     const response = await callClaude(
       prompt,
-      "You are a literary expert recommending books based on a reader's tastes. Recommend accurately. Always return valid JSON."
+      `You are a literary expert recommending books based on a reader's tastes. Recommend accurately. Always return valid JSON. ${langDirective(lang)} Any natural-language field in the JSON (description, reason, genre label) MUST be in that language; titles and author names stay in their original language.`
     );
 
     let aiResults = null;

@@ -4,6 +4,7 @@ import { useRouter } from '../lib/RouterContext';
 import { ALL_BOOKS, GENRES, bookKey, findBookByTitle } from '../lib/bookHelpers';
 import { fetchSeriesBooks } from '../lib/enrichmentService';
 import { callClaude, parseJSONResponse } from '../lib/claudeApi';
+import { useI18n, langDirective } from '../lib/I18nContext';
 
 const LEVEL_NAMES = ['', '', '', 'Devoted', 'Literary', 'Voracious'];
 const LEVEL_BLURB = {
@@ -15,6 +16,7 @@ const LEVEL_BLURB = {
 export default function PlanCreate() {
   const { state, setCurrentPlan, showToast, vault, loadVault } = useData();
   const { go, route } = useRouter();
+  const { lang } = useI18n();
   const [type, setType] = useState(null);
   const [target, setTarget] = useState(route.params?.seriesName || null);
   const [timeline, setTimeline] = useState(6);
@@ -212,7 +214,7 @@ Return ONLY valid JSON in this exact format:
 
       const response = await callClaude(
         prompt,
-        'You are a literary curator building personalized reading plans. Always return valid JSON.'
+        `You are a literary curator building personalized reading plans. Always return valid JSON. ${langDirective(lang)} Any natural-language field in the JSON (title, intro, reason) MUST be in that language; book titles and author names stay in their original language.`
       );
       let plan = response ? parseJSONResponse(response) : null;
       if (!plan?.books?.length) {
