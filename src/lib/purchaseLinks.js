@@ -1,5 +1,15 @@
 // Builds purchase URLs for Amazon and Bookshop.org based on what data we have
-// for a book. Falls back to a search query when we don't have a direct identifier.
+// for a book. Always prefers a title+author search over ISBN-based URLs, because:
+//
+//   - ISBN-13 doesn't resolve on Amazon's /dp/ endpoint (Amazon uses ASINs, not ISBN-13)
+//   - ISBN-10 only matches Amazon's ASIN ~70% of the time (newer editions, audiobooks,
+//     and Kindle versions have different ASINs)
+//   - Bookshop.org's /book/<isbn> endpoint is unreliable for many ISBNs
+//   - ISBNs point to one specific edition; a search surfaces all editions and lets
+//     Amazon/Bookshop pick the best match for the user's region (helpful for CR users)
+//
+// The only ISBN-style direct link we trust is book.amazonUrl when present, because
+// that was supplied at import time by the user / scraper and points to a verified page.
 //
 // Affiliate tags can be configured later via env vars:
 //   VITE_AMAZON_AFFILIATE_TAG
@@ -24,6 +34,19 @@ function appendQuery(url, params) {
   return qs ? `${url}${sep}${qs}` : url;
 }
 
+// Build a search query string from title + author. The "(Book)" hint nudges Amazon's
+// ranking toward books within already-restricted Books category, since some related
+// merch (study guides, sheet music, audiobook companions) still lives there.
+// For Bookshop, the (Book) keyword is harmless — everything they sell is a book.
+function searchQuery(book) {
+  const parts = [];
+  if (book.t) parts.push(book.t);
+  if (book.a) parts.push(book.a);
+  if (parts.length === 0) return null;
+  parts.push('(Book)');
+  return parts.join(' ');
+}
+
 // ---------- Amazon ----------
 
 export function amazonLink(book) {
@@ -31,31 +54,18 @@ export function amazonLink(book) {
   let url;
   let kind;
 
-  // 1. If we have a stored Amazon URL (from bulk import), use it
+  // 1. If we have a stored Amazon URL (from bulk import), use it — it's a verified product page
   if (book.amazonUrl) {
     url = book.amazonUrl;
     kind = 'product';
   }
-  // 2. ISBN/ASIN gives us a direct /dp/ URL
-  else if (book.isbn) {
-    // Amazon's /dp/ accepts ISBN-10 directly but not ISBN-13. The 9-digit-plus-check
-    // forms are ISBN-10; longer ones are ISBN-13 and need a search query.
-    const cleanIsbn = book.isbn.replace(/[-\s]/g, '');
-    if (/^\d{9}[\dX]$/i.test(cleanIsbn)) {
-      url = `https://www.amazon.com/s?k=${cleanIsbn}`;
-      kind = 'product';
-    } else {
-      url = `https://bookshop.org/search?keywords=${book.title}`;
-      kind = 'search';
-    }
-  }
-  // 3. Fall back to a title+author search
-  else if (book.t) {
-    const q = book.a ? `${book.t} ${book.a}` : book.t;
+  // 2. Otherwise, always go through search with title + author + (Book) hint,
+  //    scoped to the Books department via i=stripbooks
+  else {
+    const q = searchQuery(book);
+    if (!q) return null;
     url = `https://www.amazon.com/s?k=${encodeURIComponent(q)}&i=stripbooks`;
     kind = 'search';
-  } else {
-    return null;
   }
 
   // Add affiliate tag if configured. Don't overwrite an existing tag in a stored URL.
@@ -67,7 +77,7 @@ export function amazonLink(book) {
   return {
     url,
     kind,
-    label: kind === 'product' ? 'Buy on Amazon' : 'Search on Amazon'
+    label: kind === 'product' ? 'Buy on Amazon' : 'Search on Amazon',
   };
 }
 
@@ -75,31 +85,13 @@ export function amazonLink(book) {
 
 export function bookshopLink(book) {
   if (!book) return null;
-  let url;
-  let kind;
 
-  // Bookshop.org's product pages are /book/<ISBN-13> with no hyphens
-  if (book.isbn) {
-    const cleanIsbn = book.isbn.replace(/[-\s]/g, '');
-    if (/^\d{13}$/.test(cleanIsbn)) {
-      url = `https://bookshop.org/book/${cleanIsbn}`;
-      kind = 'product';
-    } else if (/^\d{9}[\dX]$/i.test(cleanIsbn)) {
-      // ISBN-10 — Bookshop doesn't directly accept these, fall back to search
-      url = `https://bookshop.org/search?keywords=${encodeURIComponent(cleanIsbn)}`;
-      kind = 'search';
-    } else {
-      url = `https://bookshop.org/search?keywords=${encodeURIComponent(cleanIsbn)}`;
-      kind = 'search';
-    }
-  } else if (book.t) {
-    const q = book.a ? `${book.t} ${book.a}` : book.t;
-    url = `https://bookshop.org/search?keywords=${encodeURIComponent(q)}`;
-    kind = 'search';
-  } else {
-    return null;
-  }
+  // Always use title+author search. Bookshop's direct /book/<isbn> URLs are unreliable
+  // and even when they resolve, they point to one specific edition.
+  const q = searchQuery(book);
+  if (!q) return null;
 
+  let url = `https://bookshop.org/search?keywords=${encodeURIComponent(q)}`;
   if (BOOKSHOP_ID && !url.includes('aid=')) {
     url = appendQuery(url, {
       aid: BOOKSHOP_ID
@@ -107,8 +99,8 @@ export function bookshopLink(book) {
   }
   return {
     url,
-    kind,
-    label: kind === 'product' ? 'Buy on Bookshop.org' : 'Search on Bookshop.org'
+    kind: 'search',
+    label: 'Search on Bookshop.org',
   };
 }
 
