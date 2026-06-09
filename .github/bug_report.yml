@@ -1,0 +1,113 @@
+name: 🐛 Bug Report
+description: Report something that isn't working as expected in Book Oracle.
+title: "[Bug]: "
+labels: ["bug", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug! The more detail you can give, the faster we can fix it.
+        ¡Gracias por reportar un error! Entre más detalle nos des, más rápido lo podemos arreglar.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened? / ¿Qué pasó?
+      description: A clear description of the bug.
+      placeholder: When I clicked "Add to wishlist", nothing happened and the page froze...
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce / Pasos para reproducir
+      description: How can we reproduce this on our end?
+      placeholder: |
+        1. Go to '...'
+        2. Click on '...'
+        3. See error
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior / Comportamiento esperado
+      placeholder: I expected the book to be added to my wishlist and a confirmation to appear.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Which area of the app?
+      options:
+        - Wishlist
+        - Read books / Libros leídos
+        - AI Oracle recommendations
+        - Authentication / Google SSO
+        - Book search / lookup
+        - Language toggle (EN/ES) / i18n
+        - About page
+        - Other / Otro
+    validations:
+      required: true
+
+  - type: dropdown
+    id: language
+    attributes:
+      label: App language when bug occurred
+      options:
+        - English
+        - Español
+        - Not sure / No estoy seguro(a)
+    validations:
+      required: true
+
+  - type: dropdown
+    id: severity
+    attributes:
+      label: Severity / Severidad
+      options:
+        - Blocker — can't use the app / No puedo usar la app
+        - High — major feature broken / Función importante rota
+        - Medium — annoying but workable / Molesto pero manejable
+        - Low — cosmetic / Cosmético
+    validations:
+      required: true
+
+  - type: input
+    id: browser
+    attributes:
+      label: Browser & version / Navegador y versión
+      placeholder: "e.g. Chrome 131, Safari 17, Firefox 130"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: device
+    attributes:
+      label: Device / Dispositivo
+      options:
+        - Desktop
+        - Mobile / Móvil
+        - Tablet
+    validations:
+      required: true
+
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: Screenshots or console errors / Capturas o errores de consola
+      description: Drag images here, or paste any errors from the browser console (F12).
+    validations:
+      required: false
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional context / Contexto adicional
+      description: Anything else we should know? (e.g. book title that triggered it, ISBN, time of day)
+    validations:
+      required: false

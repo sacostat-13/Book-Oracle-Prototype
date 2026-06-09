@@ -1,0 +1,97 @@
+name: ✨ Feature Request
+description: Suggest a new feature or improvement for Book Oracle.
+title: "[Feature]: "
+labels: ["enhancement", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for sharing an idea! We prioritize features based on real user signal, so the more context you give about *why* you want this, the better.
+        ¡Gracias por compartir tu idea! Priorizamos funciones según la demanda real de usuarios, así que entre más nos cuentes del *por qué*, mejor.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem does this solve? / ¿Qué problema resuelve?
+      description: Describe the user need or pain point. Skip the solution for now — focus on the problem.
+      placeholder: I keep losing track of which books in my wishlist I've already started reading...
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution / Solución propuesta
+      description: How do you imagine this working?
+      placeholder: A "Currently Reading" status that sits between wishlist and read...
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered / Alternativas consideradas
+      description: Any workarounds you've tried, or other approaches you thought about?
+    validations:
+      required: false
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Which area of the app?
+      options:
+        - Wishlist
+        - Read books / Libros leídos
+        - AI Oracle recommendations
+        - Authentication / Google SSO
+        - Book search / lookup
+        - Language / i18n
+        - Sharing / social
+        - Admin / catalog curation
+        - Public books API
+        - New area / Otra área
+    validations:
+      required: true
+
+  - type: dropdown
+    id: user_type
+    attributes:
+      label: Who would benefit? / ¿Quién se beneficiaría?
+      multiple: true
+      options:
+        - Casual readers / Lectores casuales
+        - Heavy readers / Lectores frecuentes
+        - Spanish-speaking users / Usuarios hispanohablantes
+        - English-speaking users / Usuarios anglohablantes
+        - Mobile users / Usuarios móviles
+        - Admins / catalog curators
+        - Developers consuming the books API
+    validations:
+      required: true
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: How important is this to you? / ¿Qué tan importante es para ti?
+      options:
+        - Must have — I can't really use the app without it / Indispensable
+        - Should have — would significantly improve my experience / Mejoraría mucho mi experiencia
+        - Nice to have — small quality of life improvement / Agradable tener
+    validations:
+      required: true
+
+  - type: textarea
+    id: mockups
+    attributes:
+      label: Mockups, examples, or references / Mockups, ejemplos o referencias
+      description: Screenshots, links to other apps that do this well, sketches — anything visual helps.
+    validations:
+      required: false
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional context / Contexto adicional
+      description: Anything else relevant — how often you'd use it, related ideas, etc.
+    validations:
+      required: false
