@@ -1,7 +1,5 @@
 // Pure helpers around the book catalog. No state, no React.
-import {
-  BOOKS_DATA
-} from './booksData';
+import { BOOKS_DATA } from './booksData';
 
 // Dedupe by normalized title
 const _seen = new Set();
@@ -37,49 +35,20 @@ export function findBookByTitle(title, wishlist) {
 
 export function escapeHtml(s) {
   return String(s == null ? '' : s).replace(/[&<>"']/g, (c) =>
-    ({
-      '&': '&amp;',
-      '<': '&lt;',
-      '>': '&gt;',
-      '"': '&quot;',
-      "'": '&#39;'
-    } [c])
+    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])
   );
 }
 
 // ---- Placeholder cover generator data ----
-export const PALETTES = [{
-    bg: 'linear-gradient(135deg, #2a1810 0%, #5a2a1f 100%)',
-    accent: '#d4a574'
-  },
-  {
-    bg: 'linear-gradient(135deg, #1a2818 0%, #3d4a36 100%)',
-    accent: '#b08c3f'
-  },
-  {
-    bg: 'linear-gradient(135deg, #1a1a2e 0%, #2d1b3d 100%)',
-    accent: '#c9a978'
-  },
-  {
-    bg: 'linear-gradient(135deg, #3d1818 0%, #6b1a1a 100%)',
-    accent: '#e8dcc0'
-  },
-  {
-    bg: 'linear-gradient(135deg, #1a1a1a 0%, #2a2a2a 100%)',
-    accent: '#b08c3f'
-  },
-  {
-    bg: 'linear-gradient(135deg, #2a1a2a 0%, #4a2a4a 100%)',
-    accent: '#d4a574'
-  },
-  {
-    bg: 'linear-gradient(135deg, #1a2a2a 0%, #2a3a3a 100%)',
-    accent: '#c9a978'
-  },
-  {
-    bg: 'linear-gradient(135deg, #2a2010 0%, #5a4520 100%)',
-    accent: '#e8dcc0'
-  },
+export const PALETTES = [
+  { bg: 'linear-gradient(135deg, #2a1810 0%, #5a2a1f 100%)', accent: '#d4a574' },
+  { bg: 'linear-gradient(135deg, #1a2818 0%, #3d4a36 100%)', accent: '#b08c3f' },
+  { bg: 'linear-gradient(135deg, #1a1a2e 0%, #2d1b3d 100%)', accent: '#c9a978' },
+  { bg: 'linear-gradient(135deg, #3d1818 0%, #6b1a1a 100%)', accent: '#e8dcc0' },
+  { bg: 'linear-gradient(135deg, #1a1a1a 0%, #2a2a2a 100%)', accent: '#b08c3f' },
+  { bg: 'linear-gradient(135deg, #2a1a2a 0%, #4a2a4a 100%)', accent: '#d4a574' },
+  { bg: 'linear-gradient(135deg, #1a2a2a 0%, #2a3a3a 100%)', accent: '#c9a978' },
+  { bg: 'linear-gradient(135deg, #2a2010 0%, #5a4520 100%)', accent: '#e8dcc0' },
 ];
 export const ORNAMENTS = ['❦', '✦', '✧', '❧', '☩', '✺', '⚜', '☥', '✠', '❈'];
 export const SPINE_COLORS = [
@@ -93,6 +62,15 @@ export function hashStr(s) {
   return Math.abs(h);
 }
 
+// Normalize a title for lookup. Strips parenthetical and bracketed annotations
+// (e.g. "(2nd ed)", "[hardcover]") and trailing slash content.
+//
+// IMPORTANT: do NOT strip subtitles after a colon. Many series (Warhammer,
+// Star Wars, military SF, etc.) use the convention "Series Name: Volume Title"
+// where the part after the colon is the actual book identifier. Stripping it
+// collapses every volume in such series to the same lookup query, which
+// returns identical (and wrong) data for every book the user adds.
+// See: github.com/sacostat-13/Book-Oracle-Prototype/issues/1
 export function cleanTitle(t) {
   return t
     .replace(/\s*\([^)]*\)/g, '')

@@ -108,7 +108,7 @@ export default function Wishlist({ onOpenBook }) {
         </div>
       </div>
 
-      {bulkOpen && <BulkImport onClose={() => setBulkOpen(false)} />}
+      {bulkOpen && <BulkImport target="wishlist" onClose={() => setBulkOpen(false)} />}
 
       {formOpen && (
         <div className="manual-add-form">

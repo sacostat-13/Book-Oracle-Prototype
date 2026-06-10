@@ -116,7 +116,8 @@ async function loadFromSupabase(userId) {
       .eq('user_id', userId),
     supabase
       .from('read_books')
-      .select('id, rating, read_at, source, book:books(*, position_in_series, series:series(*))')
+      // v0.9: also pull `notes` from read_books
+      .select('id, rating, notes, read_at, source, book:books(*, position_in_series, series:series(*))')
       .eq('user_id', userId),
     supabase
       .from('plans')
@@ -143,6 +144,8 @@ async function loadFromSupabase(userId) {
       r.book
         ? bookRowToClient(r.book, {
             rating: r.rating || undefined,
+            // v0.9: surface notes on the library row so the modal can prefill
+            notes: r.notes || undefined,
             dateRead: r.read_at || undefined,
             fromGoodreads: r.source === 'goodreads_import',
             _id: r.id,
@@ -423,18 +426,38 @@ export function DataProvider({ children }) {
     setState((s) => ({ ...s, readNext: s.readNext.filter((b) => bookKey(b) !== k) }));
   }, []);
 
+  // markAsRead now accepts an optional second argument with rating + notes.
+  // Both are optional and default to null/undefined. Callers that don't care
+  // about rating (the old path) keep working unchanged.
+  //
+  //   markAsRead(book)
+  //   markAsRead(book, { rating: 4 })
+  //   markAsRead(book, { rating: 4, notes: 'Loved this' })
+  //
+  // The rating slot on the book object itself is also honored as a fallback
+  // (used by importGoodreads which pre-attaches rating to each book).
   const markAsRead = useCallback(
-    async (book) => {
+    async (book, extra = {}) => {
       const k = bookKey(book);
       if (state.library.some((b) => bookKey(b) === k)) return;
       const today = new Date().toISOString().slice(0, 10);
+
+      // Normalize: Goodreads writes 0 for "no rating"; we treat that as null
+      const ratingRaw = extra.rating != null ? extra.rating : book.rating;
+      const rating = ratingRaw && ratingRaw > 0 ? ratingRaw : null;
+      const notes =
+        extra.notes != null ? (extra.notes.trim() || null) : (book.notes || null);
+
+      const enriched = { ...book, dateRead: today };
+      if (rating != null) enriched.rating = rating;
+      if (notes != null) enriched.notes = notes;
 
       if (!user) {
         setState((s) => ({
           ...s,
           readNext: s.readNext.filter((b) => bookKey(b) !== k),
           wishlist: s.wishlist.filter((b) => bookKey(b) !== k),
-          library: [...s.library, { ...book, dateRead: today }],
+          library: [...s.library, enriched],
         }));
         showToast(`"${book.t}" added to your library`);
         return;
@@ -456,7 +479,8 @@ export function DataProvider({ children }) {
             book_id: bookId,
             read_at: today,
             source: book.fromGoodreads ? 'goodreads_import' : 'manual',
-            rating: book.rating || null,
+            rating,
+            notes,
           },
           { onConflict: 'user_id,book_id' }
         );
@@ -474,11 +498,53 @@ export function DataProvider({ children }) {
         ...s,
         readNext: s.readNext.filter((b) => bookKey(b) !== k),
         wishlist: s.wishlist.filter((b) => bookKey(b) !== k),
-        library: [...s.library, { ...book, bookId, dateRead: today }],
+        library: [...s.library, { ...enriched, bookId }],
       }));
       showToast(`"${book.t}" added to your library`);
     },
     [user, state.library, showToast, upsertBookOnServer]
+  );
+
+  // Edit rating and/or notes on a book already in the library. Either field
+  // can be null to clear it. Pass at least one. The book argument must be
+  // the library row (it carries bookId for signed-in users).
+  const updateReadBook = useCallback(
+    async (book, patch) => {
+      if (!patch || (patch.rating === undefined && patch.notes === undefined)) return;
+      const k = bookKey(book);
+
+      // Normalize inputs (same rules as markAsRead)
+      const update = {};
+      if (patch.rating !== undefined) {
+        const r = patch.rating && patch.rating > 0 ? patch.rating : null;
+        update.rating = r;
+      }
+      if (patch.notes !== undefined) {
+        const n = patch.notes ? patch.notes.trim() : '';
+        update.notes = n.length > 0 ? n : null;
+      }
+
+      // Optimistic local update first
+      setState((s) => ({
+        ...s,
+        library: s.library.map((b) =>
+          bookKey(b) === k ? { ...b, ...update } : b
+        ),
+      }));
+
+      if (!user || !book.bookId) return; // guest: local-only
+
+      const { error } = await supabase
+        .from('read_books')
+        .update(update)
+        .eq('user_id', user.id)
+        .eq('book_id', book.bookId);
+      if (error) {
+        console.error('read_books update failed', error);
+        showToast("Couldn't save your changes", true);
+      }
+    },
+    [user, showToast]
   );
 
   const removeFromLibrary = useCallback(
@@ -524,7 +590,7 @@ export function DataProvider({ children }) {
           {
             user_id: user.id,
             book_id: bookId,
-            rating: b.rating || null,
+            rating: b.rating && b.rating > 0 ? b.rating : null,
             read_at: b.dateRead || null,
             source: 'goodreads_import',
           },
@@ -541,6 +607,48 @@ export function DataProvider({ children }) {
       showToast(`Imported ${linked.length} books from Goodreads`);
     },
     [user, state.library, showToast, upsertBookOnServer]
+  );
+
+  // Bulk-add to library (used by Library bulk import — not Goodreads).
+  // Skips dedup-already-in-library check (callers should pre-filter), inserts
+  // each book with no rating/notes. Returns count added.
+  const bulkAddToLibrary = useCallback(
+    async (books) => {
+      const existingKeys = new Set(state.library.map(bookKey));
+      const toAdd = books.filter((b) => !existingKeys.has(bookKey(b)));
+      const today = new Date().toISOString().slice(0, 10);
+
+      if (!user) {
+        setState((s) => ({
+          ...s,
+          library: dedupeBooks([...s.library, ...toAdd.map((b) => ({ ...b, dateRead: today }))]),
+        }));
+        return toAdd.length;
+      }
+
+      const linked = [];
+      for (const b of toAdd) {
+        const bookId = b.bookId || (await upsertBookOnServer(b));
+        if (!bookId) continue;
+        const { error } = await supabase.from('read_books').upsert(
+          {
+            user_id: user.id,
+            book_id: bookId,
+            rating: b.rating && b.rating > 0 ? b.rating : null,
+            read_at: today,
+            source: 'manual',
+          },
+          { onConflict: 'user_id,book_id' }
+        );
+        if (!error) linked.push({ ...b, bookId, dateRead: today });
+      }
+      setState((s) => ({
+        ...s,
+        library: dedupeBooks([...s.library, ...linked]),
+      }));
+      return linked.length;
+    },
+    [user, state.library, upsertBookOnServer]
   );
 
   const setProfile = useCallback((patch) => {
@@ -633,8 +741,10 @@ export function DataProvider({ children }) {
     addToReadNext,
     removeFromReadNext,
     markAsRead,
+    updateReadBook, // v0.9
     removeFromLibrary,
     importGoodreads,
+    bulkAddToLibrary, // v0.9
     cacheBookFields,
     setProfile,
     setOnboarded,

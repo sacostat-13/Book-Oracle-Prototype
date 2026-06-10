@@ -1,6 +1,6 @@
-import { useRef, useState } from 'react';
+import { useRef, useState, useMemo } from 'react';
 import { useData } from '../lib/DataContext';
-import { parseGoodreadsToReadCSV } from '../lib/goodreadsImport';
+import { parseGoodreadsToReadCSV, parseGoodreadsCSV } from '../lib/goodreadsImport';
 import { findBookByTitle, bookKey } from '../lib/bookHelpers';
 import {
   extractAsinFromUrl,
@@ -9,17 +9,44 @@ import {
   parseTitleList,
 } from '../lib/bookLookup';
 
-const TABS = [
-  { id: 'goodreads', label: 'Goodreads CSV', sub: 'to-read shelf' },
-  { id: 'titles', label: 'Paste titles', sub: 'one per line' },
-  { id: 'amazon', label: 'Amazon URLs', sub: 'one per line' },
-];
+// Result row shape: { input, status: 'pending'|'found'|'missing'|'duplicate'|'unmatched', book?, error? }
 
-// Result row shape: { input, status: 'pending'|'found'|'missing'|'duplicate', book?, error? }
+// `target` controls which shelf the books are added to.
+//   'wishlist' (default) — original behavior, adds via addToWishlist
+//   'library'            — v0.9: adds via bulkAddToLibrary or importGoodreads
+//
+// For target='library', the Goodreads CSV tab is treated as a one-time
+// migration: it's hidden once the user has imported their Goodreads library
+// (state.profile.goodreadsImported). The other two tabs (titles, Amazon URLs)
+// remain available for ongoing additions.
+export default function BulkImport({ onClose, target = 'wishlist' }) {
+  const {
+    state,
+    addToWishlist,
+    bulkAddToLibrary,
+    importGoodreads,
+    showToast,
+  } = useData();
 
-export default function BulkImport({ onClose }) {
-  const { state, addToWishlist, showToast } = useData();
-  const [tab, setTab] = useState('goodreads');
+  const isLibrary = target === 'library';
+  const goodreadsAvailable = !isLibrary || !state.profile.goodreadsImported;
+
+  // Tab definitions, conditional on target + goodreads-already-imported
+  const tabs = useMemo(() => {
+    const t = [];
+    if (goodreadsAvailable) {
+      t.push({
+        id: 'goodreads',
+        label: 'Goodreads CSV',
+        sub: isLibrary ? 'read shelf · one-time' : 'to-read shelf',
+      });
+    }
+    t.push({ id: 'titles', label: 'Paste titles', sub: 'one per line' });
+    t.push({ id: 'amazon', label: 'Amazon URLs', sub: 'one per line' });
+    return t;
+  }, [goodreadsAvailable, isLibrary]);
+
+  const [tab, setTab] = useState(tabs[0].id);
   const [results, setResults] = useState([]); // rows after lookup
   const [progress, setProgress] = useState(null); // { done, total }
   const [titleText, setTitleText] = useState('');
@@ -31,20 +58,25 @@ export default function BulkImport({ onClose }) {
   async function handleGoodreadsFile(file) {
     try {
       const text = await file.text();
-      const books = parseGoodreadsToReadCSV(text);
+      // For wishlist target: pull the to-read shelf.
+      // For library target: pull the read shelf (and the rating Goodreads has).
+      const books = isLibrary
+        ? parseGoodreadsCSV(text)
+        : parseGoodreadsToReadCSV(text);
       if (books.length === 0) {
         showToast(
-          "Couldn't find any 'to-read' books in that CSV. Make sure your Goodreads export includes the to-read shelf.",
+          isLibrary
+            ? "Couldn't find any read books in that CSV. Make sure it's the full Goodreads export."
+            : "Couldn't find any 'to-read' books in that CSV. Make sure your Goodreads export includes the to-read shelf.",
           true
         );
         return;
       }
-      // Goodreads gives us title + author directly. Enrich against catalog
-      // for genre/complexity tags where possible — no network needed.
       const rows = books.map((b) => {
-        const dup = isAlreadyInWishlistOrLibrary(b);
+        const dup = isAlreadyOnTarget(b);
         if (dup) return { input: `${b.t} — ${b.a}`, status: 'duplicate', book: b };
         const match = findBookByTitle(b.t, state.wishlist);
+        // Preserve the Goodreads rating (b.rating) on the enriched book
         const enriched = match ? { ...match, ...b } : b;
         return { input: `${b.t} — ${b.a}`, status: 'found', book: enriched };
       });
@@ -134,8 +166,6 @@ export default function BulkImport({ onClose }) {
         if (!book) {
           row = { input: url, status: 'missing', error: `ASIN ${asin} not found in any catalog` };
         } else {
-          // Dedup against both the typed input (which is just an ASIN-bearing URL,
-          // so no useful candidate) and the resolved book.
           const existing = findExistingDuplicate(book, book);
           if (existing) {
             row = { input: url, status: 'duplicate', book };
@@ -152,10 +182,9 @@ export default function BulkImport({ onClose }) {
   }
 
   // Dedup helper. Takes a `candidate` (typed by user) and optionally the
-  // `resolved` book returned by the lookup. We check BOTH against the
-  // wishlist/library — so typing "Siempre hemos vivido en el castillo"
-  // is recognized as a dup of an existing "We Have Always Lived in the Castle"
-  // entry when the API resolves them to the same canonical book.
+  // `resolved` book returned by the lookup. Checks against BOTH the wishlist
+  // AND library regardless of target — adding a book you've already read to
+  // your wishlist makes no sense and vice versa.
   function findExistingDuplicate(candidate, resolved = null) {
     const wishKeys = new Set(state.wishlist.map(bookKey));
     const libKeys = new Set(state.library.map(bookKey));
@@ -188,7 +217,7 @@ export default function BulkImport({ onClose }) {
     return null;
   }
 
-  function isAlreadyInWishlistOrLibrary(book) {
+  function isAlreadyOnTarget(book) {
     return findExistingDuplicate(book) !== null;
   }
 
@@ -197,17 +226,35 @@ export default function BulkImport({ onClose }) {
       (r) => (r.status === 'found' || r.status === 'unmatched') && r.book
     );
     if (toAdd.length === 0) {
-      showToast('Nothing to import — every row is missing or already in your library.', true);
+      const targetWord = isLibrary ? 'library' : 'wishlist';
+      showToast(`Nothing to import — every row is missing or already in your ${targetWord}.`, true);
       return;
     }
     setImporting(true);
     let added = 0;
-    for (const row of toAdd) {
-      const ok = await addToWishlist(row.book);
-      if (ok) added++;
+    const books = toAdd.map((r) => r.book);
+
+    if (isLibrary) {
+      // Library path: Goodreads tab goes through importGoodreads (sets the
+      // goodreadsImported flag so the tab disappears next time). The other
+      // tabs go through bulkAddToLibrary (no rating, no flag changes).
+      if (tab === 'goodreads') {
+        await importGoodreads(books);
+        added = books.length; // importGoodreads handles dedup internally
+      } else {
+        added = await bulkAddToLibrary(books);
+      }
+    } else {
+      // Wishlist path: same as before
+      for (const row of toAdd) {
+        const ok = await addToWishlist(row.book);
+        if (ok) added++;
+      }
     }
+
     setImporting(false);
-    showToast(`Added ${added} ${added === 1 ? 'book' : 'books'} to your wishlist`);
+    const targetWord = isLibrary ? 'library' : 'wishlist';
+    showToast(`Added ${added} ${added === 1 ? 'book' : 'books'} to your ${targetWord}`);
     onClose();
   }
 
@@ -227,16 +274,18 @@ export default function BulkImport({ onClose }) {
   const missCount = results.filter((r) => r.status === 'missing').length;
   const hasResults = results.length > 0;
 
+  const headerWord = isLibrary ? 'library' : 'wishlist';
+
   return (
     <div className="manual-add-form" style={{ marginBottom: '1.5rem' }}>
       <div className="manual-add-header">
-        <h3>Bulk import to wishlist</h3>
+        <h3>Bulk import to {headerWord}</h3>
         <button className="manual-add-close" onClick={onClose}>×</button>
       </div>
 
       {/* Tab bar */}
       <div style={{ display: 'flex', gap: '0.4rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
-        {TABS.map((t) => (
+        {tabs.map((t) => (
           <button
             key={t.id}
             className={`toggle-btn ${tab === t.id ? 'active' : ''}`}
@@ -265,13 +314,20 @@ export default function BulkImport({ onClose }) {
           <div className="upload-zone" onClick={() => csvRef.current?.click()}>
             <div className="upload-icon">📚</div>
             <div className="upload-text">Drop your Goodreads CSV here</div>
-            <div className="upload-sub">We'll pull books from your <strong>to-read</strong> shelf</div>
+            <div className="upload-sub">
+              {isLibrary
+                ? <>We'll pull books from your <strong>read</strong> shelf along with any ratings you gave them</>
+                : <>We'll pull books from your <strong>to-read</strong> shelf</>}
+            </div>
           </div>
           <div className="upload-help">
             <strong>How to export from Goodreads:</strong>{' '}
             <a href="https://www.goodreads.com/review/import" target="_blank" rel="noreferrer">
               goodreads.com/review/import
-            </a>{' '}→ Export Library → wait → download. This is the same file you'd use for your read books; we just look at a different shelf.
+            </a>{' '}→ Export Library → wait → download.
+            {isLibrary && (
+              <> This is a <strong>one-time</strong> import — once you've brought in your read history, the tab will disappear.</>
+            )}
           </div>
         </>
       )}
@@ -292,7 +348,11 @@ export default function BulkImport({ onClose }) {
             Author is optional but helps. Separators we recognize: <code>—</code>, <code>–</code>, <code> - </code>, or <code> by </code>. Lines starting with <code>#</code> are skipped.
           </div>
           <div className="manual-add-actions" style={{ marginTop: '1rem' }}>
-            <span className="manual-add-note">We'll look each one up in OpenLibrary and let you review before adding.</span>
+            <span className="manual-add-note">
+              {isLibrary
+                ? "We'll look each one up so we have proper metadata in your library."
+                : "We'll look each one up in OpenLibrary and let you review before adding."}
+            </span>
             <button className="btn" onClick={lookupTitleList} disabled={!titleText.trim()}>
               Look up books ❦
             </button>
@@ -364,7 +424,7 @@ export default function BulkImport({ onClose }) {
             <button className="btn" onClick={confirmImport} disabled={(foundCount + unmatchedCount) === 0 || importing || progress}>
               {importing
                 ? 'Adding…'
-                : `Add ${foundCount + unmatchedCount} to wishlist ❦`}
+                : `Add ${foundCount + unmatchedCount} to ${headerWord} ❦`}
             </button>
           </div>
         </>
@@ -402,6 +462,7 @@ function ResultRow({ row, onRemove }) {
             <div style={{ color: 'var(--paper-aged)', fontSize: '0.85rem' }}>
               {row.book.a}
               {row.book.g && <> · {row.book.g}</>}
+              {row.book.rating > 0 && <> · <span style={{ color: 'var(--gilt-bright)' }}>{'★'.repeat(row.book.rating)}</span></>}
             </div>
           </>
         ) : (

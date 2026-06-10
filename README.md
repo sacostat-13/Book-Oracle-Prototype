@@ -4,7 +4,7 @@ A reading companion — wishlist, library, reading plans, and an AI-powered "ora
 for book discovery. Built with React + Vite + SCSS, backed by Supabase for auth
 and cross-device sync, and Netlify Functions for API proxying.
 
-> Current version: **v0.8** — see [Releases](#releases) below for changelog.
+> Current version: **v0.11** — see [Releases](#releases) below for changelog.
 > Upgrading from an earlier version? Check the matching `MIGRATION_*.md` / `UPDATE_*.md`.
 
 ---
@@ -24,6 +24,7 @@ npm install
   1. `schema.sql` (initial schema)
   2. `schema_v2_migration.sql` (shared books table)
   3. `schema_v3_migration.sql` (series table)
+  4. `schema_v4_migration.sql` (notes on read_books)
 - In **Authentication → Providers → Google**, enable Google OAuth (see [Google OAuth](#google-oauth-setup) below)
 - In **Authentication → URL Configuration**, add `http://localhost:5173` and your Netlify URL to the allowed Redirect URLs
 - Copy your project URL + anon key from **Project Settings → API**
@@ -198,10 +199,11 @@ Everything works locally; nothing syncs.
 and forward requests. Locally you need `netlify dev` to make them work.
 
 **Lookup chain.** When the app needs metadata for a book:
-1. Already in `books` table → use cached data, no network
-2. Hardcover via proxy (best for series + canonical metadata)
-3. OpenLibrary direct (broader coverage, no auth)
-4. Merge results to fill nulls
+1. PRH         (best for Spanish/LatAm titles, ISBN lookups)
+2. Hardcover   (best metadata + structured series, anglo-fiction skew)
+3. OpenLibrary (broadest coverage, no auth, no rate limit)
+4. Wikipedia   (best descriptions, esp. when others are sparse — v0.10)
+5. Merge results to fill nulls
 
 **Cover caching.** Once a book modal is opened, the cover URL gets persisted
 to `books.cover_url`. Every subsequent load — same user, different user, anywhere —
@@ -229,7 +231,158 @@ Free to refactor into partials when needed.
 
 ## Releases
 
-### v0.8 — PRH integration + Hardcover query fixes + bulk import resilience
+### v0.11 — BookModal: categories surface + editable ratings
+
+User-facing changes:
+
+- **Categories now visible in the book modal.** A new "Categories"
+  section in the modal body shows the book's category pills. Verified
+  categories (those tied to an editor-curated catalog entry) display in
+  the gilt "☩ Verified" treatment, matching the existing verified badge.
+  Unverified categories (auto-detected by API lookup, or one day
+  user-added) display in a dimmer style. For books with no categories
+  yet, the section shows an empty state — discoverable, not absent.
+- **Your rating, on the book's own page.** When a book is in your
+  library, the modal now has a "Your rating" section showing your
+  current stars + notes, with an "Edit" / "+ Add rating" button that
+  opens the same rating editor introduced in v0.9. Notes render in
+  italic serif with a left rule, matching the modal's overall voice.
+- **"From Wikipedia" attribution.** When the description displayed in
+  the modal was sourced from Wikipedia (a v0.10 feature), a small
+  dotted "from wikipedia ↗" link appears in the section header,
+  linking to the source article. Required by Wikipedia's CC BY-SA
+  licensing and useful for users who want to read more.
+
+Under the hood:
+
+- v0.11 is purely UI — no schema changes, no new APIs. It surfaces
+  data that was already being collected and adds the rating editor
+  affordance to the modal.
+- The CategoryPill component reuses `.level-pill` with inline-style
+  variants for verified/unverified, matching the pattern already used
+  by series-verified and book-verified pills elsewhere. When v0.12
+  introduces the user-suggested category system, this same component
+  gains a third "user-only" variant.
+- The modal's enrichment effect now passes through Wikipedia attribution
+  fields (`wikipediaUrl`, `wikipediaLang`, `descriptionSource`) to the
+  shared books row via `cacheBookFields`, so the attribution sticks
+  across sessions.
+
+What's deliberately NOT here, and why:
+
+- No add-category input. The autocomplete-with-create flow we
+  designed lands in v0.12 along with the `categories` table and the
+  user-suggested → admin-promoted pipeline. Surfacing what's already
+  there first lets us see whether the design works before committing
+  to schema.
+- No category multi-select. Categories are still a single `g` field
+  per book. v0.12 changes this.
+
+### v0.10 — Wikipedia as a fourth lookup source
+
+Wikipedia now joins PRH, Hardcover, and OpenLibrary as a source of
+book metadata, with one specific purpose: **better descriptions**.
+
+How it fits the existing chain:
+
+- All four sources fire in parallel via `Promise.all` in `bookLookup.js`.
+- The merge is null-fill for most fields (first non-null wins, in
+  priority order Hardcover > PRH > OL > Wikipedia).
+- The merge is special-cased for `description`: Wikipedia wins when
+  the merged description from the first three is null or shorter than
+  200 characters. Wikipedia's lede paragraphs are usually richer than
+  Hardcover/OL blurbs, which is the main reason we added it.
+- Wikipedia's thumbnail is used as a cover only when nothing else
+  produced one — Wikipedia thumbnails are low-resolution and not
+  book-cover-shaped.
+
+Language handling:
+
+- For users in Spanish mode (`book_oracle_lang === 'es'` in
+  localStorage), `es.wikipedia.org` is tried first, then English as a
+  fallback. Coverage of LatAm and translated series on Spanish
+  Wikipedia is surprisingly good.
+- For English-mode users, only `en.wikipedia.org` is queried.
+
+Disambiguation logic (in the Netlify function):
+
+- The query is built with a disambiguation hint — author's name when
+  available, "novel" as a fallback — so generic titles ("Crash") land
+  on the right page.
+- Candidates are scored against title-exactness, author-presence in
+  the snippet, and Wikipedia's own page-type parentheticals (novels
+  win, films/songs/games lose).
+- Disambiguation pages are rejected outright. If all candidates look
+  like noise, the function returns `{ found: false }` cleanly.
+
+### v0.9 — Ratings, notes, and bulk-add to library
+
+User-facing changes:
+
+- **Rate read books.** Books on the Library view now show a clickable star
+  affordance (or the ❦ if unrated). Tapping it — or the new "+ Rate" /
+  "Edit rating" button — opens a modal where users can capture a 1–5
+  rating and a short personal note. Both are optional; either can be
+  cleared by saving empty. Notes are private to the user (they live on
+  `read_books`, not on the shared `books` catalog).
+- **Bulk-add to library.** The Library now has a "⇪ Bulk add" button that
+  opens the same import panel used for the wishlist. Three input modes:
+  - **Goodreads CSV** (read shelf) — available as a *one-time* migration
+    if the user didn't import during onboarding. Disappears after the
+    first successful import. Preserves any ratings Goodreads has on file.
+  - **Paste titles** — same lookup chain as the wishlist version.
+  - **Amazon URLs** — ASIN-based lookup, same as wishlist.
+- **Library empty state** now offers the bulk-add path directly.
+
+Under the hood:
+
+- `read_books.notes` (text, max 4000 chars) added via `schema_v4_migration.sql`.
+  The `rating` column was already present from v0.3; v0.9 just makes it
+  visible and editable.
+- `DataContext` gains two new mutations:
+  - `updateReadBook(book, { rating, notes })` — partial update, normalizes
+    rating = 0 → null, blank notes → null. Local state updates optimistically
+    before the server call.
+  - `bulkAddToLibrary(books)` — for the title/Amazon import modes that
+    aren't going through `importGoodreads`. No `goodreadsImported` flag
+    side-effects.
+- `markAsRead(book, extra)` accepts an optional second arg with `{ rating, notes }`.
+  All existing callers (no second arg) keep working unchanged.
+- `BulkImport` component is now target-aware:
+  - `<BulkImport target="wishlist" onClose={...} />` — original behavior.
+  - `<BulkImport target="library" onClose={...} />` — adds to library;
+    Goodreads tab hidden if `state.profile.goodreadsImported` is true.
+
+No breaking changes. Existing data is fully forward-compatible.
+
+### v0.8.1 — Critical fix: similar-titled books
+
+A one-line fix for a bug that turned out to be the root cause of
+[issue #1](https://github.com/sacostat-13/Book-Oracle-Prototype/issues/1):
+adding several books from the same series (Warhammer's "Fabius Bile:
+Clonelord", "Fabius Bile: Manflayer", "Fabius Bile: Primogenitor", etc.)
+would result in all three records carrying *identical* data — same cover,
+same description, same page count, same ISBN. Every Warhammer-style
+series ("Series Name: Volume Title") was broken.
+
+**Root cause:** `cleanTitle()` in `src/lib/bookHelpers.js` was calling
+`.split(':')[0]` to strip subtitles. For literary titles like "Sapiens:
+A Brief History of Humankind" that's fine — but for series that *encode
+the volume identifier after the colon*, it collapses every book in the
+series to the same query string. PRH, Hardcover, and OpenLibrary all
+received the same query ("Fabius Bile") and all returned the same
+top-ranked record (Primogenitor). The dedup and matching logic
+downstream was functioning correctly — it was just being fed identical
+inputs three times.
+
+**Fix:** remove the colon-split from `cleanTitle()`. APIs handle the
+full title fine; OpenLibrary's search.json and Hardcover's Typesense
+both score "Sapiens: A Brief History of Humankind" against "Sapiens"
+with high recall.
+
+Code-only change. No schema migration.
+
+### v0.9 — PRH integration + Hardcover query fixes + bulk import resilience
 
 This release addresses real user-reported issues from initial testing — primarily
 that bulk imports of Spanish/Latin-American titles were finding only a fraction

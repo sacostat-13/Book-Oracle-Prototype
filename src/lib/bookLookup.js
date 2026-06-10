@@ -1,10 +1,17 @@
 // Book lookup helpers for bulk import.
 //
-// Lookup chain (per book):
-//   1. PRH (best for Spanish/LatAm titles, ISBN lookups)
-//   2. Hardcover (best metadata + structured series, anglo-fiction skew)
+// Lookup chain (per book), v0.10:
+//   1. PRH        (best for Spanish/LatAm titles, ISBN lookups)
+//   2. Hardcover  (best metadata + structured series, anglo-fiction skew)
 //   3. OpenLibrary (broadest coverage, no auth, no rate limit)
-// Results are merged — first source wins for each field, others fill nulls.
+//   4. Wikipedia  (best descriptions, esp. when others are sparse — v0.10)
+//
+// All four fire in parallel via Promise.all. Merge is null-fill (first
+// non-null source wins) for most fields, with ONE special case:
+//
+//   description (`d`): Wikipedia wins when other sources are null OR very
+//   short (< 200 chars). Wikipedia's lede paragraphs are usually richer
+//   than Hardcover/OL/PRH blurbs, which is the main reason we pull it.
 //
 // If ALL sources miss, we still return a "raw" book object built from the
 // user's input, marked `unverified=true` so it can be flagged for review.
@@ -17,6 +24,12 @@ import {
   hardcoverSearch,
 } from './hardcoverService';
 import { prhLookupByIsbn, prhSearch } from './prhService';
+import { wikipediaLookup } from './wikipediaService';
+
+// What counts as a "rich enough" description that we won't let Wikipedia
+// overwrite it. Set low enough that one-paragraph blurbs still win, high
+// enough that a 4-word stub gets replaced.
+const RICH_DESCRIPTION_MIN_CHARS = 200;
 
 // Merge book records. `primary` is the higher-priority source; `secondary`
 // fills in nulls. Both can be null/undefined.
@@ -35,12 +48,60 @@ function mergeBookData(primary, secondary) {
   out.fromHardcover = primary.fromHardcover || secondary.fromHardcover || false;
   out.fromOpenLibrary = primary.fromOpenLibrary || secondary.fromOpenLibrary || false;
   out.fromPrh = primary.fromPrh || secondary.fromPrh || false;
+  out.fromWikipedia = primary.fromWikipedia || secondary.fromWikipedia || false;
   return out;
 }
 
 // Merge three sources in priority order: a > b > c.
 function mergeThree(a, b, c) {
   return mergeBookData(a, mergeBookData(b, c));
+}
+
+// v0.10: merge four sources. The first three follow standard priority
+// (a > b > c). Wikipedia (`wiki`) is special-cased: it fills nulls
+// like any other source, BUT also wins on `description` when the merged
+// description from the first three is null or too short to be useful.
+function mergeFour(a, b, c, wiki) {
+  const baseMerge = mergeThree(a, b, c);
+  if (!wiki) return baseMerge;
+  if (!baseMerge) {
+    // Only Wikipedia hit. That's fine for description, but we want to
+    // be careful: Wikipedia alone shouldn't be the entire record because
+    // it doesn't provide author, pages, ISBN reliably. Return what we
+    // have so the caller can decide.
+    return wiki;
+  }
+
+  const merged = mergeBookData(baseMerge, wiki);
+
+  // Description override: prefer Wikipedia if the existing description
+  // is missing or too short. This is the main reason we added Wikipedia.
+  if (wiki.d) {
+    const existing = baseMerge.d;
+    if (!existing || existing.trim().length < RICH_DESCRIPTION_MIN_CHARS) {
+      merged.d = wiki.d;
+      merged.descriptionSource = 'wikipedia';
+    } else {
+      // Existing description is rich enough — keep it.
+      merged.d = existing;
+    }
+  }
+
+  // Preserve Wikipedia's specific fields regardless of overall merge order
+  // — these are unique to it and useful in BookModal (v0.11).
+  if (wiki.wikipediaUrl) merged.wikipediaUrl = wiki.wikipediaUrl;
+  if (wiki.wikipediaLang) merged.wikipediaLang = wiki.wikipediaLang;
+  if (wiki.descriptionShort) merged.descriptionShort = wiki.descriptionShort;
+
+  // Wikipedia's thumbnail is low-quality — only use it if NOTHING else
+  // produced a cover.
+  if (!baseMerge.coverUrl && wiki.coverUrl) {
+    merged.coverUrl = wiki.coverUrl;
+  } else if (baseMerge.coverUrl) {
+    merged.coverUrl = baseMerge.coverUrl;
+  }
+
+  return merged;
 }
 
 // ---------- Amazon URL parsing ----------
@@ -55,21 +116,51 @@ export function extractAsinFromUrl(url) {
 
 // ---------- Lookup chain ----------
 
-// Look up by ASIN (Amazon URL identifier). Tries PRH → Hardcover → OL.
+// Read the current i18n language from localStorage so we can hit
+// es.wikipedia first for Spanish-mode users without threading the lang
+// through every caller. The I18nContext writes this key on every change.
+//
+// We do this lazily inside the lookup functions rather than importing
+// the I18n context — that keeps bookLookup.js a pure utility module
+// that can be called from anywhere (including non-React code paths
+// like importGoodreads).
+function currentLang() {
+  try {
+    const stored = localStorage.getItem('book_oracle_lang');
+    if (stored === 'es' || stored === 'en') return stored;
+  } catch {
+    // localStorage might not be available (SSR, private mode, etc.)
+  }
+  return 'en';
+}
+
+// Look up by ASIN (Amazon URL identifier). Tries PRH + Hardcover + OL + Wikipedia.
 // `amazonUrl` is preserved on the result so "View on Amazon" keeps working.
+//
+// Wikipedia for ASIN-only lookups isn't great — we don't know the title yet,
+// only the identifier. So for ASIN, Wikipedia only joins the party AFTER one
+// of the other sources resolved a title to use as its query.
 export async function lookupByAsin(asin, amazonUrl) {
   if (!asin) return null;
   const isbnLike = /^\d{9}[\dX]$/i.test(asin);
 
-  // Run all three in parallel — they don't depend on each other and the user
-  // is waiting. We merge results afterwards.
+  // Run the original three in parallel — they don't depend on each other.
   const [prh, hc, ol] = await Promise.all([
     isbnLike ? prhLookupByIsbn(asin).catch(() => null) : Promise.resolve(null),
     hardcoverLookupByAsin(asin).catch(() => null),
     _lookupByAsinOL(asin).catch(() => null),
   ]);
 
-  const merged = mergeThree(hc, prh, ol);
+  // Now do a Wikipedia lookup using the best title we got from above,
+  // if any. Skip Wikipedia entirely if nothing resolved a title — there's
+  // nothing useful to query.
+  const resolvedTitle = hc?.t || prh?.t || ol?.t;
+  const resolvedAuthor = hc?.a || prh?.a || ol?.a;
+  const wiki = resolvedTitle
+    ? await wikipediaLookup(resolvedTitle, resolvedAuthor, currentLang()).catch(() => null)
+    : null;
+
+  const merged = mergeFour(hc, prh, ol, wiki);
   if (!merged) return null;
 
   merged.amazonUrl = amazonUrl || null;
@@ -78,20 +169,23 @@ export async function lookupByAsin(asin, amazonUrl) {
 }
 
 // Look up by title (+ optional author). Used for the title-list paste flow.
+//
+// All four sources fire in parallel here since we already have a title to
+// query Wikipedia with.
 export async function lookupByTitle(title, author) {
   if (!title) return null;
 
-  // All three in parallel
-  const [prh, hc, ol] = await Promise.all([
+  const [prh, hc, ol, wiki] = await Promise.all([
     prhSearch(title, author).catch(() => null),
     hardcoverSearch(title, author).catch(() => null),
     _lookupByTitleOL(title, author).catch(() => null),
+    wikipediaLookup(title, author, currentLang()).catch(() => null),
   ]);
 
-  // Priority order: Hardcover > PRH > OL for general metadata.
-  // PRH wins on Spanish/LatAm if it's the only one with a hit, since the merge
-  // is null-fill — Hardcover's null fields get replaced by PRH's values.
-  const merged = mergeThree(hc, prh, ol);
+  // Priority order: Hardcover > PRH > OL > Wikipedia, with the description
+  // override rule from mergeFour. PRH wins on Spanish/LatAm when it's the
+  // only one with a hit (null-fill semantics).
+  const merged = mergeFour(hc, prh, ol, wiki);
   if (!merged) {
     // ALL sources missed. Don't lose the user's input — return a raw record
     // marked as unverified so it surfaces for review.
