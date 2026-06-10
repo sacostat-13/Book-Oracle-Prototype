@@ -15,8 +15,27 @@ export function AuthProvider({ children }) {
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
+    } = supabase.auth.onAuthStateChange((event, newSession) => {
+      // Only update session state when the user identity actually changes.
+      // Supabase fires TOKEN_REFRESHED and similar events on tab focus, which
+      // would otherwise trigger downstream effects (DataContext reloads, etc.)
+      // and blow away in-flight UI state — open modals, bulk-import results,
+      // half-typed forms.
+      //
+      // See: github.com/sacostat-13/Book-Oracle-Prototype/issues/6
+      setSession((prev) => {
+        const prevUserId = prev?.user?.id || null;
+        const nextUserId = newSession?.user?.id || null;
+
+        // No user change → keep the previous reference. The token under the
+        // hood still rotates (Supabase client handles that internally), so
+        // future authed requests use the fresh token. We just don't propagate
+        // a new React reference upward.
+        if (prevUserId === nextUserId) return prev;
+
+        // User actually changed (sign-in, sign-out, account switch) → update.
+        return newSession;
+      });
     });
 
     return () => subscription.unsubscribe();

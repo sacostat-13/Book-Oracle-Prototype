@@ -16,9 +16,23 @@
 
 // The version label shown as "current" — keep in sync with package.json and
 // the README version line.
-export const CURRENT_VERSION = 'v0.13';
+export const CURRENT_VERSION = 'v0.13.1';
 
 export const RELEASES = [
+  {
+    version: 'v0.13.1',
+    date: '2026-06-10',
+    titleEn: 'Fix: switching tabs no longer resets the app',
+    titleEs: 'Corrección: cambiar de pestaña ya no reinicia la app',
+    bodyEn: [
+      'Switching to another browser tab or app, then coming back, was causing the app to reload silently. Anything in progress — Bulk Import results, an open book modal, a half-filled form — got wiped. Fixed.',
+      'Now the app stays exactly where you left it, no matter how long you\'re away.',
+    ],
+    bodyEs: [
+      'Cambiar a otra pestaña del navegador o a otra app, y luego volver, hacía que la app se recargara silenciosamente. Todo lo que estabas haciendo — resultados de Importar varios, una ventana de libro abierta, un formulario a medio llenar — se perdía. Corregido.',
+      'Ahora la app se queda exactamente donde la dejaste, sin importar cuánto tiempo estuviste fuera.',
+    ],
+  },
   {
     version: 'v0.13',
     date: '2026-06-10',

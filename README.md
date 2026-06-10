@@ -4,7 +4,7 @@ A reading companion — wishlist, library, reading plans, and an AI-powered "ora
 for book discovery. Built with React + Vite + SCSS, backed by Supabase for auth
 and cross-device sync, and Netlify Functions for API proxying.
 
-> Current version: **v0.11** — see [Releases](#releases) below for changelog.
+> Current version: **v0.13.1** — see [Releases](#releases) below for changelog.
 > Upgrading from an earlier version? Check the matching `MIGRATION_*.md` / `UPDATE_*.md`.
 
 ---
@@ -143,14 +143,16 @@ oracle/
     │   ├── seriesService.js        Series table queries
     │   ├── goodreadsImport.js      CSV parsers (read shelf + to-read shelf)
     │   ├── purchaseLinks.js        Amazon + Bookshop URL builders
-    │   └── ...
+    │   └── releases.js              Bilingual release notes content
     ├── components/
     │   ├── Nav.jsx
     │   ├── Toast.jsx
     │   ├── BookCover.jsx           Cached covers + OL fallback
     │   ├── BookCard.jsx
     │   ├── BookModal.jsx           On-demand enrichment + purchase buttons
-    │   └── BulkImport.jsx          3-tab bulk import panel
+    │   ├── BulkImport.jsx          3-tab bulk import panel
+    │   ├── ReleaseNotesModal.jsx    "What's new" popup (bilingual)
+    │   └── CurrentReleaseFooter.jsx Current version block on About page
     └── views/
         ├── Onboarding.jsx          3-step onboarding
         ├── Dashboard.jsx           Shelves + sort modes
@@ -230,6 +232,100 @@ Free to refactor into partials when needed.
 ---
 
 ## Releases
+
+### v0.13.1 — Hotfix: tab-switching no longer resets the app
+
+A one-effect fix for [issue #6](https://github.com/sacostat-13/Book-Oracle-Prototype/issues/6):
+switching to another browser tab (or app, or even another window for long
+enough) was causing the app to silently reload its state when the user
+returned. Anything in flight at the moment of the switch — Bulk Import
+results mid-review, a half-typed Add Book form, an open BookModal — got
+wiped because the app's full state was being refetched from Supabase and
+the local React state was being replaced wholesale.
+
+**Root cause:** `AuthContext.jsx`'s `onAuthStateChange` handler was calling
+`setSession(session)` unconditionally on every event. Supabase fires
+`TOKEN_REFRESHED` events on tab focus (the SDK silently rotates JWTs
+roughly every hour, and a focused-tab signal triggers a check). Each
+unconditional `setSession` created a new React reference for `session`
+and `user`, which fired the `useEffect([user, authLoading])` in
+`DataContext.jsx`, which called `loadFromSupabase` and replaced the
+entire local state — including any component-only UI state that wasn't
+backed by the server.
+
+**Fix:** make `setSession` a referentially-stable no-op when the user
+identity hasn't changed:
+
+```js
+setSession((prev) => {
+  const prevUserId = prev?.user?.id || null;
+  const nextUserId = newSession?.user?.id || null;
+  if (prevUserId === nextUserId) return prev;
+  return newSession;
+});
+```
+
+The Supabase client manages token rotation internally — the React state
+update was redundant. By preserving the existing reference when the user
+ID is unchanged, downstream effects no longer re-fire on token refreshes,
+network blips, or Netlify cold-start auth events.
+
+Sign-in, sign-out, and account-switch flows still work correctly — those
+all change the user ID and continue to propagate.
+
+Code-only change. No schema migration. Single file touched
+(`src/lib/AuthContext.jsx`).
+
+**Latent issue worth flagging for v0.12:** Even with this fix,
+DataContext's load is still imperative — if anything else in the future
+causes the `user` reference to change unintentionally, the same bug
+class would resurface. The robust defense is a ref-guarded "have I
+already loaded for this user ID?" check inside DataContext itself.
+Worth folding into the v0.12 work when DataContext is being touched
+anyway.
+
+### v0.13 — Release notes, in your language
+
+User-facing changes:
+
+- **"What's new" popup.** The bottom of the About page now shows the
+  current version + the latest release title, with a "See all releases"
+  button that opens a scrollable history of every release.
+- **Fully bilingual.** Both the footer and the popup follow the app's
+  current language (English or Spanish). All eleven prior release
+  entries have been backfilled with Spanish translations.
+- **Future-proof.** Adding a new release is a single PR: prepend an
+  object to `RELEASES` in `src/lib/releases.js` with bilingual content,
+  then bump `CURRENT_VERSION`. Both surfaces (footer + popup) pick
+  it up automatically.
+
+Under the hood:
+
+- Content lives in `src/lib/releases.js` as a versioned array. No
+  Supabase tables, no admin UI — release notes ship with the code
+  that introduces them. Each entry has `titleEn`/`titleEs` and
+  `bodyEn`/`bodyEs` (the body is a bulleted array for clean list rendering).
+- The modal reuses the existing modal-backdrop CSS class, the same Esc
+  and click-outside-to-close behavior as BookModal and RatingModal.
+- The current version is visually distinguished in the popup with a
+  gilt-outlined version pill and "☩ current" badge — matching the
+  verified-badge treatment used elsewhere.
+- Placeholder entries (future releases sketched but not shipped) can
+  be flagged with `placeholder: true`. `publishedReleases()` filters
+  them out so the popup only shows shipped versions.
+
+Why we shipped this before v0.12:
+
+- v0.12 (user-added categories) is going to introduce a meaningful new
+  UI surface that users will want explained. Shipping the release-notes
+  system *before* the feature means it can be used to explain that
+  feature when it lands.
+- It's also genuinely small and standalone — no schema, no API, no
+  external dependencies — so it could ship cleanly in a partial session.
+
+### v0.12 — User-added categories (in progress, not yet shipped)
+
+Coming soon. See v0.11 release notes for the design rationale.
 
 ### v0.11 — BookModal: categories surface + editable ratings
 
