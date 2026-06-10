@@ -1,5 +1,6 @@
 import { useRouter } from '../lib/RouterContext';
 import { useT } from '../lib/I18nContext';
+import CurrentReleaseFooter from '../components/CurrentReleaseFooter';
 
 // Reusable section heading + body block, styled to match Profile.jsx voice
 function Section({ title, children }) {
@@ -177,6 +178,11 @@ export default function About() {
         <Section title={t('about.feedbackHeading')}>
           <Paragraph>{t('about.feedbackBody')}</Paragraph>
         </Section>
+
+        {/* v0.13: current version + "what's new" entry point. The footer
+            keeps its own state for the modal; About stays simple. The
+            content is fully bilingual via i18n, sourced from releases.js. */}
+        <CurrentReleaseFooter />
       </div>
     </>
   );
