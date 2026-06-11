@@ -2,7 +2,7 @@
 // wishlist, currentPlan, profile, etc.) but loads from and persists to Supabase
 // when a user is signed in. When signed out, falls back to localStorage so the
 // app still works for anonymous prototyping.
-import { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
 import { supabase } from './supabase';
 import { useAuth } from './AuthContext';
 import { ALL_BOOKS, bookKey } from './bookHelpers';
@@ -24,14 +24,15 @@ const defaultState = {
   currentPlan: null,
   shelfSortMode: 'recent',
   oracleMode: 'wishlist',
+  // v0.12: a Map keyed by book_id (uuid) → array of { categoryId, name,
+  // verified, usageCount, source: 'verified' | 'user' }. Populated on load
+  // and kept in sync by addCategoryToBook / removeCategoryFromBook.
+  // Books not in this map have no categories (empty array, not null).
+  categoriesByBookId: {},
 };
 
 const DataContext = createContext(null);
 
-// Defensive dedupe: removes books with duplicate bookKey from a list, keeping
-// the first occurrence. Used at every insertion point so accidental duplicates
-// (from re-imports, race conditions, etc.) can't sneak in and cause React
-// "duplicate key" warnings.
 function dedupeBooks(books) {
   if (!books || books.length === 0) return books;
   const seen = new Set();
@@ -55,11 +56,11 @@ function loadLocal() {
       ...defaultState,
       ...parsed,
       profile: { ...defaultState.profile, ...(parsed.profile || {}) },
-      // Defensively dedupe lists from localStorage too — could be stale data
-      // from a previous version of the app.
       wishlist: dedupeBooks(parsed.wishlist || []),
       library: dedupeBooks(parsed.library || []),
       readNext: dedupeBooks(parsed.readNext || []),
+      // v0.12: guest-mode categories live in localStorage too
+      categoriesByBookId: parsed.categoriesByBookId || {},
     };
   } catch {
     return { ...defaultState };
@@ -71,9 +72,6 @@ function saveLocal(state) {
   } catch {}
 }
 
-// Convert a v3 `books` row joined into a wishlist/library row into the
-// flat client shape the rest of the app expects. With v3, series info lives
-// on the joined `series` row.
 function bookRowToClient(b, extra = {}) {
   if (!b) return null;
   const series = b.series
@@ -106,6 +104,46 @@ function bookRowToClient(b, extra = {}) {
   };
 }
 
+// v0.12: take a list of book_categories_view rows (with bookId + category
+// fields) and roll them up into the { bookId → [categories] } shape used
+// in state. Dedupes by category_id within each book — a category can appear
+// in both the verified-global and user-private rows; we keep one entry but
+// prefer 'verified' as the source for the pill style.
+function rollupCategories(rows) {
+  const map = {};
+  for (const r of rows || []) {
+    const bookId = r.book_id;
+    if (!bookId) continue;
+    if (!map[bookId]) map[bookId] = {};
+    const existing = map[bookId][r.category_id];
+    const incoming = {
+      categoryId: r.category_id,
+      name: r.category_name,
+      verified: r.verified,
+      usageCount: r.usage_count,
+      source: r.source, // 'verified' | 'user'
+    };
+    // If we already have this category for this book, prefer 'verified'
+    // source over 'user' (the verified pill style wins).
+    if (existing) {
+      if (existing.source === 'user' && incoming.source === 'verified') {
+        map[bookId][r.category_id] = incoming;
+      }
+    } else {
+      map[bookId][r.category_id] = incoming;
+    }
+  }
+  // Convert inner objects → arrays, sorted verified-first then alphabetical.
+  const out = {};
+  for (const bookId of Object.keys(map)) {
+    out[bookId] = Object.values(map[bookId]).sort((a, b) => {
+      if (a.verified !== b.verified) return a.verified ? -1 : 1;
+      return a.name.localeCompare(b.name);
+    });
+  }
+  return out;
+}
+
 // ---------- Supabase loaders ----------
 async function loadFromSupabase(userId) {
   const [profileRes, wishlistRes, readBooksRes, plansRes] = await Promise.all([
@@ -116,7 +154,6 @@ async function loadFromSupabase(userId) {
       .eq('user_id', userId),
     supabase
       .from('read_books')
-      // v0.9: also pull `notes` from read_books
       .select('id, rating, notes, read_at, source, book:books(*, position_in_series, series:series(*))')
       .eq('user_id', userId),
     supabase
@@ -144,7 +181,6 @@ async function loadFromSupabase(userId) {
       r.book
         ? bookRowToClient(r.book, {
             rating: r.rating || undefined,
-            // v0.9: surface notes on the library row so the modal can prefill
             notes: r.notes || undefined,
             dateRead: r.read_at || undefined,
             fromGoodreads: r.source === 'goodreads_import',
@@ -162,6 +198,29 @@ async function loadFromSupabase(userId) {
         }
       : null;
 
+  // v0.12: load categories for all books in wishlist + library. One round
+  // trip via the book_categories_view (UNION of verified global + this user's
+  // private categories). RLS on user_book_categories enforces the user filter
+  // automatically.
+  const allBookIds = [...new Set([
+    ...wishlist.map((b) => b.bookId).filter(Boolean),
+    ...library.map((b) => b.bookId).filter(Boolean),
+  ])];
+  let categoriesByBookId = {};
+  if (allBookIds.length > 0) {
+    const { data: catRows, error: catErr } = await supabase
+      .from('book_categories_view')
+      .select('*')
+      .in('book_id', allBookIds);
+    if (catErr) {
+      // Non-fatal: log and continue with empty categories. This way a
+      // pre-v0.12 schema doesn't break the load entirely.
+      console.warn('categories load failed', catErr);
+    } else {
+      categoriesByBookId = rollupCategories(catRows || []);
+    }
+  }
+
   return {
     ...defaultState,
     onboarded: !!profile.preferences?.onboarded,
@@ -177,10 +236,10 @@ async function loadFromSupabase(userId) {
     currentPlan,
     shelfSortMode: profile.preferences?.shelfSortMode || 'recent',
     oracleMode: profile.preferences?.oracleMode || 'wishlist',
+    categoriesByBookId,
   };
 }
 
-// Persist a profile-level scalar field (preferences blob)
 async function savePreferences(userId, state) {
   await supabase
     .from('profiles')
@@ -205,28 +264,38 @@ export function DataProvider({ children }) {
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState(null);
 
-  // ---------- Initial load: from Supabase if signed in, else local ----------
+  // v0.13.1 follow-up: ref-guarded "already loaded for this user ID". Prevents
+  // the load effect from refetching when the user reference changes without
+  // the user identity actually changing — defense in depth on top of the
+  // AuthContext fix.
+  const loadedUserIdRef = useRef(null);
+
+  // ---------- Initial load ----------
   useEffect(() => {
     if (authLoading) return;
+    const userId = user?.id || null;
+    if (loadedUserIdRef.current === userId) return;
     let cancelled = false;
     (async () => {
       setLoading(true);
       if (user) {
         try {
           const remote = await loadFromSupabase(user.id);
-          if (!cancelled) setState(remote);
+          if (!cancelled) {
+            setState(remote);
+            loadedUserIdRef.current = user.id;
+          }
         } catch (e) {
           console.error('Failed to load from Supabase, falling back to local', e);
           if (!cancelled) setState(loadLocal());
         }
       } else {
         setState(loadLocal());
+        loadedUserIdRef.current = null;
       }
       if (!cancelled) setLoading(false);
     })();
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, [user, authLoading]);
 
   // ---------- Persist on every state change ----------
@@ -246,8 +315,6 @@ export function DataProvider({ children }) {
 
   // ---------- Mutations ----------
 
-  // Calls the upsert_book RPC and returns the book_id of the inserted/existing row.
-  // The RPC handles series upsert internally when _series_name is provided.
   const upsertBookOnServer = useCallback(
     async (book, source = 'user_manual') => {
       if (!user) return null;
@@ -272,13 +339,11 @@ export function DataProvider({ children }) {
         _complexity: book.c || null,
         _depth: book.p || null,
         _source: resolvedSource,
-        _verified: false, // never auto-verify; curated seed sets this directly
+        _verified: false,
         _metadata: {
           amazonUrl: book.amazonUrl || null,
           manuallyAdded: book.manuallyAdded || false,
         },
-        // Inform the RPC where the series data came from so it can record
-        // 'hardcover' as the series source rather than inheriting 'user_manual'.
         _series_source: book.s
           ? book.s.fromHardcover
             ? 'hardcover'
@@ -292,23 +357,15 @@ export function DataProvider({ children }) {
         console.error('upsert_book failed', error);
         return null;
       }
-      return data; // book_id (uuid)
+      return data;
     },
     [user]
   );
 
-  // On-demand metadata cache. Called when the modal enriches a book with
-  // fields like cover_url, pages, description, isbn. We write to the shared
-  // `books` row via upsert_book — which only fills nulls (never overwrites
-  // existing/verified data), so this is safe to call freely.
-  //
-  // Also reflects the patch into local state so the wishlist/library cards
-  // pick up the new cover immediately without a refetch.
   const cacheBookFields = useCallback(
     async (book, patch) => {
       if (!patch || Object.keys(patch).length === 0) return;
 
-      // 1. Mirror into local state (covers + pages show up on cards right away)
       setState((s) => {
         const k = bookKey(book);
         const apply = (list) =>
@@ -321,10 +378,8 @@ export function DataProvider({ children }) {
         };
       });
 
-      // 2. Persist to the shared books row (signed-in users only)
       if (!user) return;
       const merged = { ...book, ...patch };
-      // upsert_book is a coalesce-style merge — only fills nulls.
       await upsertBookOnServer(merged);
     },
     [user, upsertBookOnServer]
@@ -337,13 +392,10 @@ export function DataProvider({ children }) {
     const seedBooks = ALL_BOOKS.filter((b) => !libraryKeys.has(bookKey(b)));
 
     if (!user) {
-      // Guest mode: just stuff them into local state
       setState((s) => ({ ...s, wishlist: seedBooks.map((b) => ({ ...b, verified: true, source: 'curated' })) }));
       return;
     }
 
-    // Upsert each book into the shared catalog, then link via wishlist_items.
-    // Done serially to be gentle on the RPC.
     const linked = [];
     for (const b of seedBooks) {
       const bookId = await upsertBookOnServer(b, 'curated');
@@ -361,18 +413,15 @@ export function DataProvider({ children }) {
   const addToWishlist = useCallback(
     async (book) => {
       const k = bookKey(book);
-      // local dedup
       if (state.wishlist.some((b) => bookKey(b) === k)) return false;
       if (state.library.some((b) => bookKey(b) === k)) return false;
 
       if (!user) {
-        // Guest path
         setState((s) => ({ ...s, wishlist: [...s.wishlist, { ...book }] }));
         showToast(`"${book.t}" added to your wishlist`);
         return true;
       }
 
-      // Server path: upsert into books, then link
       const bookId = await upsertBookOnServer(book);
       if (!bookId) {
         showToast(`Couldn't save "${book.t}"`, true);
@@ -426,23 +475,12 @@ export function DataProvider({ children }) {
     setState((s) => ({ ...s, readNext: s.readNext.filter((b) => bookKey(b) !== k) }));
   }, []);
 
-  // markAsRead now accepts an optional second argument with rating + notes.
-  // Both are optional and default to null/undefined. Callers that don't care
-  // about rating (the old path) keep working unchanged.
-  //
-  //   markAsRead(book)
-  //   markAsRead(book, { rating: 4 })
-  //   markAsRead(book, { rating: 4, notes: 'Loved this' })
-  //
-  // The rating slot on the book object itself is also honored as a fallback
-  // (used by importGoodreads which pre-attaches rating to each book).
   const markAsRead = useCallback(
     async (book, extra = {}) => {
       const k = bookKey(book);
       if (state.library.some((b) => bookKey(b) === k)) return;
       const today = new Date().toISOString().slice(0, 10);
 
-      // Normalize: Goodreads writes 0 for "no rating"; we treat that as null
       const ratingRaw = extra.rating != null ? extra.rating : book.rating;
       const rating = ratingRaw && ratingRaw > 0 ? ratingRaw : null;
       const notes =
@@ -463,14 +501,12 @@ export function DataProvider({ children }) {
         return;
       }
 
-      // Make sure the book exists in the catalog
       const bookId = book.bookId || (await upsertBookOnServer(book));
       if (!bookId) {
         showToast(`Couldn't save "${book.t}"`, true);
         return;
       }
 
-      // Insert into read_books (or update if it exists somehow)
       const { error: rbErr } = await supabase
         .from('read_books')
         .upsert(
@@ -487,7 +523,6 @@ export function DataProvider({ children }) {
       if (rbErr) {
         console.error('read_books upsert failed', rbErr);
       }
-      // Remove from wishlist
       await supabase
         .from('wishlist_items')
         .delete()
@@ -505,15 +540,11 @@ export function DataProvider({ children }) {
     [user, state.library, showToast, upsertBookOnServer]
   );
 
-  // Edit rating and/or notes on a book already in the library. Either field
-  // can be null to clear it. Pass at least one. The book argument must be
-  // the library row (it carries bookId for signed-in users).
   const updateReadBook = useCallback(
     async (book, patch) => {
       if (!patch || (patch.rating === undefined && patch.notes === undefined)) return;
       const k = bookKey(book);
 
-      // Normalize inputs (same rules as markAsRead)
       const update = {};
       if (patch.rating !== undefined) {
         const r = patch.rating && patch.rating > 0 ? patch.rating : null;
@@ -524,7 +555,6 @@ export function DataProvider({ children }) {
         update.notes = n.length > 0 ? n : null;
       }
 
-      // Optimistic local update first
       setState((s) => ({
         ...s,
         library: s.library.map((b) =>
@@ -532,7 +562,7 @@ export function DataProvider({ children }) {
         ),
       }));
 
-      if (!user || !book.bookId) return; // guest: local-only
+      if (!user || !book.bookId) return;
 
       const { error } = await supabase
         .from('read_books')
@@ -562,7 +592,6 @@ export function DataProvider({ children }) {
     [user]
   );
 
-  // Bulk-import from Goodreads CSV
   const importGoodreads = useCallback(
     async (books) => {
       const existingKeys = new Set(state.library.map(bookKey));
@@ -578,7 +607,6 @@ export function DataProvider({ children }) {
         return;
       }
 
-      // For each, upsert book + insert read_books row
       const linked = [];
       for (const b of toAdd) {
         const bookId = await upsertBookOnServer(
@@ -609,9 +637,6 @@ export function DataProvider({ children }) {
     [user, state.library, showToast, upsertBookOnServer]
   );
 
-  // Bulk-add to library (used by Library bulk import — not Goodreads).
-  // Skips dedup-already-in-library check (callers should pre-filter), inserts
-  // each book with no rating/notes. Returns count added.
   const bulkAddToLibrary = useCallback(
     async (books) => {
       const existingKeys = new Set(state.library.map(bookKey));
@@ -650,6 +675,224 @@ export function DataProvider({ children }) {
     },
     [user, state.library, upsertBookOnServer]
   );
+
+  // ---------- v0.12: Category mutations ----------
+
+  // Add a category by raw name to a book. The RPC handles upsert + soft-cap.
+  // Updates local state optimistically with a placeholder, then reconciles
+  // with the real row once the server responds. Returns true on success.
+  const addCategoryToBook = useCallback(
+    async (book, rawName) => {
+      const trimmed = (rawName || '').trim();
+      if (!trimmed) return false;
+      if (!book?.bookId && user) {
+        showToast("Can't tag this book yet — try reopening it", true);
+        return false;
+      }
+
+      // Guest path: store local-only categories. No verified flag possible.
+      if (!user) {
+        const placeholderId = `local:${trimmed.toLowerCase().replace(/[^a-z0-9]/g, '')}`;
+        setState((s) => {
+          // Use a synthetic book identity for guest mode (no bookId).
+          const key = book.bookId || `key:${bookKey(book)}`;
+          const existing = s.categoriesByBookId[key] || [];
+          if (existing.some((c) => c.categoryId === placeholderId)) return s;
+          if (existing.length >= 10) {
+            return s; // soft cap
+          }
+          return {
+            ...s,
+            categoriesByBookId: {
+              ...s.categoriesByBookId,
+              [key]: [
+                ...existing,
+                {
+                  categoryId: placeholderId,
+                  name: trimmed,
+                  verified: false,
+                  usageCount: 1,
+                  source: 'user',
+                },
+              ].sort((a, b) => {
+                if (a.verified !== b.verified) return a.verified ? -1 : 1;
+                return a.name.localeCompare(b.name);
+              }),
+            },
+          };
+        });
+        return true;
+      }
+
+      // Signed-in path: RPC handles it all.
+      const { data, error } = await supabase.rpc('link_user_category', {
+        _book_id: book.bookId,
+        _raw_name: trimmed,
+      });
+      if (error) {
+        // 23514 = soft-cap violation surfaced from the RPC
+        if (error.code === '23514') {
+          showToast('You can have up to 10 categories per book.', true);
+        } else {
+          console.error('link_user_category failed', error);
+          showToast("Couldn't add that category", true);
+        }
+        return false;
+      }
+      const row = Array.isArray(data) ? data[0] : data;
+      if (!row) return false;
+
+      setState((s) => {
+        const existing = s.categoriesByBookId[book.bookId] || [];
+        const already = existing.find((c) => c.categoryId === row.id);
+        const updated = already
+          ? existing.map((c) =>
+              c.categoryId === row.id
+                ? { ...c, verified: row.verified, source: row.verified ? 'verified' : 'user' }
+                : c
+            )
+          : [
+              ...existing,
+              {
+                categoryId: row.id,
+                name: row.name,
+                verified: row.verified,
+                usageCount: row.usage_count,
+                source: row.verified ? 'verified' : 'user',
+              },
+            ];
+        updated.sort((a, b) => {
+          if (a.verified !== b.verified) return a.verified ? -1 : 1;
+          return a.name.localeCompare(b.name);
+        });
+        return {
+          ...s,
+          categoriesByBookId: {
+            ...s.categoriesByBookId,
+            [book.bookId]: updated,
+          },
+        };
+      });
+      return true;
+    },
+    [user, showToast]
+  );
+
+  // Remove a category from a book for the current user. Verified global links
+  // (from book_categories) are not removable from the client — only the
+  // user's personal link goes away. After remove, if the category was also
+  // verified, it stays in the pill list as 'verified' source.
+  const removeCategoryFromBook = useCallback(
+    async (book, categoryId) => {
+      if (!book || !categoryId) return false;
+
+      // Guest path: just drop from local state
+      if (!user) {
+        const key = book.bookId || `key:${bookKey(book)}`;
+        setState((s) => {
+          const existing = s.categoriesByBookId[key] || [];
+          return {
+            ...s,
+            categoriesByBookId: {
+              ...s.categoriesByBookId,
+              [key]: existing.filter((c) => c.categoryId !== categoryId),
+            },
+          };
+        });
+        return true;
+      }
+
+      if (!book.bookId) return false;
+
+      const { data, error } = await supabase.rpc('unlink_user_category', {
+        _book_id: book.bookId,
+        _category_id: categoryId,
+      });
+      if (error) {
+        console.error('unlink_user_category failed', error);
+        showToast("Couldn't remove that category", true);
+        return false;
+      }
+
+      // After unlink, the category might still appear if it's a verified
+      // global one. Refetch this book's categories from the view to get
+      // the source-of-truth state. Cheap — one row at most ~10 rows.
+      const { data: refreshed, error: refreshErr } = await supabase
+        .from('book_categories_view')
+        .select('*')
+        .eq('book_id', book.bookId);
+      if (refreshErr) {
+        // Fall back to optimistic local removal
+        setState((s) => {
+          const existing = s.categoriesByBookId[book.bookId] || [];
+          return {
+            ...s,
+            categoriesByBookId: {
+              ...s.categoriesByBookId,
+              [book.bookId]: existing.filter((c) => c.categoryId !== categoryId),
+            },
+          };
+        });
+        return true;
+      }
+      const rolled = rollupCategories(refreshed || []);
+      setState((s) => ({
+        ...s,
+        categoriesByBookId: {
+          ...s.categoriesByBookId,
+          [book.bookId]: rolled[book.bookId] || [],
+        },
+      }));
+      return true;
+    },
+    [user, showToast]
+  );
+
+  // Autocomplete search. Returns a list of { id, name, verified, usageCount,
+  // exactMatch } ranked by the RPC. Empty query returns most-used verified
+  // categories. Component handles the "Create new" affordance.
+  const searchCategories = useCallback(
+    async (query, limit = 8) => {
+      // Guest mode: no remote catalog. Return empty so the component shows
+      // only the "Create new" affordance. We could enhance this later by
+      // scanning local categoriesByBookId for matches, but for now keep
+      // guest categorization purely local-input.
+      if (!user) {
+        return [];
+      }
+      const { data, error } = await supabase.rpc('search_categories', {
+        _query: query || '',
+        _limit: limit,
+      });
+      if (error) {
+        console.error('search_categories failed', error);
+        return [];
+      }
+      return (data || []).map((r) => ({
+        id: r.id,
+        name: r.name,
+        normalizedName: r.normalized_name,
+        verified: r.verified,
+        usageCount: r.usage_count,
+        exactMatch: r.exact_match,
+      }));
+    },
+    [user]
+  );
+
+  // Lookup for a book's category list. Returns array (possibly empty).
+  // Looks up by bookId when available, falling back to a synthetic key
+  // for guest-mode books that don't have a Supabase id.
+  const getCategoriesForBook = useCallback(
+    (book) => {
+      if (!book) return [];
+      const key = book.bookId || `key:${bookKey(book)}`;
+      return state.categoriesByBookId[key] || [];
+    },
+    [state.categoriesByBookId]
+  );
+
+  // ---------- Profile / misc mutations (unchanged) ----------
 
   const setProfile = useCallback((patch) => {
     setState((s) => ({ ...s, profile: { ...s.profile, ...patch } }));
@@ -691,22 +934,22 @@ export function DataProvider({ children }) {
   const resetAll = useCallback(async () => {
     setState({ ...defaultState });
     saveLocal({ ...defaultState });
+    loadedUserIdRef.current = null;
     if (user) {
       await Promise.all([
         supabase.from('wishlist_items').delete().eq('user_id', user.id),
         supabase.from('read_books').delete().eq('user_id', user.id),
         supabase.from('plans').delete().eq('user_id', user.id),
+        supabase.from('user_book_categories').delete().eq('user_id', user.id),
       ]);
     }
   }, [user]);
 
-  // ---------- The Vault: query the curated catalog ----------
-  // Fetched lazily on demand. Cached in memory for the session.
+  // ---------- The Vault ----------
   const [vault, setVault] = useState(null);
   const loadVault = useCallback(async () => {
     if (vault) return vault;
     if (!user) {
-      // Guest: use bundled BOOKS_DATA as a stand-in
       const v = ALL_BOOKS.map((b) => ({ ...b, verified: true, source: 'curated' }));
       setVault(v);
       return v;
@@ -719,7 +962,6 @@ export function DataProvider({ children }) {
       .order('title', { ascending: true });
     if (error || !data) {
       console.error('Vault fetch failed', error);
-      // Fallback to bundled catalog
       const v = ALL_BOOKS.map((b) => ({ ...b, verified: true, source: 'curated' }));
       setVault(v);
       return v;
@@ -734,25 +976,28 @@ export function DataProvider({ children }) {
     loading,
     toast,
     showToast,
-    // mutations
     seedWishlistIfNeeded,
     addToWishlist,
     removeFromWishlist,
     addToReadNext,
     removeFromReadNext,
     markAsRead,
-    updateReadBook, // v0.9
+    updateReadBook,
     removeFromLibrary,
     importGoodreads,
-    bulkAddToLibrary, // v0.9
+    bulkAddToLibrary,
     cacheBookFields,
+    // v0.12: category mutations
+    addCategoryToBook,
+    removeCategoryFromBook,
+    searchCategories,
+    getCategoriesForBook,
     setProfile,
     setOnboarded,
     setShelfSortMode,
     setOracleMode,
     setCurrentPlan,
     resetAll,
-    // vault
     vault,
     loadVault,
   };

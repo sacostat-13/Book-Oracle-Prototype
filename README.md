@@ -25,6 +25,7 @@ npm install
   2. `schema_v2_migration.sql` (shared books table)
   3. `schema_v3_migration.sql` (series table)
   4. `schema_v4_migration.sql` (notes on read_books)
+  5. `schema_v5_migration.sql` (categories: tables, RLS, RPCs)
 - In **Authentication → Providers → Google**, enable Google OAuth (see [Google OAuth](#google-oauth-setup) below)
 - In **Authentication → URL Configuration**, add `http://localhost:5173` and your Netlify URL to the allowed Redirect URLs
 - Copy your project URL + anon key from **Project Settings → API**
@@ -152,6 +153,7 @@ oracle/
     │   ├── BookModal.jsx           On-demand enrichment + purchase buttons
     │   ├── BulkImport.jsx          3-tab bulk import panel
     │   ├── ReleaseNotesModal.jsx    "What's new" popup (bilingual)
+    │   ├── CategoryAutocomplete.jsx  Tag autocomplete with create-new + ranking
     │   └── CurrentReleaseFooter.jsx Current version block on About page
     └── views/
         ├── Onboarding.jsx          3-step onboarding
@@ -207,6 +209,29 @@ and forward requests. Locally you need `netlify dev` to make them work.
 4. Wikipedia   (best descriptions, esp. when others are sparse — v0.10)
 5. Merge results to fill nulls
 
+**Categories.** Per-user tagging on top of a globally-canonical catalog:
+
+- `categories` table is the source of truth. Every distinct category name
+  exists exactly once (per normalized name). New categories are created
+  by users via the `upsert_category` RPC; admins set the `verified` flag.
+- `book_categories` links a category to a book at the global level. Only
+  written when a category is verified or when a verified category is
+  applied. Powers the gilt "☩ verified" pills visible to all users.
+- `user_book_categories` is the per-user private link. Powers the dim
+  "user-only" pills visible only to the owning user. Survives un-
+  verification of a category — users keep their personal organization.
+- Strict normalization: lowercase + strip non-alphanumerics. "Cyberpunk",
+  "cyberpunk", "Cyber-punk", "Cyber Punk" all collapse to one canonical
+  row. The first user's casing/punctuation is preserved as the display
+  name.
+- Soft-cap of 10 categories per (user, book), enforced in the
+  `link_user_category` RPC. Admin operations can exceed it by inserting
+  directly.
+- Autocomplete (`search_categories` RPC) ranks results: exact match >
+  prefix match > verified > `usage_count` desc > alphabetical.
+- A view `book_categories_view` unions verified-global + user-private
+  rows. The client uses this as a single source of truth for rendering.
+
 **Cover caching.** Once a book modal is opened, the cover URL gets persisted
 to `books.cover_url`. Every subsequent load — same user, different user, anywhere —
 gets it instantly without a network fetch.
@@ -215,6 +240,13 @@ gets it instantly without a network fetch.
 seeds set `verified=true`. User-contributed series get `verified=false` and
 show a "⚠ needs review" badge until an editor flips the flag. Manual verification
 SQL is in `MIGRATION_V3.md`.
+
+**Wikipedia series descriptions (v0.12).** The same `wikipedia.js`
+proxy that powers book descriptions (v0.10) now accepts `kind: 'series'`
+to disambiguate against series articles ("X (book series)") rather than
+single-book articles. Series rows in the catalog gain a layered
+description from Wikipedia when one is found, surfaced in the BookModal
+series block.
 
 **The Vault.** Source-of-truth curated catalog, surfaced as a first-class Oracle
 mode alongside "My wishlist" and "AI recommends". Plans fall back to the Vault
@@ -323,9 +355,76 @@ Why we shipped this before v0.12:
 - It's also genuinely small and standalone — no schema, no API, no
   external dependencies — so it could ship cleanly in a partial session.
 
-### v0.12 — User-added categories (in progress, not yet shipped)
+### v0.12 — Your own categories
 
-Coming soon. See v0.11 release notes for the design rationale.
+User-facing changes:
+
+- **Add categories to any book.** The Categories section in the BookModal
+  has a new "+ Add" button that opens an autocomplete input. Type a few
+  letters to see existing categories ranked by verified-first, then by
+  how many other readers use them. If your category doesn't exist yet,
+  the dropdown offers "+ Create '<your input>'" at the bottom.
+- **Verified vs. your own.** Two pill styles, same as v0.11 made room
+  for: gilt-bordered "☩ Verified" pills are catalog-level tags everyone
+  sees; dimmer pills are your private categories that only you see.
+  Verified pills can't be removed from the client — they're global.
+  Your own pills get an × in edit mode.
+- **Soft-cap of 10 categories per book.** Beyond that the "+ Add" button
+  disappears. Users tagging 30 things on one book turned out to be a
+  signal of confusion more often than usefulness.
+- **Strict deduplication.** Typing "cyberpunk", "Cyberpunk", "Cyber-Punk",
+  or "Cyber Punk" all resolve to the same canonical row. Whoever typed
+  it first sets the display casing/punctuation everyone else sees.
+- **Wishlist filter sees your tags.** The "All categories" dropdown on
+  the Wishlist now lists your categories alongside the built-in ones,
+  case-insensitively merged so "Horror" the auto-genre and "horror"
+  the user tag appear as one entry. Verified entries surface first with
+  a ☩ marker. Selecting one filters books that match by either source.
+  (The Library, Oracle, and Plan generation paths still use the auto-
+  detected `b.g` field only — bringing categories everywhere is a v0.14
+  conversation pending real usage signal.)
+- **Wikipedia series descriptions.** When a book is part of a series and
+  the series has a Wikipedia article, the BookModal's series block now
+  shows the article's lede paragraph below the series name. Attribution
+  link included. Especially useful for genre series where Hardcover and
+  OpenLibrary often have sparse series-level data.
+
+Under the hood:
+
+- New `schema_v5_migration.sql` adds three tables — `categories`,
+  `book_categories`, `user_book_categories` — with RLS policies that
+  scope user-private rows to the owning user and require all writes
+  to go through `SECURITY DEFINER` RPCs.
+- Four new RPCs:
+  - `upsert_category(raw_name)` — get-or-create canonical row
+  - `link_user_category(book_id, raw_name)` — soft-capped add
+  - `unlink_user_category(book_id, category_id)` — remove user tag
+  - `search_categories(query, limit)` — autocomplete ranking
+- A `book_categories_view` UNIONs global + user-private rows so the
+  client can load everything-a-user-sees in one query.
+- Trigger-maintained `usage_count` on `categories` powers autocomplete
+  ranking and surfaces promotion candidates to admins.
+- The `g` field on `books` (single auto-detected genre) coexists with
+  the new categories system. They're treated as separate concepts —
+  `g` powers Library grouping and the modal's eyebrow; categories are
+  the multi-value additive layer in the pill row.
+
+What's deliberately NOT here:
+
+- No admin promotion UI. Verification still happens via raw SQL until
+  the separate admin app ships. The data model — the `verified` flag
+  and `usage_count` — is the foundation that future admin app builds
+  on.
+- No category descriptions or icons. If a category needs explaining,
+  that's a v0.13+ enhancement.
+- No automatic categorization. The `g` field stays as the
+  auto-detected primary genre; everything else is user-driven.
+
+**Belt-and-suspenders fix bundled in:** `DataContext` now ref-guards
+its initial load against repeat-fire for the same user ID. The
+v0.13.1 AuthContext fix prevented the upstream cause; this guard is
+defense-in-depth for any future code path that might unintentionally
+churn the `user` reference. See the v0.13.1 release notes for context.
 
 ### v0.11 — BookModal: categories surface + editable ratings
 

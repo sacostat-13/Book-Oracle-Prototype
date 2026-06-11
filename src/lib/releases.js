@@ -18,8 +18,7 @@
 // the README version line.
 export const CURRENT_VERSION = 'v0.13.1';
 
-export const RELEASES = [
-  {
+export const RELEASES = [{
     version: 'v0.13.1',
     date: '2026-06-10',
     titleEn: 'Fix: switching tabs no longer resets the app',
@@ -51,31 +50,22 @@ export const RELEASES = [
   },
   {
     version: 'v0.12',
-    date: '2026-06-15', // tentative — bump when shipped
-    placeholder: true, // hidden until shipped
+    date: '2026-06-10',
     titleEn: 'Your own categories',
     titleEs: 'Tus propias categorías',
     bodyEn: [
-      '(Coming soon) Tag books with your own categories and search by them.',
+      'Tag any book with your own categories. Open a book and use the new "+ Add" button under "Categories" to type one in. The autocomplete suggests existing categories as you type, ranked by which ones have an editor\'s verification mark (☩) and how many readers use them.',
+      'Your tags are private — only you see them. If our editors later mark a category as official, the gilt ☩ pill appears for everyone, but your personal tag survives independently.',
+      'Up to 10 categories per book, so the pill row doesn\'t turn into a wall.',
+      'The Wishlist filter dropdown now includes your categories alongside the built-in ones — filter your wishlist by "Cyberpunk" and see every book you\'ve tagged with it, regardless of how the book was originally categorized.',
+      'Bonus: when a book is part of a series, you now see a Wikipedia-sourced description of the whole series in the modal — particularly helpful for long series where the per-book blurb assumes you already know the world.',
     ],
     bodyEs: [
-      '(Próximamente) Etiqueta libros con tus propias categorías y búscalos.',
-    ],
-  },
-  {
-    version: 'v0.11',
-    date: '2026-06-10',
-    titleEn: 'Ratings and categories, where they belong',
-    titleEs: 'Calificaciones y categorías, donde corresponden',
-    bodyEn: [
-      'Open any book in your library and you\'ll now see your rating and notes right there, with an "Edit" button to change them without leaving the book.',
-      'A new "Categories" section shows the book\'s genres as pills. Verified ones (curated by our editors) glow gilt; auto-detected ones are dimmer.',
-      'Descriptions sourced from Wikipedia now show a small "from wikipedia ↗" link so you can read more.',
-    ],
-    bodyEs: [
-      'Al abrir cualquier libro de tu biblioteca, ahora verás tu calificación y notas ahí mismo, con un botón "Editar" para cambiarlas sin salir del libro.',
-      'Una nueva sección "Categorías" muestra los géneros del libro como pastillas. Las verificadas (curadas por nuestros editores) brillan en dorado; las detectadas automáticamente son más tenues.',
-      'Las descripciones provenientes de Wikipedia ahora muestran un pequeño enlace "from wikipedia ↗" para leer más.',
+      'Etiquetá cualquier libro con tus propias categorías. Abrí un libro y usá el nuevo botón "+ Agregar" bajo "Categorías" para escribir una. El autocompletado sugiere categorías que ya existen mientras escribís, ordenadas por las que tienen la marca de verificación de editor (☩) y por cuántos lectores las usan.',
+      'Tus etiquetas son privadas — solo vos las ves. Si nuestros editores marcan después una categoría como oficial, la pastilla dorada ☩ aparece para todos, pero tu etiqueta personal sobrevive de forma independiente.',
+      'Hasta 10 categorías por libro, para que la fila de pastillas no se vuelva un muro.',
+      'El filtro de la Lista ahora incluye tus categorías junto a las predefinidas — filtrá tu lista por "Cyberpunk" y vas a ver todos los libros que etiquetaste así, sin importar cómo se categorizó el libro originalmente.',
+      'Extra: cuando un libro forma parte de una saga, ahora ves una descripción de la saga completa tomada de Wikipedia en la ventana del libro — útil especialmente para sagas largas donde la reseña de cada libro asume que ya conocés el mundo.',
     ],
   },
   {

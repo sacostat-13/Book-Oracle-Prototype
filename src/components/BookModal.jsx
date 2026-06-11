@@ -1,13 +1,16 @@
 import { useEffect, useState } from 'react';
 import { useData } from '../lib/DataContext';
 import { useRouter } from '../lib/RouterContext';
+import { useI18n } from '../lib/I18nContext';
 import { ALL_BOOKS, bookKey, findBookByTitle } from '../lib/bookHelpers';
 import { enrichBookFromOpenLibrary, fetchSeriesBooks } from '../lib/enrichmentService';
 import { lookupByTitle } from '../lib/bookLookup';
 import { fetchCoverURL } from '../lib/coverService';
 import { purchaseLinks } from '../lib/purchaseLinks';
+import { fetchSeriesDescriptionFromWikipedia } from '../lib/seriesService';
 import BookCover from './BookCover';
 import RatingModal from './RatingModal';
+import CategoryAutocomplete from './CategoryAutocomplete';
 
 function computeSimilarBooks(book, limit = 4) {
   const candidates = ALL_BOOKS.filter((c) => bookKey(c) !== bookKey(book));
@@ -34,19 +37,27 @@ export default function BookModal({ book, onClose, onOpenBook }) {
     removeFromLibrary,
     addToWishlist,
     cacheBookFields,
-    updateReadBook, // v0.9 — used by the rating editor in v0.11
+    updateReadBook,
+    // v0.12
+    getCategoriesForBook,
+    removeCategoryFromBook,
   } = useData();
   const { go } = useRouter();
+  const { lang } = useI18n();
+  const isSpanish = lang === 'es';
+
   const [enrichment, setEnrichment] = useState(null);
   const [seriesBooks, setSeriesBooks] = useState([]);
-  // Live overlay of newly-enriched fields so the modal shows them immediately
-  // even if the parent state hasn't refreshed yet.
+  // v0.12: Wikipedia-sourced series description, when available
+  const [seriesDescription, setSeriesDescription] = useState(null);
   const [enrichedOverlay, setEnrichedOverlay] = useState({});
-  // v0.11: track the rating editor open state. When non-null, the RatingModal
-  // is shown on top of the BookModal — z-index handled by RatingModal itself.
   const [ratingEditorOpen, setRatingEditorOpen] = useState(false);
+  // v0.12: track which category is being removed for an inline confirm/spinner
+  const [pendingRemoveId, setPendingRemoveId] = useState(null);
+  // Toggle the add-category input visibility (off by default so the section
+  // doesn't feel cluttered).
+  const [adderOpen, setAdderOpen] = useState(false);
 
-  // Lock body scroll while open
   useEffect(() => {
     document.body.style.overflow = 'hidden';
     return () => {
@@ -54,9 +65,6 @@ export default function BookModal({ book, onClose, onOpenBook }) {
     };
   }, []);
 
-  // On-demand enrichment: when the modal opens, identify which canonical fields
-  // are missing on this book and fetch them. Anything fetched is persisted to
-  // the shared `books` row via cacheBookFields so future opens are instant.
   useEffect(() => {
     if (!book) return;
     let cancelled = false;
@@ -81,9 +89,6 @@ export default function BookModal({ book, onClose, onOpenBook }) {
         if (coverUrl) patch.coverUrl = coverUrl;
       }
 
-      // Pages + description: use the v0.10 four-source lookup (PRH, Hardcover,
-      // OL, Wikipedia). Wikipedia is the reason we now see good descriptions
-      // for books where Hardcover and OL came up short.
       if (needsPages || needsDescription) {
         const found = await lookupByTitle(book.t, book.a);
         if (cancelled) return;
@@ -92,8 +97,6 @@ export default function BookModal({ book, onClose, onOpenBook }) {
           if (needsDescription && found.d) patch.d = found.d;
           if (!book.isbn && found.isbn) patch.isbn = found.isbn;
           if (!book.hardcoverId && found.hardcoverId) patch.hardcoverId = found.hardcoverId;
-          // v0.10 fields: capture Wikipedia attribution so the modal can show
-          // a "From Wikipedia" link next to the description.
           if (found.wikipediaUrl) patch.wikipediaUrl = found.wikipediaUrl;
           if (found.wikipediaLang) patch.wikipediaLang = found.wikipediaLang;
           if (found.descriptionSource) patch.descriptionSource = found.descriptionSource;
@@ -111,7 +114,6 @@ export default function BookModal({ book, onClose, onOpenBook }) {
     };
   }, [book, cacheBookFields]);
 
-  // Fetch series books if this book is in a series
   useEffect(() => {
     const seriesName = book?.s?.name || enrichment?.series?.name;
     if (!seriesName) return;
@@ -119,14 +121,17 @@ export default function BookModal({ book, onClose, onOpenBook }) {
     fetchSeriesBooks(seriesName).then((b) => {
       if (!cancelled) setSeriesBooks(b);
     });
+    // v0.12: parallel Wikipedia series description fetch. Author hint
+    // improves disambiguation a lot — if the book has an author and the
+    // series article mentions them, the score boost is significant.
+    fetchSeriesDescriptionFromWikipedia(seriesName, book?.a).then((d) => {
+      if (!cancelled && d) setSeriesDescription(d);
+    });
     return () => {
       cancelled = true;
     };
   }, [book, enrichment]);
 
-  // Esc to close — but only when the rating editor isn't taking the Esc key
-  // for itself. The rating editor handles its own keyboard close, so we just
-  // need to not double-fire when both are open.
   useEffect(() => {
     function onKey(e) {
       if (e.key === 'Escape' && !ratingEditorOpen) onClose();
@@ -152,17 +157,25 @@ export default function BookModal({ book, onClose, onOpenBook }) {
   const inWish = state.wishlist.some((b) => bookKey(b) === k);
   const similar = computeSimilarBooks(display, 4);
 
-  // v0.11: pull the live library row when the book is in library so rating
-  // and notes are sourced from the up-to-date local state, not from whatever
-  // stale snapshot the caller passed in. This matters when the user edits
-  // a rating, closes/reopens the modal, etc.
   const libraryRow = inLib
     ? state.library.find((b) => bookKey(b) === k)
     : null;
   const liveRating = libraryRow?.rating ?? display.rating ?? null;
   const liveNotes = libraryRow?.notes ?? null;
 
-  // Build series block data
+  // v0.12: live categories from DataContext. The list is already sorted
+  // verified-first then alphabetical (see rollupCategories in DataContext).
+  // Pass the book object so the lookup works for both bookId (server) and
+  // synthetic guest keys.
+  const categories = getCategoriesForBook(display);
+  const existingCategoryIds = new Set(categories.map((c) => c.categoryId));
+  const atCategoryCap = categories.length >= 10;
+  const canAddCategories = !!display.bookId || !state.profile.displayName;
+  // For guest mode we still allow tagging (it lives locally). The check
+  // above is true when there's a bookId OR when no user is signed in (guest).
+  // Future: tighten this if we change guest behavior.
+
+  // Series block (unchanged from v0.11)
   let seriesBlock = null;
   if (display.s && display.s.name) {
     const seriesName = display.s.name;
@@ -233,28 +246,16 @@ export default function BookModal({ book, onClose, onOpenBook }) {
     };
   }
 
-  // v0.11: build the categories list for the read-only pill row.
-  //
-  // For now this only includes the existing `g` field — single auto-detected
-  // genre on each book. The verified/unverified styling uses `book.verified`
-  // (same flag we use elsewhere — see seriesBlock.verified above). When v0.12
-  // ships the user-tag system, this same section will gain user pills and an
-  // "Add category" affordance.
-  const categories = [];
-  if (display.g) {
-    categories.push({
-      name: display.g,
-      verified: !!display.verified,
-      source: display.verified ? 'verified' : 'auto-detected',
-    });
-  }
-
   async function handleSaveRating({ rating, notes }) {
-    // updateReadBook is a no-op for books not in library; we only render
-    // the rating editor when libraryRow exists.
     if (!libraryRow) return;
     await updateReadBook(libraryRow, { rating, notes });
     setRatingEditorOpen(false);
+  }
+
+  async function handleRemoveCategory(categoryId) {
+    setPendingRemoveId(categoryId);
+    await removeCategoryFromBook(display, categoryId);
+    setPendingRemoveId(null);
   }
 
   return (
@@ -310,8 +311,7 @@ export default function BookModal({ book, onClose, onOpenBook }) {
           {display.d && (
             <div className="book-modal-section">
               <div className="book-modal-section-title">
-                Description
-                {/* v0.10: attribution when Wikipedia provided the description */}
+                {isSpanish ? 'Descripción' : 'Description'}
                 {display.descriptionSource === 'wikipedia' && display.wikipediaUrl && (
                   <>
                     {' · '}
@@ -338,13 +338,34 @@ export default function BookModal({ book, onClose, onOpenBook }) {
             </div>
           )}
 
-          {/* v0.11: Categories section — read-only for now. Surfaces the
-              `g` field (and the verified flag) as pills. Empty state when
-              the book has no categories. The autocomplete-add input lands
-              in v0.12 along with the user_book_categories schema. */}
+          {/* v0.12: Categories — live pills with add/remove */}
           <div className="book-modal-section">
-            <div className="book-modal-section-title">Categories</div>
-            {categories.length === 0 ? (
+            <div
+              className="book-modal-section-title"
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.6rem' }}
+            >
+              <span>
+                {isSpanish ? 'Categorías' : 'Categories'}
+                {categories.length > 0 && (
+                  <span style={{ opacity: 0.5, marginLeft: '0.4rem', fontSize: '0.7rem' }}>
+                    · {categories.length}/10
+                  </span>
+                )}
+              </span>
+              {canAddCategories && !atCategoryCap && (
+                <button
+                  className="li-action"
+                  onClick={() => setAdderOpen((v) => !v)}
+                  style={{ fontSize: '0.7rem', padding: '0.3rem 0.7rem' }}
+                >
+                  {adderOpen
+                    ? (isSpanish ? 'Listo' : 'Done')
+                    : (isSpanish ? '+ Agregar' : '+ Add')}
+                </button>
+              )}
+            </div>
+
+            {categories.length === 0 && !adderOpen ? (
               <div
                 style={{
                   color: 'var(--paper-aged)',
@@ -353,33 +374,63 @@ export default function BookModal({ book, onClose, onOpenBook }) {
                   fontStyle: 'italic',
                 }}
               >
-                No categories yet.
+                {isSpanish
+                  ? 'Aún no hay categorías.'
+                  : 'No categories yet.'}
               </div>
             ) : (
-              <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                {categories.map((c, i) => (
-                  <CategoryPill key={`${c.name}-${i}`} {...c} />
+              <div style={{ display: 'flex', gap: '0.45rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                {categories.map((c) => (
+                  <CategoryPill
+                    key={c.categoryId}
+                    category={c}
+                    removing={pendingRemoveId === c.categoryId}
+                    canRemove={adderOpen}
+                    onRemove={() => handleRemoveCategory(c.categoryId)}
+                  />
                 ))}
+              </div>
+            )}
+
+            {adderOpen && canAddCategories && (
+              <div style={{ marginTop: categories.length > 0 ? '0.85rem' : '0.6rem' }}>
+                <CategoryAutocomplete
+                  book={display}
+                  existingIds={existingCategoryIds}
+                  onCapHit={() => setAdderOpen(false)}
+                />
+                <div
+                  style={{
+                    marginTop: '0.5rem',
+                    fontSize: '0.75rem',
+                    color: 'var(--paper-aged)',
+                    opacity: 0.55,
+                    fontStyle: 'italic',
+                  }}
+                >
+                  {isSpanish
+                    ? 'Pulsá una pastilla con × para quitarla. Las verificadas (☩) no se pueden quitar — son globales.'
+                    : 'Click × on a pill to remove it. Verified (☩) ones are global and can\'t be removed.'}
+                </div>
               </div>
             )}
           </div>
 
-          {/* v0.11: Your rating section — only shown when the book is in
-              library. Displays the current rating + notes (if any) with an
-              Edit button that opens the RatingModal in 'edit' mode. */}
           {inLib && (
             <div className="book-modal-section">
               <div
                 className="book-modal-section-title"
                 style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.6rem' }}
               >
-                <span>Your rating</span>
+                <span>{isSpanish ? 'Tu calificación' : 'Your rating'}</span>
                 <button
                   className="li-action"
                   onClick={() => setRatingEditorOpen(true)}
                   style={{ fontSize: '0.7rem', padding: '0.3rem 0.7rem' }}
                 >
-                  {liveRating > 0 || liveNotes ? 'Edit' : '+ Add rating'}
+                  {liveRating > 0 || liveNotes
+                    ? (isSpanish ? 'Editar' : 'Edit')
+                    : (isSpanish ? '+ Calificar' : '+ Add rating')}
                 </button>
               </div>
               {liveRating > 0 ? (
@@ -404,7 +455,7 @@ export default function BookModal({ book, onClose, onOpenBook }) {
                       fontStyle: 'italic',
                     }}
                   >
-                    Not rated yet.
+                    {isSpanish ? 'Sin calificar aún.' : 'Not rated yet.'}
                   </div>
                 )
               )}
@@ -432,30 +483,68 @@ export default function BookModal({ book, onClose, onOpenBook }) {
           {seriesBlock && (
             <div className="book-modal-section">
               <div className="book-modal-section-title">
-                Part of a series ·{' '}
+                {isSpanish ? 'Parte de una serie' : 'Part of a series'} ·{' '}
                 {seriesBlock.verified ? (
                   <span style={{ color: 'var(--gilt-bright)', fontSize: '0.65rem', letterSpacing: '0.08em' }}>
-                    ☩ verified
+                    ☩ {isSpanish ? 'verificada' : 'verified'}
                   </span>
                 ) : seriesBlock.needsReview ? (
                   <span
                     style={{ color: 'var(--blood-bright)', fontSize: '0.65rem', letterSpacing: '0.08em', opacity: 0.85 }}
                     title="This series is in our catalog but hasn't been editor-verified yet."
                   >
-                    ⚠ needs review
+                    ⚠ {isSpanish ? 'requiere revisión' : 'needs review'}
                   </span>
                 ) : (
                   <span style={{ opacity: 0.6, fontSize: '0.65rem' }}>{seriesBlock.sourceLabel}</span>
                 )}
               </div>
               <div className="series-name">{seriesBlock.name}</div>
+              {/* v0.12: Wikipedia-sourced series description, when available */}
+              {seriesDescription && (
+                <div
+                  style={{
+                    color: 'var(--paper-aged)',
+                    lineHeight: 1.55,
+                    fontSize: '0.9rem',
+                    marginTop: '0.6rem',
+                    marginBottom: '0.8rem',
+                    paddingLeft: '0.9rem',
+                    borderLeft: '2px solid rgba(176, 140, 63, 0.18)',
+                  }}
+                >
+                  {seriesDescription.description}
+                  {seriesDescription.wikipediaUrl && (
+                    <>
+                      {' '}
+                      <a
+                        href={seriesDescription.wikipediaUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{
+                          color: 'var(--paper-aged)',
+                          opacity: 0.6,
+                          fontSize: '0.7rem',
+                          letterSpacing: '0.06em',
+                          textDecoration: 'none',
+                          borderBottom: '1px dotted rgba(176, 140, 63, 0.3)',
+                          marginLeft: '0.3rem',
+                        }}
+                        title="From Wikipedia"
+                      >
+                        wikipedia ↗
+                      </a>
+                    </>
+                  )}
+                </div>
+              )}
               <div className="series-progress">
                 {seriesBlock.dots}
                 <span className="series-progress-text">{seriesBlock.readCount}/{seriesBlock.totalBooks} read</span>
               </div>
               <div style={{ marginTop: '0.8rem' }}>
                 <button className="li-action success" onClick={() => { onClose(); go('plan-create', { seriesName: seriesBlock.name }); }}>
-                  ✦ Create a plan to finish this series
+                  ✦ {isSpanish ? 'Crear un plan para terminar esta serie' : 'Create a plan to finish this series'}
                 </button>
               </div>
             </div>
@@ -463,7 +552,7 @@ export default function BookModal({ book, onClose, onOpenBook }) {
 
           {similar.length > 0 && (
             <div className="book-modal-section">
-              <div className="book-modal-section-title">Similar books</div>
+              <div className="book-modal-section-title">{isSpanish ? 'Libros similares' : 'Similar books'}</div>
               <div className="similar-mini">
                 {similar.map((s, i) => {
                   const sk = bookKey(s);
@@ -535,7 +624,6 @@ export default function BookModal({ book, onClose, onOpenBook }) {
         </div>
       </div>
 
-      {/* v0.11: rating editor overlays the book modal when open */}
       {ratingEditorOpen && libraryRow && (
         <RatingModal
           book={libraryRow}
@@ -550,40 +638,68 @@ export default function BookModal({ book, onClose, onOpenBook }) {
   );
 }
 
-// v0.11: small visual primitive for the categories row. Two states for now:
-// 'verified' (gilt, matches the existing ☩ Verified badge in BookCard and
-// the series-verified treatment) and 'unverified' (dimmer, with a soft
-// border, signaling "this came from an API or a user, not curated").
-// When v0.12 lands the user-suggested → admin-promoted flow, we'll add a
-// third 'user' state for tags only the current user has applied.
-function CategoryPill({ name, verified, source }) {
-  if (verified) {
-    return (
-      <span
-        className="level-pill"
-        title={`${source} — verified by our editors`}
-        style={{
-          background: 'rgba(176, 140, 63, 0.18)',
-          borderColor: 'var(--gilt)',
-          color: 'var(--gilt-bright)',
-        }}
-      >
-        ☩ {name}
-      </span>
-    );
-  }
-  return (
-    <span
-      className="level-pill"
-      title={`${source} — not yet editor-verified`}
-      style={{
+// v0.12: pill with three states + optional remove affordance.
+//   verified=true  → gilt ☩ pill, never removable (it's a global tag)
+//   verified=false → dim "unverified" pill, removable by the owning user
+//                    (the source is 'user' since only the user has it)
+//
+// `canRemove` is set when the user is in edit mode (clicked "Add" to open
+// the input). Verified pills ignore canRemove — they can never be removed
+// from the client.
+function CategoryPill({ category, removing, canRemove, onRemove }) {
+  const { name, verified } = category;
+  const baseStyle = verified
+    ? {
+        background: 'rgba(176, 140, 63, 0.18)',
+        borderColor: 'var(--gilt)',
+        color: 'var(--gilt-bright)',
+      }
+    : {
         background: 'rgba(176, 140, 63, 0.04)',
         borderColor: 'rgba(176, 140, 63, 0.3)',
         color: 'var(--paper-aged)',
-        opacity: 0.85,
+        opacity: 0.9,
+      };
+
+  const showRemove = canRemove && !verified;
+
+  return (
+    <span
+      className="level-pill"
+      style={{
+        ...baseStyle,
+        opacity: removing ? 0.4 : baseStyle.opacity || 1,
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: showRemove ? '0.35rem' : 0,
+        paddingRight: showRemove ? '0.5rem' : undefined,
       }}
+      title={verified
+        ? 'Verified by our editors — global to all readers'
+        : 'Your private category — only you see this'}
     >
-      {name}
+      {verified && <span style={{ flexShrink: 0 }}>☩</span>}
+      <span>{name}</span>
+      {showRemove && (
+        <button
+          onClick={onRemove}
+          disabled={removing}
+          aria-label={`Remove ${name}`}
+          style={{
+            background: 'none',
+            border: 'none',
+            color: 'inherit',
+            opacity: 0.5,
+            cursor: removing ? 'wait' : 'pointer',
+            fontSize: '1rem',
+            lineHeight: 1,
+            padding: 0,
+            marginLeft: '0.1rem',
+          }}
+        >
+          ×
+        </button>
+      )}
     </span>
   );
 }
