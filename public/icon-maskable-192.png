@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <!-- Maskable: background fills full canvas, content within safe zone (80px inset) -->
+  <rect width="512" height="512" fill="#1a1410"/>
+  <!-- Subtle border inset within safe zone -->
+  <rect x="88" y="88" width="336" height="336" fill="none" stroke="#b08c3f" stroke-width="2" opacity="0.4"/>
+  <!-- Central ☩ cross pattée — scaled to safe zone -->
+  <!-- Vertical bar -->
+  <rect x="244" y="148" width="24" height="216" rx="3" fill="#b08c3f"/>
+  <!-- Horizontal bar -->
+  <rect x="148" y="244" width="216" height="24" rx="3" fill="#b08c3f"/>
+  <!-- Corner diamonds -->
+  <polygon points="256,124 268,142 256,152 244,142" fill="#b08c3f"/>
+  <polygon points="256,388 268,370 256,360 244,370" fill="#b08c3f"/>
+  <polygon points="124,256 142,244 152,256 142,268" fill="#b08c3f"/>
+  <polygon points="388,256 370,244 360,256 370,268" fill="#b08c3f"/>
+  <!-- Centre -->
+  <circle cx="256" cy="256" r="18" fill="#1a1410"/>
+  <circle cx="256" cy="256" r="13" fill="#b08c3f"/>
+  <circle cx="256" cy="256" r="6" fill="#1a1410"/>
+</svg>
