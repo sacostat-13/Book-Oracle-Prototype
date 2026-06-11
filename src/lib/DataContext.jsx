@@ -206,19 +206,104 @@ async function loadFromSupabase(userId) {
     ...wishlist.map((b) => b.bookId).filter(Boolean),
     ...library.map((b) => b.bookId).filter(Boolean),
   ])];
+  // v0.12 hotfix 3: chunk the book_id list. For users with large libraries
+  // (700+ books), a single `in.(...)` query exceeds PostgREST's URL length
+  // limit and gets rejected with a bare 400 at the edge layer (not by
+  // PostgREST itself, which is why no JSON body comes back). 50 IDs per
+  // chunk keeps each URL well under 2KB.
   let categoriesByBookId = {};
   if (allBookIds.length > 0) {
-    const { data: catRows, error: catErr } = await supabase
-      .from('book_categories_view')
-      .select('*')
-      .in('book_id', allBookIds);
-    if (catErr) {
-      // Non-fatal: log and continue with empty categories. This way a
-      // pre-v0.12 schema doesn't break the load entirely.
-      console.warn('categories load failed', catErr);
-    } else {
-      categoriesByBookId = rollupCategories(catRows || []);
+    const CHUNK_SIZE = 50;
+    const chunks = [];
+    for (let i = 0; i < allBookIds.length; i += CHUNK_SIZE) {
+      chunks.push(allBookIds.slice(i, i + CHUNK_SIZE));
     }
+
+    // Fire all chunked queries in parallel — both tables, every chunk.
+    const allQueries = [];
+    for (const chunk of chunks) {
+      allQueries.push(
+        supabase
+          .from('book_categories')
+          .select('book_id, category_id')
+          .in('book_id', chunk)
+          .then((r) => ({ kind: 'global', ...r }))
+      );
+      allQueries.push(
+        supabase
+          .from('user_book_categories')
+          .select('book_id, category_id')
+          .in('book_id', chunk)
+          .then((r) => ({ kind: 'user', ...r }))
+      );
+    }
+    const results = await Promise.all(allQueries);
+
+    const globalLinks = [];
+    const userLinks = [];
+    for (const r of results) {
+      if (r.error) {
+        console.warn(`${r.kind} categories chunk failed`, r.error);
+        continue;
+      }
+      if (r.kind === 'global') globalLinks.push(...(r.data || []));
+      else userLinks.push(...(r.data || []));
+    }
+
+    const allCategoryIds = [...new Set([
+      ...globalLinks.map((r) => r.category_id),
+      ...userLinks.map((r) => r.category_id),
+    ])];
+
+    // Categories themselves may also be many — chunk this query too. Less
+    // likely to hit limits (categories are global, total is small), but
+    // belt-and-suspenders.
+    let categoriesById = {};
+    if (allCategoryIds.length > 0) {
+      const catChunks = [];
+      for (let i = 0; i < allCategoryIds.length; i += CHUNK_SIZE) {
+        catChunks.push(allCategoryIds.slice(i, i + CHUNK_SIZE));
+      }
+      const catResults = await Promise.all(
+        catChunks.map((chunk) =>
+          supabase
+            .from('categories')
+            .select('id, name, normalized_name, verified, usage_count')
+            .in('id', chunk)
+        )
+      );
+      for (const r of catResults) {
+        if (r.error) {
+          console.warn('categories table chunk failed', r.error);
+          continue;
+        }
+        for (const c of (r.data || [])) {
+          categoriesById[c.id] = c;
+        }
+      }
+    }
+
+    const buildRow = (linkRow, baseSource) => {
+      const c = categoriesById[linkRow.category_id];
+      if (!c) return null;
+      return {
+        book_id: linkRow.book_id,
+        category_id: c.id,
+        category_name: c.name,
+        normalized_name: c.normalized_name,
+        verified: c.verified,
+        usage_count: c.usage_count,
+        source: baseSource === 'verified'
+          ? 'verified'
+          : (c.verified ? 'verified' : 'user'),
+      };
+    };
+
+    const merged = [
+      ...globalLinks.map((r) => buildRow(r, 'verified')).filter(Boolean),
+      ...userLinks.map((r) => buildRow(r, 'user')).filter(Boolean),
+    ];
+    categoriesByBookId = rollupCategories(merged);
   }
 
   return {
@@ -815,12 +900,57 @@ export function DataProvider({ children }) {
       }
 
       // After unlink, the category might still appear if it's a verified
-      // global one. Refetch this book's categories from the view to get
-      // the source-of-truth state. Cheap — one row at most ~10 rows.
-      const { data: refreshed, error: refreshErr } = await supabase
-        .from('book_categories_view')
-        .select('*')
-        .eq('book_id', book.bookId);
+      // global one. Refetch without embedded-select syntax (some Supabase
+      // edge configs reject the `category:categories(...)` shorthand
+      // with a bare 400).
+      const [refreshGlobal, refreshUser] = await Promise.all([
+        supabase
+          .from('book_categories')
+          .select('book_id, category_id')
+          .eq('book_id', book.bookId),
+        supabase
+          .from('user_book_categories')
+          .select('book_id, category_id')
+          .eq('book_id', book.bookId),
+      ]);
+      const refreshErr = refreshGlobal.error || refreshUser.error;
+
+      let refreshed = null;
+      if (!refreshErr) {
+        const allCategoryIds = [...new Set([
+          ...(refreshGlobal.data || []).map((r) => r.category_id),
+          ...(refreshUser.data || []).map((r) => r.category_id),
+        ])];
+        let categoriesById = {};
+        if (allCategoryIds.length > 0) {
+          const { data: catRows } = await supabase
+            .from('categories')
+            .select('id, name, normalized_name, verified, usage_count')
+            .in('id', allCategoryIds);
+          for (const c of (catRows || [])) {
+            categoriesById[c.id] = c;
+          }
+        }
+        const buildRow = (linkRow, baseSource) => {
+          const c = categoriesById[linkRow.category_id];
+          if (!c) return null;
+          return {
+            book_id: linkRow.book_id,
+            category_id: c.id,
+            category_name: c.name,
+            normalized_name: c.normalized_name,
+            verified: c.verified,
+            usage_count: c.usage_count,
+            source: baseSource === 'verified'
+              ? 'verified'
+              : (c.verified ? 'verified' : 'user'),
+          };
+        };
+        refreshed = [
+          ...(refreshGlobal.data || []).map((r) => buildRow(r, 'verified')).filter(Boolean),
+          ...(refreshUser.data || []).map((r) => buildRow(r, 'user')).filter(Boolean),
+        ];
+      }
       if (refreshErr) {
         // Fall back to optimistic local removal
         setState((s) => {
