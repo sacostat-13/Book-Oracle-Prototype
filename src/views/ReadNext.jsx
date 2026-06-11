@@ -2,7 +2,7 @@ import { useData } from '../lib/DataContext';
 import { useRouter } from '../lib/RouterContext';
 import { bookKey } from '../lib/bookHelpers';
 
-export default function ReadNext() {
+export default function ReadNext({ onOpenBook }) {
   const { state, markAsRead, removeFromReadNext } = useData();
   const { go } = useRouter();
 
@@ -30,7 +30,7 @@ export default function ReadNext() {
         state.readNext.map((b, i) => (
           <div className="list-item" key={`${bookKey(b)}-${i}`}>
             <div className="li-num">{String(i + 1).padStart(2, '0')}.</div>
-            <div className="li-content">
+            <div className="li-content" onClick={() => onOpenBook?.(b)} style={{ cursor: 'pointer' }}>
               <div className="li-title">{b.t}</div>
               <div className="li-author">
                 {b.a}{b.g && <> · <span style={{ color: 'var(--gilt)' }}>{b.g}</span></>}

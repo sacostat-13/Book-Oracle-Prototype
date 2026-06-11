@@ -16,7 +16,7 @@ export default function OracleFork() {
       <div className="oracle-fork">
         <div className="cta-card" onClick={() => go('oracle-categories')}>
           <div className="cta-ornament">❦</div>
-          <h2 className="cta-title">By <span className="accent">categories</span></h2>
+          <h2 className="cta-title">By <span className="accent">genres</span></h2>
           <p className="cta-desc">Pick a temperament — folk horror, gothic, sapphic, Latin American — and draw three books to choose from.</p>
         </div>
         <div className="cta-card" onClick={() => go('oracle-similar')}>

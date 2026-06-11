@@ -16,9 +16,27 @@
 
 // The version label shown as "current" — keep in sync with package.json and
 // the README version line.
-export const CURRENT_VERSION = 'v0.13.1';
+export const CURRENT_VERSION = 'v0.15';
 
 export const RELEASES = [{
+    version: 'v0.15',
+    date: '2026-06-11',
+    titleEn: 'The Oracle learns your genres',
+    titleEs: 'El Oráculo aprende tus géneros',
+    bodyEn: [
+      'A new "☩ Let the Oracle categorize my books" button now appears on your Wishlist and Library whenever you have uncategorized books. Press it and the Oracle reads your books in batches, assigns canonical genres (Gothic & Haunted Houses, Sapphic & Feminist Gothic, Folk Horror…), and groups everything instantly — no manual tagging needed.',
+      'Genres are now the backbone of both views. Your Wishlist and Library group books by Oracle-assigned genre, with two filter dropdowns: one for genres, one for your own personal categories. The genre filter only shows genres that are actually in your current view.',
+      'The Oracle\'s "By genres" mode (previously "By categories") now draws from the same canonical genre catalog — so the temperament you pick when divining is the real genre, not a rough auto-detected label.',
+      'The AI features of the app — book lookups, the Oracle\'s AI recommend mode, and reading plan generation — are now fully active.',
+    ],
+    bodyEs: [
+      'Un nuevo botón "☩ Que el Oráculo categorice mis libros" aparece en tu Lista y Biblioteca cuando tenés libros sin categorizar. Presionalo y el Oráculo lee tus libros en grupos, asigna géneros canónicos (Gótico y Casas Encantadas, Gótico Sáfico y Feminista, Horror Rural…) y agrupa todo al instante — sin etiquetado manual.',
+      'Los géneros son ahora la columna vertebral de ambas vistas. Tu Lista y Biblioteca agrupan los libros por género asignado por el Oráculo, con dos filtros desplegables: uno para géneros, uno para tus propias categorías. El filtro de géneros solo muestra los géneros que están realmente en tu vista actual.',
+      'El modo "Por géneros" del Oráculo (antes "Por categorías") ahora usa el mismo catálogo de géneros canónicos — así que el temperamento que elegís al consultar es el género real, no una etiqueta detectada automáticamente.',
+      'Las funciones de IA de la app — búsqueda de libros, el modo de recomendación por IA del Oráculo y la generación de planes de lectura — están ahora completamente activas.',
+    ],
+  },
+  {
     version: 'v0.13.1',
     date: '2026-06-10',
     titleEn: 'Fix: switching tabs no longer resets the app',

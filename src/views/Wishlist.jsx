@@ -3,25 +3,12 @@ import { useData } from '../lib/DataContext';
 import { useRouter } from '../lib/RouterContext';
 import { GENRES, bookKey } from '../lib/bookHelpers';
 import BulkImport from '../components/BulkImport';
+import OracleCategorizationButton from '../components/OracleCategorizationButton';
 
-// v0.12: the category filter dropdown unifies two sources:
-//   1. The per-book `b.g` field (auto-detected single genre, legacy)
-//   2. The user's categories on each book (from DataContext.getCategoriesForBook)
-//
-// Both contribute to a single dropdown so users see one mental model:
-// "all the categorizations on my wishlist." Strict normalization is used to
-// dedupe — "Horror" (b.g) and "horror" (user tag) merge into one entry. The
-// display name uses the verified version's casing when available, falling
-// back to whichever source we saw first.
-//
-// Verified entries sort to the top with a ☩ marker; everything else is
-// alphabetical. Selecting a value filters books that match by EITHER source.
-function normalizeFilterKey(s) {
-  return (s || '')
-    .toLowerCase()
-    .replace(/^the\s+/, '')
-    .replace(/[^a-z0-9]/g, '');
-}
+// v0.15 phase 2.5: two-dropdown filter (genres + categories).
+// Genres are canonical Oracle-curated taxonomy from genresByBookId.
+// Categories are user folksonomy from getCategoriesForBook.
+// Grouping uses Oracle genres; books without genres fall back to b.g then 'Uncategorized'.
 
 export default function Wishlist({ onOpenBook }) {
   const {
@@ -36,106 +23,77 @@ export default function Wishlist({ onOpenBook }) {
   const { go } = useRouter();
   const [search, setSearch] = useState('');
   const [genreFilter, setGenreFilter] = useState('all');
+  const [categoryFilter, setCategoryFilter] = useState('all');
   const [formOpen, setFormOpen] = useState(false);
   const [bulkOpen, setBulkOpen] = useState(false);
   const [form, setForm] = useState({ t: '', a: '', g: '', d: '', amazonUrl: '' });
 
   const wl = state.wishlist;
+  const { genresByBookId } = state;
 
-  // v0.12: unified category index for the filter dropdown.
-  //
-  // Walks every book in the wishlist, collects:
-  //   - the auto-genre `b.g`
-  //   - every category attached to that book (verified + user-only)
-  //
-  // and merges them by normalized key. For each unique key, we keep the
-  // best display name (prefer verified > first-seen) and a verified flag.
-  // Books are tracked per-key so the filter step is O(1) lookup.
-  const categoryIndex = useMemo(() => {
-    // Map: normalized → { display, verified, bookKeys: Set }
-    const map = new Map();
+  // Helper: get primary genre label for a book (Oracle first, then b.g fallback).
+  function getPrimaryGenre(b) {
+    const genres = genresByBookId[b.bookId];
+    if (genres && genres.length > 0) return genres[0].name;
+    return b.g || 'Uncategorized';
+  }
 
-    function addEntry(rawName, verified, bk) {
-      if (!rawName) return;
-      const norm = normalizeFilterKey(rawName);
-      if (!norm) return;
-      let entry = map.get(norm);
-      if (!entry) {
-        entry = {
-          display: rawName,
-          verified: !!verified,
-          bookKeys: new Set(),
-        };
-        map.set(norm, entry);
-      } else {
-        // Prefer a verified source's display name over an unverified one.
-        // If neither is verified, keep what we had.
-        if (verified && !entry.verified) {
-          entry.display = rawName;
-          entry.verified = true;
-        }
-        // Even if we're not promoting the display name, mark verified=true
-        // if any source for this key is verified.
-        if (verified) entry.verified = true;
-      }
-      if (bk) entry.bookKeys.add(bk);
-    }
-
+  // --- Genre dropdown options ---
+  // Collect all unique genres across the wishlist from genresByBookId.
+  const genreOptions = useMemo(() => {
+    const map = new Map(); // normalizedName → { name, count }
     for (const b of wl) {
-      const bk = bookKey(b);
-
-      // 1. Auto-genre. Treat as unverified — `b.g` is auto-detected, not
-      //    editor-blessed. If the same name also exists as a verified
-      //    category, the verified flag will win on the merge.
-      if (b.g) addEntry(b.g, false, bk);
-
-      // 2. The book's categories (mix of verified-global + user-only)
-      const cats = getCategoriesForBook(b);
-      for (const c of cats) {
-        addEntry(c.name, c.verified, bk);
+      const genres = genresByBookId[b.bookId] || [];
+      for (const g of genres) {
+        const existing = map.get(g.normalizedName);
+        if (existing) existing.count++;
+        else map.set(g.normalizedName, { name: g.name, normalizedName: g.normalizedName, count: 1 });
       }
     }
-    return map;
+    return Array.from(map.values()).sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
+  }, [wl, genresByBookId]);
+
+  // --- Category dropdown options ---
+  // Collect user categories; only show dropdown if at least one book has one.
+  const categoryOptions = useMemo(() => {
+    const map = new Map(); // normalizedName → { name, verified }
+    for (const b of wl) {
+      for (const c of getCategoriesForBook(b)) {
+        if (!map.has(c.name)) map.set(c.name, { name: c.name, verified: c.verified });
+        else if (c.verified) map.get(c.name).verified = true;
+      }
+    }
+    return Array.from(map.values()).sort((a, b) => {
+      if (a.verified !== b.verified) return a.verified ? -1 : 1;
+      return a.name.localeCompare(b.name);
+    });
   }, [wl, getCategoriesForBook]);
 
-  // Build the dropdown option list, sorted verified-first then alphabetical.
-  const categoryOptions = useMemo(() => {
-    const opts = [];
-    for (const [norm, entry] of categoryIndex.entries()) {
-      opts.push({
-        value: norm,         // used as filter value
-        label: entry.display,
-        verified: entry.verified,
-      });
-    }
-    opts.sort((a, b) => {
-      if (a.verified !== b.verified) return a.verified ? -1 : 1;
-      return a.label.localeCompare(b.label);
-    });
-    return opts;
-  }, [categoryIndex]);
+  const hasCategoryFilter = categoryOptions.length > 0;
 
-  // The "form" dropdown (for manually adding a book) keeps using the curated
-  // GENRES list + observed `b.g` values. Categories aren't surfaced here
-  // because manual add only sets `b.g`, not user_book_categories. Users can
-  // add categories from the BookModal after the book is in the wishlist.
+  // --- The form genre list (manual add) ---
   const formGenres = useMemo(
     () => [...new Set([...GENRES, ...wl.map((b) => b.g).filter(Boolean)])].sort(),
     [wl]
   );
 
+  // --- Filtering ---
   let filtered = wl;
+
   if (genreFilter !== 'all') {
-    // The filter value is the normalized key. A book matches if it appears
-    // in the entry's bookKeys set — which means either its b.g matched OR
-    // it has a category that normalizes to the same key.
-    const entry = categoryIndex.get(genreFilter);
-    if (entry) {
-      filtered = filtered.filter((b) => entry.bookKeys.has(bookKey(b)));
-    } else {
-      filtered = []; // unknown filter value; show empty rather than full
-    }
+    filtered = filtered.filter((b) => {
+      const genres = genresByBookId[b.bookId] || [];
+      return genres.some((g) => g.normalizedName === genreFilter);
+    });
   }
+
+  if (categoryFilter !== 'all') {
+    filtered = filtered.filter((b) => {
+      const cats = getCategoriesForBook(b);
+      return cats.some((c) => c.name === categoryFilter);
+    });
+  }
+
   if (search) {
     const q = search.toLowerCase();
     filtered = filtered.filter(
@@ -143,13 +101,10 @@ export default function Wishlist({ onOpenBook }) {
     );
   }
 
-  // Group the filtered list for display. The header for each group still
-  // uses `b.g` as the grouping key — categories on a book don't change the
-  // book's primary genre eyebrow, they only affect filterability. This
-  // keeps the visual layout stable.
+  // --- Grouping by Oracle genre ---
   const grouped = {};
   for (const b of filtered) {
-    const g = b.g || 'Uncategorized';
+    const g = getPrimaryGenre(b);
     if (!grouped[g]) grouped[g] = [];
     grouped[g].push(b);
   }
@@ -205,15 +160,29 @@ export default function Wishlist({ onOpenBook }) {
           <select
             value={genreFilter}
             onChange={(e) => setGenreFilter(e.target.value)}
-            style={{ maxWidth: '260px' }}
+            style={{ maxWidth: '220px' }}
           >
-            <option value="all">— All categories —</option>
-            {categoryOptions.map((o) => (
-              <option key={o.value} value={o.value}>
-                {o.verified ? `☩ ${o.label}` : o.label}
+            <option value="all">— All genres —</option>
+            {genreOptions.map((o) => (
+              <option key={o.normalizedName} value={o.normalizedName}>
+                ☩ {o.name}
               </option>
             ))}
           </select>
+          {hasCategoryFilter && (
+            <select
+              value={categoryFilter}
+              onChange={(e) => setCategoryFilter(e.target.value)}
+              style={{ maxWidth: '220px' }}
+            >
+              <option value="all">— All categories —</option>
+              {categoryOptions.map((o) => (
+                <option key={o.name} value={o.name}>
+                  {o.verified ? `☩ ${o.name}` : o.name}
+                </option>
+              ))}
+            </select>
+          )}
         </div>
         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
           <button className="btn btn-ghost" onClick={() => { setBulkOpen((v) => !v); setFormOpen(false); }}>
@@ -226,6 +195,8 @@ export default function Wishlist({ onOpenBook }) {
       </div>
 
       {bulkOpen && <BulkImport target="wishlist" onClose={() => setBulkOpen(false)} />}
+
+      <OracleCategorizationButton books={wl} />
 
       {formOpen && (
         <div className="manual-add-form">

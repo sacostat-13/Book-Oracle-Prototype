@@ -4,7 +4,7 @@ A reading companion — wishlist, library, reading plans, and an AI-powered "ora
 for book discovery. Built with React + Vite + SCSS, backed by Supabase for auth
 and cross-device sync, and Netlify Functions for API proxying.
 
-> Current version: **v0.13.1** — see [Releases](#releases) below for changelog.
+> Current version: **v0.15** — see [Releases](#releases) below for changelog.
 > Upgrading from an earlier version? Check the matching `MIGRATION_*.md` / `UPDATE_*.md`.
 
 ---
@@ -26,6 +26,8 @@ npm install
   3. `schema_v3_migration.sql` (series table)
   4. `schema_v4_migration.sql` (notes on read_books)
   5. `schema_v5_migration.sql` (categories: tables, RLS, RPCs)
+  6. `schema_v6_migration.sql` (status enum + verified_source + verified_by columns)
+  7. `schema_v7_migration.sql` (genres: tables, seed, RPCs, backfill)
 - In **Authentication → Providers → Google**, enable Google OAuth (see [Google OAuth](#google-oauth-setup) below)
 - In **Authentication → URL Configuration**, add `http://localhost:5173` and your Netlify URL to the allowed Redirect URLs
 - Copy your project URL + anon key from **Project Settings → API**
@@ -144,6 +146,7 @@ oracle/
     │   ├── seriesService.js        Series table queries
     │   ├── goodreadsImport.js      CSV parsers (read shelf + to-read shelf)
     │   ├── purchaseLinks.js        Amazon + Bookshop URL builders
+    │   ├── oracleCategorizationService.js  Oracle batch-categorization logic (v0.15)
     │   └── releases.js              Bilingual release notes content
     ├── components/
     │   ├── Nav.jsx
@@ -154,6 +157,7 @@ oracle/
     │   ├── BulkImport.jsx          3-tab bulk import panel
     │   ├── ReleaseNotesModal.jsx    "What's new" popup (bilingual)
     │   ├── CategoryAutocomplete.jsx  Tag autocomplete with create-new + ranking
+    │   ├── OracleCategorizationButton.jsx  "Let the Oracle categorize" button (v0.15)
     │   └── CurrentReleaseFooter.jsx Current version block on About page
     └── views/
         ├── Onboarding.jsx          3-step onboarding
@@ -184,8 +188,10 @@ oracle/
 ### Shared catalog (read-public, write via RPC only)
 | Table | Purpose |
 |---|---|
-| `books` | The catalog. Sources: `curated`, `hardcover`, `openlibrary`, `goodreads_import`, `user_manual`. `verified` flag controls trust. |
-| `series` | Series rows with `verified` flag. Books point here via `series_id`. |
+| `books` | The catalog. Sources: `curated`, `hardcover`, `openlibrary`, `goodreads_import`, `user_manual`. `status` enum (`unreviewed` \| `incomplete` \| `oracle_categorized` \| `verified` \| `flagged`) replaced the old `verified` boolean in v0.14. `verified_source` tracks who verified (`curated_seed` \| `oracle` \| `admin`). |
+| `series` | Series rows. `publication_status` tracks ongoing/complete/unknown. Books reference via `series_id`. |
+| `genres` | Canonical genre taxonomy. Oracle-curated. 15 seeds pre-loaded; new genres created only when Oracle finds nothing in the catalog that fits. |
+| `book_genres` | Global many-to-many book ↔ genre. Not user-scoped. `assigned_by_source` tracks `seed` \| `oracle` \| `admin`. |
 
 Writes to `books` go through `upsert_book` (deduplicates by normalized key, coalesce-merge).
 Writes to `series` go through `upsert_series` (same pattern, dedupes by normalized name).
@@ -208,6 +214,22 @@ and forward requests. Locally you need `netlify dev` to make them work.
 3. OpenLibrary (broadest coverage, no auth, no rate limit)
 4. Wikipedia   (best descriptions, esp. when others are sparse — v0.10)
 5. Merge results to fill nulls
+
+**Genres vs. categories.** Two parallel systems on books:
+
+- `genres` is the canonical, Oracle-curated taxonomy. Fixed vocabulary. New genres only added when the Oracle determines nothing in the catalog fits. All writes go through `upsert_genre` / `link_book_genre` RPCs (SECURITY DEFINER). Globally visible — not user-scoped. Powers Wishlist/Library grouping, filter dropdowns, and Oracle temperament selection.
+- `categories` is user-driven folksonomy (v0.12). Anyone can create one. User-scoped via `user_book_categories`. Both coexist and are surfaced separately in the UI — genres in one filter dropdown, categories in another.
+
+**Oracle categorization.** The "☩ Let the Oracle categorize my books" button on Wishlist and Library:
+
+- Filters to books with `status IN ('unreviewed', 'incomplete')` and no genres yet
+- Fetches the full genre catalog via `search_genres('')`, batches books in groups of 20
+- Sends each batch to Claude via the Netlify proxy with the catalog as strong context
+- Writes results back via `upsert_genre` (creates new genres only when needed) + `link_book_genre`
+- Flips book status to `oracle_categorized` on success
+- Fail-fast: if the first batch fails (bad API key, out of credits, network error) the run stops immediately rather than burning through all remaining batches
+
+**Book status lifecycle.** `unreviewed` → (Oracle button) → `oracle_categorized` → (future admin app) → `verified`. The `verified` boolean column is kept for now as a backward-compat bridge and will be dropped in v0.15.1.
 
 **Categories.** Per-user tagging on top of a globally-canonical catalog:
 
@@ -264,6 +286,31 @@ Free to refactor into partials when needed.
 ---
 
 ## Releases
+
+### v0.15 — The Oracle learns your genres
+
+User-facing changes:
+
+- **Oracle genre categorization.** A "☩ Let the Oracle categorize my books" button appears on both Wishlist and Library whenever there are unverified books with no genres assigned. Clicking it sends books to Claude in batches of 20. The Oracle assigns 1–3 canonical genres per book (strongly preferring the existing catalog; only inventing a new genre when nothing fits), writes the assignments to `book_genres`, and flips each book's status to `oracle_categorized`. Progress is shown live; if the first batch fails the run stops immediately to avoid wasting tokens.
+- **Genre-based grouping.** Wishlist and Library now group books by Oracle genre instead of the legacy auto-detected `b.g` field. Books without Oracle genres yet fall back to `b.g`, then "Uncategorized"/"Imported".
+- **Two-dropdown filtering.** Both views now have a Genres dropdown (always visible, populated from the Oracle's canonical taxonomy) and a Categories dropdown (only appears when at least one book in view has a user category). Each is independent single-select for now.
+- **Oracle drawer updated.** The "By genres" mode (previously "By categories") now draws its Temperament options from the canonical genre catalog rather than `b.g`. Genre labels and breadcrumbs updated throughout.
+- **Genre eyebrow on cards and modal.** BookCard and BookModal now display the Oracle genre as the eyebrow/tag, falling back to `b.g` for uncategorized books.
+- **AI features fully active.** Book metadata lookups (Hardcover, PRH, OpenLibrary), the Oracle's AI recommend mode, and reading plan generation are all live.
+
+Under the hood:
+
+- New `schema_v6_migration.sql`: adds `status` enum (`unreviewed` | `incomplete` | `oracle_categorized` | `verified` | `flagged`), `verified_source`, `verified_at`, `verified_by` to `books` and `series`. Renames `series.status` → `series.publication_status`. Dual-write RPCs keep the old `verified` boolean alive during the transition.
+- New `schema_v7_migration.sql`: adds `genres` table (canonical taxonomy, 15 seeds pre-loaded from the existing `b.g` values), `book_genres` join table, `normalize_genre_name` helper, `upsert_genre` / `link_book_genre` / `search_genres` RPCs, `book_genres_view`, and a backfill that links existing books to their seeded genres.
+- New `src/lib/oracleCategorizationService.js`: batching logic, Claude prompt construction, response parsing, DB write path.
+- New `src/components/OracleCategorizationButton.jsx`: progress UI with live batch counter and error display.
+- `DataContext` gains `genresByBookId` in state, `rollupGenres()` helper, chunked load from `book_genres_view` on sign-in, and `setBookGenres()` mutation for real-time UI updates as Oracle batches complete.
+
+What's deliberately NOT here:
+
+- No auto-categorization on book add — the button is manual to keep token usage predictable.
+- No admin genre management UI — that's a future admin app concern.
+- `verified` boolean column not yet dropped — that's v0.15.1, after a deploy cycle confirms no stale clients.
 
 ### v0.13.1 — Hotfix: tab-switching no longer resets the app
 

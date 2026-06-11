@@ -14,7 +14,8 @@
 //   than Hardcover/OL/PRH blurbs, which is the main reason we pull it.
 //
 // If ALL sources miss, we still return a "raw" book object built from the
-// user's input, marked `unverified=true` so it can be flagged for review.
+// user's input, marked `needsReview=true` so it can be flagged for review.
+// At the upsert site this maps to status='incomplete' on the books row.
 // This means users never lose books they typed in.
 
 import { cleanTitle, cleanAuthor } from './bookHelpers';
@@ -188,7 +189,8 @@ export async function lookupByTitle(title, author) {
   const merged = mergeFour(hc, prh, ol, wiki);
   if (!merged) {
     // ALL sources missed. Don't lose the user's input — return a raw record
-    // marked as unverified so it surfaces for review.
+    // marked as needing review so it surfaces in the editor queue. At the
+    // upsert site this maps to status='incomplete' on the books row.
     return {
       t: title.trim(),
       a: (author || '').trim() || null,
@@ -199,7 +201,7 @@ export async function lookupByTitle(title, author) {
       s: null,
       isbn: null,
       manuallyAdded: true,
-      unverified: true, // flagged for editor review
+      needsReview: true, // v0.15: was `unverified: true`. Maps to status='incomplete' on insert.
       noApiMatch: true, // useful for telemetry / debug
     };
   }

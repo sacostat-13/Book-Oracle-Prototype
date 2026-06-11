@@ -40,7 +40,7 @@ export default function BookModal({ book, onClose, onOpenBook }) {
     updateReadBook,
     // v0.12
     getCategoriesForBook,
-    removeCategoryFromBook,
+    removeCategoryFromBook
   } = useData();
   const { go } = useRouter();
   const { lang } = useI18n();
@@ -227,9 +227,15 @@ export default function BookModal({ book, onClose, onOpenBook }) {
       }
     }
 
+    // v0.15: derive UI verified-ness from status. Both 'verified' and
+    // 'oracle_categorized' count as verified for display.
+    const seriesIsVerified = display.s.status === 'verified' || display.s.status === 'oracle_categorized';
+    const seriesNeedsReview = display.s.status === 'incomplete' ||
+                               (display.s.status === 'unreviewed' && !!display.s.seriesId);
+
     let sourceLabel;
-    if (display.s.verified) sourceLabel = 'verified';
-    else if (display.s.seriesId) sourceLabel = 'needs review';
+    if (seriesIsVerified) sourceLabel = 'verified';
+    else if (seriesNeedsReview) sourceLabel = 'needs review';
     else if (display.s.fromHardcover) sourceLabel = 'from Hardcover · unsaved';
     else if (display.s.fromOpenLibrary) sourceLabel = 'from Open Library · unsaved';
     else sourceLabel = 'unverified';
@@ -237,8 +243,8 @@ export default function BookModal({ book, onClose, onOpenBook }) {
     seriesBlock = {
       name: seriesName,
       sourceLabel,
-      verified: !!display.s.verified,
-      needsReview: !display.s.verified && !!display.s.seriesId,
+      verified: seriesIsVerified,
+      needsReview: seriesNeedsReview,
       dots,
       readCount,
       totalBooks,
@@ -268,7 +274,13 @@ export default function BookModal({ book, onClose, onOpenBook }) {
             <BookCover title={display.t} author={display.a} coverUrl={display.coverUrl} eager />
           </div>
           <div className="book-modal-info">
-            {display.g && <div className="book-modal-genre">{display.g}</div>}
+            {(() => {
+              const oracleGenres = state.genresByBookId?.[display.bookId];
+              const genreLabel = (oracleGenres && oracleGenres.length > 0)
+                ? oracleGenres[0].name
+                : display.g;
+              return genreLabel ? <div className="book-modal-genre">{genreLabel}</div> : null;
+            })()}
             <h2 className="book-modal-title">{display.t}</h2>
             <div className="book-modal-author">{display.a}</div>
             {liveRating > 0 && (
@@ -288,7 +300,7 @@ export default function BookModal({ book, onClose, onOpenBook }) {
                 <span className="level-pill">depth {'●'.repeat(display.p)}{'○'.repeat(5 - display.p)}</span>
               )}
               {display.pp && <span className="level-pill">📄 {display.pp} pages</span>}
-              {display.verified && (
+              {(display.status === 'verified' || display.status === 'oracle_categorized') && (
                 <span
                   className="level-pill"
                   style={{ background: 'rgba(176, 140, 63, 0.18)', borderColor: 'var(--gilt)', color: 'var(--gilt-bright)' }}

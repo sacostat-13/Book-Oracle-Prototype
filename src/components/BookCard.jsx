@@ -11,13 +11,19 @@ export default function BookCard({ book, reason, onClick }) {
   const label = inLib ? '✓ In Library' : inNext ? '✓ Claimed' : 'Read this one next';
   const btnClass = inLib ? 'in-library' : inNext ? 'picked' : '';
 
+  // v0.15 phase 2.5: prefer Oracle genre over legacy b.g for the eyebrow tag.
+  const oracleGenres = state.genresByBookId?.[book.bookId];
+  const genreLabel = (oracleGenres && oracleGenres.length > 0)
+    ? oracleGenres[0].name
+    : book.g;
+
   return (
     <div className="card" onClick={onClick}>
       <div className="cover">
         <BookCover title={book.t} author={book.a} coverUrl={book.coverUrl} />
       </div>
-      {book.g && <div className="card-tag">{book.g}</div>}
-      {book.verified && (
+      {genreLabel && <div className="card-tag">{genreLabel}</div>}
+      {(book.status === 'verified' || book.status === 'oracle_categorized') && (
         <div
           className="card-verified"
           title="Curated · verified by our editors"

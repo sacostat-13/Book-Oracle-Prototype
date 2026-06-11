@@ -106,7 +106,7 @@ export default function App() {
   switch (route.name) {
     case 'wishlist': page = <Wishlist onOpenBook={openBook} />; break;
     case 'library': page = <Library onOpenBook={openBook} />; break;
-    case 'read-next': page = <ReadNext />; break;
+    case 'read-next': page = <ReadNext onOpenBook={openBook} />; break;
     case 'profile': page = <Profile />; break;
     case 'about': page = <About />; break;
     case 'oracle': page = <OracleFork />; break;

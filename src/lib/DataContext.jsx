@@ -29,6 +29,10 @@ const defaultState = {
   // and kept in sync by addCategoryToBook / removeCategoryFromBook.
   // Books not in this map have no categories (empty array, not null).
   categoriesByBookId: {},
+  // v0.15 phase 2.3: canonical genre taxonomy. keyed by book_id (uuid) →
+  // array of { genreId, name, normalizedName, source, usageCount, assignedBySource }.
+  // Global (not user-scoped). Populated from book_genres_view on load.
+  genresByBookId: {},
 };
 
 const DataContext = createContext(null);
@@ -61,6 +65,9 @@ function loadLocal() {
       readNext: dedupeBooks(parsed.readNext || []),
       // v0.12: guest-mode categories live in localStorage too
       categoriesByBookId: parsed.categoriesByBookId || {},
+      // v0.15 phase 2.3: genres are globally loaded on sign-in; for guests
+      // they remain empty (genres require Supabase access).
+      genresByBookId: {},
     };
   } catch {
     return { ...defaultState };
@@ -79,8 +86,15 @@ function bookRowToClient(b, extra = {}) {
         name: b.series.name,
         n: b.position_in_series || null,
         total: b.series.total_books || null,
-        verified: b.series.verified || false,
-        status: b.series.status || 'unknown',
+        // v0.15: status replaces verified. 'oracle_categorized' counts as verified in the UI.
+        status: b.series.status || 'unreviewed',
+        verifiedSource: b.series.verified_source || null,
+        verifiedAt: b.series.verified_at || null,
+        verifiedBy: b.series.verified_by || null,
+        // v0.14: series.status was renamed to publication_status. Old API rows
+        // may still have `status` populated with publication state during the
+        // brief transition; fall back to it if publication_status is null.
+        publicationStatus: b.series.publication_status || 'unknown',
         seriesId: b.series.id,
         fromHardcover: b.series.source === 'hardcover',
         fromOpenLibrary: b.series.source === 'openlibrary',
@@ -97,11 +111,23 @@ function bookRowToClient(b, extra = {}) {
     coverUrl: b.cover_url || undefined,
     isbn: b.isbn || undefined,
     s: series,
-    verified: b.verified || false,
+    // v0.15: status replaces verified. 'oracle_categorized' counts as verified in the UI.
+    status: b.status || 'unreviewed',
+    verifiedSource: b.verified_source || null,
+    verifiedAt: b.verified_at || null,
+    verifiedBy: b.verified_by || null,
     source: b.source,
     bookId: b.id,
     ...extra,
   };
+}
+
+// v0.15: helper for UI "verified" checks. Both 'verified' and 'oracle_categorized'
+// render as verified (gilt ☩). 'incomplete', 'unreviewed', 'flagged' don't.
+// Use this everywhere we used to check `book.verified`.
+export function isBookVerified(bookOrSeries) {
+  const s = bookOrSeries?.status;
+  return s === 'verified' || s === 'oracle_categorized';
 }
 
 // v0.12: take a list of book_categories_view rows (with bookId + category
@@ -138,6 +164,36 @@ function rollupCategories(rows) {
   for (const bookId of Object.keys(map)) {
     out[bookId] = Object.values(map[bookId]).sort((a, b) => {
       if (a.verified !== b.verified) return a.verified ? -1 : 1;
+      return a.name.localeCompare(b.name);
+    });
+  }
+  return out;
+}
+
+// v0.15 phase 2.3: roll up book_genres_view rows into { bookId → [genres] }.
+// Each genre row: { genreId, name, normalizedName, source, usageCount, assignedBySource }.
+// Sorted by usage_count desc then alpha — most-used genres surface first.
+function rollupGenres(rows) {
+  const map = {};
+  for (const r of rows) {
+    const key = r.book_id;
+    if (!map[key]) map[key] = {};
+    const gKey = r.genre_id;
+    if (!map[key][gKey]) {
+      map[key][gKey] = {
+        genreId: r.genre_id,
+        name: r.genre_name,
+        normalizedName: r.normalized_name,
+        source: r.genre_source,
+        usageCount: r.usage_count,
+        assignedBySource: r.assigned_by_source,
+      };
+    }
+  }
+  const out = {};
+  for (const bookId of Object.keys(map)) {
+    out[bookId] = Object.values(map[bookId]).sort((a, b) => {
+      if (b.usageCount !== a.usageCount) return b.usageCount - a.usageCount;
       return a.name.localeCompare(b.name);
     });
   }
@@ -306,6 +362,35 @@ async function loadFromSupabase(userId) {
     categoriesByBookId = rollupCategories(merged);
   }
 
+  // v0.15 phase 2.3: load canonical genres for all books in wishlist + library.
+  // book_genres_view is globally readable (no user scoping). We chunk the same
+  // allBookIds list — genres use the same 50-id chunking strategy as categories.
+  let genresByBookId = {};
+  if (allBookIds.length > 0) {
+    const GENRE_CHUNK = 50;
+    const genreChunks = [];
+    for (let i = 0; i < allBookIds.length; i += GENRE_CHUNK) {
+      genreChunks.push(allBookIds.slice(i, i + GENRE_CHUNK));
+    }
+    const genreResults = await Promise.all(
+      genreChunks.map((chunk) =>
+        supabase
+          .from('book_genres_view')
+          .select('book_id, genre_id, genre_name, normalized_name, genre_source, usage_count, assigned_by_source')
+          .in('book_id', chunk)
+      )
+    );
+    const allGenreRows = [];
+    for (const r of genreResults) {
+      if (r.error) {
+        console.warn('book_genres_view chunk failed', r.error);
+        continue;
+      }
+      allGenreRows.push(...(r.data || []));
+    }
+    genresByBookId = rollupGenres(allGenreRows);
+  }
+
   return {
     ...defaultState,
     onboarded: !!profile.preferences?.onboarded,
@@ -322,6 +407,7 @@ async function loadFromSupabase(userId) {
     shelfSortMode: profile.preferences?.shelfSortMode || 'recent',
     oracleMode: profile.preferences?.oracleMode || 'wishlist',
     categoriesByBookId,
+    genresByBookId,
   };
 }
 
@@ -410,6 +496,18 @@ export function DataProvider({ children }) {
           : book.fromGoodreads
             ? 'goodreads_import'
             : source;
+      // v0.15: derive review status from client signals. needsReview is set
+      // by bookLookup when all APIs missed (low-confidence add). Curated seed
+      // path passes source='curated', which we promote to status='verified' +
+      // verified_source='curated_seed'.
+      const resolvedStatus = resolvedSource === 'curated'
+        ? 'verified'
+        : book.needsReview
+          ? 'incomplete'
+          : 'unreviewed';
+      const resolvedVerifiedSource = resolvedSource === 'curated'
+        ? 'curated_seed'
+        : null;
       const args = {
         _title: book.t,
         _author: book.a || null,
@@ -424,7 +522,8 @@ export function DataProvider({ children }) {
         _complexity: book.c || null,
         _depth: book.p || null,
         _source: resolvedSource,
-        _verified: false,
+        _status: resolvedStatus,
+        _verified_source: resolvedVerifiedSource,
         _metadata: {
           amazonUrl: book.amazonUrl || null,
           manuallyAdded: book.manuallyAdded || false,
@@ -477,7 +576,7 @@ export function DataProvider({ children }) {
     const seedBooks = ALL_BOOKS.filter((b) => !libraryKeys.has(bookKey(b)));
 
     if (!user) {
-      setState((s) => ({ ...s, wishlist: seedBooks.map((b) => ({ ...b, verified: true, source: 'curated' })) }));
+      setState((s) => ({ ...s, wishlist: seedBooks.map((b) => ({ ...b, status: 'verified', verifiedSource: 'curated_seed', source: 'curated' })) }));
       return;
     }
 
@@ -490,7 +589,7 @@ export function DataProvider({ children }) {
         .insert({ user_id: user.id, book_id: bookId })
         .select()
         .single();
-      if (!error) linked.push({ ...b, bookId, verified: true, source: 'curated' });
+      if (!error) linked.push({ ...b, bookId, status: 'verified', verifiedSource: 'curated_seed', source: 'curated' });
     }
     setState((s) => ({ ...s, wishlist: dedupeBooks([...s.wishlist, ...linked]) }));
   }, [state.onboarded, state.wishlist, state.library, user, upsertBookOnServer]);
@@ -1024,6 +1123,29 @@ export function DataProvider({ children }) {
 
   // ---------- Profile / misc mutations (unchanged) ----------
 
+  // v0.15 phase 2.3: called by the Oracle categorization service (phase 2.4)
+  // after it assigns genres to a batch of books. `assignments` is an array of
+  // { bookId, genres: [{ genreId, name, normalizedName, source, usageCount, assignedBySource }] }.
+  // Merges new genre assignments into state.genresByBookId so the UI updates
+  // immediately without a full reload.
+  const setBookGenres = useCallback((assignments) => {
+    setState((s) => {
+      const updated = { ...s.genresByBookId };
+      for (const { bookId, genres } of assignments) {
+        // Merge: keep existing genres, add/overwrite with new ones (by genreId).
+        const existing = updated[bookId] || [];
+        const existingMap = {};
+        for (const g of existing) existingMap[g.genreId] = g;
+        for (const g of genres) existingMap[g.genreId] = g;
+        updated[bookId] = Object.values(existingMap).sort((a, b) => {
+          if (b.usageCount !== a.usageCount) return b.usageCount - a.usageCount;
+          return a.name.localeCompare(b.name);
+        });
+      }
+      return { ...s, genresByBookId: updated };
+    });
+  }, []);
+
   const setProfile = useCallback((patch) => {
     setState((s) => ({ ...s, profile: { ...s.profile, ...patch } }));
   }, []);
@@ -1080,7 +1202,7 @@ export function DataProvider({ children }) {
   const loadVault = useCallback(async () => {
     if (vault) return vault;
     if (!user) {
-      const v = ALL_BOOKS.map((b) => ({ ...b, verified: true, source: 'curated' }));
+      const v = ALL_BOOKS.map((b) => ({ ...b, status: 'verified', verifiedSource: 'curated_seed', source: 'curated' }));
       setVault(v);
       return v;
     }
@@ -1088,11 +1210,11 @@ export function DataProvider({ children }) {
       .from('books')
       .select('*, position_in_series, series:series(*)')
       .eq('source', 'curated')
-      .eq('verified', true)
+      .eq('status', 'verified')
       .order('title', { ascending: true });
     if (error || !data) {
       console.error('Vault fetch failed', error);
-      const v = ALL_BOOKS.map((b) => ({ ...b, verified: true, source: 'curated' }));
+      const v = ALL_BOOKS.map((b) => ({ ...b, status: 'verified', verifiedSource: 'curated_seed', source: 'curated' }));
       setVault(v);
       return v;
     }
@@ -1122,6 +1244,8 @@ export function DataProvider({ children }) {
     removeCategoryFromBook,
     searchCategories,
     getCategoriesForBook,
+    // v0.15 phase 2.3: genre mutations (called by Oracle categorization service)
+    setBookGenres,
     setProfile,
     setOnboarded,
     setShelfSortMode,
