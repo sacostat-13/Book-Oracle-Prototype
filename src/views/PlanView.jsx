@@ -6,6 +6,7 @@ export default function PlanView() {
   const { state, addToReadNext, markAsRead, setCurrentPlan, showToast } = useData();
   const { go } = useRouter();
   const plan = state.currentPlan;
+  const { genresByBookId } = state;
 
   if (!plan) {
     return (
@@ -90,6 +91,14 @@ export default function PlanView() {
                   )}
                 </div>
                 <div className="plan-reason">{b.reason || found.d || ''}</div>
+                    {(() => {
+                      const genres = genresByBookId[found.bookId];
+                      return genres && genres.length > 0 ? (
+                        <div className="li-genres" style={{ marginTop: '0.5rem' }}>
+                          {genres.map((g) => <span key={g.genreId} className="li-genre-pill" title={g.description || undefined}>{g.name}</span>)}
+                        </div>
+                      ) : null;
+                    })()}
                 <div style={{ marginTop: '0.8rem', display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
                   {isRead ? (
                     <span className="level-pill" style={{ background: 'var(--moss)', color: 'var(--paper)', borderColor: 'var(--moss)' }}>

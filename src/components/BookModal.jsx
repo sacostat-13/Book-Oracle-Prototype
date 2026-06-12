@@ -276,10 +276,19 @@ export default function BookModal({ book, onClose, onOpenBook }) {
           <div className="book-modal-info">
             {(() => {
               const oracleGenres = state.genresByBookId?.[display.bookId];
-              const genreLabel = (oracleGenres && oracleGenres.length > 0)
-                ? oracleGenres[0].name
-                : display.g;
-              return genreLabel ? <div className="book-modal-genre">{genreLabel}</div> : null;
+              const genres = (oracleGenres && oracleGenres.length > 0)
+                ? oracleGenres
+                : (display.g ? [{ name: display.g, description: null }] : []);
+              if (genres.length === 0) return null;
+              return (
+                <div className="book-modal-genres">
+                  {genres.map((g) => (
+                    <span key={g.name} className="book-modal-genre" title={g.description || undefined}>
+                      {g.name}
+                    </span>
+                  ))}
+                </div>
+              );
             })()}
             <h2 className="book-modal-title">{display.t}</h2>
             <div className="book-modal-author">{display.a}</div>

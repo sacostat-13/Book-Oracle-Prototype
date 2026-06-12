@@ -30,9 +30,12 @@ const defaultState = {
   // Books not in this map have no categories (empty array, not null).
   categoriesByBookId: {},
   // v0.15 phase 2.3: canonical genre taxonomy. keyed by book_id (uuid) →
-  // array of { genreId, name, normalizedName, source, usageCount, assignedBySource }.
+  // array of { genreId, name, normalizedName, source, usageCount, assignedBySource, description }.
   // Global (not user-scoped). Populated from book_genres_view on load.
   genresByBookId: {},
+  // Full genre catalog: [{ id, name, normalizedName, source, usageCount, description }]
+  // Sorted alphabetically. Used by PlanCreate genre select and genre browsers.
+  genres: [],
 };
 
 const DataContext = createContext(null);
@@ -68,6 +71,7 @@ function loadLocal() {
       // v0.15 phase 2.3: genres are globally loaded on sign-in; for guests
       // they remain empty (genres require Supabase access).
       genresByBookId: {},
+      genres: [],
     };
   } catch {
     return { ...defaultState };
@@ -171,7 +175,7 @@ function rollupCategories(rows) {
 }
 
 // v0.15 phase 2.3: roll up book_genres_view rows into { bookId → [genres] }.
-// Each genre row: { genreId, name, normalizedName, source, usageCount, assignedBySource }.
+// Each genre row: { genreId, name, normalizedName, source, usageCount, description, assignedBySource }.
 // Sorted by usage_count desc then alpha — most-used genres surface first.
 function rollupGenres(rows) {
   const map = {};
@@ -186,6 +190,7 @@ function rollupGenres(rows) {
         normalizedName: r.normalized_name,
         source: r.genre_source,
         usageCount: r.usage_count,
+        description: r.genre_description || null,
         assignedBySource: r.assigned_by_source,
       };
     }
@@ -376,7 +381,7 @@ async function loadFromSupabase(userId) {
       genreChunks.map((chunk) =>
         supabase
           .from('book_genres_view')
-          .select('book_id, genre_id, genre_name, normalized_name, genre_source, usage_count, assigned_by_source')
+          .select('book_id, genre_id, genre_name, normalized_name, genre_source, usage_count, genre_description, assigned_by_source')
           .in('book_id', chunk)
       )
     );
@@ -389,6 +394,24 @@ async function loadFromSupabase(userId) {
       allGenreRows.push(...(r.data || []));
     }
     genresByBookId = rollupGenres(allGenreRows);
+  }
+
+  // Load full genre catalog (for PlanCreate select, genre browser, descriptions).
+  // Sorted alphabetically by name.
+  let genres = [];
+  const { data: genreRows, error: genreErr } = await supabase
+    .from('genres')
+    .select('id, name, normalized_name, source, usage_count, description')
+    .order('name', { ascending: true });
+  if (!genreErr && genreRows) {
+    genres = genreRows.map((g) => ({
+      id: g.id,
+      name: g.name,
+      normalizedName: g.normalized_name,
+      source: g.source,
+      usageCount: g.usage_count,
+      description: g.description || null,
+    }));
   }
 
   return {
@@ -408,6 +431,7 @@ async function loadFromSupabase(userId) {
     oracleMode: profile.preferences?.oracleMode || 'wishlist',
     categoriesByBookId,
     genresByBookId,
+    genres,
   };
 }
 

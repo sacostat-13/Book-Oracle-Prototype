@@ -189,25 +189,48 @@ Return ONLY valid JSON in this exact format:
   ]
 }`;
       } else {
+        // Filter catalog by Oracle genre (genresByBookId) first, fall back to b.g for untagged books.
+        const { genresByBookId } = state;
+        const matchingBooks = catalogSource.filter((b) => {
+          const genres = genresByBookId[b.bookId] || [];
+          if (genres.length > 0) return genres.some((g) => g.name === target);
+          return b.g === target; // legacy fallback
+        });
+
+        const matchingList = matchingBooks
+          .map((b) => `${b.t} | ${b.a} | c=${b.c || '?'} | p=${b.p || '?'} | ${b.d || ''}`)
+          .join('\n');
+
+        const relatedList = catalogSource
+          .filter((b) => {
+            const genres = genresByBookId[b.bookId] || [];
+            return genres.length > 0
+              ? genres.every((g) => g.name !== target)
+              : b.g !== target;
+          })
+          .slice(0, 30)
+          .map((b) => `${b.t} | ${b.a} | ${b.g || 'unknown'}`)
+          .join('\n');
+
+        const catalogNote = matchingBooks.length > 0
+          ? `Available books from the curated catalog matching this genre (title | author | prose complexity 1-5 | genre depth 1-5 | description):\n${matchingList}\n\nAlso available from related genres:\n${relatedList}`
+          : `The curated catalog does not contain books tagged as "${target}". You MUST recommend books from outside the catalog that genuinely belong to this genre. Do NOT fall back to gothic, horror, or unrelated genres just because they appear in the catalog below.\n\nCatalog shown for context only (do not use these for the plan):\n${relatedList}`;
+
         prompt = `A reader at level ${state.profile.readingLevel || 1}/5 wants to get deeply experienced in the genre: "${target}". Timeline: ${timeline} months.
 
 Books they've read recently:
 ${libraryContext}
 
-Available books from the curated catalog matching this genre (title | author | prose complexity 1-5 | genre depth 1-5 | description):
-${catalogSource.filter((b) => b.g === target).map((b) => `${b.t} | ${b.a} | c=${b.c} | p=${b.p} | ${b.d || ''}`).join('\n')}
+${catalogNote}
 
-Also available from related genres:
-${catalogSource.filter((b) => b.g !== target).slice(0, 30).map((b) => `${b.t} | ${b.a} | ${b.g}`).join('\n')}
-
-Build a ${timeline}-month tour of this genre. Start with the most accessible foundational works and progress to deeper, more challenging, or more representative texts. One book per month.
+Build a ${timeline}-month tour of this genre. Start with the most accessible foundational works and progress to deeper, more challenging, or more representative texts. One book per month. Every recommended book MUST belong to the "${target}" genre.
 
 Return ONLY valid JSON in this exact format:
 {
   "title": "short evocative title for this plan",
   "intro": "one sentence explaining the journey",
   "books": [
-    {"month": 1, "title": "exact title from list", "reason": "why this book at this stage"}
+    {"month": 1, "title": "exact title", "author": "author name", "reason": "why this book at this stage"}
   ]
 }`;
       }
@@ -308,9 +331,17 @@ Return ONLY valid JSON in this exact format:
             <select value={target || ''} onChange={(e) => setTarget(e.target.value || null)} style={{ marginBottom: '1rem' }}>
               <option value="">— Choose a genre —</option>
               {(state.genres || []).slice().sort((a, b) => a.name.localeCompare(b.name)).map((g) => (
-                <option key={g.id} value={g.name}>{g.name}</option>
+                <option key={g.id} value={g.name} title={g.description || undefined}>{g.name}</option>
               ))}
             </select>
+            {target && (() => {
+              const g = (state.genres || []).find((x) => x.name === target);
+              return g?.description ? (
+                <p style={{ fontStyle: 'italic', color: 'var(--paper-aged)', fontSize: '0.9rem', marginBottom: '1.5rem', lineHeight: 1.6 }}>
+                  {g.description}
+                </p>
+              ) : null;
+            })()}
           </>
         )}
 

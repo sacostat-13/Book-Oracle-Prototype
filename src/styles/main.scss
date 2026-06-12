@@ -1683,3 +1683,59 @@
     font-style: italic;
     padding: 0.1rem 0;
   }
+
+  /* ============ MULTI-GENRE PILLS (v0.15) ============ */
+
+  /* BookCard: wrap multiple tag pills */
+  .card-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+    margin-bottom: 0.8rem;
+  }
+  /* card-tag already exists — keep but allow it inside card-tags too */
+  .card-tags .card-tag {
+    margin-bottom: 0;
+  }
+
+  /* BookModal: genre pills row */
+  .book-modal-genres {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    margin-bottom: 0.5rem;
+  }
+  /* Override existing single book-modal-genre to work as a pill */
+  .book-modal-genres .book-modal-genre,
+  .book-modal-genre {
+    display: inline-block;
+    font-family: 'Special Elite', monospace;
+    font-size: 0.65rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--gilt);
+    border: 1px solid rgba(176, 140, 63, 0.35);
+    padding: 0.2rem 0.5rem;
+    border-radius: 2px;
+    cursor: default;
+  }
+
+  /* List views: genre pills below author line */
+  .li-genres {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+    margin-top: 0.3rem;
+  }
+  .li-genre-pill {
+    font-family: 'Special Elite', monospace;
+    font-size: 0.58rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--gilt);
+    border: 1px solid rgba(176, 140, 63, 0.3);
+    padding: 0.15rem 0.4rem;
+    border-radius: 2px;
+    opacity: 0.85;
+    cursor: default;
+  }

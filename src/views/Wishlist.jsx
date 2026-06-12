@@ -50,7 +50,7 @@ export default function Wishlist({ onOpenBook }) {
         else map.set(g.normalizedName, { name: g.name, normalizedName: g.normalizedName, count: 1 });
       }
     }
-    return Array.from(map.values()).sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
+    return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name));
   }, [wl, genresByBookId]);
 
   // --- Category dropdown options ---
@@ -285,6 +285,14 @@ export default function Wishlist({ onOpenBook }) {
                       {b.manuallyAdded && <> · <span style={{ color: 'var(--gilt)', opacity: 0.7 }}>added by you</span></>}
                       {inNext && <> · <span style={{ color: 'var(--gilt-bright)' }}>in Read Next</span></>}
                     </div>
+                    {(() => {
+                      const genres = genresByBookId[b.bookId];
+                      return genres && genres.length > 0 ? (
+                        <div className="li-genres">
+                          {genres.map((g) => <span key={g.genreId} className="li-genre-pill" title={g.description || undefined}>{g.name}</span>)}
+                        </div>
+                      ) : null;
+                    })()}
                   </div>
                   <div className="li-actions">
                     {inNext ? (
