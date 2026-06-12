@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useData } from '../lib/DataContext';
 import { useRouter } from '../lib/RouterContext';
-import { ALL_BOOKS, GENRES, bookKey, findBookByTitle } from '../lib/bookHelpers';
+import { ALL_BOOKS, bookKey, findBookByTitle } from '../lib/bookHelpers';
 import { fetchSeriesBooks } from '../lib/enrichmentService';
 import { callClaude, parseJSONResponse } from '../lib/claudeApi';
 import { useI18n, langDirective } from '../lib/I18nContext';
@@ -307,8 +307,8 @@ Return ONLY valid JSON in this exact format:
             <h2 className="onb-title" style={{ fontSize: '1.6rem', marginBottom: '1.5rem' }}>Explore:</h2>
             <select value={target || ''} onChange={(e) => setTarget(e.target.value || null)} style={{ marginBottom: '1rem' }}>
               <option value="">— Choose a genre —</option>
-              {GENRES.map((g) => (
-                <option key={g} value={g}>{g}</option>
+              {(state.genres || []).slice().sort((a, b) => a.name.localeCompare(b.name)).map((g) => (
+                <option key={g.id} value={g.name}>{g.name}</option>
               ))}
             </select>
           </>
