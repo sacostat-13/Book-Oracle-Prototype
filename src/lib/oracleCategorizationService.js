@@ -51,13 +51,19 @@ function buildPrompt(books, existingGenres) {
 
   const bookList = books
     .map((b, i) => {
-      const parts = [`${i + 1}. Title: "${b.title}"`];
-      if (b.author) parts.push(`   Author: ${b.author}`);
-      if (b.g) parts.push(`   Auto-genre hint: ${b.g}`);
-      if (b.description) {
-        const desc = b.description.length > 300
-          ? b.description.slice(0, 300) + '…'
-          : b.description;
+      // Client book shape uses t/a/d/g (short keys from bookRowToClient)
+      const title = b.t || b.title;
+      const author = b.a || b.author;
+      const description = b.d || b.description;
+      const genreHint = b.g;
+
+      const parts = [`${i + 1}. Title: "${title || 'Unknown'}"`];
+      if (author) parts.push(`   Author: ${author}`);
+      if (genreHint) parts.push(`   Auto-genre hint: ${genreHint}`);
+      if (description) {
+        const desc = description.length > 300
+          ? description.slice(0, 300) + '…'
+          : description;
         parts.push(`   Description: ${desc}`);
       }
       return parts.join('\n');
@@ -93,7 +99,7 @@ RESPONSE FORMAT (JSON array, one object per book, in the same order as input):
 }
 
 async function resolveGenreId(name) {
-  const { data, error } = await supabase.rpc('upsert_genre', { _name: name });
+  const { data, error } = await supabase.rpc('upsert_genre', { _raw_name: name });
   if (error || !data || data.length === 0) {
     console.warn('upsert_genre failed for', name, error);
     return null;
@@ -171,13 +177,31 @@ export async function runOracleCategorization({ books, onProgress, onBatchResult
           ? item.genres.slice(0, 3)
           : [];
 
-        const genreIds = (
-          await Promise.all(genreNames.map(resolveGenreId))
+        const resolvedGenres = (
+          await Promise.all(
+            genreNames.map(async (name) => {
+              const id = await resolveGenreId(name);
+              if (!id) return null;
+              const existing = existingGenres.find((g) => g.id === id);
+              if (!existing) {
+                existingGenres.push({ id, name, normalized_name: name.toLowerCase().replace(/[^a-z0-9]/g, ''), source: 'oracle', usage_count: 0, description: null });
+              }
+              return {
+                genreId: id,
+                name: existing?.name || name,
+                normalizedName: existing?.normalized_name || name.toLowerCase().replace(/[^a-z0-9]/g, ''),
+                source: existing?.source || 'oracle',
+                usageCount: existing?.usage_count || 0,
+                description: existing?.description || null,
+                assignedBySource: 'oracle',
+              };
+            })
+          )
         ).filter(Boolean);
 
-        if (genreIds.length > 0) {
-          await assignGenresToBook(book.bookId, genreIds);
-          batchAssignments.push({ bookId: book.bookId, genres: genreNames });
+        if (resolvedGenres.length > 0) {
+          await assignGenresToBook(book.bookId, resolvedGenres.map((g) => g.genreId));
+          batchAssignments.push({ bookId: book.bookId, genres: resolvedGenres });
         }
 
         processed++;
