@@ -4,7 +4,7 @@ A reading companion — wishlist, library, reading plans, and an AI-powered "ora
 for book discovery. Built with React + Vite + SCSS, backed by Supabase for auth
 and cross-device sync, and Netlify Functions for API proxying.
 
-> Current version: **v0.15** — see [Releases](#releases) below for changelog.
+> Current version: **v0.16** — see [Releases](#releases) below for changelog.
 > Upgrading from an earlier version? Check the matching `MIGRATION_*.md` / `UPDATE_*.md`.
 
 ---
@@ -138,7 +138,7 @@ oracle/
     │   ├── booksData.js            Bundled 280-book catalog
     │   ├── bookHelpers.js          bookKey, genres, palettes
     │   ├── bookLookup.js           PRH → Hardcover → OL lookup chain (parallel + merge)
-    │   ├── hardcoverService.js     GraphQL client (via /netlify/functions/hardcover)
+    │   ├── hardcoverService.js     GraphQL client (via /netlify/functions/hardcover); omnibus filter (v0.16)
     │   ├── prhService.js           PRH client (via /netlify/functions/prh)
     │   ├── claudeApi.js            AI client (via /netlify/functions/claude)
     │   ├── coverService.js         OL + Google Books cover lookup
@@ -286,6 +286,21 @@ Free to refactor into partials when needed.
 ---
 
 ## Releases
+
+### v0.16 — Series navigation fixed
+
+Addresses issues [#7](https://github.com/sacostat-13/Book-Oracle-Prototype/issues/7) and [#8](https://github.com/sacostat-13/Book-Oracle-Prototype/issues/8). Took five rounds of fixes once the real root causes were identified from live Hardcover API responses.
+
+User-facing changes:
+
+- **Series dot count is now correct and stable.** *Parable of the Sower* (Earthseed, 2 main books) was showing 10, 11, or 14 dots depending on timing. Root causes: (1) Hardcover’s `books_count` includes novellas and short stories; `primary_books_count` is the right field. (2) The modal was using fetched entry counts and position numbers as a fallback for the total, both of which reflect all numbered entries not just the main sequence. (3) An invalid `primary_book: { _eq: true }` GraphQL filter (not a real Hardcover field) was silently breaking the series query and returning 1 result. Fixed by flowing `primary_books_count` — set as `s.total` on every entry returned by `hardcoverFetchSeriesBooks` — as the single source of truth for dot count in the modal.
+- **Bulk import returns the correct individual book, not a study guide or compilation.** Searching for *The Alchemyst – Michael Scott* was returning “Works by Michael Scott (Study Guide)” as the top hit, and “Michael Scott’s: The Alchemyst, The Magician…” as the second. Root cause: Typesense’s text-match scoring favours records that mention the author name and title many times, which study guides and compilations do by definition. Fixed with a `scoreHit()` function that reads Hardcover’s own `document.compilation` flag (primary signal), applies keyword/comma/possessive-colon heuristics for edge cases, and uses `users_count` as a popularity tiebreaker so the real book (762 readers) beats the study guide (1 reader) when title matching is equal.
+
+Under the hood:
+
+- `hardcoverService.js` (`hardcoverSearch`): new `isCompilation(doc)` function checks `doc.compilation`, keyword regex, 3+ commas in title, and author-possessive-colon pattern. `scoreHit()` applies `-10` for compilations, `+2` for title match, `+Math.min(users_count/1000, 1)` for popularity. Best score wins.
+- `hardcoverService.js` (`hardcoverFetchSeriesBooks`): removed invalid `primary_book: { _eq: true }` GraphQL filter. JS-side filter now keeps only entries with `position <= primary_books_count`, excluding novellas/short stories that Hardcover numbers but doesn’t count as primary. `primaryTotal` (from `series.primary_books_count`) is set as `s.total` on every returned entry.
+- `BookModal.jsx` (`totalBooks`): reads `s.total` from the first fetched series entry (`totalFromSeriesFetch`) as the primary source, falling back to `display.s.total` (DB stored value) then `totalKnown`. Position numbers and entry counts are never used as the series total.
 
 ### v0.15 — The Oracle learns your genres
 

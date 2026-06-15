@@ -148,15 +148,32 @@ export async function hardcoverSearch(query, author) {
   const hits = results?.hits || results?.results || [];
   if (!hits.length) return null;
 
-  // Pick the first hit, prefer ones whose document.title roughly matches
+  // Pick the best hit.
+  // Hardcover sets document.compilation=true on box sets/collected editions.
+  // Heuristics catch edge cases. Popularity breaks ties between equal scores.
   const targetTitle = cleanTitle(query).toLowerCase();
-  let bestHit = hits[0];
-  for (const h of hits) {
+  const COMPILATION_KW_RX = /\b(omnibus|box\s*set|complete\s+collect|books?\s+\d+[-\u2013\u2014]\d+|volumes?\s+\d+[-\u2013\u2014]\d+|complet[ea]|anthology)\b/i;
+  function isCompilation(doc) {
+    if (doc?.compilation === true) return true;
+    const title = doc?.title || '';
+    if (COMPILATION_KW_RX.test(title)) return true;
+    if ((title.match(/,/g) || []).length >= 3) return true;
+    if (/^[^:]+\'s\s*:/i.test(title)) return true;
+    return false;
+  }
+  function scoreHit(h) {
     const doc = h.document || h;
-    if (doc?.title && doc.title.toLowerCase().includes(targetTitle)) {
-      bestHit = h;
-      break;
-    }
+    const title = doc?.title || '';
+    const titleMatch = title.toLowerCase().includes(targetTitle);
+    const compilation = isCompilation(doc);
+    const popularity = doc?.users_count || doc?.ratings_count || 0;
+    return (compilation ? -10 : 0) + (titleMatch ? 2 : 0) + Math.min(popularity / 1000, 1);
+  }
+  let bestHit = hits[0];
+  let bestScore = scoreHit(hits[0]);
+  for (const h of hits.slice(1)) {
+    const s = scoreHit(h);
+    if (s > bestScore) { bestScore = s; bestHit = h; }
   }
 
   // Pull the book ID and fetch full record for clean data
@@ -222,22 +239,24 @@ export async function hardcoverFetchSeriesBooks(seriesName) {
   const hits = searchData?.search?.results?.hits || searchData?.search?.results?.results || [];
   if (!hits.length) return [];
 
-  // Pick the hit whose name most closely matches (case-insensitive substring)
-  const target = seriesName.toLowerCase();
+  // Pick the series hit: exact name match beats substring match.
+  const target = seriesName.toLowerCase().trim();
   let bestHit = hits[0];
+  let bestSeriesScore = 0;
   for (const h of hits) {
     const doc = h.document || h;
-    if (doc?.name && doc.name.toLowerCase().includes(target)) {
-      bestHit = h;
-      break;
-    }
+    const name = (doc?.name || '').toLowerCase().trim();
+    const score = name === target ? 2 : name.includes(target) ? 1 : 0;
+    if (score > bestSeriesScore) { bestSeriesScore = score; bestHit = h; }
   }
   const bestDoc = bestHit.document || bestHit;
   const seriesId = bestDoc?.id;
   const resolvedName = bestDoc?.name;
   if (!seriesId) return [];
 
-  // Step 2: fetch the series's books in order
+  // Step 2: fetch the series books in order.
+  // primary_book: true excludes novellas, companion books, and special editions
+  // that inflate books_count. primary_books_count is the authoritative total.
   const data = await gql(
     `query GetSeries($id: Int!) {
        series(where: { id: { _eq: $id } }, limit: 1) {
@@ -255,19 +274,28 @@ export async function hardcoverFetchSeriesBooks(seriesName) {
   );
   const series = data?.series?.[0];
   if (!series?.book_series) return [];
-  return series.book_series
+  // primary_books_count is the authoritative main-sequence length.
+  // Filter to entries with a position <= primary_books_count to exclude
+  // novellas and short stories that Hardcover numbers but don't count as
+  // primary books (e.g. Earthseed has 14 numbered entries, primary=2).
+  // Fall back to all non-null-position entries if primary_books_count missing.
+  const primaryTotal = series.primary_books_count || null;
+  const primaryEntries = series.book_series.filter((bs) =>
+    bs.position != null && (primaryTotal == null || bs.position <= primaryTotal)
+  );
+  return primaryEntries
     .map((bs) => {
       const b = normalize(bs.book);
       if (!b) return null;
       if (b.s) {
         b.s.name = series.name || resolvedName;
         b.s.n = bs.position || b.s.n;
-        b.s.total = series.primary_books_count || series.books_count || b.s.total;
+        b.s.total = primaryTotal || b.s.total;
       } else {
         b.s = {
           name: series.name || resolvedName,
           n: bs.position || null,
-          total: series.primary_books_count || series.books_count || null,
+          total: primaryTotal || null,
           fromHardcover: true,
         };
       }

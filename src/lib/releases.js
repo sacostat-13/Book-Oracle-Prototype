@@ -16,9 +16,23 @@
 
 // The version label shown as "current" — keep in sync with package.json and
 // the README version line.
-export const CURRENT_VERSION = 'v0.15';
+export const CURRENT_VERSION = 'v0.16';
 
 export const RELEASES = [{
+    version: 'v0.16',
+    date: '2026-06-15',
+    titleEn: 'Series navigation fixed',
+    titleEs: 'Navegación de sagas corregida',
+    bodyEn: [
+      'Series navigation now shows the correct number of books in the main sequence. Previously, Parable of the Sower would show 10 or 14 dots instead of 2 because Hardcover counts novellas and short stories alongside the main books.',
+      'Bulk import no longer returns a study guide or multi-book compilation when you add an individual title. Adding “The Alchemyst” now reliably returns that book, not “Michael Scott’s: The Alchemyst, The Magician…”',
+    ],
+    bodyEs: [
+      'La navegación de sagas ahora muestra el número correcto de libros en la secuencia principal. Antes, La Parábola del Sembrador mostraba 10 o 14 puntos en lugar de 2, porque Hardcover cuenta novelas cortas y cuentos junto a los libros principales.',
+      'La importación masiva ya no devuelve una guía de estudio ni una compilación cuando agregás un título individual. Agregar “The Alchemyst” ahora devuelve ese libro de forma confiable.',
+    ],
+  },
+  {
     version: 'v0.15',
     date: '2026-06-11',
     titleEn: 'The Oracle learns your genres',

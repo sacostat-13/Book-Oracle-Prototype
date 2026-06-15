@@ -196,7 +196,18 @@ export default function BookModal({ book, onClose, onOpenBook }) {
     entries.sort((a, b) => (a.s?.n || 999) - (b.s?.n || 999));
 
     const totalKnown = entries.length;
-    const totalBooks = display.s.total || Math.max(totalKnown, display.s.n || totalKnown);
+    // Read primary_books_count from the fetched series entries (always set by
+    // hardcoverFetchSeriesBooks). Fall back to display.s.total (DB stored value).
+    // Never derive the total from entry counts or position numbers: Hardcover
+    // numbers novellas and short stories too, so those are always inflated.
+    const totalFromSeriesFetch = seriesBooks.length > 0
+      ? (seriesBooks.find((b) => b.s?.total)?.s?.total || null)
+      : null;
+    const totalBooks =
+      totalFromSeriesFetch ||
+      display.s.total ||
+      totalKnown ||
+      1;
     const readCount = entries.filter((e) => state.library.some((l) => bookKey(l) === bookKey(e))).length;
 
     const dots = [];
