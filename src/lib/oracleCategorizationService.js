@@ -15,6 +15,9 @@ import { supabase } from './supabase';
 import { callClaude, parseJSONResponse } from './claudeApi';
 
 const BATCH_SIZE = 20;
+// Statuses eligible for Oracle enrichment.
+// 'discovered' is intentionally excluded: those books haven't been added
+// to anyone's collection yet, so spending tokens on them isn't warranted.
 const UNVERIFIED_STATUSES = ['unreviewed', 'incomplete'];
 
 // ---------- helpers ----------

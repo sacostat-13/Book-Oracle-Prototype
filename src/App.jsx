@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useAuth } from './lib/AuthContext';
 import { useData } from './lib/DataContext';
 import { useRouter } from './lib/RouterContext';
@@ -64,6 +64,10 @@ export default function App() {
   const t = useT();
   const [modalBook, setModalBook] = useState(null);
   const [allowGuest, setAllowGuest] = useState(false);
+  // previewBook holds a book from search results that isn't in the collection yet.
+  // BookPage reads this ref when route.params.preview === 'true'.
+  const previewBookRef = useRef(null);
+  function setPreviewBook(book) { previewBookRef.current = book; }
 
   if (authLoading || loading) {
     return (
@@ -115,7 +119,7 @@ export default function App() {
     case 'oracle-similar': page = <OracleSimilar onOpenBook={openBook} />; break;
     case 'plan-create': page = <PlanCreate />; break;
     case 'plan-view': page = <PlanView />; break;
-    case 'book-page': page = <BookPage />; break;
+    case 'book-page': page = <BookPage previewBookRef={previewBookRef} />; break;
     case 'dashboard':
     default:
       page = <Dashboard onOpenBook={openBook} />;
@@ -123,7 +127,7 @@ export default function App() {
 
   return (
     <div className="app">
-      <Nav />
+      <Nav onPreviewBook={setPreviewBook} />
       <div className="container">{page}</div>
       {modalBook && (
         <BookModal

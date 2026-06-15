@@ -208,6 +208,55 @@ function normalizeSearchHit(hit) {
 }
 
 // Fetch a full book record by Hardcover book ID.
+// Search returning multiple results for the nav search dropdown.
+// Returns up to `limit` hits scored/sorted by relevance, non-compilation first.
+// Each result is a normalized book object (same shape as hardcoverSearch return).
+export async function hardcoverSearchMulti(query, limit = 6) {
+  if (!query || query.trim().length < 2) return [];
+  const q = cleanTitle(query.trim());
+  const data = await gql(
+    `query SearchBooks($q: String!, $type: String!) {
+       search(query: $q, query_type: $type, per_page: 10, page: 1) {
+         results
+       }
+     }`,
+    { q, type: 'Book' }
+  );
+  const results = data?.search?.results;
+  if (!results) return [];
+  const hits = results?.hits || results?.results || [];
+  if (!hits.length) return [];
+
+  const targetTitle = q.toLowerCase();
+  const COMPILATION_KW_RX = /\b(omnibus|box\s*set|complete\s+collect|books?\s+\d+[-\u2013\u2014]\d+|volumes?\s+\d+[-\u2013\u2014]\d+|complet[ea]|anthology)\b/i;
+  function isCompilation(doc) {
+    if (doc?.compilation === true) return true;
+    const title = doc?.title || '';
+    if (COMPILATION_KW_RX.test(title)) return true;
+    if ((title.match(/,/g) || []).length >= 3) return true;
+    if (/^[^:]+\'s\s*:/i.test(title)) return true;
+    return false;
+  }
+  function scoreHit(h) {
+    const doc = h.document || h;
+    const title = doc?.title || '';
+    const titleMatch = title.toLowerCase().includes(targetTitle);
+    const compilation = isCompilation(doc);
+    const popularity = doc?.users_count || doc?.ratings_count || 0;
+    return (compilation ? -10 : 0) + (titleMatch ? 2 : 0) + Math.min(popularity / 1000, 1);
+  }
+
+  const scored = hits
+    .map((h) => ({ h, score: scoreHit(h) }))
+    .filter(({ score }) => score > -10) // drop pure compilations with no title match
+    .sort((a, b) => b.score - a.score)
+    .slice(0, limit);
+
+  // Normalize each hit directly from document fields (no full getBook fetch
+  // to keep search fast). normalizeSearchHit fills in what we need for display.
+  return scored.map(({ h }) => normalizeSearchHit(h)).filter(Boolean);
+}
+
 export async function hardcoverGetBook(id) {
   if (!id) return null;
   const data = await gql(

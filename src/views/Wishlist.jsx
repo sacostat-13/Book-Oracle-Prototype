@@ -24,9 +24,7 @@ export default function Wishlist({ onOpenBook }) {
   const [search, setSearch] = useState('');
   const [genreFilter, setGenreFilter] = useState('all');
   const [categoryFilter, setCategoryFilter] = useState('all');
-  const [formOpen, setFormOpen] = useState(false);
   const [bulkOpen, setBulkOpen] = useState(false);
-  const [form, setForm] = useState({ t: '', a: '', g: '', d: '', amazonUrl: '' });
 
   const wl = state.wishlist;
   const { genresByBookId } = state;
@@ -110,29 +108,6 @@ export default function Wishlist({ onOpenBook }) {
   }
   const genreKeys = Object.keys(grouped).sort();
 
-  async function submitForm() {
-    const t = form.t.trim(), a = form.a.trim();
-    if (!t || !a) {
-      showToast('Title and author are required', true);
-      return;
-    }
-    const book = {
-      t,
-      a,
-      g: form.g || 'Uncategorized',
-      d: form.d.trim() || null,
-      amazonUrl: form.amazonUrl.trim() || null,
-      manuallyAdded: true,
-      addedAt: new Date().toISOString(),
-    };
-    const added = await addToWishlist(book);
-    if (!added) {
-      showToast(`"${t}" is already in your wishlist or library`, true);
-      return;
-    }
-    setForm({ t: '', a: '', g: '', d: '', amazonUrl: '' });
-    setFormOpen(false);
-  }
 
   return (
     <>
@@ -185,11 +160,8 @@ export default function Wishlist({ onOpenBook }) {
           )}
         </div>
         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-          <button className="btn btn-ghost" onClick={() => { setBulkOpen((v) => !v); setFormOpen(false); }}>
+          <button className="btn btn-ghost" onClick={() => setBulkOpen((v) => !v)}>
             ⇪ Bulk import
-          </button>
-          <button className="btn btn-gilt" onClick={() => { setFormOpen((v) => !v); setBulkOpen(false); }}>
-            + Add a book
           </button>
         </div>
       </div>
@@ -198,46 +170,7 @@ export default function Wishlist({ onOpenBook }) {
 
       <OracleCategorizationButton books={wl} />
 
-      {formOpen && (
-        <div className="manual-add-form">
-          <div className="manual-add-header">
-            <h3>Add a book to your wishlist</h3>
-            <button className="manual-add-close" onClick={() => setFormOpen(false)}>×</button>
-          </div>
-          <div className="manual-add-grid">
-            <div className="field">
-              <label>Title *</label>
-              <input className="search-input" placeholder="The book's title" value={form.t} onChange={(e) => setForm({ ...form, t: e.target.value })} />
-            </div>
-            <div className="field">
-              <label>Author *</label>
-              <input className="search-input" placeholder="Author name" value={form.a} onChange={(e) => setForm({ ...form, a: e.target.value })} />
-            </div>
-            <div className="field">
-              <label>Category</label>
-              <select value={form.g} onChange={(e) => setForm({ ...form, g: e.target.value })}>
-                <option value="">— Choose a category —</option>
-                {formGenres.map((g) => (
-                  <option key={g} value={g}>{g}</option>
-                ))}
-              </select>
-            </div>
-            <div className="field">
-              <label>Amazon URL <span className="field-optional">(optional)</span></label>
-              <input className="search-input" placeholder="https://www.amazon.com/…" value={form.amazonUrl} onChange={(e) => setForm({ ...form, amazonUrl: e.target.value })} />
-            </div>
-            <div className="field field-full">
-              <label>Description <span className="field-optional">(optional)</span></label>
-              <textarea placeholder="A line or two about the book…" value={form.d} onChange={(e) => setForm({ ...form, d: e.target.value })}></textarea>
-            </div>
-          </div>
-          <div className="manual-add-actions">
-            <span className="manual-add-note">Cover image will be fetched automatically from the title + author when possible. You can add more categories from the book's modal after adding.</span>
-            <button className="btn btn-ghost" onClick={() => setFormOpen(false)}>Cancel</button>
-            <button className="btn" onClick={submitForm}>Add to wishlist ❦</button>
-          </div>
-        </div>
-      )}
+
 
       {wl.length === 0 ? (
         <div className="empty-state">
@@ -247,7 +180,6 @@ export default function Wishlist({ onOpenBook }) {
             Start building it your way. You can add books one at a time, import in bulk from Goodreads or Amazon, or browse our curated library of horror, gothic, and literary fiction.
           </div>
           <div style={{ marginTop: '1.5rem', display: 'flex', gap: '0.5rem', flexWrap: 'wrap', justifyContent: 'center' }}>
-            <button className="btn btn-gilt" onClick={() => setFormOpen(true)}>+ Add a book</button>
             <button className="btn" onClick={() => setBulkOpen(true)}>⇪ Bulk import</button>
             <button
               className="btn btn-ghost"

@@ -3,8 +3,9 @@ import { useData } from '../lib/DataContext';
 import { useRouter } from '../lib/RouterContext';
 import { useAuth } from '../lib/AuthContext';
 import { useI18n } from '../lib/I18nContext';
+import NavSearch from './NavSearch';
 
-export default function Nav() {
+export default function Nav({ onPreviewBook }) {
   const { state } = useData();
   const { route, go } = useRouter();
   const { user, signInWithGoogle, signOut } = useAuth();
@@ -39,8 +40,7 @@ export default function Nav() {
           {t('app.brand', { wishlist: <span className="accent">{t('app.brandAccent')}</span> })}
         </div>
 
-        {/* Search placeholder — functional in v0.18 */}
-        <div className="nav-search-placeholder" aria-hidden="true" />
+        <NavSearch onPreviewBook={onPreviewBook} />
 
         <div className="nav-spacer" />
 

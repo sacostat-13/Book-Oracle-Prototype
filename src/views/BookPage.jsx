@@ -8,15 +8,15 @@ import { useData } from '../lib/DataContext';
 import { useRouter } from '../lib/RouterContext';
 import { useI18n } from '../lib/I18nContext';
 import { bookKey, findBookByTitle } from '../lib/bookHelpers';
-import { enrichBookFromOpenLibrary } from '../lib/enrichmentService';
-import { fetchSeriesBooks } from '../lib/enrichmentService';
+import { enrichBookFromOpenLibrary, fetchSeriesBooks } from '../lib/enrichmentService';
+import { hardcoverGetBook } from '../lib/hardcoverService';
 import { fetchCoverURL } from '../lib/coverService';
 import { lookupByTitle } from '../lib/bookLookup';
 import { purchaseLinks } from '../lib/purchaseLinks';
 import { fetchSeriesDescriptionFromWikipedia } from '../lib/seriesService';
 import BookCover from '../components/BookCover';
 
-export default function BookPage() {
+export default function BookPage({ previewBookRef }) {
   const {
     state,
     addToWishlist,
@@ -25,6 +25,7 @@ export default function BookPage() {
     markAsRead,
     removeFromLibrary,
     cacheBookFields,
+    upsertDiscoveredBook,
   } = useData();
   const { route, go } = useRouter();
   const { lang } = useI18n();
@@ -43,8 +44,17 @@ export default function BookPage() {
   const [seriesDescription, setSeriesDescription] = useState(null);
   const [notFound, setNotFound] = useState(false);
 
-  // Resolve book from all known sources
+  // Resolve book: preview (from search) or collection lookup
   useEffect(() => {
+    const isPreview = route.params?.preview === 'true';
+    if (isPreview && previewBookRef?.current) {
+      const previewBook = previewBookRef.current;
+      setBook(previewBook);
+      // Silently upsert as discovered status - enriches catalog without
+      // adding to the user's collection (no wishlist_items row).
+      upsertDiscoveredBook?.(previewBook);
+      return;
+    }
     if (!bookKey_) { setNotFound(true); return; }
     const sources = [...state.wishlist, ...state.library, ...state.readNext];
     const found = sources.find((b) => bookKey(b) === bookKey_);
@@ -53,9 +63,12 @@ export default function BookPage() {
     } else {
       setNotFound(true);
     }
-  }, [bookKey_, state.wishlist, state.library, state.readNext]);
+  }, [bookKey_, route.params, previewBookRef, state.wishlist, state.library, state.readNext]);
 
-  // Enrichment — same logic as BookModal
+  // Enrichment:
+  // For preview books (from search), fetch the full Hardcover record by
+  // hardcoverId first. Typesense hits often lack descriptions entirely.
+  // For collection books, only fetch what is missing.
   useEffect(() => {
     if (!book) return;
     let cancelled = false;
@@ -64,26 +77,57 @@ export default function BookPage() {
       if (!cancelled) setEnrichment(d);
     });
 
-    const needsCover = !book.coverUrl;
-    const needsPages = !book.pp;
-    const needsDescription = !book.d;
-
-    if (!needsCover && !needsPages && !needsDescription) return;
-
     async function run() {
       const patch = {};
+      const isPreview = route.params?.preview === 'true';
+
+      // Preview path: fetch full Hardcover record by ID for reliable description
+      if (isPreview && book.hardcoverId && !book.d) {
+        const full = await hardcoverGetBook(book.hardcoverId);
+        if (cancelled) return;
+        if (full) {
+          if (full.d) patch.d = full.d;
+          if (!book.pp && full.pp) patch.pp = full.pp;
+          if (!book.coverUrl && full.coverUrl) patch.coverUrl = full.coverUrl;
+          if (!book.s && full.s) patch.s = full.s;
+          if (!book.isbn && full.isbn) patch.isbn = full.isbn;
+        }
+      }
+
+      const needsCover = !book.coverUrl && !patch.coverUrl;
+      const needsPages = !book.pp && !patch.pp;
+      const needsDescription = !book.d && !patch.d;
+
+      if (!needsCover && !needsPages && !needsDescription) {
+        if (Object.keys(patch).length > 0) {
+          setEnrichedOverlay((cur) => ({ ...cur, ...patch }));
+          cacheBookFields?.(book, patch);
+        }
+        return;
+      }
       if (needsCover) {
         const coverUrl = await fetchCoverURL(book.t, book.a);
         if (cancelled) return;
         if (coverUrl) patch.coverUrl = coverUrl;
       }
-      if (needsPages || needsDescription) {
+      // Fast path for missing descriptions: fetch full Hardcover record by ID.
+      // Covers collection books added before descriptions were stored.
+      if (needsDescription && book.hardcoverId) {
+        const full = await hardcoverGetBook(book.hardcoverId);
+        if (cancelled) return;
+        if (full?.d) patch.d = full.d;
+        if (needsPages && full?.pp) patch.pp = full.pp;
+        if (!book.isbn && full?.isbn) patch.isbn = full.isbn;
+      }
+      const stillNeedsPages = needsPages && !patch.pp;
+      const stillNeedsDescription = needsDescription && !patch.d;
+      if (stillNeedsPages || stillNeedsDescription) {
         const found = await lookupByTitle(book.t, book.a);
         if (cancelled) return;
         if (found) {
-          if (needsPages && found.pp) patch.pp = found.pp;
-          if (needsDescription && found.d) patch.d = found.d;
-          if (!book.isbn && found.isbn) patch.isbn = found.isbn;
+          if (stillNeedsPages && found.pp) patch.pp = found.pp;
+          if (stillNeedsDescription && found.d) patch.d = found.d;
+          if (!book.isbn && !patch.isbn && found.isbn) patch.isbn = found.isbn;
           if (found.wikipediaUrl) patch.wikipediaUrl = found.wikipediaUrl;
           if (found.wikipediaLang) patch.wikipediaLang = found.wikipediaLang;
           if (found.descriptionSource) patch.descriptionSource = found.descriptionSource;
@@ -96,7 +140,7 @@ export default function BookPage() {
     }
     run();
     return () => { cancelled = true; };
-  }, [book, cacheBookFields]);
+  }, [book, cacheBookFields, route.params]);
 
   // Series fetch
   useEffect(() => {

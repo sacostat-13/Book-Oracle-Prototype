@@ -16,9 +16,25 @@
 
 // The version label shown as "current" — keep in sync with package.json and
 // the README version line.
-export const CURRENT_VERSION = 'v0.18';
+export const CURRENT_VERSION = 'v0.19';
 
 export const RELEASES = [{
+    version: 'v0.19',
+    date: '2026-06-15',
+    titleEn: 'Search any book',
+    titleEs: 'Busca cualquier libro',
+    bodyEn: [
+      'The search bar in the navigation now works. Start typing any title or author and results appear instantly from your collection, then from Hardcover\'s catalog of millions of books.',
+      'Tapping any result opens the full book page. If the book isn\'t in your collection yet, you can add it to your wishlist or mark it as read from there.',
+      'If a book can\'t be found anywhere, the Oracle steps in and identifies it from its knowledge of literature.',
+    ],
+    bodyEs: [
+      'La barra de búsqueda en la navegación ya funciona. Empezá a escribir cualquier título o autor y los resultados aparecen al instante desde tu colección, y luego desde el catálogo de Hardcover.',
+      'Tocar cualquier resultado abre la página completa del libro. Si el libro no está en tu colección, podés agregarlo a tu lista o marcarlo como leído desde allí.',
+      'Si un libro no se puede encontrar en ninguna parte, el Oráculo interviene e identifica el libro por su conocimiento de la literatura.',
+    ],
+  },
+  {
     version: 'v0.18',
     date: '2026-06-15',
     titleEn: 'Book pages',

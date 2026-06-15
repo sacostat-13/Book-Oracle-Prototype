@@ -4,7 +4,7 @@ A reading companion — wishlist, library, reading plans, and an AI-powered "ora
 for book discovery. Built with React + Vite + SCSS, backed by Supabase for auth
 and cross-device sync, and Netlify Functions for API proxying.
 
-> Current version: **v0.18** — see [Releases](#releases) below for changelog.
+> Current version: **v0.19** — see [Releases](#releases) below for changelog.
 > Upgrading from an earlier version? Check the matching `MIGRATION_*.md` / `UPDATE_*.md`.
 
 ---
@@ -286,6 +286,30 @@ Free to refactor into partials when needed.
 ---
 
 ## Releases
+
+### v0.19 — Global search
+
+Addresses issues [#9](https://github.com/sacostat-13/Book-Oracle-Prototype/issues/9) and [#10](https://github.com/sacostat-13/Book-Oracle-Prototype/issues/10).
+
+User-facing changes:
+
+- **Global search bar.** Replaces the placeholder. Instant local hits from the user's collection, then live Hardcover search (debounced 300ms). Results show cover, title, author, series, and status badge.
+- **Oracle fallback.** If Hardcover returns nothing, Claude identifies the book and returns a structured result marked with an 'Oracle' badge. Queries >= 4 characters only.
+- **All results open the book page.** No visible tier separation. Collection books navigate by bookKey; undiscovered books pass through App-level previewBookRef.
+- **Discovered status.** Viewing a book page from search silently upserts the book with status='discovered'. No wishlist_items row is created until the user explicitly adds it.
+- **Manual add form removed from Wishlist.** Search replaces this flow. Bulk import unchanged.
+
+Under the hood:
+
+- New `src/components/NavSearch.jsx`: local + Hardcover + Claude fallback search, debounced, keyboard navigable, accessible combobox.
+- New `hardcoverSearchMulti(query, limit)` in `hardcoverService.js`: returns multiple scored hits for the dropdown.
+- `DataContext.jsx`: new `upsertDiscoveredBook` callback, calls upsert_book with status='discovered', skips if already in collection.
+- `App.jsx`: previewBookRef (useRef) holds the book object from search; passed to Nav and BookPage.
+- `BookPage.jsx`: resolves from previewBookRef when route.params.preview === 'true'; calls upsertDiscoveredBook on load.
+- `oracleCategorizationService.js`: UNVERIFIED_STATUSES explicitly excludes 'discovered'.
+- `supabase/schema_v8_migration.sql`: adds 'discovered' to books_status_check constraint.
+- `Wishlist.jsx`: formOpen, form state, submitForm, and manual add form removed.
+- `main.scss`: .nav-search* styles replacing .nav-search-placeholder.
 
 ### v0.18 — Book pages
 

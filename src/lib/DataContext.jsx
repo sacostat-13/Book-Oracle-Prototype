@@ -593,6 +593,40 @@ export function DataProvider({ children }) {
     [user, upsertBookOnServer]
   );
 
+  // Silently upsert a book with status='discovered'.
+  // Called when a user views a book page from search without adding it.
+  // Creates the books row for catalog enrichment but no wishlist_items row.
+  const upsertDiscoveredBook = useCallback(
+    async (book) => {
+      if (!user || !book?.t) return;
+      // Don't overwrite a book that already has a real status
+      const k = bookKey(book);
+      const inCollection = [
+        ...state.wishlist, ...state.library, ...state.readNext
+      ].some((b) => bookKey(b) === k);
+      if (inCollection) return;
+      const resolvedSource = book.fromHardcover ? 'hardcover'
+        : book.fromClaude ? 'claude'
+        : 'user_manual';
+      await supabase.rpc('upsert_book', {
+        _title: book.t,
+        _author: book.a || null,
+        _isbn: book.isbn || null,
+        _hardcover_id: book.hardcoverId || null,
+        _series_name: book.s?.name || null,
+        _series_position: book.s?.n || null,
+        _pages: book.pp || null,
+        _description: book.d || null,
+        _cover_url: book.coverUrl || null,
+        _genre: book.g || null,
+        _source: resolvedSource,
+        _status: 'discovered',
+        _metadata: {},
+      });
+    },
+    [user, state.wishlist, state.library, state.readNext]
+  );
+
   const seedWishlistIfNeeded = useCallback(async () => {
     if (!state.onboarded) return;
     if (state.wishlist && state.wishlist.length > 0) return;
@@ -1263,6 +1297,7 @@ export function DataProvider({ children }) {
     importGoodreads,
     bulkAddToLibrary,
     cacheBookFields,
+    upsertDiscoveredBook,
     // v0.12: category mutations
     addCategoryToBook,
     removeCategoryFromBook,
