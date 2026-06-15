@@ -20,6 +20,7 @@ import OracleCategories from './views/OracleCategories';
 import OracleSimilar from './views/OracleSimilar';
 import PlanCreate from './views/PlanCreate';
 import PlanView from './views/PlanView';
+import BookPage from './views/BookPage';
 
 function SignInGate({ children }) {
   const { user, loading, signInWithGoogle } = useAuth();
@@ -114,6 +115,7 @@ export default function App() {
     case 'oracle-similar': page = <OracleSimilar onOpenBook={openBook} />; break;
     case 'plan-create': page = <PlanCreate />; break;
     case 'plan-view': page = <PlanView />; break;
+    case 'book-page': page = <BookPage />; break;
     case 'dashboard':
     default:
       page = <Dashboard onOpenBook={openBook} />;

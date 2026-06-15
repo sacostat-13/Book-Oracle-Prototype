@@ -16,9 +16,23 @@
 
 // The version label shown as "current" — keep in sync with package.json and
 // the README version line.
-export const CURRENT_VERSION = 'v0.17';
+export const CURRENT_VERSION = 'v0.18';
 
 export const RELEASES = [{
+    version: 'v0.18',
+    date: '2026-06-15',
+    titleEn: 'Book pages',
+    titleEs: 'Páginas de libro',
+    bodyEn: [
+      'Every book now has its own page. Open any book modal and tap “See more” to see the full description, series navigation, genre tags, and action buttons on a dedicated page.',
+      'Series navigation on the book page lets you jump directly to any other book in the sequence.',
+    ],
+    bodyEs: [
+      'Cada libro tiene ahora su propia página. Abrí cualquier modal de libro y tocá “Ver más” para ver la descripción completa, la navegación de saga, las etiquetas de género y los botones de acción en una página dedicada.',
+      'La navegación de saga en la página del libro te permite saltar directamente a cualquier otro libro de la secuencia.',
+    ],
+  },
+  {
     version: 'v0.17',
     date: '2026-06-15',
     titleEn: 'Mobile-first experience',

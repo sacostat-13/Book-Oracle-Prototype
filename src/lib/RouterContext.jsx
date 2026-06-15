@@ -15,6 +15,7 @@ const KNOWN_ROUTES = new Set([
   'oracle-similar',
   'plan-create',
   'plan-view',
+  'book-page',
 ]);
 
 function parseHash() {
@@ -33,9 +34,11 @@ function parseHash() {
   return { name: KNOWN_ROUTES.has(name) ? name : 'dashboard', params };
 }
 
-function writeHash(name, params) {
+// push=true creates a real browser history entry (back button works).
+// push=false (default) silently syncs the URL without stacking history.
+function writeHash(name, params, push = false) {
   if (typeof window === 'undefined') return;
-  // dashboard is the implicit default — keep URLs clean
+  // dashboard is the implicit root — clear the hash, always replace
   if (name === 'dashboard' && Object.keys(params || {}).length === 0) {
     if (window.location.hash) {
       history.replaceState(null, '', window.location.pathname + window.location.search);
@@ -47,7 +50,11 @@ function writeHash(name, params) {
     .join('&');
   const next = '#' + name + (qs ? '?' + qs : '');
   if (window.location.hash !== next) {
-    history.replaceState(null, '', next);
+    if (push) {
+      history.pushState(null, '', next);
+    } else {
+      history.replaceState(null, '', next);
+    }
   }
 }
 
@@ -59,21 +66,27 @@ export function RouterProvider({ children }) {
   const go = useCallback((name, params = {}) => {
     writingRef.current = true;
     setRouteState({ name, params });
-    writeHash(name, params);
+    // push=true so the browser back button can return to the previous page
+    writeHash(name, params, true);
     window.scrollTo({ top: 0, behavior: 'smooth' });
     // Release the guard on the next tick
     setTimeout(() => { writingRef.current = false; }, 0);
   }, []);
 
-  // React to browser back/forward and to manually pasted URLs
+  // React to browser back/forward (popstate) and to manually pasted URLs (hashchange).
+  // pushState changes don't fire hashchange, so we need both listeners.
   useEffect(() => {
-    function onHashChange() {
+    function onNavigate() {
       if (writingRef.current) return;
       setRouteState(parseHash());
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
-    window.addEventListener('hashchange', onHashChange);
-    return () => window.removeEventListener('hashchange', onHashChange);
+    window.addEventListener('hashchange', onNavigate);
+    window.addEventListener('popstate', onNavigate);
+    return () => {
+      window.removeEventListener('hashchange', onNavigate);
+      window.removeEventListener('popstate', onNavigate);
+    };
   }, []);
 
   return (

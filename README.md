@@ -4,7 +4,7 @@ A reading companion — wishlist, library, reading plans, and an AI-powered "ora
 for book discovery. Built with React + Vite + SCSS, backed by Supabase for auth
 and cross-device sync, and Netlify Functions for API proxying.
 
-> Current version: **v0.17** — see [Releases](#releases) below for changelog.
+> Current version: **v0.18** — see [Releases](#releases) below for changelog.
 > Upgrading from an earlier version? Check the matching `MIGRATION_*.md` / `UPDATE_*.md`.
 
 ---
@@ -286,6 +286,25 @@ Free to refactor into partials when needed.
 ---
 
 ## Releases
+
+### v0.18 — Book pages
+
+Addresses issue [#9](https://github.com/sacostat-13/Book-Oracle-Prototype/issues/9) (book page portion). Global search wired to the book page comes in v0.19.
+
+User-facing changes:
+
+- **New book page at `#book-page`.** Each book now has a dedicated full-page view: large cover, full description (not truncated), genre pills, series navigation with dots, and all action buttons (Add to Wishlist / Add to Read Next / Mark as read / Remove).
+- **"See more" link in BookModal.** A subtle link below the author name opens the current book's page and closes the modal. Breadcrumb on the book page navigates back to the originating view.
+- **Series navigation on the book page** links directly to other books in the sequence via the same dot navigator as the modal. Clicking a dot opens that book's page.
+- **Purchase links** (Amazon, Bookshop.org) appear on the book page alongside the action buttons.
+
+Under the hood:
+
+- New `src/views/BookPage.jsx`: resolves the book from wishlist/library/readNext via `route.params.bookKey`, runs the same enrichment chain as BookModal (cover, pages, description, series), renders a two-column hero on desktop, single-column on mobile.
+- `RouterContext.jsx`: `book-page` added to `KNOWN_ROUTES`.
+- `App.jsx`: `BookPage` imported and wired to `case 'book-page'`.
+- `BookModal.jsx`: `book-modal-see-more` button added below author, navigates to `book-page` with `bookKey` and `from` params.
+- `main.scss`: `.book-page-*` layout classes, `.book-modal-see-more` button style, mobile responsive overrides.
 
 ### v0.17 — Mobile-first experience
 

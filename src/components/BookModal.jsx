@@ -303,6 +303,12 @@ export default function BookModal({ book, onClose, onOpenBook }) {
             })()}
             <h2 className="book-modal-title">{display.t}</h2>
             <div className="book-modal-author">{display.a}</div>
+            <button
+              className="book-modal-see-more"
+              onClick={() => { onClose(); go('book-page', { bookKey: k, from: 'wishlist', fromLabel: isSpanish ? 'Lista' : 'Wishlist' }); }}
+            >
+              {isSpanish ? 'Ver más ↗' : 'See more ↗'}
+            </button>
             {liveRating > 0 && (
               <div className="book-modal-rating">
                 {'★'.repeat(Math.max(1, Math.min(5, parseInt(liveRating, 10))))}

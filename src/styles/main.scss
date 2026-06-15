@@ -1873,3 +1873,133 @@
     opacity: 0.85;
     cursor: default;
   }
+
+  /* ============ BOOK PAGE (v0.18) ============ */
+  .book-page {
+    max-width: 860px;
+    margin: 0 auto;
+  }
+
+  .book-page-hero {
+    display: grid;
+    grid-template-columns: 200px 1fr;
+    gap: 3rem;
+    align-items: start;
+    margin-bottom: 3rem;
+  }
+
+  .book-page-cover {
+    width: 200px;
+    flex-shrink: 0;
+    border: 1px solid rgba(176, 140, 63, 0.2);
+    border-radius: 2px;
+    overflow: hidden;
+    aspect-ratio: 2/3;
+  }
+  .book-page-cover img,
+  .book-page-cover .placeholder {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .book-page-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-style: italic;
+    font-weight: 500;
+    font-size: clamp(1.8rem, 4vw, 2.6rem);
+    color: var(--paper);
+    line-height: 1.1;
+    margin-bottom: 0.3rem;
+  }
+
+  .book-page-author {
+    font-family: 'EB Garamond', serif;
+    font-size: 1.1rem;
+    color: var(--paper-aged);
+    margin-bottom: 0.2rem;
+  }
+
+  .book-page-series {
+    margin-top: 1.25rem;
+    padding: 1rem 1.25rem;
+    background: rgba(176, 140, 63, 0.04);
+    border: 1px solid rgba(176, 140, 63, 0.18);
+    border-radius: 2px;
+  }
+  .book-page-series-label {
+    font-family: 'Special Elite', monospace;
+    font-size: 0.6rem;
+    letter-spacing: 0.3em;
+    color: var(--gilt);
+    opacity: 0.7;
+    margin-bottom: 0.4rem;
+  }
+  .book-page-series-desc {
+    color: var(--paper-aged);
+    font-size: 0.9rem;
+    line-height: 1.55;
+    margin-top: 0.6rem;
+    opacity: 0.85;
+  }
+
+  .book-page-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+    margin-top: 1.5rem;
+  }
+
+  .book-page-purchase {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+  }
+
+  .book-page-body {
+    border-top: 1px solid rgba(176, 140, 63, 0.2);
+    padding-top: 2rem;
+  }
+  .book-page-description {
+    color: var(--paper-aged);
+    line-height: 1.75;
+    font-size: 1.05rem;
+    font-family: 'EB Garamond', serif;
+    margin-top: 0.75rem;
+    max-width: 680px;
+  }
+
+  /* 'See more' link on BookModal */
+  .book-modal-see-more {
+    background: none;
+    border: none;
+    color: var(--gilt);
+    font-family: 'Special Elite', monospace;
+    font-size: 0.65rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    cursor: pointer;
+    opacity: 0.7;
+    padding: 0;
+    margin-top: 0.4rem;
+    display: inline-block;
+    transition: opacity 0.2s;
+  }
+  .book-modal-see-more:hover { opacity: 1; }
+
+  @media (max-width: 700px) {
+    .book-page-hero {
+      grid-template-columns: 1fr;
+      gap: 1.5rem;
+    }
+    .book-page-cover {
+      width: 140px;
+    }
+    .book-page-actions {
+      flex-direction: column;
+    }
+    .book-page-actions .btn {
+      width: 100%;
+    }
+  }
