@@ -4,7 +4,7 @@ A reading companion — wishlist, library, reading plans, and an AI-powered "ora
 for book discovery. Built with React + Vite + SCSS, backed by Supabase for auth
 and cross-device sync, and Netlify Functions for API proxying.
 
-> Current version: **v0.16** — see [Releases](#releases) below for changelog.
+> Current version: **v0.17** — see [Releases](#releases) below for changelog.
 > Upgrading from an earlier version? Check the matching `MIGRATION_*.md` / `UPDATE_*.md`.
 
 ---
@@ -149,7 +149,7 @@ oracle/
     │   ├── oracleCategorizationService.js  Oracle batch-categorization logic (v0.15)
     │   └── releases.js              Bilingual release notes content
     ├── components/
-    │   ├── Nav.jsx
+    │   ├── Nav.jsx                  Hamburger menu + mobile overlay (v0.17)
     │   ├── Toast.jsx
     │   ├── BookCover.jsx           Cached covers + OL fallback
     │   ├── BookCard.jsx
@@ -286,6 +286,23 @@ Free to refactor into partials when needed.
 ---
 
 ## Releases
+
+### v0.17 — Mobile-first experience
+
+Addresses issue [#11](https://github.com/sacostat-13/Book-Oracle-Prototype/issues/11).
+
+User-facing changes:
+
+- **Hamburger nav on mobile.** At <=700px, the top nav collapses to logo + search placeholder + hamburger button. Tapping opens a full-screen overlay with all nav items stacked vertically, active-route highlight on the left border, and a secondary section for language toggle and sign in/out. Closes on any navigation or re-tap.
+- **Search bar placeholder reserved.** A styled empty div sits between the logo and hamburger, holding the space for the v0.18 search bar. Non-interactive.
+- **Toolbar filters stack on mobile.** On Wishlist and Library, filters and action buttons stack vertically at <=700px. Selects and inputs expand to full width; buttons stack below.
+- **Book modal slides up as a bottom sheet.** On mobile the modal aligns to the bottom of the screen, slides up with a `sheetIn` animation, fills full width, and clips to 92dvh with rounded top corners.
+
+Under the hood:
+
+- `Nav.jsx`: `menuOpen` state, body-scroll lock, route-change close, hamburger with 3-line-to-X animation, conditional mobile menu overlay (unmounts cleanly via React, not CSS display toggle).
+- `main.scss`: `.nav-search-placeholder`, `.nav-hamburger`, `.mobile-menu`, `.mobile-menu-btn`, `.mobile-menu-divider` classes; `@media (max-width: 700px)` blocks for nav, toolbar, and modal; `@keyframes sheetIn`.
+- `en.json` / `es.json`: new keys `nav.openMenu`, `nav.closeMenu`, `nav.menuLabel`.
 
 ### v0.16 — Series navigation fixed
 

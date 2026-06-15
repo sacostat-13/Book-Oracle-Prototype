@@ -16,9 +16,25 @@
 
 // The version label shown as "current" — keep in sync with package.json and
 // the README version line.
-export const CURRENT_VERSION = 'v0.16';
+export const CURRENT_VERSION = 'v0.17';
 
 export const RELEASES = [{
+    version: 'v0.17',
+    date: '2026-06-15',
+    titleEn: 'Mobile-first experience',
+    titleEs: 'Experiencia móvil primero',
+    bodyEn: [
+      'The navigation is now a hamburger menu on phones. Tap the icon in the top-right to open a full-screen menu with all sections. Tapping any item closes the menu and takes you straight there.',
+      'The genre, category, and search filters on Wishlist and Library now stack vertically on mobile, with each dropdown and button taking the full screen width.',
+      'Book detail sheets now slide up from the bottom on mobile rather than floating as a small card in the middle of the screen.',
+    ],
+    bodyEs: [
+      'La navegación ahora es un menú hamburguesa en los teléfonos. Tocá el ícono en la esquina superior derecha para abrir un menú a pantalla completa con todas las secciones.',
+      'Los filtros de género, categoría y búsqueda en la Lista y la Biblioteca ahora se apilan verticalmente en móvil, con cada menú desplegable y botón ocupando el ancho completo de la pantalla.',
+      'Las fichas de detalle de libros ahora se deslizan desde abajo en móvil, en lugar de flotar como una tarjeta pequeña en el centro de la pantalla.',
+    ],
+  },
+  {
     version: 'v0.16',
     date: '2026-06-15',
     titleEn: 'Series navigation fixed',

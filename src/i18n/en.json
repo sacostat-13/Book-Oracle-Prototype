@@ -17,7 +17,10 @@
     "signIn": "Sign in",
     "signOut": "Sign out",
     "switchToSpanish": "Español",
-    "switchToEnglish": "English"
+    "switchToEnglish": "English",
+    "openMenu": "Open menu",
+    "closeMenu": "Close menu",
+    "menuLabel": "Navigation menu"
   },
   "signIn": {
     "eyebrow": "Welcome",
@@ -32,12 +35,10 @@
     "title": "About the {accent}",
     "titleAccent": "Oracle",
     "subtitle": "Why this exists, what it does, and where it's going.",
-
     "originHeading": "Why the Oracle exists",
     "originBody1": "Most readers I know have an Amazon wishlist, a Goodreads pile, a Notes app full of titles, a stack on the nightstand. Hundreds of books in queue — and somehow, every Friday night, we still spend twenty minutes deciding what to read next.",
     "originBody2": "The Oracle started as a personal experiment to fix that. I had a wishlist of around five hundred books spanning folk horror, gothic, Latin American literary fiction, Korean and Japanese literature, cozy fantasy, dark feminist gothic, body horror. A library bigger than I'd ever finish, and no way to use it as a decision tool.",
     "originBody3": "The premise: a wishlist shouldn't just be a hoarding pile. It should be the input to a recommendation engine that already knows your taste, because you built it yourself.",
-
     "evolutionHeading": "How it evolved",
     "evolutionItem1Title": "v1 — Static HTML batches",
     "evolutionItem1Body": "Instagram screenshots of book recommendations became styled HTML pages with Amazon search links. One file per session, no state, just a way to get titles into a wishlist faster.",
@@ -45,19 +46,14 @@
     "evolutionItem2Body": "A single-page app in plain JavaScript with localStorage. The first version of the Oracle's category and similarity matching. Worked, but didn't scale past one device.",
     "evolutionItem3Title": "v3 — React + Google sign-in",
     "evolutionItem3Body": "The current version. React with Vite, Supabase for cross-device sync, Google authentication, the Anthropic API behind a Netlify function, Open Library for series detection. Plays well on phones, tablets, and laptops.",
-
     "featuresHeading": "What you can do",
     "featuresIntro": "Each feature is here to answer a different version of \"what should I read next?\"",
-
     "featureWishlistTitle": "Wishlist",
     "featureWishlistBody": "Your full pile of books you intend to read someday. Pre-seeded from a curated catalog, but fully editable — add a book manually with title, author, genre, description, and an optional Amazon link. Books leave the wishlist automatically when you mark them as read.",
-
     "featureLibraryTitle": "Library",
     "featureLibraryBody": "Everything you've finished. Acts as memory: the Oracle uses your library to understand your taste when generating recommendations. You can import a Goodreads CSV in one shot from the Profile page.",
-
     "featureReadNextTitle": "Read Next",
     "featureReadNextBody": "A short queue — the three or four books you've actually committed to next. Different from the wishlist, which is aspirational. When you finish one, it moves to the Library.",
-
     "featureOracleTitle": "Wishlist Oracle",
     "featureOracleBody": "The recommendation engine, with two ways to draw books from the vault:",
     "featureOracleCategoriesTitle": "By categories",
@@ -65,20 +61,16 @@
     "featureOracleSimilarTitle": "Based on other books",
     "featureOracleSimilarBody": "Tell the Oracle one to three books you've loved. It finds others with the same blood in them.",
     "featureOracleModes": "Both forks have two modes. Wishlist-only mode draws only from books you already own or own-in-spirit — fast, deterministic tag matching. AI-powered mode calls Claude and may suggest books beyond your wishlist, with reasoning.",
-
     "featurePlansTitle": "Reading Plans",
     "featurePlansBody": "A reading plan is a small, structured commitment: \"finish this series,\" \"read three books on grief,\" \"work through this author's catalog.\" Plans are AI-generated from a prompt and persist across sessions. The \"finish a series\" plan type uses Open Library to fetch the books in order.",
-
     "featureDashboardTitle": "Dashboard",
     "featureDashboardBody": "The home screen. Shows your current Read Next queue, your active plan, and a quick path back to the Oracle. It's deliberately quiet — most of the action happens on the other pages.",
-
     "roadmapHeading": "Where it's going",
     "roadmapBody": "The Oracle isn't trying to become Goodreads. The destination is something smaller and more opinionated: a personal reading companion that knows your taste deeply, doesn't sell you anything, and helps you actually finish the books you said you'd read.",
     "roadmapItem1": "Reading-session notes and quotes, so the library becomes a place to think, not just a list.",
     "roadmapItem2": "Smarter \"why you'd like this\" reasoning that draws on your library, not just the prompt.",
     "roadmapItem3": "Shared plans — read a book with a friend, on the same schedule.",
     "roadmapItem4": "Better Spanish-language coverage for Costa Rican and Latin American editions.",
-
     "feedbackHeading": "Tell me what's broken",
     "feedbackBody": "This is a prototype with real testers, and feedback shapes what gets built next. If something feels off, missing, or genuinely useful — say so."
   }
