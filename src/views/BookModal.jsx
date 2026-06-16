@@ -92,15 +92,14 @@ export default function BookModal({ book, onClose, onOpenBook }) {
         if (coverUrl) patch.coverUrl = coverUrl;
       }
 
-      // Fast path: if we have a hardcoverId and need a description,
-      // fetch the full record directly -- reliable for books added before
-      // descriptions were being stored.
-      if (needsDescription && book.hardcoverId) {
+      // Fast path: fetch full Hardcover record for missing description OR missing series.
+      if (book.hardcoverId && (needsDescription || !book.s?.name)) {
         const full = await hardcoverGetBook(book.hardcoverId);
         if (cancelled) return;
-        if (full?.d) patch.d = full.d;
+        if (full?.d && needsDescription) patch.d = full.d;
         if (needsPages && full?.pp) patch.pp = full.pp;
         if (!book.isbn && full?.isbn) patch.isbn = full.isbn;
+        if (!book.s?.name && full?.s?.name) patch.s = full.s;
       }
 
       // Fall back to full lookup chain for anything still missing
@@ -132,22 +131,21 @@ export default function BookModal({ book, onClose, onOpenBook }) {
   }, [book, cacheBookFields]);
 
   useEffect(() => {
-    const seriesName = book?.s?.name || enrichment?.series?.name;
+    // Include enrichedOverlay so this re-fires when series data arrives
+    // via the hardcoverGetBook fast path for books with no stored s.name.
+    const seriesName = enrichedOverlay?.s?.name || book?.s?.name || enrichment?.series?.name;
     if (!seriesName) return;
     let cancelled = false;
     fetchSeriesBooks(seriesName).then((b) => {
       if (!cancelled) setSeriesBooks(b);
     });
-    // v0.12: parallel Wikipedia series description fetch. Author hint
-    // improves disambiguation a lot — if the book has an author and the
-    // series article mentions them, the score boost is significant.
     fetchSeriesDescriptionFromWikipedia(seriesName, book?.a).then((d) => {
       if (!cancelled && d) setSeriesDescription(d);
     });
     return () => {
       cancelled = true;
     };
-  }, [book, enrichment]);
+  }, [book, enrichment, enrichedOverlay]);
 
   useEffect(() => {
     function onKey(e) {
@@ -166,6 +164,11 @@ export default function BookModal({ book, onClose, onOpenBook }) {
       display.s = { ...enrichment.series, fromOpenLibrary: true };
     }
     if (!display.pp && enrichment.pages) display.pp = enrichment.pages;
+  }
+  // If display.s is still missing but we have fetched series books, use
+  // the series data from the first fetched entry (Hardcover-sourced).
+  if (!display.s?.name && seriesBooks.length > 0 && seriesBooks[0].s?.name) {
+    display.s = { ...seriesBooks[0].s, fromHardcover: true };
   }
 
   const k = bookKey(display);
@@ -280,9 +283,9 @@ export default function BookModal({ book, onClose, onOpenBook }) {
     };
   }
 
-  async function handleSaveRating({ rating, notes }) {
+  async function handleSaveRating({ rating, notes, readAt }) {
     if (!libraryRow) return;
-    await updateReadBook(libraryRow, { rating, notes });
+    await updateReadBook(libraryRow, { rating, notes, readAt });
     setRatingEditorOpen(false);
   }
 
@@ -597,9 +600,15 @@ export default function BookModal({ book, onClose, onOpenBook }) {
                 {seriesBlock.dots}
                 <span className="series-progress-text">{seriesBlock.readCount}/{seriesBlock.totalBooks} read</span>
               </div>
-              <div style={{ marginTop: '0.8rem' }}>
-                <button className="li-action success" onClick={() => { onClose(); go('plan-create', { seriesName: seriesBlock.name }); }}>
-                  ✦ {isSpanish ? 'Crear un plan para terminar esta serie' : 'Create a plan to finish this series'}
+              <div style={{ marginTop: '0.8rem', display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                <button
+                  className="btn"
+                  onClick={() => { const n = seriesBlock.name; go('series-page', { seriesName: n, from: 'wishlist', fromLabel: isSpanish ? 'Lista' : 'Wishlist' }); onClose(); }}
+                >
+                  {isSpanish ? 'Abrir saga ↗' : 'Open Series ↗'}
+                </button>
+                <button className="li-action success" onClick={() => { const n = seriesBlock.name; go('plan-create', { seriesName: n }); onClose(); }}>
+                  ✦ {isSpanish ? 'Crear plan' : 'Create plan'}
                 </button>
               </div>
             </div>
@@ -686,6 +695,7 @@ export default function BookModal({ book, onClose, onOpenBook }) {
           book={libraryRow}
           initialRating={liveRating}
           initialNotes={liveNotes}
+          initialReadAt={libraryRow?.dateRead}
           mode="edit"
           onSave={handleSaveRating}
           onSkip={() => setRatingEditorOpen(false)}

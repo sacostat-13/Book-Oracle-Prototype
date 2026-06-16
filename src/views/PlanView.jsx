@@ -1,10 +1,13 @@
 import { useData } from '../lib/DataContext';
 import { useRouter } from '../lib/RouterContext';
 import { ALL_BOOKS, bookKey, findBookByTitle } from '../lib/bookHelpers';
+import { useI18n } from '../lib/I18nContext';
 
 export default function PlanView() {
   const { state, addToReadNext, markAsRead, setCurrentPlan, showToast } = useData();
   const { go } = useRouter();
+  const { lang } = useI18n();
+  const isSpanish = lang === 'es';
   const plan = state.currentPlan;
   const { genresByBookId } = state;
 
@@ -54,8 +57,16 @@ export default function PlanView() {
       </div>
 
       <div style={{ marginBottom: '2rem', display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-        <button className="btn btn-gilt" onClick={addAllToQueue}>Add all to Read Next</button>
-        <button className="btn btn-ghost" onClick={() => go('plan-create')}>Create a different plan</button>
+        {plan.type === 'series' && plan.seriesName && (
+          <button
+            className="btn"
+            onClick={() => go('series-page', { seriesName: plan.seriesName, from: 'plan-view', fromLabel: isSpanish ? 'Plan' : 'Reading Plan' })}
+          >
+            {isSpanish ? 'Abrir saga ↗' : 'Open Series ↗'}
+          </button>
+        )}
+        <button className="btn btn-gilt" onClick={addAllToQueue}>{isSpanish ? 'Agregar todo a la cola' : 'Add all to Read Next'}</button>
+        <button className="btn btn-ghost" onClick={() => go('plan-create')}>{isSpanish ? 'Crear otro plan' : 'Create a different plan'}</button>
         <button
           className="btn btn-ghost"
           onClick={() => {

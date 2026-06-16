@@ -16,9 +16,25 @@
 
 // The version label shown as "current" — keep in sync with package.json and
 // the README version line.
-export const CURRENT_VERSION = 'v0.23';
+export const CURRENT_VERSION = 'v0.24';
 
 export const RELEASES = [{
+    version: 'v0.24',
+    date: '2026-06-16',
+    titleEn: 'Series get their own page',
+    titleEs: 'Las sagas tienen su propia página',
+    bodyEn: [
+      'Every series now has a dedicated page with a progress bar, all books in order with their covers, a description from Wikipedia, and your read/queued/wishlist status on each book.',
+      'You can add, queue, or mark books as read directly from the series page without going book by book.',
+      'Get there from a book modal or book page whenever the book is part of a series, or tap any in-progress series on your profile.',
+    ],
+    bodyEs: [
+      'Cada saga tiene ahora una página propia con una barra de progreso, todos los libros en orden con sus portadas, una descripción de Wikipedia y tu estado de lectura en cada libro.',
+      'Podés agregar, poner en cola o marcar libros como leídos directamente desde la página de la saga.',
+      'Llegá desde el modal o la página de cualquier libro que sea parte de una saga, o tocá una saga en progreso en tu perfil.',
+    ],
+  },
+  {
     version: 'v0.23',
     date: '2026-06-16',
     titleEn: 'How you read, in numbers',

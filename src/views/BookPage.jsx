@@ -407,12 +407,18 @@ export default function BookPage({ previewBookRef }) {
 
       {/* Series plan CTA */}
       {seriesBlock && (
-        <div style={{ marginTop: '2rem' }}>
+        <div style={{ marginTop: '2rem', display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
+          <button
+            className="btn"
+            onClick={() => go('series-page', { seriesName: seriesBlock.name, from: 'book-page', fromLabel: display.t })}
+          >
+            {isSpanish ? 'Abrir saga ↗' : 'Open Series ↗'}
+          </button>
           <button
             className="li-action success"
             onClick={() => go('plan-create', { seriesName: seriesBlock.name })}
           >
-            ✦ {isSpanish ? 'Crear un plan para terminar esta serie' : 'Create a plan to finish this series'}
+            ✦ {isSpanish ? 'Crear plan' : 'Create plan'}
           </button>
         </div>
       )}

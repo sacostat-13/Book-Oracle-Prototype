@@ -350,8 +350,8 @@ export default function Profile() {
                   <div
                     key={s.name}
                     style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.6rem 1rem', background: 'rgba(176, 140, 63, 0.04)', border: '1px solid rgba(176, 140, 63, 0.15)', borderRadius: '2px', cursor: 'pointer' }}
-                    onClick={() => go('plan-create', { seriesName: s.name })}
-                    title={isSpanish ? 'Crear plan de lectura' : 'Create reading plan'}
+                    onClick={() => go('series-page', { seriesName: s.name, from: 'profile', fromLabel: isSpanish ? 'Perfil' : 'Profile' })}
+                    title={isSpanish ? 'Abrir saga' : 'Open Series'}
                   >
                     <div>
                       <div style={{ color: 'var(--paper)', fontFamily: "'Cormorant Garamond', serif", fontStyle: 'italic' }}>{s.name}</div>
@@ -359,10 +359,15 @@ export default function Profile() {
                         {s.read} of {s.total} {isSpanish ? 'leídos' : 'read'}
                       </div>
                     </div>
-                    <div style={{ display: 'flex', gap: '4px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                      <span style={{ fontFamily: "'Special Elite', monospace", fontSize: '0.6rem', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--gilt)', opacity: 0.8 }}>
+                        {isSpanish ? 'Abrir ↗' : 'Open ↗'}
+                      </span>
+                      <div style={{ display: 'flex', gap: '4px' }}>
                       {Array.from({ length: s.total }).map((_, i) => (
                         <div key={i} style={{ width: '8px', height: '8px', borderRadius: '50%', background: i < s.read ? 'var(--gilt)' : 'rgba(176, 140, 63, 0.2)' }} />
                       ))}
+                      </div>
                     </div>
                   </div>
                 ))}

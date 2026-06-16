@@ -4,7 +4,7 @@ A reading companion — wishlist, library, reading plans, and an AI-powered "ora
 for book discovery. Built with React + Vite + SCSS, backed by Supabase for auth
 and cross-device sync, and Netlify Functions for API proxying.
 
-> Current version: **v0.23** — see [Releases](#releases) below for changelog.
+> Current version: **v0.24** — see [Releases](#releases) below for changelog.
 > Upgrading from an earlier version? Check the matching `MIGRATION_*.md` / `UPDATE_*.md`.
 
 ---
@@ -286,6 +286,27 @@ Free to refactor into partials when needed.
 ---
 
 ## Releases
+
+### v0.24 — Series pages
+
+New dedicated series page surface.
+
+User-facing changes:
+
+- **New `#series-page` route.** Each series has a full page: large title, author, status pill (Ongoing/Complete), progress bar, Wikipedia description, ordered book list with covers, and CTAs to create a reading plan.
+- **Add/queue/mark books directly from the series page.** Each book card shows its current status (read, queued, wishlisted, none) with inline action buttons. No need to open individual book pages.
+- **Entry points wired everywhere.** 'View series' button added to BookModal and BookPage series blocks. Profile stats in-progress series cards now navigate to the series page (previously went to plan-create).
+- **Read badge on covers.** A small green checkmark overlays the cover thumbnail of any book the user has read.
+
+Under the hood:
+
+- New `src/views/SeriesPage.jsx`: fetches ordered book list via `fetchSeriesBooks`, Wikipedia description via `fetchSeriesDescriptionFromWikipedia`. Merges fetched data with collection state for status. `actionLoading` state prevents double-taps. Fully bilingual.
+- `RouterContext.jsx`: `series-page` added to `KNOWN_ROUTES`.
+- `App.jsx`: `SeriesPage` imported and wired to `case 'series-page'`.
+- `BookModal.jsx`: series CTAs split into 'Create plan' + 'View series'.
+- `BookPage.jsx`: same CTA split.
+- `Profile.jsx`: in-progress series cards navigate to `series-page` instead of `plan-create`.
+- `main.scss`: `.series-page-*` layout, progress bar, book list grid, status badges, mobile overrides.
 
 ### v0.23 — Reading stats and smarter series plans
 
