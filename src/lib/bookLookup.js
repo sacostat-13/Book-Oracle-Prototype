@@ -1,17 +1,17 @@
 // Book lookup helpers for bulk import.
 //
-// Lookup chain (per book), v0.10:
-//   1. PRH        (best for Spanish/LatAm titles, ISBN lookups)
-//   2. Hardcover  (best metadata + structured series, anglo-fiction skew)
-//   3. OpenLibrary (broadest coverage, no auth, no rate limit)
-//   4. Wikipedia  (best descriptions, esp. when others are sparse — v0.10)
+// Lookup chain (per book), v0.21:
+//   1. Hardcover  (best metadata + structured series)
+//   2. OpenLibrary (broadest coverage, no auth, no rate limit)
+//   3. Wikipedia  (best descriptions)
 //
-// All four fire in parallel via Promise.all. Merge is null-fill (first
-// non-null source wins) for most fields, with ONE special case:
+// PRH dropped in v0.21: narrow catalog, parallel call cost not justified.
+// Series, descriptions and genres now handled by Oracle batch (v0.21).
+//
+// All three fire in parallel. Merge is null-fill with ONE special case:
 //
 //   description (`d`): Wikipedia wins when other sources are null OR very
-//   short (< 200 chars). Wikipedia's lede paragraphs are usually richer
-//   than Hardcover/OL/PRH blurbs, which is the main reason we pull it.
+//   short (< 200 chars). Wikipedia's lede paragraphs are usually richer.
 //
 // If ALL sources miss, we still return a "raw" book object built from the
 // user's input, marked `needsReview=true` so it can be flagged for review.
@@ -24,7 +24,6 @@ import {
   hardcoverLookupByAsin,
   hardcoverSearch,
 } from './hardcoverService';
-import { prhLookupByIsbn, prhSearch } from './prhService';
 import { wikipediaLookup } from './wikipediaService';
 
 // What counts as a "rich enough" description that we won't let Wikipedia
@@ -48,7 +47,6 @@ function mergeBookData(primary, secondary) {
   // Combine source attribution tags so we know what was consulted.
   out.fromHardcover = primary.fromHardcover || secondary.fromHardcover || false;
   out.fromOpenLibrary = primary.fromOpenLibrary || secondary.fromOpenLibrary || false;
-  out.fromPrh = primary.fromPrh || secondary.fromPrh || false;
   out.fromWikipedia = primary.fromWikipedia || secondary.fromWikipedia || false;
   return out;
 }
@@ -145,23 +143,18 @@ export async function lookupByAsin(asin, amazonUrl) {
   if (!asin) return null;
   const isbnLike = /^\d{9}[\dX]$/i.test(asin);
 
-  // Run the original three in parallel — they don't depend on each other.
-  const [prh, hc, ol] = await Promise.all([
-    isbnLike ? prhLookupByIsbn(asin).catch(() => null) : Promise.resolve(null),
+  const [hc, ol] = await Promise.all([
     hardcoverLookupByAsin(asin).catch(() => null),
     _lookupByAsinOL(asin).catch(() => null),
   ]);
 
-  // Now do a Wikipedia lookup using the best title we got from above,
-  // if any. Skip Wikipedia entirely if nothing resolved a title — there's
-  // nothing useful to query.
-  const resolvedTitle = hc?.t || prh?.t || ol?.t;
-  const resolvedAuthor = hc?.a || prh?.a || ol?.a;
+  const resolvedTitle = hc?.t || ol?.t;
+  const resolvedAuthor = hc?.a || ol?.a;
   const wiki = resolvedTitle
     ? await wikipediaLookup(resolvedTitle, resolvedAuthor, currentLang()).catch(() => null)
     : null;
 
-  const merged = mergeFour(hc, prh, ol, wiki);
+  const merged = mergeThree(hc, ol, wiki);
   if (!merged) return null;
 
   merged.amazonUrl = amazonUrl || null;
@@ -176,17 +169,14 @@ export async function lookupByAsin(asin, amazonUrl) {
 export async function lookupByTitle(title, author) {
   if (!title) return null;
 
-  const [prh, hc, ol, wiki] = await Promise.all([
-    prhSearch(title, author).catch(() => null),
+  const [hc, ol, wiki] = await Promise.all([
     hardcoverSearch(title, author).catch(() => null),
     _lookupByTitleOL(title, author).catch(() => null),
     wikipediaLookup(title, author, currentLang()).catch(() => null),
   ]);
 
-  // Priority order: Hardcover > PRH > OL > Wikipedia, with the description
-  // override rule from mergeFour. PRH wins on Spanish/LatAm when it's the
-  // only one with a hit (null-fill semantics).
-  const merged = mergeFour(hc, prh, ol, wiki);
+  // Priority: Hardcover > OL > Wikipedia, with description override.
+  const merged = mergeThree(hc, ol, wiki);
   if (!merged) {
     // ALL sources missed. Don't lose the user's input — return a raw record
     // marked as needing review so it surfaces in the editor queue. At the

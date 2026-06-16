@@ -4,7 +4,7 @@ A reading companion — wishlist, library, reading plans, and an AI-powered "ora
 for book discovery. Built with React + Vite + SCSS, backed by Supabase for auth
 and cross-device sync, and Netlify Functions for API proxying.
 
-> Current version: **v0.20** — see [Releases](#releases) below for changelog.
+> Current version: **v0.21** — see [Releases](#releases) below for changelog.
 > Upgrading from an earlier version? Check the matching `MIGRATION_*.md` / `UPDATE_*.md`.
 
 ---
@@ -286,6 +286,29 @@ Free to refactor into partials when needed.
 ---
 
 ## Releases
+
+### v0.21 — Oracle architecture overhaul
+
+Major enrichment upgrade. Oracle now handles genres, series, and descriptions in one batch. PRH dropped from the lookup chain.
+
+User-facing changes:
+
+- **Oracle enriches genres, series, and descriptions in one pass.** Previously only genres were assigned. Now a single Oracle batch returns all three fields per book, overwriting stale or missing data.
+- **Standalone batch script for 1000+ books.** `scripts/oracleBatch.mjs` runs from the command line. `--dry-run` prints the cost estimate without calling the API. `--limit N` caps the run.
+- **PRH removed from lookup chain.** Now Hardcover -> OpenLibrary -> Wikipedia only. PRH only covered its own catalog and added latency with minimal gain.
+
+Under the hood:
+
+- `oracleCategorizationService.js`: prompt extended to return series and description per book alongside genres. `writeBookEnrichment` writes all three. `getBooksNeedingOracle` added for broader eligibility.
+- `bookLookup.js`: PRH import removed, merge updated in `lookupByTitle` and `lookupByAsin`.
+- `scripts/oracleBatch.mjs` (new): Node ESM script. Reads `.env.local` for Supabase + Anthropic keys. Calls Anthropic directly. Cost estimate: ~$0.007/book. Prints per-batch cost and summary.
+
+Usage:
+```
+node scripts/oracleBatch.mjs --dry-run   # see cost estimate
+node scripts/oracleBatch.mjs             # run enrichment
+node scripts/oracleBatch.mjs --limit 50  # process first 50 books
+```
 
 ### v0.20 — Report book issues
 

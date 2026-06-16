@@ -16,9 +16,23 @@
 
 // The version label shown as "current" — keep in sync with package.json and
 // the README version line.
-export const CURRENT_VERSION = 'v0.20';
+export const CURRENT_VERSION = 'v0.21';
 
 export const RELEASES = [{
+    version: 'v0.21',
+    date: '2026-06-15',
+    titleEn: 'The Oracle grows wiser',
+    titleEs: 'El Oráculo se vuelve más sabio',
+    bodyEn: [
+      'The Oracle now assigns genres, fills in missing descriptions, and identifies series information for your books in a single pass. Previously it only handled genres.',
+      'Books added through search now load faster and have richer descriptions from the start.',
+    ],
+    bodyEs: [
+      'El Oráculo ahora asigna géneros, completa descripciones faltantes e identifica información de saga en un solo proceso. Antes solo manejaba géneros.',
+      'Los libros agregados mediante búsqueda ahora cargan más rápido y tienen descripciones más ricas desde el principio.',
+    ],
+  },
+  {
     version: 'v0.20',
     date: '2026-06-15',
     titleEn: 'Report book issues',

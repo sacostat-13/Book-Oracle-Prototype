@@ -1,11 +1,13 @@
 // oracleCategorizationService.js
-// v0.15 phase 2.4 — Oracle genre categorization.
+// v0.21 — Oracle now handles genres, series, AND descriptions in one batch call.
 //
 // WHAT IT DOES
-// Filters books that are (a) status in ['unreviewed', 'incomplete'] AND
-// (b) have no genres assigned, then batches them 20 at a time, sends each
-// batch to Claude via the existing Netlify proxy, and writes the results
-// back to Supabase using the upsert_genre / link_book_genre / update RPCs.
+// Runs on books with status in ['unreviewed', 'incomplete'] — one Claude call
+// per batch of 20 returns genres, series info, and a description for each book.
+// All three are written back to Supabase in the same pass.
+//
+// 'discovered' books are intentionally excluded: they haven't been added to
+// anyone's collection, so spending tokens on them isn't warranted.
 //
 // FAILURE MODEL
 // One bad batch is logged and skipped; the rest continue. The caller receives
@@ -15,13 +17,12 @@ import { supabase } from './supabase';
 import { callClaude, parseJSONResponse } from './claudeApi';
 
 const BATCH_SIZE = 20;
-// Statuses eligible for Oracle enrichment.
-// 'discovered' is intentionally excluded: those books haven't been added
-// to anyone's collection yet, so spending tokens on them isn't warranted.
+
 const UNVERIFIED_STATUSES = ['unreviewed', 'incomplete'];
 
-// ---------- helpers ----------
+// ---------- eligibility ----------
 
+// v0.15 compat: still exported so OracleCategories view can use it.
 export function getBooksNeedingGenres(books, genresByBookId) {
   return books.filter((b) => {
     if (!b.bookId) return false;
@@ -30,6 +31,19 @@ export function getBooksNeedingGenres(books, genresByBookId) {
     return !genres || genres.length === 0;
   });
 }
+
+// v0.21: broader eligibility — any book needing genres, series, OR description.
+// Option A (always re-run): pass all unreviewed/incomplete books.
+// The Oracle overwrites all three fields unconditionally.
+export function getBooksNeedingOracle(books, genresByBookId) {
+  return books.filter((b) => {
+    if (!b.bookId) return false;
+    if (!UNVERIFIED_STATUSES.includes(b.status || 'unreviewed')) return false;
+    return true; // Option A: run on all eligible books every time
+  });
+}
+
+// ---------- helpers ----------
 
 async function fetchAllGenres() {
   const { data, error } = await supabase.rpc('search_genres', {
@@ -40,29 +54,26 @@ async function fetchAllGenres() {
     console.warn('fetchAllGenres failed', error);
     return [];
   }
-  return data; // [{ id, name, normalized_name, description, source, usage_count, exact_match }]
+  return data;
 }
 
 function buildPrompt(books, existingGenres) {
-  // Include description when available so the Oracle matches on meaning, not just name
   const catalogList = existingGenres
-    .map((g) => g.description
-      ? `- ${g.name}: ${g.description}`
-      : `- ${g.name}`
-    )
+    .map((g) => g.description ? `- ${g.name}: ${g.description}` : `- ${g.name}`)
     .join('\n');
 
   const bookList = books
     .map((b, i) => {
-      // Client book shape uses t/a/d/g (short keys from bookRowToClient)
       const title = b.t || b.title;
       const author = b.a || b.author;
       const description = b.d || b.description;
       const genreHint = b.g;
+      const seriesHint = b.s?.name;
 
       const parts = [`${i + 1}. Title: "${title || 'Unknown'}"`];
       if (author) parts.push(`   Author: ${author}`);
       if (genreHint) parts.push(`   Auto-genre hint: ${genreHint}`);
+      if (seriesHint) parts.push(`   Series hint: ${seriesHint}`);
       if (description) {
         const desc = description.length > 300
           ? description.slice(0, 300) + '…'
@@ -73,31 +84,44 @@ function buildPrompt(books, existingGenres) {
     })
     .join('\n\n');
 
-  const systemPrompt = `You are the Book Oracle, a literary genre curator with deep expertise in Gothic fiction, horror, literary fiction, and speculative literature. You assign canonical genre labels to books for a curated reading app.
+  const systemPrompt = `You are the Book Oracle, a literary curator with deep expertise in Gothic fiction, horror, literary fiction, and speculative literature. You enrich book records for a curated reading app.
 
-You will be given a list of books and a catalog of existing genre labels, each with a description of what that genre means in this app's curation system. Your task is to assign 1-3 genres to each book.
+For each book you will return:
+1. GENRES — 1-3 canonical genre labels from or inspired by the existing catalog
+2. SERIES — series name, position, and total books (null if standalone)
+3. DESCRIPTION — a rich 2-4 sentence description in the style of a literary review
 
-RULES:
-1. STRONGLY prefer genres from the existing catalog. Use the descriptions to understand the precise intent of each genre — they define the curatorial lens, not just the label.
-2. Only invent a new genre label when NO existing genre fits at all.
-3. If you must invent a genre, match the established naming style exactly: evocative, specific, often using "&" to combine (e.g. "Classic & Older Gothic", "Sapphic & Feminist Gothic").
-4. Assign 1-3 genres per book. Assign only 1 if the book clearly belongs to one category.
-5. Return ONLY valid JSON. No preamble, no explanation, no markdown fences.
+GENRE RULES:
+- STRONGLY prefer genres from the existing catalog. Use descriptions to understand precise curatorial intent.
+- Only invent a new genre when NO existing genre fits at all.
+- Match established naming style: evocative, specific, often using "&" (e.g. "Classic & Older Gothic").
+- Assign 1-3 genres. Assign only 1 if the book clearly belongs to one category.
+
+SERIES RULES:
+- Return null for standalone books not part of any series.
+- "total" may be null if the series is ongoing or total is unknown.
+
+DESCRIPTION RULES:
+- 2-4 sentences. Evocative, literary, informative — not a blurb or marketing copy.
+- Focus on themes, tone, and what makes the book distinctive.
+- Write in English regardless of the book's original language.
+- If you already see a good description in the input, you may improve it or keep it.
 
 EXISTING GENRE CATALOG (name: description):
 ${catalogList || '(empty — you are seeding the catalog)'}
 
-RESPONSE FORMAT (JSON array, one object per book, in the same order as input):
+RESPONSE FORMAT (JSON array, one object per book, in input order):
 [
   {
     "index": 1,
-    "genres": ["Exact Genre Name", "Another Genre Name"]
-  },
-  ...
-]`;
+    "genres": ["Exact Genre Name"],
+    "series": { "name": "Series Name", "n": 1, "total": 3 },
+    "description": "Rich literary description here."
+  }
+]
+Return ONLY valid JSON. No preamble, no explanation, no markdown fences.`;
 
-  const userPrompt = `Assign genres to these ${books.length} books:\n\n${bookList}`;
-
+  const userPrompt = `Enrich these ${books.length} books:\n\n${bookList}`;
   return { systemPrompt, userPrompt };
 }
 
@@ -110,7 +134,8 @@ async function resolveGenreId(name) {
   return data[0].id;
 }
 
-async function assignGenresToBook(bookId, genreIds) {
+async function writeBookEnrichment(bookId, genreIds, seriesData, description) {
+  // 1. Genres
   for (const genreId of genreIds) {
     const { error } = await supabase.rpc('link_book_genre', {
       _book_id: bookId,
@@ -119,24 +144,46 @@ async function assignGenresToBook(bookId, genreIds) {
     });
     if (error) console.warn('link_book_genre failed', bookId, genreId, error);
   }
-  const { error: statusErr } = await supabase
-    .from('books')
-    .update({ status: 'oracle_categorized' })
-    .eq('id', bookId);
-  if (statusErr) console.warn('status update failed', bookId, statusErr);
+
+  // 2. Description — only write if Oracle produced one
+  const descPatch = description ? { description } : {};
+
+  // 3. Series — write via upsert_series RPC if we have a name
+  if (seriesData?.name) {
+    await supabase.rpc('upsert_series', {
+      _name: seriesData.name,
+      _total_books: seriesData.total || null,
+      _status: 'oracle_categorized',
+      _source: 'oracle',
+    }).then(async ({ data: seriesRow }) => {
+      if (seriesRow?.[0]?.id) {
+        await supabase.from('books').update({
+          series_id: seriesRow[0].id,
+          position_in_series: seriesData.n || null,
+          status: 'oracle_categorized',
+          ...descPatch,
+        }).eq('id', bookId);
+      }
+    });
+  } else {
+    // No series — just update status and description
+    await supabase.from('books').update({
+      status: 'oracle_categorized',
+      ...descPatch,
+    }).eq('id', bookId);
+  }
 }
 
 // ---------- main export ----------
 
 /**
- * Run Oracle categorization on a list of books.
+ * Run Oracle enrichment (genres + series + descriptions) on a list of books.
  *
  * @param {Object}   opts
- * @param {Array}    opts.books          — books needing genres (pre-filtered by getBooksNeedingGenres)
- * @param {Function} opts.onProgress     — (done, total) callback
- * @param {Function} opts.onBatchResult  — ({ assignments: [{ bookId, genres }], batchIndex }) callback
- * @param {Function} opts.onError        — (err, batchIndex) called when a batch fails (non-fatal)
- *
+ * @param {Array}    opts.books         — pre-filtered eligible books
+ * @param {Function} opts.onProgress    — (done, total) callback
+ * @param {Function} opts.onBatchResult — ({ assignments, batchIndex }) callback
+ * @param {Function} opts.onError       — (err, batchIndex) non-fatal
  * @returns {Promise<{ processed: number, failed: number }>}
  */
 export async function runOracleCategorization({ books, onProgress, onBatchResult, onError }) {
@@ -145,7 +192,6 @@ export async function runOracleCategorization({ books, onProgress, onBatchResult
   let failed = 0;
 
   const existingGenres = await fetchAllGenres();
-
   const batches = [];
   for (let i = 0; i < books.length; i += BATCH_SIZE) {
     batches.push(books.slice(i, i + BATCH_SIZE));
@@ -160,11 +206,11 @@ export async function runOracleCategorization({ books, onProgress, onBatchResult
       const parsed = parseJSONResponse(raw);
 
       if (!Array.isArray(parsed)) {
-        console.warn(`Batch ${batchIdx + 1}: Claude returned non-array`, raw);
+        console.warn(`Batch ${batchIdx + 1}: non-array response`, raw);
         failed += batch.length;
         onError?.(`Batch ${batchIdx + 1} returned an unexpected response.`, batchIdx);
-        onProgress?.(processed + batch.length, total);
         processed += batch.length;
+        onProgress?.(processed, total);
         continue;
       }
 
@@ -176,10 +222,8 @@ export async function runOracleCategorization({ books, onProgress, onBatchResult
         const book = batch[bookIdx];
         if (!book.bookId) continue;
 
-        const genreNames = Array.isArray(item.genres)
-          ? item.genres.slice(0, 3)
-          : [];
-
+        // Genres
+        const genreNames = Array.isArray(item.genres) ? item.genres.slice(0, 3) : [];
         const resolvedGenres = (
           await Promise.all(
             genreNames.map(async (name) => {
@@ -187,7 +231,11 @@ export async function runOracleCategorization({ books, onProgress, onBatchResult
               if (!id) return null;
               const existing = existingGenres.find((g) => g.id === id);
               if (!existing) {
-                existingGenres.push({ id, name, normalized_name: name.toLowerCase().replace(/[^a-z0-9]/g, ''), source: 'oracle', usage_count: 0, description: null });
+                existingGenres.push({
+                  id, name,
+                  normalized_name: name.toLowerCase().replace(/[^a-z0-9]/g, ''),
+                  source: 'oracle', usage_count: 0, description: null,
+                });
               }
               return {
                 genreId: id,
@@ -202,10 +250,23 @@ export async function runOracleCategorization({ books, onProgress, onBatchResult
           )
         ).filter(Boolean);
 
-        if (resolvedGenres.length > 0) {
-          await assignGenresToBook(book.bookId, resolvedGenres.map((g) => g.genreId));
-          batchAssignments.push({ bookId: book.bookId, genres: resolvedGenres });
-        }
+        // Series and description
+        const seriesData = item.series || null;
+        const description = item.description || null;
+
+        await writeBookEnrichment(
+          book.bookId,
+          resolvedGenres.map((g) => g.genreId),
+          seriesData,
+          description
+        );
+
+        batchAssignments.push({
+          bookId: book.bookId,
+          genres: resolvedGenres,
+          series: seriesData,
+          description,
+        });
 
         processed++;
         onProgress?.(processed, total);
