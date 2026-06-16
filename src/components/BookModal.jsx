@@ -279,9 +279,9 @@ export default function BookModal({ book, onClose, onOpenBook }) {
     };
   }
 
-  async function handleSaveRating({ rating, notes }) {
+  async function handleSaveRating({ rating, notes, readAt }) {
     if (!libraryRow) return;
-    await updateReadBook(libraryRow, { rating, notes });
+    await updateReadBook(libraryRow, { rating, notes, readAt });
     setRatingEditorOpen(false);
   }
 
@@ -685,6 +685,7 @@ export default function BookModal({ book, onClose, onOpenBook }) {
           book={libraryRow}
           initialRating={liveRating}
           initialNotes={liveNotes}
+          initialReadAt={libraryRow?.dateRead}
           mode="edit"
           onSave={handleSaveRating}
           onSkip={() => setRatingEditorOpen(false)}

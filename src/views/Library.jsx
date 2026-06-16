@@ -94,9 +94,9 @@ export default function Library({ onOpenBook }) {
 
   const hasFilters = genreFilter !== 'all' || categoryFilter !== 'all' || search;
 
-  async function handleSaveRating({ rating, notes }) {
+  async function handleSaveRating({ rating, notes, readAt }) {
     if (!editing) return;
-    await updateReadBook(editing, { rating, notes });
+    await updateReadBook(editing, { rating, notes, readAt });
     setEditing(null);
   }
 
@@ -207,6 +207,11 @@ export default function Library({ onOpenBook }) {
                   <div className="li-title">{b.t}</div>
                   <div className="li-author">
                     {b.a}
+                    {b.dateRead && (
+                      <> · <span style={{ opacity: 0.55 }}>
+                        {new Date(b.dateRead).toLocaleDateString(undefined, { month: 'short', year: 'numeric' })}
+                      </span></>
+                    )}
                     {b.fromGoodreads && <> · <span style={{ color: 'var(--gilt)', opacity: 0.7 }}>from Goodreads</span></>}
                     {b.notes && (
                       <> · <span style={{ color: 'var(--gilt)', opacity: 0.7 }} title={b.notes}>has notes</span></>
@@ -252,6 +257,7 @@ export default function Library({ onOpenBook }) {
           book={editing}
           initialRating={editing.rating}
           initialNotes={editing.notes}
+          initialReadAt={editing.dateRead}
           mode="edit"
           onSave={handleSaveRating}
           onSkip={() => setEditing(null)}

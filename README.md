@@ -4,7 +4,7 @@ A reading companion — wishlist, library, reading plans, and an AI-powered "ora
 for book discovery. Built with React + Vite + SCSS, backed by Supabase for auth
 and cross-device sync, and Netlify Functions for API proxying.
 
-> Current version: **v0.21** — see [Releases](#releases) below for changelog.
+> Current version: **v0.22** — see [Releases](#releases) below for changelog.
 > Upgrading from an earlier version? Check the matching `MIGRATION_*.md` / `UPDATE_*.md`.
 
 ---
@@ -286,6 +286,32 @@ Free to refactor into partials when needed.
 ---
 
 ## Releases
+
+### v0.22 — Read dates, smarter search, Oracle expansion
+
+Deployment release combining the Oracle architecture overhaul, bulk import Claude fallback, editable read dates, and roadmap page. Addresses the final items from the v0.21 plan plus the v0.22 read-date foundation for upcoming stats.
+
+User-facing changes:
+
+- **Read dates captured on every book.** The rating modal now includes a 'Finished on' date input, pre-filled with today and editable. Users can backfill real dates for books they've already added. The date shows in the Library row ('Jan 2024') and is stored in `read_books.read_at` for upcoming reading stats.
+- **Editable read dates on existing library books.** Tapping 'Edit rating' on any book in the Library opens the modal with the existing date pre-filled, so users can correct historical dates from Goodreads imports or early adds.
+- **Smarter bulk import fallback.** Books not found in Hardcover or OpenLibrary are now sent to Claude for identification before falling back to 'add as-is'. Obscure titles and Spanish-language books that previously showed as unmatched should now resolve with real metadata.
+- **Oracle enriches genres, series, and descriptions in one pass.** Previously only genres. The standalone `scripts/oracleBatch.mjs` script processes 1000+ books from the command line with a `--dry-run` cost estimate.
+- **PRH dropped from lookup chain.** Now Hardcover -> OpenLibrary -> Wikipedia only.
+- **Roadmap added to About page.** Three tiers (Coming soon / On the horizon / Further out) in English and Spanish.
+
+Under the hood:
+
+- `RatingModal.jsx`: `initialReadAt` prop, `readAt` state (defaults to today), date input, `readAt` passed through `onSave`.
+- `DataContext.jsx`: `updateReadBook` accepts `readAt`, writes to `read_books.read_at`, mirrors as `dateRead` on the local book object.
+- `Library.jsx`: read date shown on each row, `handleSaveRating` wires `readAt`, `RatingModal` receives `initialReadAt`.
+- `BookModal.jsx`: same `readAt` wiring through `handleSaveRating` and `RatingModal`.
+- `BulkImport.jsx`: `claudeBookFallback(title, author)` called when `book.noApiMatch` is true; uses correct `callClaude(prompt, systemPrompt)` signature.
+- `NavSearch.jsx`: same `callClaude` signature fix applied.
+- `oracleCategorizationService.js`: prompt extended for series and descriptions; `getBooksNeedingOracle` added.
+- `bookLookup.js`: PRH removed; `mergeThree` used throughout.
+- `scripts/oracleBatch.mjs` (new): standalone Node ESM batch script, direct Anthropic API calls, cost estimate ~$0.007/book.
+- `About.jsx` + `en.json` + `es.json`: `RoadmapTier` component, 9 new roadmap items across 3 tiers, bilingual.
 
 ### v0.21 — Oracle architecture overhaul
 

@@ -16,9 +16,27 @@
 
 // The version label shown as "current" — keep in sync with package.json and
 // the README version line.
-export const CURRENT_VERSION = 'v0.21';
+export const CURRENT_VERSION = 'v0.22';
 
 export const RELEASES = [{
+    version: 'v0.22',
+    date: '2026-06-16',
+    titleEn: 'Your library remembers when',
+    titleEs: 'Tu biblioteca recuerda cuándo',
+    bodyEn: [
+      'Every book you mark as read now records the date you finished it. A \'Finished on\' field appears in the rating modal, pre-filled with today but fully editable — so you can backfill the real date for books you read months or years ago.',
+      'The read date shows quietly in your library next to each book. It will power reading stats in an upcoming release.',
+      'Books that can\'t be found in Hardcover or OpenLibrary are now identified by the Oracle before falling back to \'add as-is\'. Most obscure and Spanish-language titles should now resolve with real metadata.',
+      'The Oracle also enriches genres, series, and descriptions all in one pass. And the About page now shows where the app is heading.',
+    ],
+    bodyEs: [
+      'Cada libro que marcás como leído ahora guarda la fecha en que lo terminaste. Aparece un campo \'Terminado el\' en el modal de calificación, con la fecha de hoy por defecto pero editable — para que puedas registrar la fecha real de libros que leíste hace meses o años.',
+      'La fecha aparece discretamente en tu biblioteca junto a cada libro, y pronto alimentará estadísticas de lectura.',
+      'Los libros que no se encuentran en Hardcover ni OpenLibrary ahora son identificados por el Oráculo antes de recurrir a \'agregar tal cual\'. La mayoría de títulos poco conocidos y en español deberían resolverse correctamente.',
+      'El Oráculo también hace más en un solo proceso: géneros, sagas y descripciones a la vez. Y la página Acerca de ahora muestra hacia dónde va la app.',
+    ],
+  },
+  {
     version: 'v0.21',
     date: '2026-06-15',
     titleEn: 'The Oracle grows wiser',

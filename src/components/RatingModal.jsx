@@ -25,6 +25,7 @@ export default function RatingModal({
   book,
   initialRating,
   initialNotes,
+  initialReadAt,
   mode = 'create',
   onSave,
   onSkip,
@@ -33,6 +34,12 @@ export default function RatingModal({
   const [hover, setHover] = useState(0);
   const [notes, setNotes] = useState(initialNotes || '');
   const [saving, setSaving] = useState(false);
+
+  // Default read date: existing value, or today for new entries
+  const todayStr = new Date().toISOString().slice(0, 10); // 'YYYY-MM-DD'
+  const [readAt, setReadAt] = useState(
+    initialReadAt ? initialReadAt.slice(0, 10) : todayStr
+  );
 
   // Close on Escape
   useEffect(() => {
@@ -49,6 +56,7 @@ export default function RatingModal({
       await onSave?.({
         rating: rating > 0 ? rating : null,
         notes: notes.trim() || null,
+        readAt: readAt || null,
       });
     } finally {
       setSaving(false);
@@ -237,6 +245,39 @@ export default function RatingModal({
               {notes.length} / {NOTES_MAX}
             </div>
           )}
+        </div>
+
+        {/* Finish date */}
+        <div className="field field-full" style={{ marginBottom: '1.2rem' }}>
+          <label
+            style={{
+              display: 'block',
+              fontFamily: "'Special Elite', monospace",
+              fontSize: '0.7rem',
+              letterSpacing: '0.15em',
+              textTransform: 'uppercase',
+              color: 'var(--gilt)',
+              marginBottom: '0.4rem',
+            }}
+          >
+            Finished on
+          </label>
+          <input
+            type="date"
+            value={readAt}
+            max={todayStr}
+            onChange={(e) => setReadAt(e.target.value)}
+            style={{
+              background: 'rgba(176, 140, 63, 0.04)',
+              border: '1px solid rgba(176, 140, 63, 0.25)',
+              borderRadius: '2px',
+              padding: '0.5rem 0.75rem',
+              color: 'var(--paper)',
+              fontFamily: "'EB Garamond', serif",
+              fontSize: '0.95rem',
+              colorScheme: 'dark',
+            }}
+          />
         </div>
 
         {/* Actions */}

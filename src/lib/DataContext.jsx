@@ -784,7 +784,11 @@ export function DataProvider({ children }) {
 
   const updateReadBook = useCallback(
     async (book, patch) => {
-      if (!patch || (patch.rating === undefined && patch.notes === undefined)) return;
+      if (!patch || (
+        patch.rating === undefined &&
+        patch.notes === undefined &&
+        patch.readAt === undefined
+      )) return;
       const k = bookKey(book);
 
       const update = {};
@@ -796,11 +800,16 @@ export function DataProvider({ children }) {
         const n = patch.notes ? patch.notes.trim() : '';
         update.notes = n.length > 0 ? n : null;
       }
+      if (patch.readAt) {
+        update.read_at = new Date(patch.readAt).toISOString();
+      }
 
+      const localPatch = { ...update };
+      if (update.read_at) localPatch.dateRead = update.read_at;
       setState((s) => ({
         ...s,
         library: s.library.map((b) =>
-          bookKey(b) === k ? { ...b, ...update } : b
+          bookKey(b) === k ? { ...b, ...localPatch } : b
         ),
       }));
 
