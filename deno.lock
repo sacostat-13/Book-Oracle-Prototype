@@ -16,7 +16,9 @@
         "npm:react-dom@^18.3.1",
         "npm:react@^18.3.1",
         "npm:sass@^1.77.0",
-        "npm:vite@^5.3.0"
+        "npm:vite-plugin-pwa@0.20",
+        "npm:vite@^5.3.0",
+        "npm:workbox-window@7"
       ]
     }
   }

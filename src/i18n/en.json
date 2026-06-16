@@ -72,6 +72,27 @@
     "roadmapItem3": "Shared plans — read a book with a friend, on the same schedule.",
     "roadmapItem4": "Better Spanish-language coverage for Costa Rican and Latin American editions.",
     "feedbackHeading": "Tell me what's broken",
-    "feedbackBody": "This is a prototype with real testers, and feedback shapes what gets built next. If something feels off, missing, or genuinely useful — say so."
+    "feedbackBody": "This is a prototype with real testers, and feedback shapes what gets built next. If something feels off, missing, or genuinely useful — say so.",
+    "roadmapTierNearHeading": "Coming soon",
+    "roadmapTierNear1Title": "Reading plans",
+    "roadmapTierNear1Body": "Turn the series navigator into an active reading plan — ordered books, estimated time based on page count, progress tracking as you go.",
+    "roadmapTierNear2Title": "Profile & reading stats",
+    "roadmapTierNear2Body": "Books read by genre, pages this year, series completion rates, reading pace. Your library as a mirror of your taste.",
+    "roadmapTierNear3Title": "Data quality dashboard",
+    "roadmapTierNear3Body": "A private view for managing book reports, running targeted Oracle passes on flagged books, and keeping the catalog clean — without touching the database directly.",
+    "roadmapTierMedHeading": "On the horizon",
+    "roadmapTierMed1Title": "Smarter onboarding",
+    "roadmapTierMed1Body": "A short taste quiz that seeds your wishlist with Oracle-curated recommendations so your first session feels personal, not empty.",
+    "roadmapTierMed2Title": "Shareable book pages",
+    "roadmapTierMed2Body": "Individual book pages and reading plans at shareable URLs — so you can send someone exactly what you just finished.",
+    "roadmapTierMed3Title": "Goodreads import polish",
+    "roadmapTierMed3Body": "Better duplicate detection, improved series handling, and progress feedback for large libraries. For the readers who want to bring everything over.",
+    "roadmapTierFutureHeading": "Further out",
+    "roadmapTierFuture1Title": "Curated reading paths",
+    "roadmapTierFuture1Body": "Oracle-generated entry points into genres and movements — \"Start here for Gothic horror\" — built from the series and genre data already in the catalog.",
+    "roadmapTierFuture2Title": "Spanish-language Oracle",
+    "roadmapTierFuture2Body": "Oracle prompts in Spanish for Spanish-language books, significantly improving data quality for Latin American titles that Hardcover knows least well.",
+    "roadmapTierFuture3Title": "Shared plans",
+    "roadmapTierFuture3Body": "Read a book with a friend on the same schedule. Shared progress, optional notes, no social feed."
   }
 }

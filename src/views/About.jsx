@@ -82,6 +82,51 @@ function Feature({ title, children }) {
   );
 }
 
+function RoadmapTier({ heading, items }) {
+  return (
+    <div style={{ marginBottom: '1.75rem' }}>
+      <div
+        style={{
+          fontFamily: "'Special Elite', monospace",
+          fontSize: '0.65rem',
+          letterSpacing: '0.25em',
+          textTransform: 'uppercase',
+          color: 'var(--gilt)',
+          opacity: 0.7,
+          marginBottom: '0.75rem',
+        }}
+      >
+        {heading}
+      </div>
+      {items.map(({ title, body }, i) => (
+        <div
+          key={i}
+          style={{
+            paddingLeft: '1rem',
+            borderLeft: '1px solid rgba(176, 140, 63, 0.2)',
+            marginBottom: '0.85rem',
+          }}
+        >
+          <div
+            style={{
+              color: 'var(--paper)',
+              fontFamily: "'Cormorant Garamond', serif",
+              fontStyle: 'italic',
+              fontSize: '1.05rem',
+              marginBottom: '0.2rem',
+            }}
+          >
+            {title}
+          </div>
+          <div style={{ color: 'var(--paper-aged)', lineHeight: 1.65, fontSize: '0.93rem' }}>
+            {body}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function About() {
   const { go } = useRouter();
   const t = useT();
@@ -167,12 +212,33 @@ export default function About() {
 
         <Section title={t('about.roadmapHeading')}>
           <Paragraph>{t('about.roadmapBody')}</Paragraph>
-          <ul style={{ color: 'var(--paper-aged)', lineHeight: 1.75, paddingLeft: '1.25rem' }}>
-            <li>{t('about.roadmapItem1')}</li>
-            <li>{t('about.roadmapItem2')}</li>
-            <li>{t('about.roadmapItem3')}</li>
-            <li>{t('about.roadmapItem4')}</li>
-          </ul>
+
+          <RoadmapTier
+            heading={t('about.roadmapTierNearHeading')}
+            items={[
+              { title: t('about.roadmapTierNear1Title'), body: t('about.roadmapTierNear1Body') },
+              { title: t('about.roadmapTierNear2Title'), body: t('about.roadmapTierNear2Body') },
+              { title: t('about.roadmapTierNear3Title'), body: t('about.roadmapTierNear3Body') },
+            ]}
+          />
+
+          <RoadmapTier
+            heading={t('about.roadmapTierMedHeading')}
+            items={[
+              { title: t('about.roadmapTierMed1Title'), body: t('about.roadmapTierMed1Body') },
+              { title: t('about.roadmapTierMed2Title'), body: t('about.roadmapTierMed2Body') },
+              { title: t('about.roadmapTierMed3Title'), body: t('about.roadmapTierMed3Body') },
+            ]}
+          />
+
+          <RoadmapTier
+            heading={t('about.roadmapTierFutureHeading')}
+            items={[
+              { title: t('about.roadmapTierFuture1Title'), body: t('about.roadmapTierFuture1Body') },
+              { title: t('about.roadmapTierFuture2Title'), body: t('about.roadmapTierFuture2Body') },
+              { title: t('about.roadmapTierFuture3Title'), body: t('about.roadmapTierFuture3Body') },
+            ]}
+          />
         </Section>
 
         <Section title={t('about.feedbackHeading')}>

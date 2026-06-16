@@ -41,9 +41,8 @@ Identify the most likely book this refers to. Return ONLY valid JSON, no markdow
   "s": { "name": "series name if part of one, else null", "n": 1, "total": null }
 }
 If s is not applicable, set it to null. If you cannot confidently identify a book, return null.`;
-    const raw = await callClaude([{ role: 'user', content: prompt }], {
-      system: 'You are a book identification assistant. Return only valid JSON.',
-    });
+    const systemPrompt = 'You are a book identification assistant. Return only valid JSON with no markdown fences.';
+    const raw = await callClaude(prompt, systemPrompt);
     const parsed = parseJSONResponse(raw);
     if (!parsed || !parsed.t || !parsed.a) return null;
     return { ...parsed, fromClaude: true, needsReview: true };

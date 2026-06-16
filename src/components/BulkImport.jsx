@@ -8,6 +8,7 @@ import {
   lookupByTitle,
   parseTitleList,
 } from '../lib/bookLookup';
+import { callClaude, parseJSONResponse } from '../lib/claudeApi';
 
 // Result row shape: { input, status: 'pending'|'found'|'missing'|'duplicate'|'unmatched', book?, error? }
 
@@ -19,6 +20,24 @@ import {
 // migration: it's hidden once the user has imported their Goodreads library
 // (state.profile.goodreadsImported). The other two tabs (titles, Amazon URLs)
 // remain available for ongoing additions.
+async function claudeBookFallback(title, author) {
+  try {
+    const query = author ? `${title} by ${author}` : title;
+    // callClaude(prompt, systemPrompt) takes plain strings, not message arrays
+    const systemPrompt = 'You are a book identification assistant. Return only valid JSON with no markdown fences.';
+    const prompt = `Identify this book: "${query}"
+Return ONLY valid JSON (no markdown, no explanation):
+{"t":"exact title","a":"author full name","d":"2-3 sentence description","g":"primary genre","s":{"name":"series name or null","n":1,"total":null}}
+Set s to null if not part of a series. Return the JSON literal null if you cannot confidently identify the book.`;
+    const raw = await callClaude(prompt, systemPrompt);
+    const parsed = parseJSONResponse(raw);
+    if (!parsed || !parsed.t || !parsed.a) return null;
+    return { ...parsed, fromClaude: true, needsReview: true };
+  } catch {
+    return null;
+  }
+}
+
 export default function BulkImport({ onClose, target = 'wishlist' }) {
   const {
     state,
@@ -121,9 +140,13 @@ export default function BulkImport({ onClose, target = 'wishlist' }) {
         if (existing) {
           row = { input: p.raw, status: 'duplicate', book };
         } else if (book.noApiMatch) {
-          // All APIs missed — flag as a "missing" warning but still let the
-          // user add it (it will be inserted as unverified)
-          row = { input: p.raw, status: 'unmatched', book };
+          // All APIs missed: try Claude before falling back to as-is
+          const claudeBook = await claudeBookFallback(p.t, p.a);
+          if (claudeBook) {
+            row = { input: p.raw, status: 'found', book: claudeBook };
+          } else {
+            row = { input: p.raw, status: 'unmatched', book };
+          }
         } else {
           row = { input: p.raw, status: 'found', book };
         }

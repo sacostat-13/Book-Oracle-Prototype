@@ -72,6 +72,27 @@
     "roadmapItem3": "Planes compartidos — leer un libro con una amiga, en el mismo calendario.",
     "roadmapItem4": "Mejor cobertura en español para ediciones costarricenses y latinoamericanas.",
     "feedbackHeading": "Contame qué está roto",
-    "feedbackBody": "Esto es un prototipo con personas probándolo de verdad, y los comentarios moldean lo que se construye después. Si algo se siente raro, si falta algo, o si algo te resulta genuinamente útil — decímelo."
+    "feedbackBody": "Esto es un prototipo con personas probándolo de verdad, y los comentarios moldean lo que se construye después. Si algo se siente raro, si falta algo, o si algo te resulta genuinamente útil — decímelo.",
+    "roadmapTierNearHeading": "Próximamente",
+    "roadmapTierNear1Title": "Planes de lectura",
+    "roadmapTierNear1Body": "Convertir el navegador de sagas en un plan de lectura activo — libros en orden, tiempo estimado según páginas, seguimiento de avance mientras leés.",
+    "roadmapTierNear2Title": "Perfil y estadísticas",
+    "roadmapTierNear2Body": "Libros leídos por género, páginas este año, porcentaje de sagas completadas, ritmo de lectura. Tu biblioteca como reflejo de tu gusto.",
+    "roadmapTierNear3Title": "Panel de calidad de datos",
+    "roadmapTierNear3Body": "Una vista privada para gestionar reportes de libros, ejecutar pasadas del Oráculo en libros marcados y mantener el catálogo limpio, sin tocar la base de datos directamente.",
+    "roadmapTierMedHeading": "En el horizonte",
+    "roadmapTierMed1Title": "Incorporación más inteligente",
+    "roadmapTierMed1Body": "Un cuestionario breve de gustos que llena tu lista con recomendaciones del Oráculo, para que la primera sesión se sienta personal, no vacía.",
+    "roadmapTierMed2Title": "Páginas de libros compartibles",
+    "roadmapTierMed2Body": "Páginas individuales de libros y planes de lectura con URLs para compartir, para que puedas enviarle a alguien exactamente lo que terminaste de leer.",
+    "roadmapTierMed3Title": "Importación de Goodreads mejorada",
+    "roadmapTierMed3Body": "Mejor detección de duplicados, manejo de sagas mejorado y retroalimentación de progreso para bibliotecas grandes.",
+    "roadmapTierFutureHeading": "Más adelante",
+    "roadmapTierFuture1Title": "Rutas de lectura curadas",
+    "roadmapTierFuture1Body": "Puntos de entrada generados por el Oráculo para géneros y movimientos literarios — \"Empezá aquí con el horror gótico\" — construidos a partir de los datos de sagas y géneros del catálogo.",
+    "roadmapTierFuture2Title": "Oráculo en español",
+    "roadmapTierFuture2Body": "Prompts del Oráculo en español para libros en español, mejorando significativamente la calidad de datos para títulos latinoamericanos que Hardcover conoce menos.",
+    "roadmapTierFuture3Title": "Planes compartidos",
+    "roadmapTierFuture3Body": "Leer un libro con una amiga en el mismo calendario. Avance compartido, notas opcionales, sin red social."
   }
 }
