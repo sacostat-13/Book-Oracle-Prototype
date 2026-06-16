@@ -16,9 +16,25 @@
 
 // The version label shown as "current" — keep in sync with package.json and
 // the README version line.
-export const CURRENT_VERSION = 'v0.22';
+export const CURRENT_VERSION = 'v0.23';
 
 export const RELEASES = [{
+    version: 'v0.23',
+    date: '2026-06-16',
+    titleEn: 'How you read, in numbers',
+    titleEs: 'Cómo leís, en números',
+    bodyEn: [
+      'Your profile now shows reading stats: total books and pages, your pace over the last 12 months as a bar chart, top genres, most-read author, and series in progress with dot indicators.',
+      'Reading Plans no longer shows every series in the catalog. It now shows only the series you have started or have on your wishlist, split into In progress and On your wishlist. You can still search for any other series.',
+      'Series in progress on the stats page are tappable and take you straight to creating a plan to finish them.',
+    ],
+    bodyEs: [
+      'Tu perfil ahora muestra estadísticas de lectura: libros y páginas totales, tu ritmo en los últimos 12 meses como gráfico de barras, géneros favoritos, autora más leída y sagas en progreso.',
+      'Los Planes de Lectura ahora solo muestran las sagas que ya empezaste o tenés en tu lista, divididas en En progreso y En tu lista. Todavía podés buscar cualquier otra saga.',
+      'Las sagas en progreso en las estadísticas son interactivas y te llevan directamente a crear un plan para terminarlas.',
+    ],
+  },
+  {
     version: 'v0.22',
     date: '2026-06-16',
     titleEn: 'Your library remembers when',

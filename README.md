@@ -4,7 +4,7 @@ A reading companion — wishlist, library, reading plans, and an AI-powered "ora
 for book discovery. Built with React + Vite + SCSS, backed by Supabase for auth
 and cross-device sync, and Netlify Functions for API proxying.
 
-> Current version: **v0.22** — see [Releases](#releases) below for changelog.
+> Current version: **v0.23** — see [Releases](#releases) below for changelog.
 > Upgrading from an earlier version? Check the matching `MIGRATION_*.md` / `UPDATE_*.md`.
 
 ---
@@ -286,6 +286,22 @@ Free to refactor into partials when needed.
 ---
 
 ## Releases
+
+### v0.23 — Reading stats and smarter series plans
+
+Addresses the profile stats milestone and the Reading Plans UX issue.
+
+User-facing changes:
+
+- **Reading stats on the Profile page.** Total books and pages (all time and this year), reading pace over 12 months as a bar chart, top genres as horizontal bars, most-read author, series completion count, and series in progress with dot progress indicators. Stats sections only appear when data is available.
+- **Series in progress are tappable.** Each in-progress series on the stats page links directly to Reading Plans pre-filled with that series.
+- **Reading Plans shows your series only.** Removed `ALL_BOOKS` from the series picker. Now shows two groups: In progress (started but not finished, sorted by most recently read) and On your wishlist (not yet started). Search remains available for finding new series.
+- **Nudge for missing dates.** If a user has library books but no dated reads, a prompt explains how to add dates via 'Edit rating'.
+
+Under the hood:
+
+- `Profile.jsx`: rewritten with `StatCard`, `GenreBar`, and `PaceChart` components. Stats derived in a single `useMemo` from `state.library`, `state.genresByBookId`, `state.wishlist`, `state.readNext`. Fully bilingual.
+- `PlanCreate.jsx`: `knownSeries` useMemo replaced with `inProgressSeries` and `wishlistedSeries`. `ALL_BOOKS` no longer used for series list. UI split into two labeled groups with contextual counts.
 
 ### v0.22 — Read dates, smarter search, Oracle expansion
 

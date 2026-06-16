@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useData } from '../lib/DataContext';
 import { useRouter } from '../lib/RouterContext';
-import { ALL_BOOKS, bookKey, findBookByTitle } from '../lib/bookHelpers';
+import { bookKey, findBookByTitle } from '../lib/bookHelpers';
 import { fetchSeriesBooks } from '../lib/enrichmentService';
 import { callClaude, parseJSONResponse } from '../lib/claudeApi';
 import { useI18n, langDirective } from '../lib/I18nContext';
@@ -25,18 +25,34 @@ export default function PlanCreate() {
   const [seriesSearchLoading, setSeriesSearchLoading] = useState(false);
   const [generating, setGenerating] = useState(false);
 
-  // Build list of known series from all sources
-  const knownSeries = useMemo(() => {
-    const map = {};
-    const sources = [...ALL_BOOKS, ...state.wishlist, ...state.library];
-    for (const b of sources) {
-      if (b.s?.name) {
-        if (!map[b.s.name]) map[b.s.name] = { name: b.s.name, count: 0 };
-        map[b.s.name].count++;
+  // Build series lists from the user's own collection only.
+  // in-progress: at least one read, series not complete
+  // wishlisted: none read yet, has books in wishlist/readNext
+  const { inProgressSeries, wishlistedSeries } = useMemo(() => {
+    const seriesMap = {};
+    for (const b of [...state.wishlist, ...state.readNext, ...state.library]) {
+      if (!b.s?.name) continue;
+      const n = b.s.name;
+      if (!seriesMap[n]) seriesMap[n] = { name: n, total: b.s.total || null, readCount: 0, totalKnown: 0, latestReadAt: null };
+      seriesMap[n].totalKnown++;
+      const isRead = state.library.some((l) => bookKey(l) === bookKey(b));
+      if (isRead) {
+        seriesMap[n].readCount++;
+        const readAt = b.dateRead || b.read_at;
+        if (readAt && (!seriesMap[n].latestReadAt || readAt > seriesMap[n].latestReadAt))
+          seriesMap[n].latestReadAt = readAt;
       }
     }
-    return Object.values(map).sort((a, b) => a.name.localeCompare(b.name));
-  }, [state.wishlist, state.library]);
+    const all = Object.values(seriesMap);
+    const inProgress = all
+      .filter((s) => s.readCount > 0 && (s.total == null || s.readCount < s.total))
+      .sort((a, b) => (b.latestReadAt || '') > (a.latestReadAt || '') ? 1 : -1);
+    const wishlisted = all
+      .filter((s) => s.readCount === 0)
+      .sort((a, b) => a.name.localeCompare(b.name));
+    return { inProgressSeries: inProgress, wishlistedSeries: wishlisted };
+  }, [state.wishlist, state.readNext, state.library]);
+  const knownSeries = [...inProgressSeries, ...wishlistedSeries];
 
   // If we arrived with seriesName param, auto-select type=series
   useState(() => {
@@ -349,23 +365,41 @@ Return ONLY valid JSON in this exact format:
           <>
             <div className="onb-eyebrow" style={{ marginTop: '2rem' }}>2 · Which series?</div>
             <h2 className="onb-title" style={{ fontSize: '1.6rem', marginBottom: '1.5rem' }}>
-              Pick a series {knownSeries.length > 0 ? 'we know about' : 'or search Open Library'}:
+              {inProgressSeries.length > 0 ? 'Continue a series, or search for a new one:' : 'Search for a series to finish:'}
             </h2>
-            {knownSeries.length > 0 && (
-              <div className="choice-grid">
-                {knownSeries.map((s) => (
-                  <button
-                    key={s.name}
-                    className={`choice ${target === s.name ? 'selected' : ''}`}
-                    onClick={() => setTarget(s.name)}
-                  >
-                    <div className="choice-title">{s.name}</div>
-                    <div className="choice-sub">
-                      {s.count} {s.count === 1 ? 'book' : 'books'} known
-                    </div>
-                  </button>
-                ))}
-              </div>
+            {inProgressSeries.length > 0 && (
+              <>
+                <div className="onb-eyebrow" style={{ marginBottom: '0.6rem', marginTop: '0.5rem' }}>In progress</div>
+                <div className="choice-grid">
+                  {inProgressSeries.map((s) => (
+                    <button
+                      key={s.name}
+                      className={`choice ${target === s.name ? 'selected' : ''}`}
+                      onClick={() => setTarget(s.name)}
+                    >
+                      <div className="choice-title">{s.name}</div>
+                      <div className="choice-sub">{s.readCount} of {s.total || s.totalKnown} read</div>
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+            {wishlistedSeries.length > 0 && (
+              <>
+                <div className="onb-eyebrow" style={{ marginTop: '1.25rem', marginBottom: '0.6rem' }}>On your wishlist</div>
+                <div className="choice-grid">
+                  {wishlistedSeries.map((s) => (
+                    <button
+                      key={s.name}
+                      className={`choice ${target === s.name ? 'selected' : ''}`}
+                      onClick={() => setTarget(s.name)}
+                    >
+                      <div className="choice-title">{s.name}</div>
+                      <div className="choice-sub">{s.totalKnown} {s.totalKnown === 1 ? 'book' : 'books'} on your list</div>
+                    </button>
+                  ))}
+                </div>
+              </>
             )}
             <div className="onb-eyebrow" style={{ marginTop: '1.5rem' }}>Or search by series name</div>
             <div style={{ display: 'flex', gap: '0.6rem', marginTop: '0.5rem' }}>
