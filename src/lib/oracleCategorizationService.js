@@ -16,7 +16,7 @@
 import { supabase } from './supabase';
 import { callClaude, parseJSONResponse } from './claudeApi';
 
-const BATCH_SIZE = 20;
+const BATCH_SIZE = 10;
 
 const UNVERIFIED_STATUSES = ['unreviewed', 'incomplete'];
 
@@ -58,8 +58,9 @@ async function fetchAllGenres() {
 }
 
 function buildPrompt(books, existingGenres) {
+  // Short catalog: just names, no descriptions, to keep the prompt lean.
   const catalogList = existingGenres
-    .map((g) => g.description ? `- ${g.name}: ${g.description}` : `- ${g.name}`)
+    .map((g) => `- ${g.name}`)
     .join('\n');
 
   const bookList = books
@@ -74,9 +75,11 @@ function buildPrompt(books, existingGenres) {
       if (author) parts.push(`   Author: ${author}`);
       if (genreHint) parts.push(`   Auto-genre hint: ${genreHint}`);
       if (seriesHint) parts.push(`   Series hint: ${seriesHint}`);
-      if (description) {
-        const desc = description.length > 300
-          ? description.slice(0, 300) + '…'
+      // Only include description when it adds signal beyond title/author/genre.
+      // Keep it short to stay within the Netlify 30s timeout.
+      if (description && !genreHint) {
+        const desc = description.length > 150
+          ? description.slice(0, 150) + '…'
           : description;
         parts.push(`   Description: ${desc}`);
       }
@@ -152,9 +155,15 @@ async function writeBookEnrichment(bookId, genreIds, seriesData, description) {
   if (seriesData?.name) {
     await supabase.rpc('upsert_series', {
       _name: seriesData.name,
+      _author: null,
+      _description: null,
+      _hardcover_id: null,
+      _metadata: {},
+      _publication_status: null,
       _total_books: seriesData.total || null,
       _status: 'oracle_categorized',
       _source: 'oracle',
+      _verified_source: null,
     }).then(async ({ data: seriesRow }) => {
       if (seriesRow?.[0]?.id) {
         await supabase.from('books').update({
