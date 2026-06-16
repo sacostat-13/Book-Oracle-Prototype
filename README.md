@@ -4,7 +4,7 @@ A reading companion — wishlist, library, reading plans, and an AI-powered "ora
 for book discovery. Built with React + Vite + SCSS, backed by Supabase for auth
 and cross-device sync, and Netlify Functions for API proxying.
 
-> Current version: **v0.19** — see [Releases](#releases) below for changelog.
+> Current version: **v0.20** — see [Releases](#releases) below for changelog.
 > Upgrading from an earlier version? Check the matching `MIGRATION_*.md` / `UPDATE_*.md`.
 
 ---
@@ -286,6 +286,26 @@ Free to refactor into partials when needed.
 ---
 
 ## Releases
+
+### v0.20 — Report book issues
+
+Addresses issue [#12](https://github.com/sacostat-13/Book-Oracle-Prototype/issues/12).
+
+User-facing changes:
+
+- **Report button on BookModal and BookPage.** A subtle 'Report an issue' link at the bottom expands inline into a form. Users select which fields are wrong (Title, Description, Series, Genres), add an optional comment, and submit. Confirmation toast on success.
+- **Bilingual.** All copy is in English and Spanish via the existing `isSpanish` flag.
+
+Under the hood:
+
+- New `src/components/ReportBookForm.jsx`: self-contained; owns open/fields/comment/submitting state.
+- New `src/lib/reportService.js`: `submitBookReport({ bookId, fields, comment })` inserts into `book_reports`.
+- New `supabase/schema_v9_migration.sql`: creates `book_reports` table with RLS, indexes on book_id/user_id/status.
+- `BookModal.jsx`: renders `<ReportBookForm>` above the actions area.
+- `BookPage.jsx`: renders `<ReportBookForm>` after the series plan CTA.
+- `main.scss`: `.report-book*` styles, mobile-responsive.
+
+**Run `schema_v9_migration.sql` in Supabase before deploying.**
 
 ### v0.19 — Global search
 

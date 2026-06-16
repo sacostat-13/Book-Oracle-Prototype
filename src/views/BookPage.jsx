@@ -15,6 +15,7 @@ import { lookupByTitle } from '../lib/bookLookup';
 import { purchaseLinks } from '../lib/purchaseLinks';
 import { fetchSeriesDescriptionFromWikipedia } from '../lib/seriesService';
 import BookCover from '../components/BookCover';
+import ReportBookForm from '../components/ReportBookForm';
 
 export default function BookPage({ previewBookRef }) {
   const {
@@ -415,6 +416,8 @@ export default function BookPage({ previewBookRef }) {
           </button>
         </div>
       )}
+
+      <ReportBookForm book={display} isSpanish={isSpanish} />
     </div>
   );
 }

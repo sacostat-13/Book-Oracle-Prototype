@@ -2144,3 +2144,87 @@
       width: 100%;
     }
   }
+
+  /* ============ REPORT BOOK FORM (v0.20) ============ */
+  .report-book {
+    padding-top: 1.25rem;
+    border-top: 1px solid rgba(176, 140, 63, 0.1);
+    padding: 1.5rem 2rem;
+  }
+  .report-book-trigger {
+    background: none;
+    border: none;
+    color: var(--paper-aged);
+    font-family: 'Special Elite', monospace;
+    font-size: 0.65rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    cursor: pointer;
+    opacity: 0.45;
+    padding: 0;
+    transition: opacity 0.2s;
+  }
+  .report-book-trigger:hover { opacity: 0.85; }
+
+  .report-book-form {
+    background: rgba(244, 234, 213, 0.02);
+    border: 1px solid rgba(176, 140, 63, 0.15);
+    border-radius: 2px;
+    padding: 1rem 1.25rem;
+  }
+  .report-book-form-title {
+    font-family: 'Special Elite', monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--gilt);
+    margin-bottom: 0.75rem;
+  }
+  .report-book-fields {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 1.25rem;
+    margin-bottom: 0.75rem;
+  }
+  .report-book-field {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    cursor: pointer;
+    font-size: 0.85rem;
+    color: var(--paper-aged);
+    user-select: none;
+  }
+  .report-book-field input[type='checkbox'] {
+    accent-color: var(--gilt);
+    width: 14px;
+    height: 14px;
+    cursor: pointer;
+  }
+  .report-book-comment {
+    width: 100%;
+    background: rgba(244, 234, 213, 0.03);
+    border: 1px solid rgba(176, 140, 63, 0.2);
+    border-radius: 2px;
+    color: var(--paper);
+    font-family: 'EB Garamond', serif;
+    font-size: 0.9rem;
+    padding: 0.5rem 0.75rem;
+    resize: vertical;
+    outline: none;
+    margin-bottom: 0.75rem;
+    box-sizing: border-box;
+  }
+  .report-book-comment:focus { border-color: rgba(176, 140, 63, 0.45); }
+  .report-book-comment::placeholder { color: var(--paper-aged); opacity: 0.4; }
+  .report-book-actions {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: flex-end;
+  }
+  @media (max-width: 700px) {
+    .report-book-actions {
+      flex-direction: column;
+    }
+    .report-book-actions .btn { width: 100%; }
+  }

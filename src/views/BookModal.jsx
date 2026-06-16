@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useData } from '../lib/DataContext';
 import { useRouter } from '../lib/RouterContext';
+import ReportBookForm from './ReportBookForm';
 import { useI18n } from '../lib/I18nContext';
 import { ALL_BOOKS, bookKey, findBookByTitle } from '../lib/bookHelpers';
 import { enrichBookFromOpenLibrary, fetchSeriesBooks } from '../lib/enrichmentService';
@@ -45,6 +46,7 @@ export default function BookModal({ book, onClose, onOpenBook }) {
   } = useData();
   const { go } = useRouter();
   const { lang } = useI18n();
+  const isSpanish = lang === 'es';
   const isSpanish = lang === 'es';
 
   const [enrichment, setEnrichment] = useState(null);
@@ -675,6 +677,8 @@ export default function BookModal({ book, onClose, onOpenBook }) {
             </>
           )}
         </div>
+
+        <ReportBookForm book={display} isSpanish={isSpanish} />
       </div>
 
       {ratingEditorOpen && libraryRow && (

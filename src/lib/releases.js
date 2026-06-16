@@ -16,9 +16,23 @@
 
 // The version label shown as "current" — keep in sync with package.json and
 // the README version line.
-export const CURRENT_VERSION = 'v0.19';
+export const CURRENT_VERSION = 'v0.20';
 
 export const RELEASES = [{
+    version: 'v0.20',
+    date: '2026-06-15',
+    titleEn: 'Report book issues',
+    titleEs: 'Reportar errores en libros',
+    bodyEn: [
+      'You can now flag incorrect information on any book. Open a book modal or book page and tap "Report an issue" at the bottom to tell us what\'s wrong — cover, title, description, series, or genres.',
+      'Reports go to our review queue and will be used to prioritise which books get fixed first.',
+    ],
+    bodyEs: [
+      'Ahora podés marcar información incorrecta en cualquier libro. Abrí el modal o la página de un libro y tocá "Reportar un error" al final para indicar qué está mal.',
+      'Los reportes van a nuestra cola de revisión y se usarán para priorizar qué libros se corrigen primero.',
+    ],
+  },
+  {
     version: 'v0.19',
     date: '2026-06-15',
     titleEn: 'Search any book',

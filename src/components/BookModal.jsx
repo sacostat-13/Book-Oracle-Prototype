@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react';
 import { useData } from '../lib/DataContext';
 import { useRouter } from '../lib/RouterContext';
+import ReportBookForm from './ReportBookForm';
 import { useI18n } from '../lib/I18nContext';
 import { ALL_BOOKS, bookKey, findBookByTitle } from '../lib/bookHelpers';
 import { enrichBookFromOpenLibrary, fetchSeriesBooks } from '../lib/enrichmentService';
 import { lookupByTitle } from '../lib/bookLookup';
+import { hardcoverGetBook } from '../lib/hardcoverService';
 import { fetchCoverURL } from '../lib/coverService';
 import { purchaseLinks } from '../lib/purchaseLinks';
 import { fetchSeriesDescriptionFromWikipedia } from '../lib/seriesService';
@@ -89,13 +91,27 @@ export default function BookModal({ book, onClose, onOpenBook }) {
         if (coverUrl) patch.coverUrl = coverUrl;
       }
 
-      if (needsPages || needsDescription) {
+      // Fast path: if we have a hardcoverId and need a description,
+      // fetch the full record directly -- reliable for books added before
+      // descriptions were being stored.
+      if (needsDescription && book.hardcoverId) {
+        const full = await hardcoverGetBook(book.hardcoverId);
+        if (cancelled) return;
+        if (full?.d) patch.d = full.d;
+        if (needsPages && full?.pp) patch.pp = full.pp;
+        if (!book.isbn && full?.isbn) patch.isbn = full.isbn;
+      }
+
+      // Fall back to full lookup chain for anything still missing
+      const stillNeedsPages = needsPages && !patch.pp;
+      const stillNeedsDescription = needsDescription && !patch.d;
+      if (stillNeedsPages || stillNeedsDescription) {
         const found = await lookupByTitle(book.t, book.a);
         if (cancelled) return;
         if (found) {
-          if (needsPages && found.pp) patch.pp = found.pp;
-          if (needsDescription && found.d) patch.d = found.d;
-          if (!book.isbn && found.isbn) patch.isbn = found.isbn;
+          if (stillNeedsPages && found.pp) patch.pp = found.pp;
+          if (stillNeedsDescription && found.d) patch.d = found.d;
+          if (!book.isbn && !patch.isbn && found.isbn) patch.isbn = found.isbn;
           if (!book.hardcoverId && found.hardcoverId) patch.hardcoverId = found.hardcoverId;
           if (found.wikipediaUrl) patch.wikipediaUrl = found.wikipediaUrl;
           if (found.wikipediaLang) patch.wikipediaLang = found.wikipediaLang;
@@ -660,6 +676,8 @@ export default function BookModal({ book, onClose, onOpenBook }) {
             </>
           )}
         </div>
+
+        <ReportBookForm book={display} isSpanish={isSpanish} />
       </div>
 
       {ratingEditorOpen && libraryRow && (

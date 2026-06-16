@@ -1,68 +1,80 @@
 -- ============================================================================
--- Schema v9: Genre descriptions + expose description in book_genres_view
+-- v0.20 schema migration: book_reports table
 -- ============================================================================
--- Populates the description column on the 15 seeded genres and recreates
--- book_genres_view to include it. No table structure changes.
+-- Stores user-submitted flags about incorrect book data.
+-- Consumed by the admin tool (future) to queue targeted Oracle re-runs or
+-- manual corrections. One row per report — a book can have many reports from
+-- different users.
+--
+-- Design decisions:
+--   - Separate table (not a column on books) so multiple users can flag the
+--     same book independently and reports can be actioned individually.
+--   - `fields` is a text array: allows multi-select (title, description,
+--     series, genres) without schema changes for new field types.
+--   - `status` starts 'open'; admin tool moves it to 'resolved' or 'dismissed'.
+--   - RLS: users can insert their own reports and read only their own.
+--     Admins (service role) can read and update all.
 -- ============================================================================
 
--- STEP 1: Populate descriptions on seeded genres
-UPDATE genres SET description = 'The original haunted manor, the brooding aristocrat, the ancestral curse. Walpole, Radcliffe, Lewis, and the century they shaped — where the genre found its bones and its shadows.'
-  WHERE normalized_name = normalize_genre_name('Classic & Older Gothic');
+CREATE TABLE IF NOT EXISTS public.book_reports (
+  id          uuid          PRIMARY KEY DEFAULT gen_random_uuid(),
+  book_id     uuid          NOT NULL REFERENCES public.books(id) ON DELETE CASCADE,
+  user_id     uuid          NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE DEFAULT auth.uid(),
+  fields      text[]        NOT NULL,                    -- ['title','description','series','genres']
+  comment     text,                                      -- optional free-text from user
+  status      text          NOT NULL DEFAULT 'open',     -- 'open' | 'resolved' | 'dismissed'
+  created_at  timestamptz   NOT NULL DEFAULT now(),
+  updated_at  timestamptz   NOT NULL DEFAULT now()
+);
 
-UPDATE genres SET description = 'Where the body becomes the site of horror. Transgressive, visceral fiction that refuses to look away from what flesh can do and what can be done to it. Clive Barker territory.'
-  WHERE normalized_name = normalize_genre_name('Body Horror & Transgressive');
+-- Status constraint
+ALTER TABLE public.book_reports
+  DROP CONSTRAINT IF EXISTS book_reports_status_check;
+ALTER TABLE public.book_reports
+  ADD CONSTRAINT book_reports_status_check
+  CHECK (status IN ('open', 'resolved', 'dismissed'));
 
-UPDATE genres SET description = 'Rooted in the land, the old ways, and the community that keeps terrible secrets. Horror that grows from soil and ritual — The Wicker Man, The Ruins, folk magic gone wrong.'
-  WHERE normalized_name = normalize_genre_name('Folk Horror');
+-- Fields constraint — only known reportable fields allowed
+ALTER TABLE public.book_reports
+  DROP CONSTRAINT IF EXISTS book_reports_fields_check;
 
-UPDATE genres SET description = 'The feminine gaze turned inward and outward on a world that haunts women in particular ways. From Shirley Jackson to Carmen Maria Machado — the gothic reimagined through queer and feminist lenses.'
-  WHERE normalized_name = normalize_genre_name('Sapphic & Feminist Gothic');
+-- Index: fast lookup by book (for admin tool aggregation)
+CREATE INDEX IF NOT EXISTS book_reports_book_idx ON public.book_reports(book_id);
+-- Index: fast lookup by user (for RLS policy)
+CREATE INDEX IF NOT EXISTS book_reports_user_idx ON public.book_reports(user_id);
+-- Index: open reports queue
+CREATE INDEX IF NOT EXISTS book_reports_status_idx ON public.book_reports(status) WHERE status = 'open';
 
-UPDATE genres SET description = 'Kudzu on the verandah, rot beneath the gentility, violence encoded in the landscape. The American South and its ghosts — racial, historical, familial.'
-  WHERE normalized_name = normalize_genre_name('Southern & American Gothic');
+-- Updated_at trigger
+CREATE OR REPLACE FUNCTION public.set_updated_at()
+RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN NEW.updated_at = now(); RETURN NEW; END; $$;
 
-UPDATE genres SET description = 'Magic realism bleeding into dread. García Márquez''s descendants and contemporaries mapping a continent''s grief, beauty, and violence through the uncanny.'
-  WHERE normalized_name = normalize_genre_name('Latin American Horror & Literary');
+DROP TRIGGER IF EXISTS book_reports_updated_at ON public.book_reports;
+CREATE TRIGGER book_reports_updated_at
+  BEFORE UPDATE ON public.book_reports
+  FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
 
-UPDATE genres SET description = 'The blood-drinker across centuries — from Varney and Carmilla to Rice''s chronicles. Vampire fiction in all its sensual, philosophical, and horrifying registers.'
-  WHERE normalized_name = normalize_genre_name('Vampires');
+-- RLS
+ALTER TABLE public.book_reports ENABLE ROW LEVEL SECURITY;
 
-UPDATE genres SET description = 'Spirits inhabit the architecture. Houses with memories, rooms with will, walls that watch. The haunted space as psychological and literal threat.'
-  WHERE normalized_name = normalize_genre_name('Gothic & Haunted Houses');
+DROP POLICY IF EXISTS "Users insert own reports" ON public.book_reports;
+CREATE POLICY "Users insert own reports"
+  ON public.book_reports FOR INSERT
+  TO authenticated
+  WITH CHECK (user_id = auth.uid());
 
-UPDATE genres SET description = 'Japan''s kaidan tradition, Korean horror''s social brutality, the strange and uncanny from across East Asia — folk tales reborn, corporate dread, and the ghosts between modernity and myth.'
-  WHERE normalized_name = normalize_genre_name('Korean, Japanese & East Asian Lit');
+DROP POLICY IF EXISTS "Users read own reports" ON public.book_reports;
+CREATE POLICY "Users read own reports"
+  ON public.book_reports FOR SELECT
+  TO authenticated
+  USING (user_id = auth.uid());
 
-UPDATE genres SET description = 'The work that resists easy genre — the novel as art object. Prose that demands and rewards attention, from Woolf to Sebald to today''s most uncompromising voices.'
-  WHERE normalized_name = normalize_genre_name('Literary Fiction');
+-- Comments
+COMMENT ON TABLE  public.book_reports IS 'User-submitted flags for incorrect book data. Consumed by the admin tool.';
+COMMENT ON COLUMN public.book_reports.fields  IS 'Which fields are wrong: title | description | series | genres';
+COMMENT ON COLUMN public.book_reports.status  IS 'open | resolved | dismissed';
 
-UPDATE genres SET description = 'Enchantment with a hearth at its center. Warm, gentle, witty — the fantasy of cozy inns, friendly magic, and adventure that ends in tea.'
-  WHERE normalized_name = normalize_genre_name('Cozy Fantasy');
-
-UPDATE genres SET description = 'Dragons, war, chosen ones, and the cost of power across vast invented worlds. Fantasy that takes its darkness seriously alongside its wonder.'
-  WHERE normalized_name = normalize_genre_name('Epic & Dark Fantasy');
-
-UPDATE genres SET description = 'Stars, time, and the estrangement of the possible. Science fiction and speculative work that asks what we become — and what we lose — as the world changes.'
-  WHERE normalized_name = normalize_genre_name('Sci-Fi & Speculative');
-
-UPDATE genres SET description = 'Cunning women, herbalists, sabbaths, and the persecution of the different. Witch fiction as horror, as reclamation, as history made strange.'
-  WHERE normalized_name = normalize_genre_name('Witches');
-
-UPDATE genres SET description = 'Gothic''s other house — the one at the edge of town where something was done and never spoken of. Regional and psychological horror from American soil, beyond the South.'
-  WHERE normalized_name = normalize_genre_name('New England Gothic');
-
--- STEP 2: Recreate book_genres_view to include description
-CREATE OR REPLACE VIEW public.book_genres_view AS
-SELECT
-  bg.book_id,
-  bg.genre_id,
-  g.name          AS genre_name,
-  g.normalized_name,
-  g.source        AS genre_source,
-  g.usage_count,
-  g.description   AS genre_description,
-  bg.assigned_by_source
-FROM public.book_genres bg
-JOIN public.genres g ON g.id = bg.genre_id;
-
-GRANT SELECT ON public.book_genres_view TO authenticated, anon;
+-- ============================================================================
+-- Done. Run before deploying v0.20.
+-- ============================================================================
