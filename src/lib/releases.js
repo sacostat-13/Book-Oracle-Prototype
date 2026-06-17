@@ -16,9 +16,24 @@
 
 // The version label shown as "current" — keep in sync with package.json and
 // the README version line.
-export const CURRENT_VERSION = 'v0.24';
+export const CURRENT_VERSION = 'v0.25';
 
-export const RELEASES = [{
+export const RELEASES = [{version: 'v0.25',
+    date: '2026-06-17',
+    titleEn: 'Currently Reading & cover shelves',
+    titleEs: 'Leyendo ahora y estantes de portadas',
+    bodyEn: [
+      'A new "Reading" section in the nav tracks books you\'re actively reading, with a start date and day counter so you can see how long each book took once you finish.',
+      'Wishlist and Library now have a Covers toggle — switch from the list view to a visual grid where each genre becomes its own shelf of cover art.',
+      'Books marked as reading are hidden from Read Next automatically; removing a book from Currently Reading sends it back to your queue.',
+    ],
+    bodyEs: [
+      'Una nueva sección "Leyendo" en la navegación registra los libros que estás leyendo activamente, con fecha de inicio y contador de días para saber cuánto tardaste al terminar.',
+      'La Lista de Deseos y la Biblioteca tienen ahora un toggle de Portadas — cambiá de la vista de lista a una grilla visual donde cada género se convierte en su propio estante.',
+      'Los libros marcados como "leyendo" se ocultan automáticamente de Leer Después; quitarlos de Leyendo los devuelve a la cola.',
+    ],
+  },
+  {
     version: 'v0.24',
     date: '2026-06-16',
     titleEn: 'Series get their own page',

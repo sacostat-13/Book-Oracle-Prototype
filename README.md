@@ -287,6 +287,36 @@ Free to refactor into partials when needed.
 
 ## Releases
 
+### v0.25 — Currently Reading, cover grid, cover backfill
+
+**Currently Reading view**
+- New `currently-reading` route and `CurrentlyReading.jsx` view — cards with cover, start date, and live day counter
+- `currently_reading` Supabase table (see `schema_v10_migration.sql`) with RLS; stores `user_id`, `book_id`, `started_at`
+- Three new DataContext actions: `startReading`, `finishReading`, `removeFromCurrentlyReading`
+- ▶ Start button added to Wishlist and Read Next list items
+- Finishing a book via Currently Reading calls `markAsRead` and removes the row
+- Removing from Currently Reading returns the book to Read Next queue
+- Nav item **Reading** (ES: **Leyendo**) with badge counter between Read Next and Profile
+- Books in `currentlyReading` filtered out of Read Next list; Wishlist shows `· reading` status and disables Start/Queue buttons
+
+**Cover grid (Wishlist + Library)**
+- `LibraryCoverGrid.jsx` — responsive cover grid with genre groups as named shelves
+- `☰ List / ⊞ Covers` toggle in both Wishlist and Library toolbars, persisted to `localStorage`
+- Hover overlay shows title, author, and genre pills
+- Mobile: exactly 3 columns; list items stack vertically (cover hidden, actions full-width)
+
+**Cover backfill scripts** (`batch-scripts/`)
+- `coverBackfill.mjs` — multi-source pipeline: Open Library → OL/PRH by ISBN → Google Books → OL/PRH by Google ISBNs → Hardcover → Claude
+  - PRH CDN: `images4.penguinrandomhouse.com/smedia/{ISBN13}` with byte-size check to reject "Cover coming soon" placeholder
+  - Open Library uses `?default=false` to get 404 instead of 1×1 GIF placeholder
+  - Hardcover `search()` GraphQL as final pre-Claude fallback — excellent coverage for recent literary/genre fiction
+  - `--verbose` flag for per-URL debug output; `--dry-run`, `--limit`, `--delay` flags
+- `fixBadCovers.mjs` — nulls out known bad cover URLs (publisher logos, theme assets) so backfill can re-process them
+- `debugCover.mjs` — traces every pipeline step for a single book title+author
+
+**Other fixes**
+- `netlify.toml` — added `[dev]` block with `framework = "#custom"` to prevent Netlify CLI auto-detecting Hydrogen/Remix
+
 ### v0.24 — Series pages
 
 New dedicated series page surface.
