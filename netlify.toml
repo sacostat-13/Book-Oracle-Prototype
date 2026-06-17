@@ -6,6 +6,12 @@
 [build.environment]
   NODE_VERSION = "20"
 
+[dev]
+  command = "npm run dev"
+  port = 8888
+  targetPort = 5173
+  framework = "#custom"
+
 # SPA fallback: any unknown route returns index.html so client-side
 # routing (and the OAuth redirect after Google sign-in) works.
 # Note: /.netlify/functions/* is automatically excluded.

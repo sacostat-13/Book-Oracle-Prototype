@@ -4,6 +4,7 @@ import { useRouter } from '../lib/RouterContext';
 import { GENRES, bookKey } from '../lib/bookHelpers';
 import BulkImport from '../components/BulkImport';
 import OracleCategorizationButton from '../components/OracleCategorizationButton';
+import LibraryCoverGrid from '../components/LibraryCoverGrid';
 
 // v0.15 phase 2.5: two-dropdown filter (genres + categories).
 // Genres are canonical Oracle-curated taxonomy from genresByBookId.
@@ -26,6 +27,14 @@ export default function Wishlist({ onOpenBook }) {
   const [genreFilter, setGenreFilter] = useState('all');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [bulkOpen, setBulkOpen] = useState(false);
+  const [viewMode, setViewMode] = useState(() => {
+    try { return localStorage.getItem('wishlist_view_mode') || 'list'; } catch { return 'list'; }
+  });
+
+  function switchViewMode(mode) {
+    setViewMode(mode);
+    try { localStorage.setItem('wishlist_view_mode', mode); } catch {}
+  }
 
   const wl = state.wishlist;
   const { genresByBookId } = state;
@@ -161,6 +170,22 @@ export default function Wishlist({ onOpenBook }) {
           )}
         </div>
         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+          <div className="view-toggle">
+            <button
+              className={`view-toggle-btn${viewMode === 'list' ? ' active' : ''}`}
+              onClick={() => switchViewMode('list')}
+              title="List view"
+            >
+              ☰ List
+            </button>
+            <button
+              className={`view-toggle-btn${viewMode === 'covers' ? ' active' : ''}`}
+              onClick={() => switchViewMode('covers')}
+              title="Cover grid view"
+            >
+              ⊞ Covers
+            </button>
+          </div>
           <button className="btn btn-ghost" onClick={() => setBulkOpen((v) => !v)}>
             ⇪ Bulk import
           </button>
@@ -201,6 +226,13 @@ export default function Wishlist({ onOpenBook }) {
           <div className="empty-state-title">No books match</div>
           <div className="empty-state-text">Try clearing your filters.</div>
         </div>
+      ) : viewMode === 'covers' ? (
+        <LibraryCoverGrid
+          grouped={grouped}
+          genreKeys={genreKeys}
+          genresByBookId={genresByBookId}
+          onOpenBook={onOpenBook}
+        />
       ) : (
         genreKeys.map((g) => (
           <div className="list-section" key={g}>

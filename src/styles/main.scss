@@ -2634,3 +2634,31 @@
   .cr-card { grid-template-columns: 72px 1fr; gap: 0.9rem; padding: 0.85rem; }
   .cr-cover { width: 72px; }
 }
+
+// v0.22 mobile fixes
+@media (max-width: 600px) {
+  // Cover grid: fixed 3 columns on mobile
+  .cover-shelf-grid {
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 0.55rem;
+  }
+
+  // List items: stack vertically — cover (hidden num), content, actions
+  .list-item {
+    grid-template-columns: 1fr;
+    gap: 0.5rem;
+    padding: 0.9rem 1rem;
+  }
+  .li-num { display: none; }
+  .li-actions {
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    border-top: 1px solid rgba(176, 140, 63, 0.12);
+    padding-top: 0.5rem;
+    margin-top: 0.1rem;
+  }
+  .li-action {
+    flex: 1 1 auto;
+    text-align: center;
+  }
+}
