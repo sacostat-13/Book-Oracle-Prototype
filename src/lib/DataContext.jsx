@@ -456,14 +456,19 @@ async function savePreferences(userId, state) {
 export function DataProvider({ children }) {
   const { user, loading: authLoading } = useAuth();
   const [state, setState] = useState(() => loadLocal());
-  const [loading, setLoading] = useState(true);
+  // No-user (guest/logged-out) path has nothing to load from Supabase, so
+  // we can render immediately. Only flip to true when fetching for a real user.
+  const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState(null);
 
   // v0.13.1 follow-up: ref-guarded "already loaded for this user ID". Prevents
   // the load effect from refetching when the user reference changes without
   // the user identity actually changing — defense in depth on top of the
   // AuthContext fix.
-  const loadedUserIdRef = useRef(null);
+  // Use a sentinel that can never equal a real userId or null-after-load, so
+  // the first run always executes (fixes guest mode where null === null guard
+  // was skipping the effect and leaving loading stuck at its initial value).
+  const loadedUserIdRef = useRef('__uninitialized__');
 
   // ---------- Initial load ----------
   useEffect(() => {
@@ -472,8 +477,9 @@ export function DataProvider({ children }) {
     if (loadedUserIdRef.current === userId) return;
     let cancelled = false;
     (async () => {
-      setLoading(true);
       if (user) {
+        // Only show spinner when actually fetching from Supabase
+        setLoading(true);
         try {
           const remote = await loadFromSupabase(user.id);
           if (!cancelled) {
@@ -484,11 +490,14 @@ export function DataProvider({ children }) {
           console.error('Failed to load from Supabase, falling back to local', e);
           if (!cancelled) setState(loadLocal());
         }
+        if (!cancelled) setLoading(false);
       } else {
+        // Guest / logged-out: load from localStorage synchronously, no spinner needed
         setState(loadLocal());
         loadedUserIdRef.current = null;
+        // Ensure loading is false (it starts false, but guard against any edge case)
+        if (!cancelled) setLoading(false);
       }
-      if (!cancelled) setLoading(false);
     })();
     return () => { cancelled = true; };
   }, [user, authLoading]);

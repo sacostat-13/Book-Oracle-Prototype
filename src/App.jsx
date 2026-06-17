@@ -23,39 +23,35 @@ import PlanView from './views/PlanView';
 import BookPage from './views/BookPage';
 import SeriesPage from './views/SeriesPage';
 
-function SignInGate({ children }) {
-  const { user, loading, signInWithGoogle } = useAuth();
+function SignInGate({ onGuest }) {
+  const { signInWithGoogle } = useAuth();
   const t = useT();
-  if (loading) return null;
-  if (!user) {
-    return (
-      <div className="onboarding-wrap">
-        <div className="onboarding-card" style={{ maxWidth: 520 }}>
-          <div className="onb-eyebrow">{t('signIn.eyebrow')}</div>
-          <h1 className="onb-title">
-            {t('app.brand', { wishlist: <span className="accent">{t('app.brandAccent')}</span> })}
-          </h1>
-          <p className="onb-desc">{t('signIn.desc')}</p>
-          <div className="onb-actions">
-            <div></div>
-            <button className="btn" onClick={signInWithGoogle}>
-              {t('signIn.continueGoogle')}
-            </button>
-          </div>
-          <p style={{ marginTop: '1.5rem', color: 'var(--paper-aged)', opacity: 0.6, fontSize: '0.85rem' }}>
-            {t('signIn.guestPrompt', {
-              link: (
-                <a href="#" onClick={(e) => { e.preventDefault(); children._setGuest?.(); }}>
-                  {t('signIn.guestLink')}
-                </a>
-              ),
-            })}
-          </p>
+  return (
+    <div className="onboarding-wrap">
+      <div className="onboarding-card" style={{ maxWidth: 520 }}>
+        <div className="onb-eyebrow">{t('signIn.eyebrow')}</div>
+        <h1 className="onb-title">
+          {t('app.brand', { wishlist: <span className="accent">{t('app.brandAccent')}</span> })}
+        </h1>
+        <p className="onb-desc">{t('signIn.desc')}</p>
+        <div className="onb-actions">
+          <div></div>
+          <button className="btn" onClick={signInWithGoogle}>
+            {t('signIn.continueGoogle')}
+          </button>
         </div>
+        <p style={{ marginTop: '1.5rem', color: 'var(--paper-aged)', opacity: 0.6, fontSize: '0.85rem' }}>
+          {t('signIn.guestPrompt', {
+            link: (
+              <a href="#" onClick={(e) => { e.preventDefault(); onGuest(); }}>
+                {t('signIn.guestLink')}
+              </a>
+            ),
+          })}
+        </p>
       </div>
-    );
-  }
-  return children;
+    </div>
+  );
 }
 
 export default function App() {
@@ -70,7 +66,8 @@ export default function App() {
   const previewBookRef = useRef(null);
   function setPreviewBook(book) { previewBookRef.current = book; }
 
-  if (authLoading || loading) {
+  // Wait for auth to settle first — this is fast (local session check)
+  if (authLoading) {
     return (
       <div className="app">
         <div className="loading" style={{ paddingTop: '6rem' }}>
@@ -81,15 +78,25 @@ export default function App() {
     );
   }
 
-  // Sign-in gate, with a guest option
+  // No session and not browsing as guest → show sign-in gate immediately.
+  // Don't wait on DataContext loading here — there's no user data to load yet.
   if (!user && !allowGuest) {
     return (
       <div className="app">
-        <SignInGate _setGuest={() => setAllowGuest(true)}>
-          {/* placeholder; gate replaces children when no user */}
-          <></>
-        </SignInGate>
+        <SignInGate onGuest={() => setAllowGuest(true)} />
         <Toast />
+      </div>
+    );
+  }
+
+  // Authenticated (or guest) — now wait for DataContext to finish loading user data
+  if (loading) {
+    return (
+      <div className="app">
+        <div className="loading" style={{ paddingTop: '6rem' }}>
+          <div className="loading-spinner"></div>
+          <div className="loading-text">{t('app.loading')}</div>
+        </div>
       </div>
     );
   }
