@@ -65,6 +65,12 @@ export default function Nav({ onPreviewBook }) {
             {t('nav.readNext')} {state.readNext.length > 0 && <span className="nav-badge">{state.readNext.length}</span>}
           </button>
           <button
+            className={`nav-btn ${route.name === 'currently-reading' ? 'active' : ''}`}
+            onClick={() => go('currently-reading')}
+          >
+            {t('nav.currentlyReading')} {state.currentlyReading?.length > 0 && <span className="nav-badge">{state.currentlyReading.length}</span>}
+          </button>
+          <button
             className={`nav-btn ${route.name === 'profile' ? 'active' : ''}`}
             onClick={() => go('profile')}
           >
@@ -127,6 +133,13 @@ export default function Nav({ onPreviewBook }) {
             >
               {t('nav.readNext')}
               {state.readNext.length > 0 && <span className="nav-badge">{state.readNext.length}</span>}
+            </button>
+            <button
+              className={`mobile-menu-btn${route.name === 'currently-reading' ? ' active' : ''}`}
+              onClick={() => navigate('currently-reading')}
+            >
+              {t('nav.currentlyReading')}
+              {state.currentlyReading?.length > 0 && <span className="nav-badge">{state.currentlyReading.length}</span>}
             </button>
             <button
               className={`mobile-menu-btn${route.name === 'profile' ? ' active' : ''}`}

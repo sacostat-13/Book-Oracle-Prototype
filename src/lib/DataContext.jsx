@@ -36,6 +36,9 @@ const defaultState = {
   // Full genre catalog: [{ id, name, normalizedName, source, usageCount, description }]
   // Sorted alphabetically. Used by PlanCreate genre select and genre browsers.
   genres: [],
+  // v0.22: books currently being read. Each entry is a full book client object
+  // with an extra `startedAt` (ISO date string) field.
+  currentlyReading: [],
 };
 
 const DataContext = createContext(null);
@@ -72,6 +75,7 @@ function loadLocal() {
       // they remain empty (genres require Supabase access).
       genresByBookId: {},
       genres: [],
+      currentlyReading: dedupeBooks(parsed.currentlyReading || []),
     };
   } catch {
     return { ...defaultState };
@@ -207,7 +211,7 @@ function rollupGenres(rows) {
 
 // ---------- Supabase loaders ----------
 async function loadFromSupabase(userId) {
-  const [profileRes, wishlistRes, readBooksRes, plansRes] = await Promise.all([
+  const [profileRes, wishlistRes, readBooksRes, plansRes, currentlyReadingRes] = await Promise.all([
     supabase.from('profiles').select('*').eq('id', userId).maybeSingle(),
     supabase
       .from('wishlist_items')
@@ -223,6 +227,10 @@ async function loadFromSupabase(userId) {
       .eq('user_id', userId)
       .order('created_at', { ascending: false })
       .limit(1),
+    supabase
+      .from('currently_reading')
+      .select('started_at, book:books(*, position_in_series, series:series(*))')
+      .eq('user_id', userId),
   ]);
 
   const profile = profileRes.data || {};
@@ -259,6 +267,14 @@ async function loadFromSupabase(userId) {
         }
       : null;
 
+  const currentlyReading = (currentlyReadingRes.data || [])
+    .map((r) =>
+      r.book
+        ? bookRowToClient(r.book, { startedAt: r.started_at })
+        : null
+    )
+    .filter(Boolean);
+
   // v0.12: load categories for all books in wishlist + library. One round
   // trip via the book_categories_view (UNION of verified global + this user's
   // private categories). RLS on user_book_categories enforces the user filter
@@ -266,6 +282,7 @@ async function loadFromSupabase(userId) {
   const allBookIds = [...new Set([
     ...wishlist.map((b) => b.bookId).filter(Boolean),
     ...library.map((b) => b.bookId).filter(Boolean),
+    ...currentlyReading.map((b) => b.bookId).filter(Boolean),
   ])];
   // v0.12 hotfix 3: chunk the book_id list. For users with large libraries
   // (700+ books), a single `in.(...)` query exceeds PostgREST's URL length
@@ -432,6 +449,7 @@ async function loadFromSupabase(userId) {
     categoriesByBookId,
     genresByBookId,
     genres,
+    currentlyReading: dedupeBooks(currentlyReading),
   };
 }
 
@@ -789,6 +807,73 @@ export function DataProvider({ children }) {
       showToast(`"${book.t}" added to your library`);
     },
     [user, state.library, showToast, upsertBookOnServer]
+  );
+
+  // v0.22: Currently Reading actions
+
+  const startReading = useCallback(
+    async (book, startedAt) => {
+      const k = bookKey(book);
+      if (state.currentlyReading.some((b) => bookKey(b) === k)) return;
+      const date = startedAt || new Date().toISOString().slice(0, 10);
+      const enriched = { ...book, startedAt: date };
+
+      if (!user) {
+        setState((s) => ({ ...s, currentlyReading: [...s.currentlyReading, enriched] }));
+        showToast(`Started reading "${book.t}"`);
+        return;
+      }
+
+      const bookId = book.bookId || (await upsertBookOnServer(book));
+      if (!bookId) { showToast(`Couldn't save "${book.t}"`, true); return; }
+
+      const { error } = await supabase
+        .from('currently_reading')
+        .upsert({ user_id: user.id, book_id: bookId, started_at: date }, { onConflict: 'user_id,book_id' });
+      if (error) console.error('currently_reading upsert failed', error);
+
+      setState((s) => ({
+        ...s,
+        currentlyReading: [...s.currentlyReading, { ...enriched, bookId }],
+      }));
+      showToast(`Started reading "${book.t}"`);
+    },
+    [user, state.currentlyReading, showToast, upsertBookOnServer]
+  );
+
+  const removeFromCurrentlyReading = useCallback(
+    async (book) => {
+      const k = bookKey(book);
+      if (user && book.bookId) {
+        await supabase
+          .from('currently_reading')
+          .delete()
+          .eq('user_id', user.id)
+          .eq('book_id', book.bookId);
+      }
+      // Remove startedAt before returning the book to Read Next so it
+      // doesn't carry stale reading-session metadata into the queue.
+      const { startedAt: _dropped, ...bookWithoutStartedAt } = book;
+      setState((s) => {
+        const alreadyQueued = s.readNext.some((b) => bookKey(b) === k);
+        return {
+          ...s,
+          currentlyReading: s.currentlyReading.filter((b) => bookKey(b) !== k),
+          readNext: alreadyQueued ? s.readNext : [...s.readNext, bookWithoutStartedAt],
+        };
+      });
+    },
+    [user]
+  );
+
+  // Finishes a currently-reading book: removes from currentlyReading and delegates
+  // to markAsRead which handles the read_books upsert and library state update.
+  const finishReading = useCallback(
+    async (book, extra = {}) => {
+      await removeFromCurrentlyReading(book);
+      await markAsRead(book, extra);
+    },
+    [removeFromCurrentlyReading, markAsRead]
   );
 
   const updateReadBook = useCallback(
@@ -1312,6 +1397,10 @@ export function DataProvider({ children }) {
     markAsRead,
     updateReadBook,
     removeFromLibrary,
+    // v0.22: currently reading
+    startReading,
+    finishReading,
+    removeFromCurrentlyReading,
     importGoodreads,
     bulkAddToLibrary,
     cacheBookFields,

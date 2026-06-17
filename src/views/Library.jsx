@@ -5,6 +5,7 @@ import { bookKey } from '../lib/bookHelpers';
 import BulkImport from '../components/BulkImport';
 import OracleCategorizationButton from '../components/OracleCategorizationButton';
 import RatingModal from '../components/RatingModal';
+import LibraryCoverGrid from '../components/LibraryCoverGrid';
 
 // v0.15 phase 2.5: two-dropdown filter (genres + categories) + Oracle genre grouping.
 // Grouping uses Oracle genres; books without genres fall back to b.g then 'Imported'.
@@ -17,6 +18,9 @@ export default function Library({ onOpenBook }) {
   const [genreFilter, setGenreFilter] = useState('all');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [search, setSearch] = useState('');
+  const [viewMode, setViewMode] = useState(() => {
+    try { return localStorage.getItem('library_view_mode') || 'list'; } catch { return 'list'; }
+  });
 
   const { genresByBookId } = state;
   const lib = state.library;
@@ -92,6 +96,11 @@ export default function Library({ onOpenBook }) {
   }
   const genreKeys = Object.keys(grouped).sort();
 
+  function switchViewMode(mode) {
+    setViewMode(mode);
+    try { localStorage.setItem('library_view_mode', mode); } catch {}
+  }
+
   const hasFilters = genreFilter !== 'all' || categoryFilter !== 'all' || search;
 
   async function handleSaveRating({ rating, notes, readAt }) {
@@ -150,6 +159,25 @@ export default function Library({ onOpenBook }) {
             )}
           </div>
           <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+            {/* List / Covers toggle */}
+            <div className="view-toggle">
+              <button
+                className={`view-toggle-btn${viewMode === 'list' ? ' active' : ''}`}
+                onClick={() => switchViewMode('list')}
+                title="List view"
+                aria-pressed={viewMode === 'list'}
+              >
+                ☰ List
+              </button>
+              <button
+                className={`view-toggle-btn${viewMode === 'covers' ? ' active' : ''}`}
+                onClick={() => switchViewMode('covers')}
+                title="Cover grid view"
+                aria-pressed={viewMode === 'covers'}
+              >
+                ⊞ Covers
+              </button>
+            </div>
             <button
               className="btn btn-ghost"
               onClick={() => setBulkOpen((v) => !v)}
@@ -186,6 +214,13 @@ export default function Library({ onOpenBook }) {
           <div className="empty-state-title">No books match</div>
           <div className="empty-state-text">Try clearing your filters.</div>
         </div>
+      ) : viewMode === 'covers' ? (
+        <LibraryCoverGrid
+          grouped={grouped}
+          genreKeys={genreKeys}
+          genresByBookId={genresByBookId}
+          onOpenBook={onOpenBook}
+        />
       ) : (
         genreKeys.map((g) => (
           <div className="list-section" key={g}>

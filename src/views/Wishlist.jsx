@@ -19,6 +19,7 @@ export default function Wishlist({ onOpenBook }) {
     seedWishlistIfNeeded,
     showToast,
     getCategoriesForBook,
+    startReading,
   } = useData();
   const { go } = useRouter();
   const [search, setSearch] = useState('');
@@ -207,6 +208,7 @@ export default function Wishlist({ onOpenBook }) {
             {grouped[g].map((b, i) => {
               const k = bookKey(b);
               const inNext = state.readNext.some((r) => bookKey(r) === k);
+              const inReading = (state.currentlyReading || []).some((r) => bookKey(r) === k);
               return (
                 <div className="list-item" key={`${k}-${i}`}>
                   <div className="li-num">{b.manuallyAdded ? '✎' : '❦'}</div>
@@ -215,7 +217,8 @@ export default function Wishlist({ onOpenBook }) {
                     <div className="li-author">
                       {b.a}
                       {b.manuallyAdded && <> · <span style={{ color: 'var(--gilt)', opacity: 0.7 }}>added by you</span></>}
-                      {inNext && <> · <span style={{ color: 'var(--gilt-bright)' }}>in Read Next</span></>}
+                      {inReading && <> · <span style={{ color: 'var(--gilt)' }}>reading</span></>}
+                      {!inReading && inNext && <> · <span style={{ color: 'var(--gilt-bright)' }}>in Read Next</span></>}
                     </div>
                     {(() => {
                       const genres = genresByBookId[b.bookId];
@@ -227,10 +230,15 @@ export default function Wishlist({ onOpenBook }) {
                     })()}
                   </div>
                   <div className="li-actions">
-                    {inNext ? (
+                    {inReading ? (
+                      <span className="li-action" style={{ opacity: 0.5, cursor: 'default' }}>▶ Reading</span>
+                    ) : inNext ? (
                       <span className="li-action" style={{ opacity: 0.5, cursor: 'default' }}>✓ Queued</span>
                     ) : (
                       <button className="li-action success" onClick={() => addToReadNext(b)}>+ Read Next</button>
+                    )}
+                    {!inReading && (
+                      <button className="li-action" onClick={() => startReading(b)}>▶ Start</button>
                     )}
                     <button
                       className="li-action danger"

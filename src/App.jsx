@@ -13,6 +13,7 @@ import Dashboard from './views/Dashboard';
 import Wishlist from './views/Wishlist';
 import Library from './views/Library';
 import ReadNext from './views/ReadNext';
+import CurrentlyReading from './views/CurrentlyReading';
 import Profile from './views/Profile';
 import About from './views/About';
 import OracleFork from './views/OracleFork';
@@ -120,6 +121,7 @@ export default function App() {
     case 'wishlist': page = <Wishlist onOpenBook={openBook} />; break;
     case 'library': page = <Library onOpenBook={openBook} />; break;
     case 'read-next': page = <ReadNext onOpenBook={openBook} />; break;
+    case 'currently-reading': page = <CurrentlyReading onOpenBook={openBook} />; break;
     case 'profile': page = <Profile />; break;
     case 'about': page = <About />; break;
     case 'oracle': page = <OracleFork />; break;

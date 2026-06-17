@@ -3,8 +3,12 @@ import { useRouter } from '../lib/RouterContext';
 import { bookKey } from '../lib/bookHelpers';
 
 export default function ReadNext({ onOpenBook }) {
-  const { state, markAsRead, removeFromReadNext } = useData();
+  const { state, markAsRead, removeFromReadNext, startReading } = useData();
   const { go } = useRouter();
+
+  // Books actively being read are shown in Currently Reading, not here.
+  const readingKeys = new Set((state.currentlyReading || []).map(bookKey));
+  const queue = state.readNext.filter((b) => !readingKeys.has(bookKey(b)));
 
   return (
     <>
@@ -14,10 +18,10 @@ export default function ReadNext({ onOpenBook }) {
       <div className="page-header">
         <div className="page-eyebrow">Queue</div>
         <h1 className="page-title">To Read <span className="accent">Next</span></h1>
-        <p className="page-subtitle">{state.readNext.length} books waiting.</p>
+        <p className="page-subtitle">{queue.length} books waiting.</p>
       </div>
 
-      {state.readNext.length === 0 ? (
+      {queue.length === 0 ? (
         <div className="empty-state">
           <div className="ornament">❦</div>
           <div className="empty-state-title">Nothing queued yet</div>
@@ -27,7 +31,7 @@ export default function ReadNext({ onOpenBook }) {
           </div>
         </div>
       ) : (
-        state.readNext.map((b, i) => (
+        queue.map((b, i) => (
           <div className="list-item" key={`${bookKey(b)}-${i}`}>
             <div className="li-num">{String(i + 1).padStart(2, '0')}.</div>
             <div className="li-content" onClick={() => onOpenBook?.(b)} style={{ cursor: 'pointer' }}>
@@ -37,6 +41,7 @@ export default function ReadNext({ onOpenBook }) {
               </div>
             </div>
             <div className="li-actions">
+              <button className="li-action" onClick={() => startReading(b)}>▶ Start</button>
               <button className="li-action success" onClick={() => markAsRead(b)}>✓ Read</button>
               <button className="li-action danger" onClick={() => removeFromReadNext(b)}>Remove</button>
             </div>

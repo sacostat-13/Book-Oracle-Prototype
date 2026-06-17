@@ -20,7 +20,8 @@
     "switchToEnglish": "English",
     "openMenu": "Open menu",
     "closeMenu": "Close menu",
-    "menuLabel": "Navigation menu"
+    "menuLabel": "Navigation menu",
+    "currentlyReading": "Reading"
   },
   "signIn": {
     "eyebrow": "Welcome",

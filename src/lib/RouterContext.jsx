@@ -8,6 +8,7 @@ const KNOWN_ROUTES = new Set([
   'wishlist',
   'library',
   'read-next',
+  'currently-reading',
   'profile',
   'about',
   'oracle',
