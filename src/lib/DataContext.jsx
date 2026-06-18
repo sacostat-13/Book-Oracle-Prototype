@@ -1354,6 +1354,25 @@ export function DataProvider({ children }) {
     [user]
   );
 
+  const deletePlan = useCallback(
+    async (planId) => {
+      // Remove from local state immediately so UI reflects change without refresh
+      setState((s) => {
+        const remaining = (s.plans || []).filter((p) => p._id !== planId);
+        return {
+          ...s,
+          plans: remaining,
+          currentPlan: remaining[0] || null,
+        };
+      });
+      // Persist to Supabase
+      if (user && planId) {
+        await supabase.from('plans').delete().eq('id', planId).eq('user_id', user.id);
+      }
+    },
+    [user]
+  );
+
   const resetAll = useCallback(async () => {
     setState({ ...defaultState });
     saveLocal({ ...defaultState });
@@ -1428,6 +1447,7 @@ export function DataProvider({ children }) {
     setOracleMode,
     plans: state.plans || [],
     setCurrentPlan,
+    deletePlan,
     resetAll,
     vault,
     loadVault,
