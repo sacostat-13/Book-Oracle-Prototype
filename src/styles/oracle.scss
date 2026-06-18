@@ -1,0 +1,229 @@
+// _oracle.scss
+// Lines 831–1056 of original main.scss
+
+  /* ============ ORACLE PAGE ============ */
+  .oracle-fork {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+  }
+  @media (max-width: 700px) { .oracle-fork { grid-template-columns: 1fr; } }
+
+  /* ============ CARDS (book picker) ============ */
+  .controls {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 1.5rem;
+    align-items: end;
+    margin-bottom: 3rem;
+    padding: 2rem;
+    background: rgba(244, 234, 213, 0.03);
+    border: 1px solid rgba(176, 140, 63, 0.2);
+    border-radius: 2px;
+    position: relative;
+  }
+  .controls::before, .controls::after {
+    content: "";
+    position: absolute;
+    width: 20px;
+    height: 20px;
+    border: 1px solid var(--gilt);
+    opacity: 0.4;
+  }
+  .controls::before { top: -5px; left: -5px; border-right: none; border-bottom: none; }
+  .controls::after { bottom: -5px; right: -5px; border-left: none; border-top: none; }
+
+  @media (max-width: 700px) { .controls { grid-template-columns: 1fr; } }
+
+  .field label {
+    display: block;
+    font-family: 'Special Elite', monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    color: var(--gilt);
+    margin-bottom: 0.7rem;
+    opacity: 0.8;
+  }
+
+  select, textarea {
+    width: 100%;
+    background: var(--shadow);
+    color: var(--paper);
+    border: 1px solid rgba(176, 140, 63, 0.4);
+    padding: 0.9rem 1rem;
+    font-family: 'EB Garamond', serif;
+    font-size: 1.05rem;
+    font-style: italic;
+    border-radius: 2px;
+    cursor: pointer;
+    appearance: none;
+    transition: border-color 0.2s;
+  }
+  textarea { font-style: normal; resize: vertical; min-height: 100px; cursor: text; }
+
+  select {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%23b08c3f' d='M6 8L0 0h12z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 1rem center;
+    padding-right: 2.5rem;
+  }
+
+  select:focus, select:hover, textarea:focus { outline: none; border-color: var(--gilt); }
+
+  .cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 2rem;
+    margin-bottom: 3rem;
+    min-height: 180px;
+  }
+
+  .card {
+    background: linear-gradient(180deg, rgba(244, 234, 213, 0.06) 0%, rgba(244, 234, 213, 0.02) 100%);
+    border: 1px solid rgba(176, 140, 63, 0.25);
+    padding: 1.4rem;
+    border-radius: 2px;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    transition: all 0.4s;
+    animation: cardIn 0.5s cubic-bezier(0.2, 0.6, 0.2, 1) backwards;
+  }
+  .card:nth-child(2) { animation-delay: 0.08s; }
+  .card:nth-child(3) { animation-delay: 0.16s; }
+  .card:nth-child(4) { animation-delay: 0.24s; }
+  .card:nth-child(5) { animation-delay: 0.32s; }
+
+  @keyframes cardIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .card:hover {
+    border-color: var(--gilt);
+    transform: translateY(-3px);
+    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.4);
+  }
+
+  .cover {
+    width: 100%;
+    aspect-ratio: 2/3;
+    margin-bottom: 1rem;
+    border-radius: 2px;
+    overflow: hidden;
+    position: relative;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+    background: var(--shadow);
+  }
+  .cover img {
+    width: 100%; height: 100%; object-fit: cover; display: block;
+    opacity: 0;
+    transition: opacity 0.6s ease-in;
+  }
+  .cover img.loaded { opacity: 1; }
+  .cover.has-real-cover .placeholder { opacity: 0; transition: opacity 0.4s; }
+
+  .placeholder {
+    width: 100%; height: 100%;
+    display: flex; flex-direction: column; justify-content: space-between;
+    padding: 1rem;
+    color: var(--paper);
+    position: relative;
+    overflow: hidden;
+  }
+  .placeholder::before {
+    content: ""; position: absolute; inset: 6px;
+    border: 1px solid rgba(244, 234, 213, 0.3);
+    pointer-events: none;
+  }
+  .placeholder .ph-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-style: italic;
+    font-size: 1rem;
+    line-height: 1.2;
+    font-weight: 500;
+    text-align: center;
+    margin-top: auto; margin-bottom: auto;
+  }
+  .placeholder .ph-author {
+    font-family: 'Special Elite', monospace;
+    font-size: 0.6rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    text-align: center;
+    opacity: 0.7;
+  }
+  .placeholder .ph-ornament { text-align: center; font-size: 1.1rem; opacity: 0.6; }
+
+  .card-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.25rem;
+    line-height: 1.2;
+    font-weight: 600;
+    margin-bottom: 0.2rem;
+  }
+  .card-author { font-style: italic; color: var(--gilt); font-size: 0.9rem; margin-bottom: 0.7rem; }
+  .card-desc { font-size: 0.92rem; line-height: 1.5; color: var(--paper-aged); opacity: 0.85; flex: 1; margin-bottom: 1rem; }
+  .card-tag {
+    display: inline-block;
+    font-family: 'Special Elite', monospace;
+    font-size: 0.6rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--gilt);
+    border: 1px solid rgba(176, 140, 63, 0.4);
+    padding: 0.3rem 0.6rem;
+    margin-bottom: 0.8rem;
+    width: fit-content;
+  }
+  .card-meta {
+    display: flex;
+    gap: 0.6rem;
+    margin-bottom: 0.8rem;
+    font-family: 'Special Elite', monospace;
+    font-size: 0.65rem;
+    color: var(--paper-aged);
+    opacity: 0.6;
+    letter-spacing: 0.1em;
+  }
+
+  .pick-btn {
+    background: transparent;
+    color: var(--paper);
+    border: 1px solid rgba(244, 234, 213, 0.5);
+    padding: 0.65rem 1rem;
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1rem;
+    font-style: italic;
+    cursor: pointer;
+    border-radius: 2px;
+    transition: all 0.2s;
+    width: 100%;
+  }
+  .pick-btn:hover {
+    background: var(--paper);
+    color: var(--ink);
+    border-color: var(--paper);
+  }
+  .pick-btn.picked {
+    background: var(--moss);
+    color: var(--paper);
+    border-color: var(--moss);
+    cursor: default;
+  }
+  .pick-btn.in-library {
+    background: var(--gilt);
+    color: var(--ink);
+    border-color: var(--gilt);
+    cursor: default;
+  }
+
+  /* card selection (similar-books picker) */
+  .card.selectable { cursor: pointer; }
+  .card.selectable.selected {
+    border-color: var(--gilt);
+    background: rgba(176, 140, 63, 0.08);
+    box-shadow: 0 0 0 2px var(--gilt);
+  }
+

@@ -16,9 +16,28 @@
 
 // The version label shown as "current" — keep in sync with package.json and
 // the README version line.
-export const CURRENT_VERSION = 'v0.25';
+export const CURRENT_VERSION = 'v0.26';
 
-export const RELEASES = [{version: 'v0.25',
+export const RELEASES = [{version: 'v0.26',
+    date: '2026-06-18',
+    titleEn: 'Your dashboard, alive',
+    titleEs: 'Tu panel, con vida propia',
+    bodyEn: [
+      'The dashboard is now an activity feed. See what you finished, started, and added to your wishlist — grouped by day, with cover art throughout.',
+      'Currently Reading gets a prominent strip at the top so your active books are always front and center.',
+      'Reading Plans now supports multiple plans at once. Create as many as you want; each lives independently and can be opened from the dashboard.',
+      'The curated catalog (used by the Oracle when AI is off) is now powered by our curators live wishlists rather than a static bundled list — so the more books you add, the richer it gets.',
+      'The shelf SCSS has been split into 25 focused partials for easier maintenance.',
+    ],
+    bodyEs: [
+      'El panel ahora es un feed de actividad. Ves qué terminaste, empezaste y agregaste a tu lista — agrupado por día, con portadas en cada entrada.',
+      'Leyendo Ahora tiene un bloque destacado en la parte superior para que tus libros activos estén siempre visibles.',
+      'Los Planes de Lectura ahora soportan múltiples planes a la vez. Creá todos los que quieras; cada uno vive de forma independiente y se puede abrir desde el panel.',
+      'El catálogo curado (que usa el Oráculo cuando la IA está desactivada) ahora se alimenta de tu propia lista de deseos en lugar de una lista estática — cuantos más libros agregues, más rico es.',
+      'El SCSS del proyecto se dividió en 25 archivos parciales para facilitar el mantenimiento.',
+    ],
+  },
+  {version: 'v0.25',
     date: '2026-06-17',
     titleEn: 'Currently Reading & cover shelves',
     titleEs: 'Leyendo ahora y estantes de portadas',

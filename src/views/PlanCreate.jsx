@@ -76,7 +76,7 @@ export default function PlanCreate() {
   }
 
   async function buildSeriesPlan(seriesName) {
-    const sources = [...ALL_BOOKS, ...state.wishlist, ...state.library, ...state.readNext];
+    const sources = [...(vault || []), ...state.wishlist, ...state.library, ...state.readNext];
     const seen = new Set();
     let entries = [];
     for (const b of sources) {
@@ -117,7 +117,7 @@ export default function PlanCreate() {
   function buildFallbackPlan(poolBooks) {
     // poolBooks is the candidate pool — prefer Vault (curated), fall back to
     // bundled ALL_BOOKS for guest sessions or if Vault hasn't loaded.
-    const candidates = poolBooks && poolBooks.length > 0 ? poolBooks : ALL_BOOKS;
+    const candidates = poolBooks && poolBooks.length > 0 ? poolBooks : (vault || []);
 
     if (type === 'level') {
       const start = state.profile.readingLevel || 1;
@@ -174,7 +174,7 @@ export default function PlanCreate() {
       // Prefer the Vault (curated catalog from DB) over the bundled ALL_BOOKS
       // for the AI prompt context. This keeps the curated set as the source
       // of truth even as the bundled file ages.
-      const catalogSource = vault && vault.length > 0 ? vault : (await loadVault()) || ALL_BOOKS;
+      const catalogSource = vault && vault.length > 0 ? vault : ((await loadVault()) || []);
 
       const libraryContext = state.library.slice(-30).map((b) => `- ${b.t} by ${b.a}`).join('\n') || '(none)';
       let prompt;

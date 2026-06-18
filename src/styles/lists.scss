@@ -1,0 +1,78 @@
+// _lists.scss
+// Lines 1111–1185 of original main.scss
+
+  /* ============ LIST VIEWS ============ */
+  .list-section {
+    margin-bottom: 3rem;
+  }
+
+  .list-section h2 {
+    font-family: 'Cormorant Garamond', serif;
+    font-style: italic;
+    font-weight: 500;
+    font-size: 1.6rem;
+    margin-bottom: 1rem;
+    color: var(--paper);
+  }
+  .list-section h2 .count {
+    font-size: 1rem;
+    color: var(--gilt);
+    opacity: 0.7;
+  }
+
+  .list-item {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem 1.2rem;
+    background: rgba(244, 234, 213, 0.04);
+    border-left: 3px solid var(--gilt);
+    border-radius: 0 2px 2px 0;
+    margin-bottom: 0.5rem;
+    animation: rlIn 0.4s cubic-bezier(0.2, 0.6, 0.2, 1);
+  }
+
+  @keyframes rlIn {
+    from { opacity: 0; transform: translateX(-10px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+
+  .li-num {
+    font-family: 'Special Elite', monospace;
+    color: var(--gilt);
+    font-size: 0.8rem;
+    opacity: 0.7;
+    min-width: 1.5rem;
+  }
+  .li-content { overflow: hidden; }
+  .li-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.15rem;
+    font-weight: 600;
+    line-height: 1.2;
+  }
+  .li-author {
+    font-style: italic;
+    font-size: 0.9rem;
+    color: var(--paper-aged);
+    opacity: 0.75;
+  }
+  .li-actions { display: flex; gap: 0.3rem; }
+  .li-action {
+    background: transparent;
+    color: var(--paper-aged);
+    border: 1px solid rgba(244, 234, 213, 0.2);
+    cursor: pointer;
+    font-size: 0.75rem;
+    font-family: 'Special Elite', monospace;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 0.4rem 0.7rem;
+    border-radius: 2px;
+    transition: all 0.2s;
+  }
+  .li-action:hover { color: var(--paper); border-color: var(--paper); }
+  .li-action.danger:hover { color: var(--blood-bright); border-color: var(--blood-bright); }
+  .li-action.success:hover { color: var(--moss); border-color: var(--moss); }
+

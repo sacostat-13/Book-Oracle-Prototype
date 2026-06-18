@@ -22,6 +22,7 @@ const defaultState = {
   readNext: [],
   wishlist: [],
   currentPlan: null,
+  plans: [],
   shelfSortMode: 'recent',
   oracleMode: 'wishlist',
   // v0.12: a Map keyed by book_id (uuid) → array of { categoryId, name,
@@ -225,8 +226,7 @@ async function loadFromSupabase(userId) {
       .from('plans')
       .select('*')
       .eq('user_id', userId)
-      .order('created_at', { ascending: false })
-      .limit(1),
+      .order('created_at', { ascending: false }),
     supabase
       .from('currently_reading')
       .select('started_at, book:books(*, position_in_series, series:series(*))')
@@ -258,14 +258,13 @@ async function loadFromSupabase(userId) {
         : null
     )
     .filter(Boolean);
-  const currentPlan =
-    plansRes.data && plansRes.data[0]
-      ? {
-          ...(plansRes.data[0].content || {}),
-          _id: plansRes.data[0].id,
-          title: plansRes.data[0].title,
-        }
-      : null;
+  const plans = (plansRes.data || []).map((r) => ({
+    ...(r.content || {}),
+    _id: r.id,
+    title: r.title,
+    createdAt: r.created_at,
+  }));
+  const currentPlan = plans[0] || null;
 
   const currentlyReading = (currentlyReadingRes.data || [])
     .map((r) =>
@@ -444,6 +443,7 @@ async function loadFromSupabase(userId) {
     library: dedupeBooks(library),
     readNext: dedupeBooks(profile.preferences?.readNext || []),
     currentPlan,
+    plans,
     shelfSortMode: profile.preferences?.shelfSortMode || 'recent',
     oracleMode: profile.preferences?.oracleMode || 'wishlist',
     categoriesByBookId,
@@ -1325,7 +1325,6 @@ export function DataProvider({ children }) {
 
   const setCurrentPlan = useCallback(
     async (plan) => {
-      setState((s) => ({ ...s, currentPlan: plan }));
       if (user && plan) {
         const { data, error } = await supabase
           .from('plans')
@@ -1337,8 +1336,19 @@ export function DataProvider({ children }) {
           .select()
           .single();
         if (!error && data) {
-          setState((s) => ({ ...s, currentPlan: { ...plan, _id: data.id } }));
+          const saved = { ...plan, _id: data.id, createdAt: data.created_at };
+          setState((s) => ({
+            ...s,
+            currentPlan: saved,
+            plans: [saved, ...(s.plans || [])],
+          }));
         }
+      } else if (plan) {
+        setState((s) => ({
+          ...s,
+          currentPlan: plan,
+          plans: [plan, ...(s.plans || [])],
+        }));
       }
     },
     [user]
@@ -1360,53 +1370,26 @@ export function DataProvider({ children }) {
 
   // ---------- The Vault ----------
   const [vault, setVault] = useState(null);
-  
-  // Add this helper just above loadVault (or near bookRowToClient):
-  function rpcRowToBook(row) {
-    // get_curated_catalog() returns series as a jsonb column rather than a
-    // joined object. Reshape it so bookRowToClient() sees the same structure
-    // it expects from a normal .select('*, series:series(*)') query.
-    return bookRowToClient({
-      ...row,
-      series: row.series ?? null, // already a plain object from jsonb, or null
-    });
-  }
-
-  // Replace the existing loadVault useCallback with this:
   const loadVault = useCallback(async () => {
     if (vault) return vault;
-
-    // Guest / signed-out: fall back to the bundled catalog.
-    // Once you're confident in the live data, you can call the RPC here too
-    // (anon key has execute permission) and delete booksData.js entirely.
     if (!user) {
-      const v = ALL_BOOKS.map((b) => ({
-        ...b,
-        status: 'verified',
-        verifiedSource: 'curated_seed',
-        source: 'curated',
-      }));
+      const v = ALL_BOOKS.map((b) => ({ ...b, status: 'verified', verifiedSource: 'curated_seed', source: 'curated' }));
       setVault(v);
       return v;
     }
-
-    // Authenticated: pull the curator's wishlist from Supabase.
-    const { data, error } = await supabase.rpc('get_curated_catalog');
-
+    const { data, error } = await supabase
+      .from('books')
+      .select('*, position_in_series, series:series(*)')
+      .eq('source', 'curated')
+      .eq('status', 'verified')
+      .order('title', { ascending: true });
     if (error || !data) {
       console.error('Vault fetch failed', error);
-      // Fall back to bundled catalog so the UI never breaks.
-      const v = ALL_BOOKS.map((b) => ({
-        ...b,
-        status: 'verified',
-        verifiedSource: 'curated_seed',
-        source: 'curated',
-      }));
+      const v = ALL_BOOKS.map((b) => ({ ...b, status: 'verified', verifiedSource: 'curated_seed', source: 'curated' }));
       setVault(v);
       return v;
     }
-
-    const v = data.map(rpcRowToBook).filter(Boolean);
+    const v = data.map((b) => bookRowToClient(b));
     setVault(v);
     return v;
   }, [user, vault]);
@@ -1443,6 +1426,7 @@ export function DataProvider({ children }) {
     setOnboarded,
     setShelfSortMode,
     setOracleMode,
+    plans: state.plans || [],
     setCurrentPlan,
     resetAll,
     vault,

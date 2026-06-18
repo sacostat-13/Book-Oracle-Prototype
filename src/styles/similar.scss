@@ -1,0 +1,57 @@
+// _similar.scss
+// Lines 1057–1110 of original main.scss
+
+  /* ============ SIMILAR-BOOKS PICKER ============ */
+  .search-box {
+    margin-bottom: 1.5rem;
+  }
+  .search-input {
+    width: 100%;
+    background: var(--shadow);
+    color: var(--paper);
+    border: 1px solid rgba(176, 140, 63, 0.4);
+    padding: 0.9rem 1rem;
+    font-family: 'EB Garamond', serif;
+    font-size: 1rem;
+    border-radius: 2px;
+  }
+  .search-input:focus { outline: none; border-color: var(--gilt); }
+
+  .selection-tray {
+    display: flex;
+    gap: 0.8rem;
+    flex-wrap: wrap;
+    margin-bottom: 1.5rem;
+    min-height: 50px;
+    padding: 1rem;
+    background: rgba(244, 234, 213, 0.03);
+    border: 1px dashed rgba(176, 140, 63, 0.3);
+    border-radius: 2px;
+    align-items: center;
+  }
+
+  .tray-empty {
+    color: var(--paper-aged);
+    opacity: 0.5;
+    font-style: italic;
+    font-size: 0.95rem;
+  }
+
+  .tray-chip {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: rgba(176, 140, 63, 0.1);
+    border: 1px solid var(--gilt);
+    padding: 0.4rem 0.7rem;
+    border-radius: 2px;
+    font-size: 0.9rem;
+  }
+  .tray-chip .chip-title { font-family: 'Cormorant Garamond', serif; font-weight: 600; }
+  .tray-chip .chip-remove {
+    background: none; border: none; color: var(--paper);
+    cursor: pointer; opacity: 0.6; font-size: 1.1rem;
+    padding: 0 0.2rem;
+  }
+  .tray-chip .chip-remove:hover { opacity: 1; color: var(--blood-bright); }
+

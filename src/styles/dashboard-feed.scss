@@ -1,0 +1,408 @@
+// dashboard-feed.scss — v0.26
+// Activity feed, currently reading strip, CTAs, current plan banner
+
+// ─── Shared ───────────────────────────────────────────────────────────────────
+
+.db-section-eyebrow {
+  font-family: 'Special Elite', monospace;
+  font-size: 0.68rem;
+  letter-spacing: .22em;
+  text-transform: uppercase;
+  color: rgba(233, 223, 202, .38);
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.db-ornament {
+  color: var(--gilt);
+  opacity: 0.7;
+}
+
+.dashboard-pills {
+  margin-top: .8rem;
+  display: flex;
+  gap: .5rem;
+  flex-wrap: wrap;
+}
+
+// ─── Currently Reading ────────────────────────────────────────────────────────
+
+.db-cr {
+  margin-bottom: 2rem;
+}
+
+.db-cr__grid {
+  display: flex;
+  gap: 1.25rem;
+  flex-wrap: wrap;
+}
+
+.db-cr__card {
+  display: flex;
+  gap: 1.1rem;
+  align-items: flex-start;
+  background: rgba(255,255,255,.025);
+  border: 1px solid rgba(176,140,63,.18);
+  border-radius: 3px;
+  padding: 1.1rem 1.25rem;
+  cursor: pointer;
+  flex: 1 1 280px;
+  max-width: 420px;
+  transition: background .18s, border-color .18s;
+
+  &:hover {
+    background: rgba(176,140,63,.06);
+    border-color: rgba(176,140,63,.35);
+  }
+}
+
+.db-cr__meta {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+  gap: 0.25rem;
+}
+
+.db-cr__title {
+  font-family: 'Cormorant Garamond', serif;
+  font-style: italic;
+  font-weight: 600;
+  font-size: 1.15rem;
+  color: #f0e6cc;
+  line-height: 1.2;
+}
+
+.db-cr__author {
+  font-family: 'Special Elite', monospace;
+  font-size: 0.65rem;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: rgba(201,162,75,.65);
+}
+
+.db-cr__since {
+  font-size: 0.75rem;
+  color: rgba(233,223,202,.3);
+  margin-top: 0.15rem;
+}
+
+.db-cr__open {
+  margin-top: 0.75rem;
+  align-self: flex-start;
+  font-size: 0.8rem;
+}
+
+// ─── Current Plan banner ──────────────────────────────────────────────────────
+
+.db-plan-banner {
+  margin-bottom: 1.75rem;
+  border: 1px solid rgba(176,140,63,.25);
+  border-left: 3px solid rgba(176,140,63,.6);
+  border-radius: 3px;
+  background: rgba(176,140,63,.04);
+  cursor: pointer;
+  transition: background .18s, border-color .18s;
+
+  &:hover {
+    background: rgba(176,140,63,.09);
+    border-color: rgba(176,140,63,.45);
+    border-left-color: rgba(176,140,63,.8);
+  }
+
+  &__inner {
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+    padding: 1rem 1.25rem;
+  }
+
+  &__ornament {
+    font-size: 1.1rem;
+    color: rgba(176,140,63,.6);
+    flex-shrink: 0;
+  }
+
+  &__body {
+    flex: 1;
+    min-width: 0;
+  }
+
+  &__label {
+    font-family: 'Special Elite', monospace;
+    font-size: 0.6rem;
+    letter-spacing: .2em;
+    text-transform: uppercase;
+    color: rgba(176,140,63,.6);
+    margin-bottom: 0.2rem;
+  }
+
+  &__title {
+    font-family: 'Cormorant Garamond', serif;
+    font-style: italic;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #f0e6cc;
+    line-height: 1.2;
+  }
+
+  &__meta {
+    font-size: 0.8rem;
+    color: rgba(233,223,202,.4);
+    margin-top: 0.15rem;
+  }
+
+  &__cta {
+    font-family: 'Cormorant Garamond', serif;
+    font-style: italic;
+    font-size: 0.95rem;
+    color: rgba(176,140,63,.7);
+    white-space: nowrap;
+    flex-shrink: 0;
+    transition: color .18s;
+  }
+
+  &:hover &__cta { color: rgba(176,140,63,1); }
+}
+
+// ─── CTAs ─────────────────────────────────────────────────────────────────────
+
+.db-ctas {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(500px, 1fr));
+  gap: 1rem;
+  margin-bottom: 2.5rem;
+  
+}
+
+.db-cta-card {
+  padding: 1.25rem 1.4rem;
+  background: rgba(255,255,255,.02);
+  border: 1px solid rgba(176,140,63,.18);
+  border-radius: 3px;
+  cursor: pointer;
+  transition: background .18s, border-color .18s, transform .18s;
+
+  &:hover {
+    background: rgba(176,140,63,.07);
+    border-color: rgba(176,140,63,.38);
+    transform: translateY(-1px);
+  }
+
+  &--accent {
+    border-color: rgba(139,34,34,.4);
+    background: rgba(107,26,26,.08);
+
+    &:hover {
+      background: rgba(107,26,26,.14);
+      border-color: rgba(139,34,34,.65);
+    }
+
+    .db-cta-card__ornament { color: var(--blood-bright); }
+  }
+
+  &__ornament {
+    font-size: 1.3rem;
+    color: rgba(176,140,63,.55);
+    margin-bottom: 0.6rem;
+    display: block;
+  }
+
+  &__label {
+    font-family: 'Cormorant Garamond', serif;
+    font-style: italic;
+    font-weight: 600;
+    font-size: 1.8rem;
+    color: #f0e6cc;
+    margin-bottom: 0.35rem;
+    line-height: 1.2;
+
+    span{
+      color: var(--blood-bright);
+      font-weight: 600;
+
+    }
+  }
+
+  &__sub {
+    font-size: 1.1rem;
+    color: rgba(233,223,202,.42);
+    line-height: 1.4;
+  }
+}
+
+// ─── Feed header ──────────────────────────────────────────────────────────────
+
+.db-feed-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.25rem;
+  padding-bottom: 0.6rem;
+  border-bottom: 1px solid rgba(176,140,63,.12);
+}
+
+// ─── Feed ─────────────────────────────────────────────────────────────────────
+
+.feed {
+  display: flex;
+  flex-direction: column;
+}
+
+.feed-empty {
+  padding: 3rem 0;
+  text-align: center;
+}
+
+.feed-date-label {
+  font-family: 'Special Elite', monospace;
+  font-size: 0.62rem;
+  letter-spacing: .2em;
+  text-transform: uppercase;
+  color: rgba(233,223,202,.24);
+  padding: 1rem 0 0.5rem;
+
+  &:first-child { padding-top: 0; }
+}
+
+.feed-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  padding: 0.85rem 0.75rem;
+  border-radius: 3px;
+  margin-bottom: 0.15rem;
+  transition: background .15s;
+
+  &--clickable {
+    cursor: pointer;
+    &:hover { background: rgba(255,255,255,.025); }
+  }
+
+  &__body {
+    flex: 1;
+    min-width: 0;
+    padding-top: 0.25rem;
+    line-height: 1.5;
+  }
+}
+
+.feed-icon {
+  flex-shrink: 0;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: rgba(255,255,255,.05);
+  border: 1px solid rgba(176,140,63,.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  color: rgba(233,223,202,.5);
+  margin-top: 0.2rem;
+
+  &--reading { border-color: rgba(176,140,63,.4);  color: rgba(176,140,63,.85); }
+  &--wish    { border-color: rgba(80,160,100,.35); color: rgba(80,160,100,.85); }
+  &--plan    { border-color: rgba(100,130,200,.3); color: rgba(100,130,200,.8); }
+}
+
+.feed-verb   {
+  font-family: 'Special Elite', monospace;
+  font-size: 0.62rem;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: rgba(233,223,202,.38);
+  margin-right: 0.25rem;
+}
+.feed-title  {
+  font-family: 'Cormorant Garamond', serif;
+  font-style: italic;
+  font-weight: 600;
+  font-size: 1.05rem;
+  color: #f0e6cc;
+}
+.feed-author {
+  font-size: 0.88rem;
+  color: rgba(233,223,202,.45);
+}
+.feed-tag {
+  display: inline-block;
+  margin-left: 0.5rem;
+  padding: 1px 6px;
+  border: 1px solid rgba(176,140,63,.22);
+  border-radius: 2px;
+  font-family: 'Special Elite', monospace;
+  font-size: 0.58rem;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: rgba(176,140,63,.6);
+  vertical-align: middle;
+}
+.feed-sub {
+  margin-top: 2px;
+  font-size: 0.8rem;
+  color: rgba(233,223,202,.3);
+}
+
+// Bulk wishlist covers
+.feed-bulk {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 0.75rem;
+  align-items: flex-end;
+
+  img{
+    width: 75px;
+    height: auto;
+  }
+
+  &__more {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 54px;
+    background: rgba(255,255,255,.04);
+    border: 1px solid rgba(176,140,63,.15);
+    border-radius: 2px;
+    font-family: 'Special Elite', monospace;
+    font-size: 0.6rem;
+    color: rgba(233,223,202,.35);
+  }
+}
+
+// Load more button
+.feed-load-more {
+  display: block;
+  width: 100%;
+  margin-top: 1rem;
+  padding: 0.75rem;
+  background: transparent;
+  border: 1px solid rgba(176,140,63,.18);
+  border-radius: 2px;
+  font-family: 'Cormorant Garamond', serif;
+  font-style: italic;
+  font-size: 1rem;
+  color: rgba(233,223,202,.45);
+  cursor: pointer;
+  transition: background .18s, border-color .18s, color .18s;
+  text-align: center;
+
+  &:hover {
+    background: rgba(176,140,63,.07);
+    border-color: rgba(176,140,63,.35);
+    color: rgba(233,223,202,.75);
+  }
+}
+
+// ─── Mobile ───────────────────────────────────────────────────────────────────
+
+@media (max-width: 600px) {
+  .db-ctas { grid-template-columns: 1fr; }
+  .db-cr__card { max-width: none; flex: 1 1 100%; }
+  .db-plan-banner__cta { display: none; }
+  .feed-row { padding: 0.7rem 0.4rem; }
+}

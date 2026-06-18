@@ -1,0 +1,48 @@
+// _loading.scss
+// Lines 1224–1268 of original main.scss
+
+  /* ============ LOADING ============ */
+  .loading {
+    text-align: center;
+    padding: 4rem 2rem;
+  }
+  .loading-spinner {
+    width: 40px;
+    height: 40px;
+    margin: 0 auto 1rem;
+    border: 2px solid rgba(176, 140, 63, 0.2);
+    border-top-color: var(--gilt);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loading-text {
+    font-family: 'Cormorant Garamond', serif;
+    font-style: italic;
+    color: var(--paper-aged);
+    font-size: 1.1rem;
+  }
+
+  /* ============ TOAST ============ */
+  .toast {
+    position: fixed;
+    bottom: 2rem;
+    left: 50%;
+    transform: translateX(-50%) translateY(100px);
+    background: var(--moss);
+    color: var(--paper);
+    padding: 0.9rem 1.5rem;
+    border-radius: 2px;
+    font-family: 'Cormorant Garamond', serif;
+    font-style: italic;
+    font-size: 1rem;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
+    opacity: 0;
+    transition: all 0.4s cubic-bezier(0.2, 0.6, 0.2, 1);
+    z-index: 100;
+    pointer-events: none;
+    border: 1px solid rgba(244, 234, 213, 0.2);
+    max-width: 90vw;
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+  .toast.error { background: var(--blood); }
