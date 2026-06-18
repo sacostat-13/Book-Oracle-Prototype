@@ -1360,26 +1360,53 @@ export function DataProvider({ children }) {
 
   // ---------- The Vault ----------
   const [vault, setVault] = useState(null);
+  
+  // Add this helper just above loadVault (or near bookRowToClient):
+  function rpcRowToBook(row) {
+    // get_curated_catalog() returns series as a jsonb column rather than a
+    // joined object. Reshape it so bookRowToClient() sees the same structure
+    // it expects from a normal .select('*, series:series(*)') query.
+    return bookRowToClient({
+      ...row,
+      series: row.series ?? null, // already a plain object from jsonb, or null
+    });
+  }
+
+  // Replace the existing loadVault useCallback with this:
   const loadVault = useCallback(async () => {
     if (vault) return vault;
+
+    // Guest / signed-out: fall back to the bundled catalog.
+    // Once you're confident in the live data, you can call the RPC here too
+    // (anon key has execute permission) and delete booksData.js entirely.
     if (!user) {
-      const v = ALL_BOOKS.map((b) => ({ ...b, status: 'verified', verifiedSource: 'curated_seed', source: 'curated' }));
+      const v = ALL_BOOKS.map((b) => ({
+        ...b,
+        status: 'verified',
+        verifiedSource: 'curated_seed',
+        source: 'curated',
+      }));
       setVault(v);
       return v;
     }
-    const { data, error } = await supabase
-      .from('books')
-      .select('*, position_in_series, series:series(*)')
-      .eq('source', 'curated')
-      .eq('status', 'verified')
-      .order('title', { ascending: true });
+
+    // Authenticated: pull the curator's wishlist from Supabase.
+    const { data, error } = await supabase.rpc('get_curated_catalog');
+
     if (error || !data) {
       console.error('Vault fetch failed', error);
-      const v = ALL_BOOKS.map((b) => ({ ...b, status: 'verified', verifiedSource: 'curated_seed', source: 'curated' }));
+      // Fall back to bundled catalog so the UI never breaks.
+      const v = ALL_BOOKS.map((b) => ({
+        ...b,
+        status: 'verified',
+        verifiedSource: 'curated_seed',
+        source: 'curated',
+      }));
       setVault(v);
       return v;
     }
-    const v = data.map((b) => bookRowToClient(b));
+
+    const v = data.map(rpcRowToBook).filter(Boolean);
     setVault(v);
     return v;
   }, [user, vault]);
