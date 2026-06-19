@@ -4,7 +4,7 @@ A reading companion — wishlist, library, reading plans, and an AI-powered "ora
 for book discovery. Built with React + Vite + SCSS, backed by Supabase for auth
 and cross-device sync, and Netlify Functions for API proxying.
 
-> Current version: **v0.26** — see [Releases](#releases) below for changelog.
+> Current version: **v0.27** — see [Releases](#releases) below for changelog.
 > Upgrading from an earlier version? Check the matching `MIGRATION_*.md` / `UPDATE_*.md`.
 
 ---
@@ -33,6 +33,7 @@ npm install
   9. `schema_v9_migration.sql` (book_reports table)
   10. `schema_v10_migration.sql` (currently_reading table)
   11. `schema_v11_migration.sql` (is_curator flag + get_curated_catalog RPC)
+  12. `schema_v12_migration.sql` (lists, list_items, public plan RLS + RPCs)
 - In **Authentication → Providers → Google**, enable Google OAuth (see [Google OAuth](#google-oauth-setup) below)
 - In **Authentication → URL Configuration**, add `http://localhost:8888` and your Netlify URL to the allowed Redirect URLs
 - Copy your project URL + anon key from **Project Settings → API**
@@ -189,7 +190,10 @@ oracle/
         ├── BookPage.jsx
         ├── SeriesPage.jsx          (v0.24)
         ├── PlanCreate.jsx          Generate reading plan
-        └── PlanView.jsx            View any plan by ID (v0.26)
+        ├── PlanView.jsx            View any plan by ID (v0.26)
+        ├── Lists.jsx               My curated lists (v0.27)
+        ├── ListDetail.jsx          Single list — cover grid + bulk select (v0.27)
+        └── ListView.jsx            Public read-only view for shared lists and plans (v0.27)
 ```
 
 ---
@@ -253,6 +257,42 @@ and forward requests. Locally you need `netlify dev` to make them work.
 ---
 
 ## Releases
+
+### v0.27 — Lists, sharing, and smarter browsing
+
+**Custom Lists**
+- Create named curated reading lists, add any book from your collection, reorder, and toggle public/private.
+- Public lists get a shareable URL (`#list-view?listId=...`) that renders read-only for anyone — no account required.
+- `lists` and `list_items` tables with full RLS (`schema_v12_migration.sql`). `get_public_list()` RPC returns list + owner info for the public view.
+
+**Shareable Plans**
+- Any plan URL (`#plan-view?planId=...`) now resolves publicly via `get_public_plan()` RPC.
+- Guests and other users see the plan read-only with a "Copy this plan" button that saves it to their own account.
+
+**Nav restructure**
+- Primary nav trimmed to 6 items: Wishlist · Library · Reading (dropdown) · Lists · Oracle · ···
+- Reading dropdown contains Currently Reading and Read Next.
+- ··· overflow menu contains Profile, About, Language toggle, Sign out.
+
+**Book pages open in new tabs**
+- All book opens now use `openBookTab()` which encodes a snapshot in the URL so the page renders instantly without waiting for the library to load.
+- Book pages are public routes — render before auth/data loads, with auth-dependent actions appearing progressively.
+- `BookModal` removed entirely; `BookPage` is the canonical book surface.
+
+**Multi-select bulk actions**
+- "Select" toggle in Wishlist, Library, and ListDetail toolbars activates selection mode.
+- Works in both list view and cover grid: checkbox overlay on covers, gold highlight on list rows.
+- Floating `SelectionBar` offers context-aware actions: Add to list, Mark as read (Wishlist), Remove.
+- `useSelection` hook + `SelectionBar` component shared across all three views.
+
+**Session cache**
+- `DataContext` caches Supabase state in `sessionStorage` so new tabs render instantly from cache, then validate in background.
+- Cache keyed by userId with 30-minute expiry. Persist effect gated on `supabaseLoadedRef` to prevent stale data overwriting good data on mount.
+
+**Bug fixes**
+- `genresByBookId` no longer wiped on mount by premature `saveLocal` call.
+- Lists query isolated from main `Promise.all` so a lists failure can't break genre loading.
+- Nav dropdown styles moved to `nav.scss` where they belong.
 
 ### v0.26 — Your dashboard, alive
 

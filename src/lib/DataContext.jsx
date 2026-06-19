@@ -8,7 +8,7 @@ import { useAuth } from './AuthContext';
 import { ALL_BOOKS, bookKey } from './bookHelpers';
 
 const LOCAL_KEY    = 'wishlist_oracle_state_v2';
-const SESSION_KEY  = 'wishlist_oracle_session_v1'; // per-tab cache for instant loads
+const SESSION_KEY  = 'wishlist_oracle_session_v2'; // bumped v0.27: includes genresByBookId
 
 const defaultState = {
   onboarded: false,
@@ -64,8 +64,9 @@ function loadSessionCache(userId) {
 
 function saveSessionCache(userId, state) {
   try {
-    // Don't cache heavy derived maps that rebuild fast anyway
-    const { categoriesByBookId, genresByBookId, genres, ...cacheable } = state;
+    // Cache everything — genres are critical for Library grouping
+    // genres (full catalog) is large so we still exclude it; it rebuilds from genresByBookId
+    const { genres, ...cacheable } = state;
     sessionStorage.setItem(SESSION_KEY, JSON.stringify({
       uid: userId,
       state: cacheable,
@@ -246,7 +247,7 @@ function rollupGenres(rows) {
 
 // ---------- Supabase loaders ----------
 async function loadFromSupabase(userId) {
-  const [profileRes, wishlistRes, readBooksRes, plansRes, currentlyReadingRes, listsRes] = await Promise.all([
+  const [profileRes, wishlistRes, readBooksRes, plansRes, currentlyReadingRes] = await Promise.all([
     supabase.from('profiles').select('*').eq('id', userId).maybeSingle(),
     supabase
       .from('wishlist_items')
@@ -265,12 +266,19 @@ async function loadFromSupabase(userId) {
       .from('currently_reading')
       .select('started_at, book:books(*, position_in_series, series:series(*))')
       .eq('user_id', userId),
-    supabase
+  ]);
+
+  // Lists loaded separately — a failure here must not break genres/library load
+  let listsRes = { data: [] };
+  try {
+    listsRes = await supabase
       .from('lists')
       .select('*, list_items(position, note, added_at, book:books(*, position_in_series, series:series(*)))')
       .eq('user_id', userId)
-      .order('created_at', { ascending: false }),
-  ]);
+      .order('created_at', { ascending: false });
+  } catch (e) {
+    console.warn('Lists query failed — continuing without lists', e);
+  }
 
   const profile = profileRes.data || {};
   const wishlist = (wishlistRes.data || [])
@@ -535,6 +543,9 @@ export function DataProvider({ children }) {
   // the first run always executes (fixes guest mode where null === null guard
   // was skipping the effect and leaving loading stuck at its initial value).
   const loadedUserIdRef = useRef('__uninitialized__');
+  // True once we have real Supabase data (not just cache or localStorage).
+  // Prevents the persist effect from overwriting localStorage with stale data.
+  const supabaseLoadedRef = useRef(false);
 
   // ---------- Initial load ----------
   useEffect(() => {
@@ -565,6 +576,7 @@ export function DataProvider({ children }) {
           try {
             const remote = await loadFromSupabase(user.id);
             if (!cancelled) {
+              supabaseLoadedRef.current = true;
               setState(remote);
               saveSessionCache(user.id, remote);
             }
@@ -577,6 +589,7 @@ export function DataProvider({ children }) {
           try {
             const remote = await loadFromSupabase(user.id);
             if (!cancelled) {
+              supabaseLoadedRef.current = true;
               setState(remote);
               saveSessionCache(user.id, remote);
               loadedUserIdRef.current = user.id;
@@ -599,8 +612,11 @@ export function DataProvider({ children }) {
   }, [user, authLoading]);
 
   // ---------- Persist on every state change ----------
+  // Only persist after real Supabase data has loaded — prevents stale cache/localStorage
+  // state (with empty genresByBookId) from overwriting good data on mount.
   useEffect(() => {
     if (loading) return;
+    if (!supabaseLoadedRef.current) return; // wait for real data before persisting
     saveLocal(state);
     if (user) {
       saveSessionCache(user.id, state); // keep session cache fresh on mutations

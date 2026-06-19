@@ -5,6 +5,9 @@ import { GENRES, bookKey } from '../lib/bookHelpers';
 import BulkImport from '../components/BulkImport';
 import OracleCategorizationButton from '../components/OracleCategorizationButton';
 import LibraryCoverGrid from '../components/LibraryCoverGrid';
+import { useI18n } from '../lib/I18nContext';
+import { useSelection } from '../lib/useSelection';
+import SelectionBar from '../components/SelectionBar';
 
 // v0.15 phase 2.5: two-dropdown filter (genres + categories).
 // Genres are canonical Oracle-curated taxonomy from genresByBookId.
@@ -23,6 +26,8 @@ export default function Wishlist({ onOpenBook }) {
     startReading,
   } = useData();
   const { go } = useRouter();
+  const { lang } = useI18n();
+  const isSpanish = lang === 'es';
   const [search, setSearch] = useState('');
   const [genreFilter, setGenreFilter] = useState('all');
   const [categoryFilter, setCategoryFilter] = useState('all');
@@ -86,6 +91,10 @@ export default function Wishlist({ onOpenBook }) {
   );
 
   // --- Filtering ---
+  // Multi-select
+  const allFiltered = wl; // use full wishlist as pool for select-all
+  const sel = useSelection(allFiltered);
+
   let filtered = wl;
 
   if (genreFilter !== 'all') {
@@ -189,12 +198,26 @@ export default function Wishlist({ onOpenBook }) {
           <button className="btn btn-ghost" onClick={() => setBulkOpen((v) => !v)}>
             ⇪ Bulk import
           </button>
+          <button
+            className={`btn btn-ghost${sel.active ? ' active' : ''}`}
+            onClick={() => sel.active ? sel.exit() : sel.enter()}
+          >
+            {sel.active ? (isSpanish ? 'Cancelar' : 'Cancel') : (isSpanish ? 'Seleccionar' : 'Select')}
+          </button>
         </div>
       </div>
 
       {bulkOpen && <BulkImport target="wishlist" onClose={() => setBulkOpen(false)} />}
 
       <OracleCategorizationButton books={wl} />
+      <SelectionBar
+        count={sel.count}
+        selectedBooks={sel.selectedBooks}
+        onExit={sel.exit}
+        onSelectAll={sel.selectAll}
+        onClearAll={sel.clearAll}
+        context="wishlist"
+      />
 
 
 
@@ -232,6 +255,9 @@ export default function Wishlist({ onOpenBook }) {
           genreKeys={genreKeys}
           genresByBookId={genresByBookId}
           onOpenBook={onOpenBook}
+          selectionMode={sel.active}
+          selected={sel.selected}
+          onToggle={sel.toggle}
         />
       ) : (
         genreKeys.map((g) => (
@@ -241,10 +267,23 @@ export default function Wishlist({ onOpenBook }) {
               const k = bookKey(b);
               const inNext = state.readNext.some((r) => bookKey(r) === k);
               const inReading = (state.currentlyReading || []).some((r) => bookKey(r) === k);
+              const isSelected = sel.active && b.bookId && sel.selected.has(b.bookId);
               return (
-                <div className="list-item" key={`${k}-${i}`}>
-                  <div className="li-num">{b.manuallyAdded ? '✎' : '❦'}</div>
-                  <div className="li-content" onClick={() => onOpenBook?.(b)} style={{ cursor: 'pointer' }}>
+                <div
+                  className={`list-item${isSelected ? ' list-item--selected' : ''}`}
+                  key={`${k}-${i}`}
+                  onClick={() => sel.active ? sel.toggle(b.bookId) : null}
+                  style={sel.active ? { cursor: 'pointer' } : {}}
+                >
+                  <div
+                    className="li-num"
+                    style={sel.active ? { cursor: 'pointer' } : {}}
+                  >
+                    {sel.active
+                      ? <span className="li-checkbox">{isSelected ? '✓' : ''}</span>
+                      : (b.manuallyAdded ? '✎' : '❦')}
+                  </div>
+                  <div className="li-content" onClick={() => !sel.active && onOpenBook?.(b)} style={{ cursor: sel.active ? 'default' : 'pointer' }}>
                     <div className="li-title">{b.t}</div>
                     <div className="li-author">
                       {b.a}
@@ -261,26 +300,28 @@ export default function Wishlist({ onOpenBook }) {
                       ) : null;
                     })()}
                   </div>
-                  <div className="li-actions">
-                    {inReading ? (
-                      <span className="li-action" style={{ opacity: 0.5, cursor: 'default' }}>▶ Reading</span>
-                    ) : inNext ? (
-                      <span className="li-action" style={{ opacity: 0.5, cursor: 'default' }}>✓ Queued</span>
-                    ) : (
-                      <button className="li-action success" onClick={() => addToReadNext(b)}>+ Read Next</button>
-                    )}
-                    {!inReading && (
-                      <button className="li-action" onClick={() => startReading(b)}>▶ Start</button>
-                    )}
-                    <button
-                      className="li-action danger"
-                      onClick={() => {
-                        if (confirm(`Remove "${b.t}" from your wishlist?`)) removeFromWishlist(b);
-                      }}
-                    >
-                      Remove
-                    </button>
-                  </div>
+                  {!sel.active && (
+                    <div className="li-actions">
+                      {inReading ? (
+                        <span className="li-action" style={{ opacity: 0.5, cursor: 'default' }}>▶ Reading</span>
+                      ) : inNext ? (
+                        <span className="li-action" style={{ opacity: 0.5, cursor: 'default' }}>✓ Queued</span>
+                      ) : (
+                        <button className="li-action success" onClick={() => addToReadNext(b)}>+ Read Next</button>
+                      )}
+                      {!inReading && (
+                        <button className="li-action" onClick={() => startReading(b)}>▶ Start</button>
+                      )}
+                      <button
+                        className="li-action danger"
+                        onClick={() => {
+                          if (confirm(`Remove "${b.t}" from your wishlist?`)) removeFromWishlist(b);
+                        }}
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  )}
                 </div>
               );
             })}

@@ -5,7 +5,7 @@ import BookCover from './BookCover';
  * Renders the library as a visual cover grid, with each Oracle genre group
  * acting as a named shelf. Clicking a cover opens the BookModal via onOpenBook.
  */
-export default function LibraryCoverGrid({ grouped, genreKeys, genresByBookId, onOpenBook }) {
+export default function LibraryCoverGrid({ grouped, genreKeys, genresByBookId, onOpenBook, selectionMode = false, selected = new Set(), onToggle }) {
   if (genreKeys.length === 0) return null;
 
   return (
@@ -18,11 +18,16 @@ export default function LibraryCoverGrid({ grouped, genreKeys, genresByBookId, o
           <div className="cover-shelf-grid">
             {grouped[genre].map((b, i) => (
               <div
-                className="cover-grid-item"
+                className={`cover-grid-item${selectionMode && b.bookId && selected.has(b.bookId) ? ' cover-grid-item--selected' : ''}`}
                 key={`${b.bookId || b.t}-${i}`}
-                onClick={() => onOpenBook?.(b)}
+                onClick={() => selectionMode ? onToggle?.(b.bookId) : onOpenBook?.(b)}
                 title={`${b.t}${b.a ? ` · ${b.a}` : ''}${b.rating ? ` · ${'★'.repeat(b.rating)}` : ''}`}
               >
+                {selectionMode && (
+                  <div className="cover-grid-checkbox">
+                    {b.bookId && selected.has(b.bookId) ? '✓' : ''}
+                  </div>
+                )}
                 <div className="cover-grid-img">
                   <BookCover title={b.t} author={b.a} coverUrl={b.coverUrl} />
                 </div>

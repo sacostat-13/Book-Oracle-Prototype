@@ -6,6 +6,8 @@ import { useData } from '../lib/DataContext';
 import { useRouter } from '../lib/RouterContext';
 import { useI18n } from '../lib/I18nContext';
 import { openBookTab, bookKey } from '../lib/bookHelpers';
+import { useSelection } from '../lib/useSelection';
+import SelectionBar from '../components/SelectionBar';
 import BookCover from '../components/BookCover';
 
 function AddBookPicker({ list, onClose }) {
@@ -99,6 +101,7 @@ export default function ListDetail() {
   );
 
   const books = list.books || [];
+  const sel = useSelection(books);
 
   async function togglePublic() {
     await updateList(list.id, { is_public: !list.is_public });
@@ -149,6 +152,14 @@ export default function ListDetail() {
             {copied ? '✓ Copied!' : (isSpanish ? 'Copiar enlace' : 'Copy share link')}
           </button>
         )}
+        {books.length > 0 && (
+          <button
+            className={`btn btn-ghost${sel.active ? ' active' : ''}`}
+            onClick={() => sel.active ? sel.exit() : sel.enter()}
+          >
+            {sel.active ? (isSpanish ? 'Cancelar' : 'Cancel') : (isSpanish ? 'Seleccionar' : 'Select')}
+          </button>
+        )}
       </div>
 
       {books.length === 0 ? (
@@ -166,10 +177,15 @@ export default function ListDetail() {
               {books.map((b, i) => (
                 <div
                   key={b.bookId || i}
-                  className="cover-grid-item"
+                  className={`cover-grid-item${sel.active && b.bookId && sel.selected.has(b.bookId) ? ' cover-grid-item--selected' : ''}`}
                   title={`${b.t}${b.a ? ' · ' + b.a : ''}`}
-                  onClick={() => openBookTab(b, 'list-detail')}
+                  onClick={() => sel.active ? sel.toggle(b.bookId) : openBookTab(b, 'list-detail')}
                 >
+                  {sel.active && (
+                    <div className="cover-grid-checkbox">
+                      {b.bookId && sel.selected.has(b.bookId) ? '✓' : ''}
+                    </div>
+                  )}
                   <div className="cover-grid-img">
                     <BookCover title={b.t} author={b.a} coverUrl={b.coverUrl} />
                   </div>
@@ -191,6 +207,15 @@ export default function ListDetail() {
         </div>
       )}
 
+      <SelectionBar
+        count={sel.count}
+        selectedBooks={sel.selectedBooks}
+        onExit={sel.exit}
+        onSelectAll={sel.selectAll}
+        onClearAll={sel.clearAll}
+        context="list"
+        listId={list.id}
+      />
       {addingBook && <AddBookPicker list={list} onClose={() => setAddingBook(false)} />}
     </>
   );

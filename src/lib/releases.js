@@ -16,9 +16,28 @@
 
 // The version label shown as "current" — keep in sync with package.json and
 // the README version line.
-export const CURRENT_VERSION = 'v0.26';
+export const CURRENT_VERSION = 'v0.27';
 
-export const RELEASES = [{version: 'v0.26',
+export const RELEASES = [{version: 'v0.27',
+    date: '2026-06-18',
+    titleEn: 'Lists, sharing, and smarter browsing',
+    titleEs: 'Listas, compartir y mejor navegación',
+    bodyEn: [
+      'Create curated reading lists, add any book from your collection, and share them with a public link — no account required to view.',
+      'Reading Plans are now shareable too. Open a plan link to browse it, copy it to your own account with one tap, or add all its books to your queue.',
+      'The nav is cleaner: Reading (Currently Reading + Read Next) collapses into one dropdown, and Profile, Language, and Sign out move to a ··· overflow menu — freeing space for the new Lists entry.',
+      'Book pages now open in a new tab with content visible instantly, even before your library loads. No account needed to read a book page.',
+      'Select multiple books in Wishlist, Library, or a List to bulk-add to a list, mark as read, or remove — works in both list and cover grid views.',
+    ],
+    bodyEs: [
+      'Creá listas de lectura curadas, agregá cualquier libro de tu colección y compartilas con un enlace público — sin necesidad de cuenta para verlas.',
+      'Los Planes de Lectura ahora también se pueden compartir. Abrí un enlace de plan para verlo, copialo a tu cuenta con un toque, o agregá todos sus libros a tu cola.',
+      'La navegación es más limpia: Leyendo (Leyendo Ahora + Leer Después) se colapsa en un desplegable, y Perfil, Idioma y Cerrar Sesión se mueven a un menú ··· — liberando espacio para la nueva entrada de Listas.',
+      'Las páginas de libro ahora se abren en una nueva pestaña con el contenido visible al instante, incluso antes de que cargue tu biblioteca. No se necesita cuenta para leer una página de libro.',
+      'Seleccioná varios libros en Lista de Deseos, Biblioteca o una Lista para agregarlos en bloque a una lista, marcarlos como leídos o eliminarlos — funciona en vistas de lista y de portadas.',
+    ],
+  },
+  {version: 'v0.26',
     date: '2026-06-18',
     titleEn: 'Your dashboard, alive',
     titleEs: 'Tu panel, con vida propia',
@@ -26,7 +45,7 @@ export const RELEASES = [{version: 'v0.26',
       'The dashboard is now an activity feed. See what you finished, started, and added to your wishlist — grouped by day, with cover art throughout.',
       'Currently Reading gets a prominent strip at the top so your active books are always front and center.',
       'Reading Plans now supports multiple plans at once. Create as many as you want; each lives independently and can be opened from the dashboard.',
-      'The curated catalog (used by the Oracle when AI is off) is now powered by our curators live wishlists rather than a static bundled list — so the more books you add, the richer it gets.',
+      'The curated catalog (used by the Oracle when AI is off) is now powered by your own wishlist rather than a static bundled list — so the more books you add, the richer it gets.',
       'The shelf SCSS has been split into 25 focused partials for easier maintenance.',
     ],
     bodyEs: [

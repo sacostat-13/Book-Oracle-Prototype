@@ -6,6 +6,9 @@ import BulkImport from '../components/BulkImport';
 import OracleCategorizationButton from '../components/OracleCategorizationButton';
 import RatingModal from '../components/RatingModal';
 import LibraryCoverGrid from '../components/LibraryCoverGrid';
+import { useI18n } from '../lib/I18nContext';
+import { useSelection } from '../lib/useSelection';
+import SelectionBar from '../components/SelectionBar';
 
 // v0.15 phase 2.5: two-dropdown filter (genres + categories) + Oracle genre grouping.
 // Grouping uses Oracle genres; books without genres fall back to b.g then 'Imported'.
@@ -13,6 +16,8 @@ import LibraryCoverGrid from '../components/LibraryCoverGrid';
 export default function Library({ onOpenBook }) {
   const { state, removeFromLibrary, updateReadBook, getCategoriesForBook } = useData();
   const { go } = useRouter();
+  const { lang } = useI18n();
+  const isSpanish = lang === 'es';
   const [bulkOpen, setBulkOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [genreFilter, setGenreFilter] = useState('all');
@@ -64,6 +69,8 @@ export default function Library({ onOpenBook }) {
   const hasCategoryFilter = categoryOptions.length > 0;
 
   // --- Filtering ---
+  const sel = useSelection(lib);
+
   let filtered = lib;
 
   if (genreFilter !== 'all') {
@@ -160,6 +167,12 @@ export default function Library({ onOpenBook }) {
           </div>
           <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
             {/* List / Covers toggle */}
+            <button
+              className={`btn btn-ghost${sel.active ? ' active' : ''}`}
+              onClick={() => sel.active ? sel.exit() : sel.enter()}
+            >
+              {sel.active ? (isSpanish ? 'Cancelar' : 'Cancel') : (isSpanish ? 'Seleccionar' : 'Select')}
+            </button>
             <div className="view-toggle">
               <button
                 className={`view-toggle-btn${viewMode === 'list' ? ' active' : ''}`}
@@ -196,6 +209,14 @@ export default function Library({ onOpenBook }) {
       )}
 
       <OracleCategorizationButton books={lib} />
+      <SelectionBar
+        count={sel.count}
+        selectedBooks={sel.selectedBooks}
+        onExit={sel.exit}
+        onSelectAll={sel.selectAll}
+        onClearAll={sel.clearAll}
+        context="library"
+      />
 
       {lib.length === 0 ? (
         <div className="empty-state">
@@ -220,25 +241,38 @@ export default function Library({ onOpenBook }) {
           genreKeys={genreKeys}
           genresByBookId={genresByBookId}
           onOpenBook={onOpenBook}
+          selectionMode={sel.active}
+          selected={sel.selected}
+          onToggle={sel.toggle}
         />
       ) : (
         genreKeys.map((g) => (
           <div className="list-section" key={g}>
             <h2>{g} <span className="count">· {grouped[g].length}</span></h2>
-            {grouped[g].map((b, i) => (
-              <div className="list-item" key={`${bookKey(b)}-${i}`}>
+            {grouped[g].map((b, i) => {
+              const isSelected = sel.active && b.bookId && sel.selected.has(b.bookId);
+              return (
+              <div
+                className={`list-item${isSelected ? ' list-item--selected' : ''}`}
+                key={`${bookKey(b)}-${i}`}
+                onClick={() => sel.active ? sel.toggle(b.bookId) : null}
+                style={sel.active ? { cursor: 'pointer' } : {}}
+              >
                 <div
                   className="li-num"
                   onClick={(e) => {
                     e.stopPropagation();
-                    setEditing(b);
+                    if (sel.active) sel.toggle(b.bookId);
+                    else setEditing(b);
                   }}
-                  title={b.rating ? 'Edit your rating' : 'Rate this book'}
+                  title={sel.active ? '' : (b.rating ? 'Edit your rating' : 'Rate this book')}
                   style={{ cursor: 'pointer' }}
                 >
-                  {b.rating ? '★'.repeat(b.rating) : '❦'}
+                  {sel.active
+                    ? <span className="li-checkbox">{isSelected ? '✓' : ''}</span>
+                    : (b.rating ? '★'.repeat(b.rating) : '❦')}
                 </div>
-                <div className="li-content" onClick={() => onOpenBook?.(b)} style={{ cursor: 'pointer' }}>
+                <div className="li-content" onClick={() => !sel.active && onOpenBook?.(b)} style={{ cursor: sel.active ? 'default' : 'pointer' }}>
                   <div className="li-title">{b.t}</div>
                   <div className="li-author">
                     {b.a}
@@ -261,28 +295,31 @@ export default function Library({ onOpenBook }) {
                     ) : null;
                   })()}
                 </div>
-                <div className="li-actions">
-                  <button
-                    className="li-action"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setEditing(b);
-                    }}
-                  >
-                    {b.rating ? 'Edit rating' : '+ Rate'}
-                  </button>
-                  <button
-                    className="li-action danger"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (confirm(`Remove "${b.t}" from your library?`)) removeFromLibrary(b);
-                    }}
-                  >
-                    Remove
-                  </button>
-                </div>
+                {!sel.active && (
+                  <div className="li-actions">
+                    <button
+                      className="li-action"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setEditing(b);
+                      }}
+                    >
+                      {b.rating ? 'Edit rating' : '+ Rate'}
+                    </button>
+                    <button
+                      className="li-action danger"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (confirm(`Remove "${b.t}" from your library?`)) removeFromLibrary(b);
+                      }}
+                    >
+                      Remove
+                    </button>
+                  </div>
+                )}
               </div>
-            ))}
+              );
+            })}
           </div>
         ))
       )}
