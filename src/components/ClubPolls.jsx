@@ -125,7 +125,7 @@ function PollOptionCard({ option, selected, myVote, totalVotes, closed, onVote }
 
 // ── Single poll card ──────────────────────────────────────────────────────────
 
-function PollCard({ poll, isAdmin, onVote, onClose, onCreateSession }) {
+function PollCard({ poll, isAdmin, onVote, onClose, onDelete, onCreateSession }) {
   const { user } = useAuth();
   const totalVotes = poll.options.reduce((s, o) => s + Number(o.vote_count), 0);
   const maxVotes = Math.max(...poll.options.map((o) => Number(o.vote_count)), 0);
@@ -152,10 +152,17 @@ function PollCard({ poll, isAdmin, onVote, onClose, onCreateSession }) {
             {poll.closed && ' · closed'}
           </div>
         </div>
-        {isAdmin && !poll.closed && (
-          <button className="li-action" style={{ fontSize: '0.7rem', flexShrink: 0 }} onClick={() => onClose(poll.id)}>
-            Close poll
-          </button>
+        {isAdmin && (
+          <div style={{ display: 'flex', gap: '0.35rem', flexShrink: 0 }}>
+            {!poll.closed && (
+              <button className="li-action" style={{ fontSize: '0.7rem' }} onClick={() => onClose(poll.id)}>
+                Close poll
+              </button>
+            )}
+            <button className="li-action danger" style={{ fontSize: '0.7rem' }} onClick={() => onDelete(poll.id)}>
+              Delete
+            </button>
+          </div>
         )}
       </div>
 
@@ -257,7 +264,7 @@ function CreatePollForm({ onAdd, onCancel }) {
 // ── Main component ────────────────────────────────────────────────────────────
 
 export default function ClubPolls({ clubId, clubName, clubGenres = [], isAdmin, recentBooks = [], onCreateSession }) {
-  const { createPoll, castVote, closePoll } = useData();
+  const { createPoll, castVote, closePoll, deletePoll } = useData();
   const [polls, setPolls] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
@@ -292,6 +299,12 @@ export default function ClubPolls({ clubId, clubName, clubGenres = [], isAdmin, 
   async function handleClose(pollId) {
     await closePoll(pollId);
     setPolls((ps) => ps.map((p) => p.id === pollId ? { ...p, closed: true } : p));
+  }
+
+  async function handleDelete(pollId) {
+    if (!confirm('Delete this poll? This cannot be undone.')) return;
+    await deletePoll(pollId);
+    setPolls((ps) => ps.filter((p) => p.id !== pollId));
   }
 
   async function handleCreate({ question, options, isOraclePick }) {
@@ -376,6 +389,7 @@ export default function ClubPolls({ clubId, clubName, clubGenres = [], isAdmin, 
           isAdmin={isAdmin}
           onVote={handleVote}
           onClose={handleClose}
+          onDelete={handleDelete}
           onCreateSession={onCreateSession}
         />
       ))}
@@ -393,6 +407,7 @@ export default function ClubPolls({ clubId, clubName, clubGenres = [], isAdmin, 
               isAdmin={isAdmin}
               onVote={handleVote}
               onClose={handleClose}
+              onDelete={handleDelete}
               onCreateSession={onCreateSession}
             />
           ))}

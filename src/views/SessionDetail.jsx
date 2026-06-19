@@ -514,6 +514,7 @@ export default function SessionDetail() {
         sessionId={sessionId}
         clubId={session.club_id}
         isAdmin={isAdmin}
+        book={{ title: book.title, author: book.author, description: book.description }}
       />
     </>
   );

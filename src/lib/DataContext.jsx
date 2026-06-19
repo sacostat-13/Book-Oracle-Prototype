@@ -1713,6 +1713,11 @@ export function DataProvider({ children }) {
     await supabase.from('club_polls').update({ closed: true }).eq('id', pollId);
   }, [user]);
 
+  const deletePoll = useCallback(async (pollId) => {
+    if (!user) return;
+    await supabase.from('club_polls').delete().eq('id', pollId);
+  }, [user]);
+
   const deletePlan = useCallback(
     async (planId) => {
       // Remove from local state immediately so UI reflects change without refresh
@@ -1833,6 +1838,7 @@ export function DataProvider({ children }) {
     createPoll,
     castVote,
     closePoll,
+    deletePoll,
     resetAll,
     vault,
     loadVault,

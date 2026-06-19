@@ -305,7 +305,9 @@ and forward requests. Locally you need `netlify dev` to make them work.
 
 **Discussion architecture (v0.29).** One `session_comments` table covers all comment surfaces — free comments (`question_id` null), question answers (`question_id` set), and replies (`parent_id` set). A DB constraint prevents replies-to-replies. `get_session_discussion` returns the full thread structure in one RPC call with `is_mine` flags pre-computed. `CommentThread` is a pure rendering component; `SessionDiscussion` owns data-fetching and is the only component that calls DataContext mutations.
 
-**Oracle poll flow (v0.29).** Admin taps "☩ Oracle suggests" on the club page → `ClubPolls` calls `callClaude` via the existing Netlify proxy with club genres and recent session books as context → Claude returns a JSON array of 3 book suggestions → `createPoll` inserts a poll with `is_oracle_pick: true` and three options → becomes a standard voteable poll. Winning option pre-fills the book field in SessionCreate via route params.
+**Oracle question suggestions (v0.29).** Admins trigger from the session discussion panel. The existing questions are sent as context so Claude avoids duplicates. Results render as a persistent pick-list — tapping adds immediately without closing the list, allowing multiple picks in one flow.
+
+**Oracle poll flow (v0.29).** Admin taps "☩ Oracle suggests" on the club page → `ClubPolls` calls `callClaude` via the existing Netlify proxy with club genres and recent session books as context → Claude returns a JSON array of 3 book suggestions → `createPoll` inserts a poll with `is_oracle_pick: true` and three options → becomes a standard voteable poll. Winning option pre-fills the book field in SessionCreate via route params. Admins can delete any poll outright; cascade deletes options and votes automatically.
 
 **Multi-plan support.** `plans` loads all rows per user. `DataContext` exposes `state.plans[]` alongside `state.currentPlan` (most recent, for backwards compat). `PlanView` resolves by `route.params.planId`.
 
@@ -327,15 +329,20 @@ and forward requests. Locally you need `netlify dev` to make them work.
 - Replies nest one level deep (enforced by DB constraint — no infinite threads).
 - Authors can edit or delete their own comments; admins can delete any comment.
 
+**Oracle discussion question suggestions**
+- Admins tap "☩ Oracle suggests" in the questions panel — Claude generates five discussion questions tailored to the session's book (themes, characters, emotional resonance, reader reactions).
+- Existing questions are passed as context so Claude never duplicates what's already there.
+- Suggestions appear as a tappable pick-list. Each tap adds the question immediately and marks it ✦ — the list stays open so admins can pick multiple in one go. Dismiss when done.
+
 **Polls**
 - Admins create polls on a club with 2–5 options (book titles or free text).
 - Members vote and can change their vote while the poll is open. Results show as a live percentage bar visible to all members immediately after voting.
-- Admins close a poll when ready. The winning option shows a "Create session from this book →" shortcut that pre-fills SessionCreate.
+- Admins can close a poll (locks voting, shows final results), delete a poll entirely, or use the winning option to pre-fill a new session form.
 
 **Oracle suggestion polls**
-- Admins tap "☩ Oracle suggests" — Claude generates three book recommendations based on the club's genre tags and recent session history.
+- Admins tap "☩ Oracle suggests" on the polls panel — Claude generates three book recommendations based on the club's genre tags and recent session history.
 - Suggestions become a poll automatically with `is_oracle_pick` flagged. No separate confirmation step.
-- The full Oracle → poll → session pipeline is available in one flow.
+- The full Oracle → poll → session pipeline completes in one flow.
 
 **DB changes** (`schema_v14_migration.sql`)
 - New tables: `session_questions`, `session_comments`, `club_polls`, `poll_options`, `poll_votes`
@@ -501,3 +508,4 @@ and forward requests. Locally you need `netlify dev` to make them work.
 - `session_comments` serves all comment surfaces via `question_id` / `parent_id` nullability — one table, one RLS policy set, one RPC
 - `cast_vote` uses `ON CONFLICT DO UPDATE` — changing your vote is always a safe upsert, never a delete+insert race
 - `CommentThread` is a pure rendering component — pass it comments + callbacks, it knows nothing about sessions or clubs
+- Deleting a poll cascade-deletes its `poll_options` and `poll_votes` via FK constraints — no manual cleanup needed
