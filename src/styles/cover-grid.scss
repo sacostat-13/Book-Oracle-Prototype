@@ -197,6 +197,33 @@
   padding-top: 0.75rem;
 }
 
+// v0.28: reading progress bar
+.cr-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+.cr-progress-bar-track {
+  height: 3px;
+  background: rgba(176, 140, 63, 0.15);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.cr-progress-bar-fill {
+  height: 100%;
+  background: var(--gilt, #b08c3f);
+  border-radius: 2px;
+  transition: width 0.3s ease;
+  min-width: 2px;
+}
+.cr-progress-label {
+  font-family: 'Special Elite', monospace;
+  font-size: 0.72rem;
+  letter-spacing: 0.05em;
+  color: var(--paper-aged);
+  opacity: 0.65;
+}
+
 @media (max-width: 500px) {
   .cr-card { grid-template-columns: 72px 1fr; gap: 0.9rem; padding: 0.85rem; }
   .cr-cover { width: 72px; }

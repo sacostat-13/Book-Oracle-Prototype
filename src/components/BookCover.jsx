@@ -55,6 +55,7 @@ export default function BookCover({ title, author, coverUrl, className = '', eag
           // Image failed (broken link, blocked, etc.) — drop back to placeholder
           setUrl(null);
         }}
+        style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
         ref={(el) => {
           // Handle the case where the image is already cached by the browser
           // and was complete before onLoad could fire.

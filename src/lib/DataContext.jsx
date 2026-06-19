@@ -42,6 +42,10 @@ const defaultState = {
   // v0.22: books currently being read. Each entry is a full book client object
   // with an extra `startedAt` (ISO date string) field.
   currentlyReading: [],
+  // v0.28: book clubs. Each entry is { id, name, description, joinToken,
+  // createdBy, createdAt, callerRole: 'member'|'admin', memberCount }.
+  // Full detail (members, sessions) is fetched on demand by the club views.
+  clubs: [],
 };
 
 const DataContext = createContext(null);
@@ -264,7 +268,7 @@ async function loadFromSupabase(userId) {
       .order('created_at', { ascending: false }),
     supabase
       .from('currently_reading')
-      .select('started_at, book:books(*, position_in_series, series:series(*))')
+      .select('started_at, pages_read, book:books(*, position_in_series, series:series(*))')
       .eq('user_id', userId),
   ]);
 
@@ -278,6 +282,17 @@ async function loadFromSupabase(userId) {
       .order('created_at', { ascending: false });
   } catch (e) {
     console.warn('Lists query failed — continuing without lists', e);
+  }
+
+  // v0.28: Clubs — lightweight index load (no full member/session detail)
+  let clubsRes = { data: [] };
+  try {
+    clubsRes = await supabase
+      .from('book_club_members')
+      .select('role, club:book_clubs(id, name, description, join_token, created_by, created_at)')
+      .eq('user_id', userId);
+  } catch (e) {
+    console.warn('Clubs query failed — continuing without clubs', e);
   }
 
   const profile = profileRes.data || {};
@@ -324,7 +339,7 @@ async function loadFromSupabase(userId) {
   const currentlyReading = (currentlyReadingRes.data || [])
     .map((r) =>
       r.book
-        ? bookRowToClient(r.book, { startedAt: r.started_at })
+        ? bookRowToClient(r.book, { startedAt: r.started_at, pagesRead: r.pages_read ?? 0 })
         : null
     )
     .filter(Boolean);
@@ -506,6 +521,15 @@ async function loadFromSupabase(userId) {
     genresByBookId,
     genres,
     currentlyReading: dedupeBooks(currentlyReading),
+    clubs: (clubsRes.data || []).map((m) => ({
+      id: m.club?.id,
+      name: m.club?.name,
+      description: m.club?.description,
+      joinToken: m.club?.join_token,
+      createdBy: m.club?.created_by,
+      createdAt: m.club?.created_at,
+      callerRole: m.role,
+    })).filter((c) => c.id),
   };
 }
 
@@ -561,28 +585,19 @@ export function DataProvider({ children }) {
     let cancelled = false;
     (async () => {
       if (user) {
-        // Check session cache first — render instantly if available
+        // Check session cache first — render instantly without a spinner
         const cached = loadSessionCache(user.id);
         if (cached) {
-          // Merge cached state with default to ensure all keys exist
           const merged = { ...defaultState, ...cached };
           if (!cancelled) {
+            supabaseLoadedRef.current = true; // treat cache as authoritative
             setState(merged);
             loadedUserIdRef.current = user.id;
             setLoading(false);
           }
-          // Validate against Supabase in background (silent refresh)
-          // Don't set loading=true so the UI stays responsive
-          try {
-            const remote = await loadFromSupabase(user.id);
-            if (!cancelled) {
-              supabaseLoadedRef.current = true;
-              setState(remote);
-              saveSessionCache(user.id, remote);
-            }
-          } catch (e) {
-            console.error('Background Supabase refresh failed — keeping cached state', e);
-          }
+          // No background refresh — mutations keep cache fresh via saveSessionCache
+          // in the persist effect. This avoids race conditions where a stale
+          // Supabase read overwrites in-memory mutations.
         } else {
           // No cache — fetch from Supabase with spinner
           setLoading(true);
@@ -914,7 +929,11 @@ export function DataProvider({ children }) {
       const enriched = { ...book, startedAt: date };
 
       if (!user) {
-        setState((s) => ({ ...s, currentlyReading: [...s.currentlyReading, enriched] }));
+        setState((s) => ({
+          ...s,
+          currentlyReading: [...s.currentlyReading, enriched],
+          readNext: s.readNext.filter((b) => bookKey(b) !== k),
+        }));
         showToast(`Started reading "${book.t}"`);
         return;
       }
@@ -969,6 +988,32 @@ export function DataProvider({ children }) {
       await markAsRead(book, extra);
     },
     [removeFromCurrentlyReading, markAsRead]
+  );
+
+  // v0.28: update how many pages the user has read for a currently-reading book.
+  // Optimistically updates local state; persists to currently_reading.pages_read.
+  const updateReadingProgress = useCallback(
+    async (book, pagesRead) => {
+      const pages = Math.max(0, Math.floor(pagesRead));
+      // Optimistic local update
+      setState((s) => ({
+        ...s,
+        currentlyReading: s.currentlyReading.map((b) =>
+          b.bookId === book.bookId ? { ...b, pagesRead: pages } : b
+        ),
+      }));
+
+      if (!user || !book.bookId) return;
+
+      const { error } = await supabase
+        .from('currently_reading')
+        .update({ pages_read: pages })
+        .eq('user_id', user.id)
+        .eq('book_id', book.bookId);
+
+      if (error) console.error('updateReadingProgress failed', error);
+    },
+    [user]
   );
 
   const updateReadBook = useCallback(
@@ -1511,6 +1556,80 @@ export function DataProvider({ children }) {
     }));
   }, [user]);
 
+  // ── v0.28: Club mutations ─────────────────────────────────────────────────
+
+  const createClub = useCallback(async ({ name, description, genreIds = [] }) => {
+    if (!user) return null;
+    const { data, error } = await supabase
+      .from('book_clubs')
+      .insert({ name, description: description || null })
+      .select()
+      .single();
+    if (error) { console.error('createClub failed', error); return null; }
+
+    // Creator becomes admin
+    await supabase.from('book_club_members').insert({
+      club_id: data.id,
+      user_id: user.id,
+      role: 'admin',
+    });
+
+    // Attach genre tags
+    if (genreIds.length > 0) {
+      await supabase.from('book_club_genres').insert(
+        genreIds.map((gid) => ({ club_id: data.id, genre_id: gid }))
+      );
+    }
+
+    const newClub = {
+      id: data.id,
+      name: data.name,
+      description: data.description,
+      joinToken: data.join_token,
+      createdBy: data.created_by,
+      createdAt: data.created_at,
+      callerRole: 'admin',
+    };
+    setState((s) => ({ ...s, clubs: [newClub, ...(s.clubs || [])] }));
+    return newClub;
+  }, [user]);
+
+  const updateClub = useCallback(async (clubId, updates) => {
+    if (!user) return;
+    const dbUpdates = {};
+    if (updates.name !== undefined) dbUpdates.name = updates.name;
+    if (updates.description !== undefined) dbUpdates.description = updates.description;
+    await supabase.from('book_clubs').update(dbUpdates).eq('id', clubId);
+    setState((s) => ({
+      ...s,
+      clubs: (s.clubs || []).map((c) => c.id === clubId ? { ...c, ...updates } : c),
+    }));
+  }, [user]);
+
+  const deleteClub = useCallback(async (clubId) => {
+    if (!user) return;
+    await supabase.from('book_clubs').delete().eq('id', clubId);
+    setState((s) => ({ ...s, clubs: (s.clubs || []).filter((c) => c.id !== clubId) }));
+  }, [user]);
+
+  const leaveClub = useCallback(async (clubId) => {
+    if (!user) return;
+    await supabase.from('book_club_members').delete()
+      .eq('club_id', clubId).eq('user_id', user.id);
+    setState((s) => ({ ...s, clubs: (s.clubs || []).filter((c) => c.id !== clubId) }));
+  }, [user]);
+
+  const regenerateJoinToken = useCallback(async (clubId) => {
+    if (!user) return null;
+    const { data, error } = await supabase.rpc('regenerate_join_token', { p_club_id: clubId });
+    if (error || !data) return null;
+    setState((s) => ({
+      ...s,
+      clubs: (s.clubs || []).map((c) => c.id === clubId ? { ...c, joinToken: data } : c),
+    }));
+    return data;
+  }, [user]);
+
   const deletePlan = useCallback(
     async (planId) => {
       // Remove from local state immediately so UI reflects change without refresh
@@ -1587,10 +1706,13 @@ export function DataProvider({ children }) {
     startReading,
     finishReading,
     removeFromCurrentlyReading,
+    // v0.28: reading progress
+    updateReadingProgress,
     importGoodreads,
     bulkAddToLibrary,
     cacheBookFields,
     upsertDiscoveredBook,
+    upsertBookOnServer,
     // v0.12: category mutations
     addCategoryToBook,
     removeCategoryFromBook,
@@ -1604,6 +1726,7 @@ export function DataProvider({ children }) {
     setOracleMode,
     plans: state.plans || [],
     lists: state.lists || [],
+    clubs: state.clubs || [],
     setCurrentPlan,
     deletePlan,
     createList,
@@ -1611,6 +1734,12 @@ export function DataProvider({ children }) {
     deleteList,
     addBookToList,
     removeBookFromList,
+    // v0.28: club mutations
+    createClub,
+    updateClub,
+    deleteClub,
+    leaveClub,
+    regenerateJoinToken,
     resetAll,
     vault,
     loadVault,

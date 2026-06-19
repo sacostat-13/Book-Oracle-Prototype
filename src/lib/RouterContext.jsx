@@ -21,6 +21,13 @@ const KNOWN_ROUTES = new Set([
   'lists',
   'list-detail',
   'list-view',
+  // v0.28: book clubs
+  'book-clubs',
+  'book-club-create',
+  'book-club-detail',
+  'session-create',
+  'session-detail',
+  'join-club',
 ]);
 
 function parseHash() {

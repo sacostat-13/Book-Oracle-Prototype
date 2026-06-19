@@ -1,10 +1,10 @@
 # The Wishlist Oracle
 
-A reading companion — wishlist, library, reading plans, and an AI-powered "oracle"
+A reading companion — wishlist, library, reading plans, book clubs, and an AI-powered "oracle"
 for book discovery. Built with React + Vite + SCSS, backed by Supabase for auth
 and cross-device sync, and Netlify Functions for API proxying.
 
-> Current version: **v0.27** — see [Releases](#releases) below for changelog.
+> Current version: **v0.28** — see [Releases](#releases) below for changelog.
 > Upgrading from an earlier version? Check the matching `MIGRATION_*.md` / `UPDATE_*.md`.
 
 ---
@@ -14,7 +14,6 @@ and cross-device sync, and Netlify Functions for API proxying.
 ### 1. Install dependencies
 
 ```bash
-npm install three   # required for the 3D shelf (v0.26)
 npm install
 ```
 
@@ -34,6 +33,7 @@ npm install
   10. `schema_v10_migration.sql` (currently_reading table)
   11. `schema_v11_migration.sql` (is_curator flag + get_curated_catalog RPC)
   12. `schema_v12_migration.sql` (lists, list_items, public plan RLS + RPCs)
+  13. `schema_v13_migration.sql` (book clubs, sessions, reading progress)
 - In **Authentication → Providers → Google**, enable Google OAuth (see [Google OAuth](#google-oauth-setup) below)
 - In **Authentication → URL Configuration**, add `http://localhost:8888` and your Netlify URL to the allowed Redirect URLs
 - Copy your project URL + anon key from **Project Settings → API**
@@ -119,7 +119,8 @@ oracle/
 ├── supabase/
 │   ├── schema.sql                  Initial schema (v1)
 │   ├── schema_v2_migration.sql     ... through ...
-│   └── schema_v11_migration.sql    is_curator + get_curated_catalog RPC (v0.26)
+│   ├── schema_v12_migration.sql    lists + shareable plans (v0.27)
+│   └── schema_v13_migration.sql    book clubs + sessions + reading progress (v0.28)
 └── src/
     ├── main.jsx                    Mount + providers
     ├── App.jsx                     Auth gate, route switch
@@ -140,7 +141,7 @@ oracle/
     │   ├── shelf.scss              Shelf controls
     │   ├── lists.scss              List views
     │   ├── book-page.scss          Book detail page
-    │   ├── cover-grid.scss         Cover grid + currently reading view
+    │   ├── cover-grid.scss         Cover grid + currently reading cards + progress bars (v0.28)
     │   ├── series-page.scss        Series page
     │   ├── modal.scss              Book modal
     │   ├── oracle.scss             Oracle page + cards
@@ -166,7 +167,7 @@ oracle/
     │   ├── oracleCategorizationService.js  Oracle batch-categorization logic
     │   └── releases.js             Bilingual release notes content
     ├── components/
-    │   ├── Nav.jsx                 Hamburger menu + mobile overlay
+    │   ├── Nav.jsx                 Top nav — desktop links + mobile overlay (v0.28: Clubs entry)
     │   ├── Toast.jsx
     │   ├── BookCover.jsx           Cached covers + OL fallback
     │   ├── BookCard.jsx
@@ -175,25 +176,35 @@ oracle/
     │   ├── ReleaseNotesModal.jsx   "What's new" popup (bilingual)
     │   ├── CategoryAutocomplete.jsx
     │   ├── OracleCategorizationButton.jsx
-    │   └── CurrentReleaseFooter.jsx
+    │   ├── CurrentReleaseFooter.jsx
+    │   ├── AddToListModal.jsx
+    │   ├── AddToListPicker.jsx
+    │   ├── SelectionBar.jsx
+    │   └── ProgressUpdateModal.jsx  Pages-read modal for currently-reading books (v0.28)
     └── views/
         ├── Onboarding.jsx
-        ├── Dashboard.jsx           Activity feed + currently reading (v0.26)
+        ├── Dashboard.jsx           Activity feed + currently reading + clubs widget (v0.28)
         ├── Wishlist.jsx
         ├── Library.jsx
         ├── ReadNext.jsx
-        ├── CurrentlyReading.jsx    (v0.25)
+        ├── CurrentlyReading.jsx    Progress bars + update modal (v0.28)
         ├── Profile.jsx             Reading stats
         ├── OracleFork.jsx
         ├── OracleCategories.jsx
         ├── OracleSimilar.jsx
         ├── BookPage.jsx
-        ├── SeriesPage.jsx          (v0.24)
+        ├── SeriesPage.jsx
         ├── PlanCreate.jsx          Generate reading plan
-        ├── PlanView.jsx            View any plan by ID (v0.26)
+        ├── PlanView.jsx            View any plan by ID
         ├── Lists.jsx               My curated lists (v0.27)
         ├── ListDetail.jsx          Single list — cover grid + bulk select (v0.27)
-        └── ListView.jsx            Public read-only view for shared lists and plans (v0.27)
+        ├── ListView.jsx            Public read-only view for shared lists and plans (v0.27)
+        ├── BookClubs.jsx           My clubs index (v0.28)
+        ├── BookClubCreate.jsx      Create a new club (v0.28)
+        ├── BookClubDetail.jsx      Club detail — sessions, roster, admin controls (v0.28)
+        ├── SessionCreate.jsx       Admin form to create a reading session (v0.28)
+        ├── SessionDetail.jsx       Session page — book info + member progress grid (v0.28)
+        └── JoinClub.jsx            Public join-by-token landing page (v0.28)
 ```
 
 ---
@@ -207,7 +218,17 @@ oracle/
 | `wishlist_items` | User's wishlist. References `books.id`. |
 | `read_books` | User's library (read books). References `books.id`. Includes `read_at` date. |
 | `plans` | User's reading plans. Multiple plans per user supported. `content` jsonb holds the plan structure. |
-| `currently_reading` | Books actively being read. `started_at` timestamp. |
+| `currently_reading` | Books actively being read. `started_at` date, `pages_read` integer (v0.28). |
+| `lists` | User's curated reading lists. `is_public` toggles shareable URL. |
+| `list_items` | Books within a list, with `position` for ordering and optional `note`. |
+
+### Book Clubs (v0.28)
+| Table | Purpose |
+|---|---|
+| `book_clubs` | Named reading groups. `join_token` is a UUID string used in invite links; regenerable by admins. `created_by` is the original admin. |
+| `book_club_genres` | Optional genre tags on a club (many-to-many → `genres`). |
+| `book_club_members` | Membership rows. `role` is `'member'` or `'admin'`. Unique per (club, user). |
+| `book_club_sessions` | One session = one book + date range + admin notes. References `books.id`. |
 
 ### Shared catalog (read-public, write via RPC only)
 | Table | Purpose |
@@ -218,12 +239,21 @@ oracle/
 | `book_genres` | Global many-to-many book ↔ genre. |
 | `book_reports` | User-submitted issue reports on catalog entries. |
 
+### RPCs (v0.28 additions)
+| RPC | Auth | Purpose |
+|---|---|---|
+| `preview_club_by_token(token)` | anon + authed | Returns club name + description for the join landing page. Safe — no member data. |
+| `join_club_by_token(token)` | authed | Resolves token → club, inserts member row, returns club_id. Idempotent. |
+| `get_club_detail(club_id)` | authed member | Returns club info, genre tags, full roster, and all sessions in one call. |
+| `get_session_detail(session_id)` | authed member | Returns session, book, and member progress grid (joined with `currently_reading.pages_read`). |
+| `regenerate_join_token(club_id)` | authed admin | Replaces `join_token` with a fresh UUID, invalidating old links. |
+
 ### The curated catalog (The Vault)
 Starting v0.26, the Vault is powered by the curator's live wishlist rather than a bundled static file. The `get_curated_catalog()` RPC (v11 migration) returns all books wishlisted by any user with `profiles.is_curator = true`, joined with their series data. This is what the Oracle draws from when AI is disabled, and what the plan generator uses as its source pool.
 
 ### Guest mode
 When signed out, state is mirrored to `localStorage` under `wishlist_oracle_state_v2`.
-Everything works locally; nothing syncs.
+Everything works locally; nothing syncs. Book clubs require an account.
 
 ---
 
@@ -248,15 +278,45 @@ and forward requests. Locally you need `netlify dev` to make them work.
 - Batches 20 at a time to Claude via Netlify proxy
 - Writes genres + series + descriptions back, flips status to `oracle_categorized`
 
-**Multi-plan support (v0.26).** `plans` now loads all rows per user (previously limited to 1). `DataContext` exposes `state.plans[]` alongside `state.currentPlan` (most recent, for backwards compat). `PlanView` resolves by `route.params.planId` when navigating from the dashboard plan list.
+**Book Clubs architecture (v0.28).** Clubs are invite-only — no public directory. The join flow is a public route (`#join-club?token=...`) that resolves before auth: `preview_club_by_token` returns name + description for non-members, then `join_club_by_token` (SECURITY DEFINER) writes the membership row once the user signs in. Progress is stored on `currently_reading.pages_read` — the session page joins this against the member roster at query time via `get_session_detail`.
 
-**Activity feed (v0.26).** The dashboard feed is synthesised client-side from already-loaded state — `state.library` (finished events from `read_at` dates), `state.currentlyReading` (started events), `state.wishlist` (added events grouped by day), and `state.plans` (plan created events). No extra Supabase queries. Paginated at 5 events per page.
+**Reading progress (v0.28).** `currently_reading` now carries a `pages_read` integer (default 0). `updateReadingProgress(book, pagesRead)` in DataContext optimistically updates local state and persists via a direct update. The `ProgressUpdateModal` component is shared between Currently Reading and SessionDetail.
 
-**SCSS architecture (v0.26).** `src/styles/main.scss` is now a single entry point that `@use`s 25 focused partials. Each partial owns one concern. New features get their own partial — no more hunting through 2600 lines.
+**Multi-plan support.** `plans` loads all rows per user. `DataContext` exposes `state.plans[]` alongside `state.currentPlan` (most recent, for backwards compat). `PlanView` resolves by `route.params.planId`.
+
+**Activity feed.** The dashboard feed is synthesised client-side from already-loaded state — no extra Supabase queries. Paginated at 5 events per page.
+
+**SCSS architecture.** `src/styles/main.scss` is a single entry point that `@use`s 25 focused partials. New features get their own partial where appropriate; smaller additions (like progress bars) go in the most relevant existing file.
+
+**Session cache.** `DataContext` caches Supabase state in `sessionStorage` so new tabs render instantly from cache, then validate in background. Cache keyed by userId with 30-minute expiry.
 
 ---
 
 ## Releases
+
+### v0.28 — Book Clubs
+
+**Book Clubs**
+- Create a named reading group, write a description, and tag it with genres from the Oracle taxonomy.
+- Invite members via a shareable join link (`#join-club?token=...`). The landing page shows a club preview for anyone — sign-in required to actually join. Admins can regenerate the token at any time, invalidating old links.
+- Club detail page shows all sessions, the full member roster with roles, and admin controls (remove member, promote to admin, delete club).
+- Members can leave a club from the detail page. The creator cannot leave — they must delete.
+
+**Sessions**
+- Admins create Sessions: one book, a start date, an end date, and optional notes for the group.
+- Sessions with a current date range appear as "Active" on the club detail page and in a quick-access widget on the Dashboard.
+- The Session detail page shows the book cover, description, admin notes, and a live member progress grid sorted by pages read.
+
+**Reading progress**
+- `currently_reading` now stores `pages_read` (integer, default 0).
+- The "↑ Progress" button on Currently Reading opens a modal to enter your page count. A live progress bar shows your percentage against the book's total pages (with a note that your edition may differ).
+- Session pages pull each member's `pages_read` automatically — no separate session-specific progress table needed.
+- Progress is optimistically updated in local state before the Supabase write resolves.
+
+**DB changes** (`schema_v13_migration.sql`)
+- New tables: `book_clubs`, `book_club_genres`, `book_club_members`, `book_club_sessions`
+- `ALTER TABLE currently_reading ADD COLUMN pages_read integer NOT NULL DEFAULT 0`
+- New RPCs: `preview_club_by_token`, `join_club_by_token`, `get_club_detail`, `get_session_detail`, `regenerate_join_token`
 
 ### v0.27 — Lists, sharing, and smarter browsing
 
@@ -287,125 +347,61 @@ and forward requests. Locally you need `netlify dev` to make them work.
 
 **Session cache**
 - `DataContext` caches Supabase state in `sessionStorage` so new tabs render instantly from cache, then validate in background.
-- Cache keyed by userId with 30-minute expiry. Persist effect gated on `supabaseLoadedRef` to prevent stale data overwriting good data on mount.
-
-**Bug fixes**
-- `genresByBookId` no longer wiped on mount by premature `saveLocal` call.
-- Lists query isolated from main `Promise.all` so a lists failure can't break genre loading.
-- Nav dropdown styles moved to `nav.scss` where they belong.
+- Cache keyed by userId with 30-minute expiry.
 
 ### v0.26 — Your dashboard, alive
 
-**Activity feed**
-- The dashboard replaces the static bookshelf with a chronological activity feed — finished books, books you started reading, wishlist adds (bulk adds collapse into one entry with a mini cover grid), and reading plans created.
-- Feed is paginated: shows 5 events initially with a "Show more" button loading 5 at a time.
-- Date labels group entries by Today / Yesterday / N days ago / N weeks ago.
+**Activity feed** — chronological feed of finished books, books started, wishlist adds, and plans created. Paginated at 5 events per page.
 
-**Currently Reading strip**
-- Prominent horizontal strip at the top of the dashboard showing your active books with cover art, title, author, and "Since X days ago". Clicking opens the book page.
+**Currently Reading strip** — prominent strip at the top of the dashboard showing active books with cover art and day counter.
 
-**Multiple reading plans**
-- Plans no longer overwrite each other. Create as many as you want — series plans, genre immersions, level-up progressions — each is a separate row in Supabase.
-- The dashboard shows all plans stacked as banners, newest first. The top one is labelled "Current Reading Plan".
-- `PlanView` resolves by `planId` route param so any plan can be opened directly. Delete removes only that plan.
+**Multiple reading plans** — plans no longer overwrite each other. Dashboard shows all plans stacked as banners.
 
-**Live curated catalog (The Vault)**
-- `booksData.js` (280-book static bundle) is retired. The Vault is now the curator's live Supabase wishlist (~1000+ titles), fetched via the new `get_curated_catalog()` RPC.
-- The Oracle, reading plan generator, and guest fallback all draw from this live source.
-- To activate: run `schema_v11_migration.sql`, then `UPDATE profiles SET is_curator = true WHERE id = '<your-uuid>'`.
+**Live curated catalog (The Vault)** — `booksData.js` retired. The Vault is now the curator's live Supabase wishlist via `get_curated_catalog()` RPC.
 
-**SCSS split**
-- `main.scss` split into 25 focused partials under `src/styles/`. Entry point is now a clean `@use` manifest. New feature styles go in their own file.
-
-**Bug fixes**
-- `PlanCreate.jsx`: removed `ALL_BOOKS` references — series plan builder and fallback plan now use `vault` (live catalog) instead.
-- `PlanView.jsx`: removed stale `ALL_BOOKS` import.
+**SCSS split** — `main.scss` split into 25 focused partials.
 
 ### v0.25 — Currently Reading & cover shelves
 
-**Currently Reading view**
-- New `currently-reading` route with cards showing cover, start date, and live day counter.
+- New `currently-reading` route with cards showing cover, start date, and day counter.
 - `currently_reading` Supabase table (`schema_v10_migration.sql`) with RLS.
-- Three new DataContext actions: `startReading`, `finishReading`, `removeFromCurrentlyReading`.
-- ▶ Start button added to Wishlist and Read Next list items.
-- Nav item **Reading** (ES: **Leyendo**) with badge counter.
-
-**Cover grid (Wishlist + Library)**
-- `LibraryCoverGrid.jsx` — responsive cover grid with genre groups as named shelves.
-- `☰ List / ⊞ Covers` toggle in both toolbars, persisted to `localStorage`.
-- Hover overlay shows title, author, and genre pills.
-
-**Cover backfill scripts** (`batch-scripts/`)
-- `coverBackfill.mjs` — multi-source pipeline: Open Library → OL/PRH by ISBN → Google Books → OL/PRH by Google ISBNs → Hardcover → Claude.
-- `fixBadCovers.mjs` — nulls out known bad cover URLs.
-- `debugCover.mjs` — traces every pipeline step for a single book.
+- Cover grid (Wishlist + Library) with genre-grouped shelves and list/grid toggle.
 
 ### v0.24 — Series pages
 
-- New `#series-page` route: progress bar, all books in order with covers, Wikipedia description, inline add/queue/mark-read actions.
-- Entry points from BookModal, BookPage, and Profile in-progress series cards.
-- Read badge overlays on series book covers.
+- New `#series-page` route: progress bar, all books in order, Wikipedia description, inline actions.
 
-### v0.23 — Reading stats and smarter series plans
+### v0.23 — Reading stats
 
 - Reading stats on Profile: total books/pages, 12-month pace chart, top genres, most-read author, series completion.
-- Series in progress are tappable and link directly to plan creation.
-- Reading Plans series picker now shows only user's own series (in-progress and wishlisted).
 
 ### v0.22 — Read dates, smarter search, Oracle expansion
 
-- Read dates captured on every book. `read_books.read_at` stored; shown in Library.
-- Bulk import Claude fallback for books not found in Hardcover or OpenLibrary.
-- Oracle enriches genres, series, and descriptions in one pass.
-- `scripts/oracleBatch.mjs` for command-line batch processing (~$0.007/book).
-- PRH dropped from lookup chain.
+- Read dates captured on every book. Bulk import Claude fallback. Oracle enriches genres + series + descriptions in one pass.
 
 ### v0.21 — Oracle architecture overhaul
 
-- Oracle enriches genres, series, and descriptions in one batch instead of genres only.
-- `scripts/oracleBatch.mjs` standalone batch script with `--dry-run`, `--limit` flags.
-- PRH removed from lookup chain.
+- Oracle enriches genres, series, and descriptions in one batch. `scripts/oracleBatch.mjs` standalone script.
 
 ### v0.20 — Report book issues
 
-- Report button on BookModal and BookPage expands into an inline form.
-- Users select wrong fields (Title, Description, Series, Genres) + optional comment.
-- `book_reports` table (`schema_v9_migration.sql`).
+- Report button on BookModal and BookPage. `book_reports` table (`schema_v9_migration.sql`).
 
 ### v0.19 — Global search
 
-- Search bar in top nav: instant local hits + live Hardcover search (debounced 300ms).
-- Oracle fallback when Hardcover returns nothing — Claude identifies the book.
-- `discovered` status on books viewed from search but not yet added.
-- Manual add form removed from Wishlist (search replaces it).
+- Search bar in top nav with instant local hits + live Hardcover search + Oracle fallback.
 
 ### v0.18 — Book pages
 
-- New `#book-page` route: full description, genre pills, series navigation, purchase links.
-- "See more" link in BookModal opens the book page.
-- Series dot navigation links between book pages.
+- New `#book-page` route with full description, genre pills, series navigation, purchase links.
 
 ### v0.17 — Mobile-first experience
 
-- Hamburger nav at ≤700px with full-screen overlay.
-- Book modal becomes a bottom sheet on mobile.
-- Toolbar filters stack vertically on small screens.
-
-### v0.16 — Series navigation fixed
-
-- Correct series dot count using `primary_books_count` from Hardcover.
-- Compilation/study-guide filter in Hardcover search results.
+- Hamburger nav at ≤700px. Book modal becomes a bottom sheet on mobile.
 
 ### v0.15 — Oracle genre categorization
 
-- "☩ Let the Oracle categorize my books" button: batch-assigns canonical genres via Claude.
-- Genre-based grouping in Wishlist and Library.
-- Two-dropdown filtering: Genres (canonical) + Categories (user folksonomy).
-- `schema_v6_migration.sql` (status enum) + `schema_v7_migration.sql` (genres tables, 15 seeds, RPCs).
-
-### v0.13.1 — Hotfix: tab-switching no longer resets the app
-
-- `AuthContext.jsx`: `setSession` is now a no-op when user ID hasn't changed, preventing spurious full-state reloads on Supabase token refresh events.
+- "☩ Let the Oracle categorize my books" button. Genre-based grouping in Wishlist and Library.
 
 ### v0.13 — Release notes, in your language
 
@@ -413,49 +409,15 @@ and forward requests. Locally you need `netlify dev` to make them work.
 
 ### v0.12 — User categories
 
-- Add categories to any book via autocomplete. Verified (global) vs. personal (private) pill styles.
-- Wishlist filter sees user tags. Soft-cap of 10 categories per book.
-- Strict deduplication by normalized name. `schema_v5_migration.sql`.
-
-### v0.11 — BookModal: categories + editable ratings
-
-- Categories section in BookModal. Editable ratings inline in the modal. Wikipedia attribution link.
-
-### v0.10 — Wikipedia as a fourth lookup source
-
-- Wikipedia joined Hardcover + OL for descriptions. Language-aware (Spanish mode tries `es.wikipedia.org` first).
+- Add categories to any book via autocomplete. `schema_v5_migration.sql`.
 
 ### v0.9 — Ratings, notes, and bulk-add to library
 
-- Rate read books with 1–5 stars + notes. Bulk-add to Library panel.
-
-### v0.8.1 — Hotfix: similar-titled books
-
-- `cleanTitle()` no longer splits on `:`, fixing series entries like "Fabius Bile: Clonelord".
-
-### v0.7 — Cover visibility fix
-
-- `BookCover` adds `.loaded` class on image load, fixing invisible real covers.
-
-### v0.6 — Render stability + docs
-
-- Defensive dedupe in DataContext. README rewrite.
-
-### v0.5 — On-demand caching + purchase links
-
-- Book metadata cached to shared `books` row on modal open. Amazon + Bookshop.org purchase links.
-
-### v0.4 — Series table
-
-- New `series` table as single source of truth. `upsert_series` RPC. Verified/unverified badges.
+- Rate read books with 1–5 stars + notes.
 
 ### v0.3 — Hardcover + shared catalog
 
 - Netlify Functions as API proxy layer. Hardcover as primary metadata source. Shared `books` table. The Vault.
-
-### v0.2 — Bulk import + opt-in seeding
-
-- 3-tab bulk import (Goodreads CSV, paste titles, Amazon URLs). Opt-in seeding.
 
 ### v0.1 — Initial React port
 
@@ -479,10 +441,13 @@ and forward requests. Locally you need `netlify dev` to make them work.
 
 ---
 
-## Prompting and engineering notes
+## Engineering notes
 
 - `bookKey(book)` is the canonical book-equality function — use it for all dedup and `key=`
 - New mutations: dedupe input + mirror local state + persist via RPC + show toast
 - New view styles go in their own SCSS partial, `@use`d in `main.scss`
 - `state.plans[]` holds all plans; `state.currentPlan` is the most recent (backwards compat)
-- The Vault (`vault` in DataContext) is now a live Supabase query, not a bundled array
+- `state.clubs[]` holds lightweight club entries (no sessions/members); full detail fetched on demand via `get_club_detail` RPC
+- The Vault (`vault` in DataContext) is a live Supabase query, not a bundled array
+- Club membership is checked server-side in every RPC — non-members get null back, not an error
+- `pages_read` lives on `currently_reading`, not on a session-specific table — one update syncs across all sessions that reference the same book

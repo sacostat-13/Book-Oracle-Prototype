@@ -16,9 +16,24 @@
 
 // The version label shown as "current" — keep in sync with package.json and
 // the README version line.
-export const CURRENT_VERSION = 'v0.27';
+export const CURRENT_VERSION = 'v0.28';
 
-export const RELEASES = [{version: 'v0.27',
+export const RELEASES = [{version: 'v0.28',
+    date: '2026-06-19',
+    titleEn: 'Book Clubs',
+    titleEs: 'Clubs de Lectura',
+    bodyEn: [
+      'Create a Book Club, invite members via a shareable join link, and read together. Admins can create Sessions — each one tied to a specific book with a start date, end date, and notes for the group.',
+      'Session pages show every member\'s reading progress in real time. Update your page count from Currently Reading or directly from the session, and watch the progress grid come alive.',
+      'Reading progress tracking is now built into Currently Reading. Add how many pages you\'ve read to any in-progress book — a subtle progress bar keeps your place in view.',
+    ],
+    bodyEs: [
+      'Creá un Club de Lectura, invitá miembros con un enlace de unión y leé en grupo. Los administradores pueden crear Sesiones — cada una vinculada a un libro específico con fecha de inicio, fecha de fin y notas para el grupo.',
+      'Las páginas de sesión muestran el progreso de lectura de cada miembro en tiempo real. Actualizá tu cuenta de páginas desde Leyendo Ahora o directamente desde la sesión, y observá cómo cobra vida la grilla de progreso.',
+      'El seguimiento del progreso de lectura ahora está integrado en Leyendo Ahora. Agregá cuántas páginas leíste de cualquier libro en curso — una barra de progreso sutil mantiene tu lugar a la vista.',
+    ],
+  },
+  {version: 'v0.27',
     date: '2026-06-18',
     titleEn: 'Lists, sharing, and smarter browsing',
     titleEs: 'Listas, compartir y mejor navegación',

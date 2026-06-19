@@ -50,6 +50,8 @@ export default function Nav({ onPreviewBook }) {
   const readingCount = (state.currentlyReading?.length || 0) + (state.readNext?.length || 0);
   const readingActive = ['currently-reading','read-next'].includes(route.name);
   const listsCount = (state.lists || []).length;
+  const clubsCount = (state.clubs || []).length;
+  const clubsActive = ['book-clubs','book-club-create','book-club-detail','session-create','session-detail'].includes(route.name);
 
   return (
     <>
@@ -117,6 +119,12 @@ export default function Nav({ onPreviewBook }) {
           <button className={`nav-btn${route.name==='lists'?' active':''}`} onClick={() => go('lists')}>
             {isSpanish ? 'Mis listas' : 'Lists'}
             {listsCount > 0 && <span className="nav-badge">{listsCount}</span>}
+          </button>
+
+          {/* Book Clubs */}
+          <button className={`nav-btn${clubsActive?' active':''}`} onClick={() => go('book-clubs')}>
+            {isSpanish ? 'Clubs' : 'Clubs'}
+            {clubsCount > 0 && <span className="nav-badge">{clubsCount}</span>}
           </button>
 
           {/* Oracle */}
@@ -189,6 +197,7 @@ export default function Nav({ onPreviewBook }) {
               { name:'currently-reading', label: isSpanish?'Leyendo ahora':'Currently Reading', count: state.currentlyReading?.length },
               { name:'read-next',         label: t('nav.readNext'),                 count: state.readNext?.length },
               { name:'lists',             label: isSpanish?'Mis listas':'Lists',    count: listsCount },
+              { name:'book-clubs',        label: isSpanish?'Clubs':'Book Clubs',    count: clubsCount },
               { name:'oracle',            label: isSpanish?'Oráculo':'Oracle',      count: 0 },
               { name:'profile',           label: t('nav.profile'),                  count: 0 },
               { name:'about',             label: t('nav.about'),                    count: 0 },

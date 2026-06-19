@@ -4,11 +4,13 @@ import { useRouter } from '../lib/RouterContext';
 import { bookKey } from '../lib/bookHelpers';
 import BookCover from '../components/BookCover';
 import RatingModal from '../components/RatingModal';
+import ProgressUpdateModal from '../components/ProgressUpdateModal';
 
 export default function CurrentlyReading({ onOpenBook }) {
-  const { state, removeFromCurrentlyReading, finishReading } = useData();
+  const { state, removeFromCurrentlyReading, finishReading, updateReadingProgress } = useData();
   const { go } = useRouter();
   const [finishing, setFinishing] = useState(null);
+  const [updatingProgress, setUpdatingProgress] = useState(null);
   const { currentlyReading } = state;
 
   function daysReading(startedAt) {
@@ -25,6 +27,12 @@ export default function CurrentlyReading({ onOpenBook }) {
     if (!finishing) return;
     await finishReading(finishing, { rating, notes, readAt });
     setFinishing(null);
+  }
+
+  async function handleProgressSave(pagesRead) {
+    if (!updatingProgress) return;
+    await updateReadingProgress(updatingProgress, pagesRead);
+    setUpdatingProgress(null);
   }
 
   return (
@@ -59,6 +67,8 @@ export default function CurrentlyReading({ onOpenBook }) {
           {currentlyReading.map((b) => {
             const days = daysReading(b.startedAt);
             const genres = state.genresByBookId?.[b.bookId];
+            const pagesRead = b.pagesRead ?? 0;
+            const pct = b.pp && pagesRead > 0 ? Math.min(100, Math.round((pagesRead / b.pp) * 100)) : null;
             return (
               <div className="cr-card" key={bookKey(b)}>
                 <div
@@ -95,7 +105,36 @@ export default function CurrentlyReading({ onOpenBook }) {
                     )}
                     {b.pp && <span className="cr-pages">{b.pp} pages</span>}
                   </div>
+
+                  {/* Progress bar */}
+                  {b.pp ? (
+                    <div className="cr-progress" style={{ margin: '0.6rem 0 0.4rem' }}>
+                      <div className="cr-progress-bar-track">
+                        <div
+                          className="cr-progress-bar-fill"
+                          style={{ width: `${pct ?? 0}%` }}
+                        />
+                      </div>
+                      <div className="cr-progress-label">
+                        {pagesRead > 0
+                          ? `${pagesRead} / ${b.pp} pages${pct !== null ? ` · ${pct}%` : ''}`
+                          : `0 / ${b.pp} pages`}
+                      </div>
+                    </div>
+                  ) : pagesRead > 0 ? (
+                    <div className="cr-progress-label" style={{ marginTop: '0.5rem' }}>
+                      {pagesRead} pages read
+                    </div>
+                  ) : null}
+
                   <div className="cr-actions">
+                    <button
+                      className="li-action"
+                      onClick={() => setUpdatingProgress(b)}
+                      style={{ color: 'var(--gilt)' }}
+                    >
+                      ↑ Progress
+                    </button>
                     <button
                       className="li-action success"
                       onClick={() => setFinishing(b)}
@@ -129,6 +168,14 @@ export default function CurrentlyReading({ onOpenBook }) {
             finishReading(finishing);
             setFinishing(null);
           }}
+        />
+      )}
+
+      {updatingProgress && (
+        <ProgressUpdateModal
+          book={updatingProgress}
+          onSave={handleProgressSave}
+          onClose={() => setUpdatingProgress(null)}
         />
       )}
     </>

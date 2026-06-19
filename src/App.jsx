@@ -26,6 +26,13 @@ import ListView from './views/ListView';
 import Lists from './views/Lists';
 import ListDetail from './views/ListDetail';
 import SeriesPage from './views/SeriesPage';
+// v0.28: book clubs
+import BookClubs from './views/BookClubs';
+import BookClubCreate from './views/BookClubCreate';
+import BookClubDetail from './views/BookClubDetail';
+import SessionCreate from './views/SessionCreate';
+import SessionDetail from './views/SessionDetail';
+import JoinClub from './views/JoinClub';
 
 function SignInGate({ onGuest }) {
   const { signInWithGoogle } = useAuth();
@@ -72,7 +79,7 @@ export default function App() {
   // ── Public routes — render immediately, no auth or data required ────────────
   // These pages read content from the URL snapshot and progressively enhance
   // with auth-dependent actions once the user is signed in and data is loaded.
-  const PUBLIC_ROUTES = new Set(['book-page', 'list-view', 'plan-view']);
+  const PUBLIC_ROUTES = new Set(['book-page', 'list-view', 'plan-view', 'join-club']);
   if (PUBLIC_ROUTES.has(route.name)) {
     // During the brief auth check (~100ms), treat as loading not signed-out.
     // This prevents the sign-in prompt flashing before the session is confirmed.
@@ -101,6 +108,17 @@ export default function App() {
           {isAuthed && <Nav onPreviewBook={setPreviewBook} />}
           <div className="container">
             <ListView isAuthed={isAuthed} dataReady={dataReady} />
+          </div>
+          <Toast />
+        </div>
+      );
+    }
+    if (route.name === 'join-club') {
+      return (
+        <div className="app">
+          {isAuthed && <Nav onPreviewBook={setPreviewBook} />}
+          <div className="container">
+            <JoinClub />
           </div>
           <Toast />
         </div>
@@ -175,6 +193,13 @@ export default function App() {
     case 'lists': page = <Lists />; break;
     case 'list-detail': page = <ListDetail />; break;
     case 'list-view': page = <ListView />; break;
+    // v0.28: book clubs
+    case 'book-clubs': page = <BookClubs />; break;
+    case 'book-club-create': page = <BookClubCreate />; break;
+    case 'book-club-detail': page = <BookClubDetail />; break;
+    case 'session-create': page = <SessionCreate />; break;
+    case 'session-detail': page = <SessionDetail />; break;
+    case 'join-club': page = <JoinClub />; break;
     case 'dashboard':
     default:
       page = <Dashboard onOpenBook={openBook} />;

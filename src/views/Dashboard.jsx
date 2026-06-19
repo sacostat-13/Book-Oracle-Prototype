@@ -302,6 +302,39 @@ function FeedEvent({ ev, prev, onOpenBook, go }) {
 
 // ─── Dashboard ────────────────────────────────────────────────────────────────
 
+function ActiveClubSessions({ clubs, go }) {
+  if (!clubs || clubs.length === 0) return null;
+  // We only have lightweight club data here — no sessions.
+  // Just show a prompt to visit clubs if they have any.
+  // Phase 5 can enrich this with a full active session query.
+  return (
+    <section style={{ marginBottom: '2rem' }}>
+      <div className="db-section-eyebrow">
+        <span className="db-ornament">◈</span> Your Book Clubs
+      </div>
+      <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+        {clubs.map((c) => (
+          <button
+            key={c.id}
+            className="btn btn-ghost"
+            style={{ fontSize: '0.85rem', padding: '0.35rem 0.85rem' }}
+            onClick={() => go('book-club-detail', { clubId: c.id })}
+          >
+            {c.name}
+          </button>
+        ))}
+        <button
+          className="btn btn-ghost"
+          style={{ fontSize: '0.85rem', padding: '0.35rem 0.85rem', opacity: 0.5 }}
+          onClick={() => go('book-clubs')}
+        >
+          All clubs →
+        </button>
+      </div>
+    </section>
+  );
+}
+
 export default function Dashboard({ onOpenBook }) {
   const { state } = useData();
   const { go }    = useRouter();
@@ -341,6 +374,9 @@ export default function Dashboard({ onOpenBook }) {
 
       {/* ── Currently Reading ── */}
       <CurrentlyReading books={state.currentlyReading||[]} onOpenBook={onOpenBook} />
+
+      {/* ── Active Book Club Sessions ── */}
+      <ActiveClubSessions clubs={state.clubs||[]} go={go} />
 
       {/* ── Reading Plans ── */}
       <AllPlans plans={state.plans||[]} go={go} />
