@@ -49,10 +49,17 @@ export default function SessionCreate() {
   const today = new Date().toISOString().slice(0, 10);
   const fourWeeks = new Date(Date.now() + 28 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
 
-  const [bookQuery, setBookQuery] = useState('');
+  // Pre-fill from poll winner if navigated from a poll result
+  const prefillTitle = route.params?.prefillTitle || '';
+  const prefillAuthor = route.params?.prefillAuthor || '';
+
+  const [bookQuery, setBookQuery] = useState(prefillTitle);
   const [bookResults, setBookResults] = useState([]);
   const [searching, setSearching] = useState(false);
-  const [selectedBook, setSelectedBook] = useState(null);
+  // If we have a prefill title, pre-select a stub so the user can see it immediately
+  const [selectedBook, setSelectedBook] = useState(
+    prefillTitle ? { t: prefillTitle, a: prefillAuthor, coverUrl: null, bookId: null } : null
+  );
   const [adminNotes, setAdminNotes] = useState('');
   const [startsAt, setStartsAt] = useState(today);
   const [endsAt, setEndsAt] = useState(fourWeeks);

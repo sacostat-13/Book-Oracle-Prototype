@@ -11,6 +11,7 @@ import { openBookTab } from '../lib/bookHelpers';
 import { lookupByTitle } from '../lib/bookLookup';
 import BookCover from '../components/BookCover';
 import ProgressUpdateModal from '../components/ProgressUpdateModal';
+import SessionDiscussion from '../components/SessionDiscussion';
 
 // ── Shared sub-components ─────────────────────────────────────────────────────
 
@@ -506,6 +507,14 @@ export default function SessionDetail() {
           onClose={() => setShowEditModal(false)}
         />
       )}
+
+      {/* Discussion — questions + free comments */}
+      <hr style={{ border: 'none', borderTop: '1px solid rgba(176,140,63,0.1)', margin: '2.5rem 0' }} />
+      <SessionDiscussion
+        sessionId={sessionId}
+        clubId={session.club_id}
+        isAdmin={isAdmin}
+      />
     </>
   );
 }

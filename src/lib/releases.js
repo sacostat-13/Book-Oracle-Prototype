@@ -16,9 +16,24 @@
 
 // The version label shown as "current" — keep in sync with package.json and
 // the README version line.
-export const CURRENT_VERSION = 'v0.28';
+export const CURRENT_VERSION = 'v0.29';
 
-export const RELEASES = [{version: 'v0.28',
+export const RELEASES = [{version: 'v0.29',
+    date: '2026-06-19',
+    titleEn: 'Discussion & Decisions',
+    titleEs: 'Discusión y Decisiones',
+    bodyEn: [
+      'Sessions now have a full discussion layer. Admins can pin discussion questions — members answer each one in its own thread. A free comments section below lets the conversation roam. Replies nest one level deep.',
+      'Book Club polls let the group decide what to read next. Admins create polls manually or tap the Oracle — Claude suggests three books based on the club\'s genres and reading history, which become a poll automatically. Members vote, results show in real time, and the winning book goes straight into a new session.',
+      'Poll results show vote counts and percentages as a live bar. Admins close a poll when ready and can create the next session directly from the winning option.',
+    ],
+    bodyEs: [
+      'Las sesiones ahora tienen una capa completa de discusión. Los administradores pueden fijar preguntas de debate — los miembros responden cada una en su propio hilo. Una sección de comentarios libres permite que la conversación fluya. Las respuestas tienen un nivel de profundidad.',
+      'Las encuestas del Club de Lectura permiten al grupo decidir qué leer a continuación. Los administradores crean encuestas manualmente o invocan al Oracle — Claude sugiere tres libros basándose en los géneros e historial del club, que se convierten automáticamente en una encuesta. Los miembros votan, los resultados se muestran en tiempo real y el libro ganador pasa directamente a una nueva sesión.',
+      'Los resultados de las encuestas muestran votos y porcentajes en una barra en vivo. Los administradores cierran la encuesta cuando están listos y pueden crear la próxima sesión directamente desde la opción ganadora.',
+    ],
+  },
+  {version: 'v0.28',
     date: '2026-06-19',
     titleEn: 'Book Clubs',
     titleEs: 'Clubs de Lectura',

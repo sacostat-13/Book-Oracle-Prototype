@@ -1630,6 +1630,89 @@ export function DataProvider({ children }) {
     return data;
   }, [user]);
 
+  // ── v0.29: Discussion mutations ───────────────────────────────────────────
+
+  const postComment = useCallback(async ({ sessionId, clubId, body, questionId = null, parentId = null }) => {
+    if (!user || !body?.trim()) return null;
+    const { data, error } = await supabase
+      .from('session_comments')
+      .insert({ session_id: sessionId, club_id: clubId, body: body.trim(), question_id: questionId || null, parent_id: parentId || null })
+      .select()
+      .single();
+    if (error) { console.error('postComment failed', error); return null; }
+    return data;
+  }, [user]);
+
+  const deleteComment = useCallback(async (commentId) => {
+    if (!user) return;
+    const { error } = await supabase.from('session_comments').delete().eq('id', commentId);
+    if (error) console.error('deleteComment failed', error);
+  }, [user]);
+
+  const editComment = useCallback(async (commentId, body) => {
+    if (!user || !body?.trim()) return;
+    const { error } = await supabase
+      .from('session_comments')
+      .update({ body: body.trim() })
+      .eq('id', commentId)
+      .eq('created_by', user.id);
+    if (error) console.error('editComment failed', error);
+  }, [user]);
+
+  const addQuestion = useCallback(async ({ sessionId, clubId, body, position = 0 }) => {
+    if (!user || !body?.trim()) return null;
+    const { data, error } = await supabase
+      .from('session_questions')
+      .insert({ session_id: sessionId, club_id: clubId, body: body.trim(), position })
+      .select()
+      .single();
+    if (error) { console.error('addQuestion failed', error); return null; }
+    return data;
+  }, [user]);
+
+  const deleteQuestion = useCallback(async (questionId) => {
+    if (!user) return;
+    await supabase.from('session_questions').delete().eq('id', questionId);
+  }, [user]);
+
+  // ── v0.29: Poll mutations ─────────────────────────────────────────────────
+
+  const createPoll = useCallback(async ({ clubId, question, options, closesAt = null, isOraclePick = false }) => {
+    if (!user) return null;
+    const { data: poll, error: pollErr } = await supabase
+      .from('club_polls')
+      .insert({ club_id: clubId, question, closes_at: closesAt, is_oracle_pick: isOraclePick })
+      .select()
+      .single();
+    if (pollErr) { console.error('createPoll failed', pollErr); return null; }
+
+    // Insert options in order
+    const optionRows = options.map((opt, i) => ({
+      poll_id: poll.id,
+      label: opt.label,
+      book_id: opt.bookId || null,
+      book_author: opt.bookAuthor || null,
+      cover_url: opt.coverUrl || null,
+      position: i,
+    }));
+    const { error: optErr } = await supabase.from('poll_options').insert(optionRows);
+    if (optErr) console.error('poll options insert failed', optErr);
+
+    return poll;
+  }, [user]);
+
+  const castVote = useCallback(async (pollId, optionId) => {
+    if (!user) return null;
+    const { data, error } = await supabase.rpc('cast_vote', { p_poll_id: pollId, p_option_id: optionId });
+    if (error) { console.error('castVote failed', error); return null; }
+    return data; // updated vote counts for all options
+  }, [user]);
+
+  const closePoll = useCallback(async (pollId) => {
+    if (!user) return;
+    await supabase.from('club_polls').update({ closed: true }).eq('id', pollId);
+  }, [user]);
+
   const deletePlan = useCallback(
     async (planId) => {
       // Remove from local state immediately so UI reflects change without refresh
@@ -1740,6 +1823,16 @@ export function DataProvider({ children }) {
     deleteClub,
     leaveClub,
     regenerateJoinToken,
+    // v0.29: discussion mutations
+    postComment,
+    deleteComment,
+    editComment,
+    addQuestion,
+    deleteQuestion,
+    // v0.29: poll mutations
+    createPoll,
+    castVote,
+    closePoll,
     resetAll,
     vault,
     loadVault,

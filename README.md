@@ -4,7 +4,7 @@ A reading companion — wishlist, library, reading plans, book clubs, and an AI-
 for book discovery. Built with React + Vite + SCSS, backed by Supabase for auth
 and cross-device sync, and Netlify Functions for API proxying.
 
-> Current version: **v0.28** — see [Releases](#releases) below for changelog.
+> Current version: **v0.29** — see [Releases](#releases) below for changelog.
 > Upgrading from an earlier version? Check the matching `MIGRATION_*.md` / `UPDATE_*.md`.
 
 ---
@@ -34,6 +34,7 @@ npm install
   11. `schema_v11_migration.sql` (is_curator flag + get_curated_catalog RPC)
   12. `schema_v12_migration.sql` (lists, list_items, public plan RLS + RPCs)
   13. `schema_v13_migration.sql` (book clubs, sessions, reading progress)
+  14. `schema_v14_migration.sql` (discussion, questions, polls, Oracle suggestions)
 - In **Authentication → Providers → Google**, enable Google OAuth (see [Google OAuth](#google-oauth-setup) below)
 - In **Authentication → URL Configuration**, add `http://localhost:8888` and your Netlify URL to the allowed Redirect URLs
 - Copy your project URL + anon key from **Project Settings → API**
@@ -120,7 +121,8 @@ oracle/
 │   ├── schema.sql                  Initial schema (v1)
 │   ├── schema_v2_migration.sql     ... through ...
 │   ├── schema_v12_migration.sql    lists + shareable plans (v0.27)
-│   └── schema_v13_migration.sql    book clubs + sessions + reading progress (v0.28)
+│   ├── schema_v13_migration.sql    book clubs + sessions + reading progress (v0.28)
+│   └── schema_v14_migration.sql    discussion, questions, polls, Oracle suggestions (v0.29)
 └── src/
     ├── main.jsx                    Mount + providers
     ├── App.jsx                     Auth gate, route switch
@@ -180,7 +182,10 @@ oracle/
     │   ├── AddToListModal.jsx
     │   ├── AddToListPicker.jsx
     │   ├── SelectionBar.jsx
-    │   └── ProgressUpdateModal.jsx  Pages-read modal for currently-reading books (v0.28)
+    │   ├── ProgressUpdateModal.jsx  Pages-read modal for currently-reading books (v0.28)
+    │   ├── CommentThread.jsx        Reusable threaded comment list with replies (v0.29)
+    │   ├── SessionDiscussion.jsx    Questions + free comments section for sessions (v0.29)
+    │   └── ClubPolls.jsx            Poll list, voting UI, Oracle suggestion trigger (v0.29)
     └── views/
         ├── Onboarding.jsx
         ├── Dashboard.jsx           Activity feed + currently reading + clubs widget (v0.28)
@@ -201,9 +206,9 @@ oracle/
         ├── ListView.jsx            Public read-only view for shared lists and plans (v0.27)
         ├── BookClubs.jsx           My clubs index (v0.28)
         ├── BookClubCreate.jsx      Create a new club (v0.28)
-        ├── BookClubDetail.jsx      Club detail — sessions, roster, admin controls (v0.28)
+        ├── BookClubDetail.jsx      Club detail — sessions, roster, polls, admin controls (v0.28–v0.29)
         ├── SessionCreate.jsx       Admin form to create a reading session (v0.28)
-        ├── SessionDetail.jsx       Session page — book info + member progress grid (v0.28)
+        ├── SessionDetail.jsx       Session page — book info, progress grid, discussion (v0.28–v0.29)
         └── JoinClub.jsx            Public join-by-token landing page (v0.28)
 ```
 
@@ -230,6 +235,15 @@ oracle/
 | `book_club_members` | Membership rows. `role` is `'member'` or `'admin'`. Unique per (club, user). |
 | `book_club_sessions` | One session = one book + date range + admin notes. References `books.id`. |
 
+### Discussion & Decisions (v0.29)
+| Table | Purpose |
+|---|---|
+| `session_questions` | Admin-pinned discussion questions on a session. Ordered by `position`. |
+| `session_comments` | All text interactions on a session. `question_id` null = free comment; set = answer to that question. `parent_id` set = reply (one level max, enforced by DB constraint). |
+| `club_polls` | Polls on a club. `is_oracle_pick` flags Oracle-generated polls. `closed` boolean gates voting. |
+| `poll_options` | Choices within a poll. Book polls carry `book_id`, `book_author`, `cover_url` for display. |
+| `poll_votes` | One row per (poll, user). Upsert to change vote. PK ensures one vote per member per poll. |
+
 ### Shared catalog (read-public, write via RPC only)
 | Table | Purpose |
 |---|---|
@@ -247,6 +261,13 @@ oracle/
 | `get_club_detail(club_id)` | authed member | Returns club info, genre tags, full roster, and all sessions in one call. |
 | `get_session_detail(session_id)` | authed member | Returns session, book, and member progress grid (joined with `currently_reading.pages_read`). |
 | `regenerate_join_token(club_id)` | authed admin | Replaces `join_token` with a fresh UUID, invalidating old links. |
+
+### RPCs (v0.29 additions)
+| RPC | Auth | Purpose |
+|---|---|---|
+| `get_session_discussion(session_id)` | authed member | Returns all questions with answer threads + free comments in one call. Includes `is_mine` flags. |
+| `get_club_polls(club_id)` | authed member | Returns all polls with options, vote counts, and the caller's current vote. |
+| `cast_vote(poll_id, option_id)` | authed member | Upserts a vote (handles first vote and vote change). Returns updated option counts. |
 
 ### The curated catalog (The Vault)
 Starting v0.26, the Vault is powered by the curator's live wishlist rather than a bundled static file. The `get_curated_catalog()` RPC (v11 migration) returns all books wishlisted by any user with `profiles.is_curator = true`, joined with their series data. This is what the Oracle draws from when AI is disabled, and what the plan generator uses as its source pool.
@@ -282,6 +303,10 @@ and forward requests. Locally you need `netlify dev` to make them work.
 
 **Reading progress (v0.28).** `currently_reading` now carries a `pages_read` integer (default 0). `updateReadingProgress(book, pagesRead)` in DataContext optimistically updates local state and persists via a direct update. The `ProgressUpdateModal` component is shared between Currently Reading and SessionDetail.
 
+**Discussion architecture (v0.29).** One `session_comments` table covers all comment surfaces — free comments (`question_id` null), question answers (`question_id` set), and replies (`parent_id` set). A DB constraint prevents replies-to-replies. `get_session_discussion` returns the full thread structure in one RPC call with `is_mine` flags pre-computed. `CommentThread` is a pure rendering component; `SessionDiscussion` owns data-fetching and is the only component that calls DataContext mutations.
+
+**Oracle poll flow (v0.29).** Admin taps "☩ Oracle suggests" on the club page → `ClubPolls` calls `callClaude` via the existing Netlify proxy with club genres and recent session books as context → Claude returns a JSON array of 3 book suggestions → `createPoll` inserts a poll with `is_oracle_pick: true` and three options → becomes a standard voteable poll. Winning option pre-fills the book field in SessionCreate via route params.
+
 **Multi-plan support.** `plans` loads all rows per user. `DataContext` exposes `state.plans[]` alongside `state.currentPlan` (most recent, for backwards compat). `PlanView` resolves by `route.params.planId`.
 
 **Activity feed.** The dashboard feed is synthesised client-side from already-loaded state — no extra Supabase queries. Paginated at 5 events per page.
@@ -293,6 +318,28 @@ and forward requests. Locally you need `netlify dev` to make them work.
 ---
 
 ## Releases
+
+### v0.29 — Discussion & Decisions
+
+**Discussion on sessions**
+- Admins can pin discussion questions on any session — members answer each one in its own thread. Questions are ordered and collapsible.
+- A free comments section below each session lets the conversation range beyond the pinned questions.
+- Replies nest one level deep (enforced by DB constraint — no infinite threads).
+- Authors can edit or delete their own comments; admins can delete any comment.
+
+**Polls**
+- Admins create polls on a club with 2–5 options (book titles or free text).
+- Members vote and can change their vote while the poll is open. Results show as a live percentage bar visible to all members immediately after voting.
+- Admins close a poll when ready. The winning option shows a "Create session from this book →" shortcut that pre-fills SessionCreate.
+
+**Oracle suggestion polls**
+- Admins tap "☩ Oracle suggests" — Claude generates three book recommendations based on the club's genre tags and recent session history.
+- Suggestions become a poll automatically with `is_oracle_pick` flagged. No separate confirmation step.
+- The full Oracle → poll → session pipeline is available in one flow.
+
+**DB changes** (`schema_v14_migration.sql`)
+- New tables: `session_questions`, `session_comments`, `club_polls`, `poll_options`, `poll_votes`
+- New RPCs: `get_session_discussion`, `get_club_polls`, `cast_vote`
 
 ### v0.28 — Book Clubs
 
@@ -451,3 +498,6 @@ and forward requests. Locally you need `netlify dev` to make them work.
 - The Vault (`vault` in DataContext) is a live Supabase query, not a bundled array
 - Club membership is checked server-side in every RPC — non-members get null back, not an error
 - `pages_read` lives on `currently_reading`, not on a session-specific table — one update syncs across all sessions that reference the same book
+- `session_comments` serves all comment surfaces via `question_id` / `parent_id` nullability — one table, one RLS policy set, one RPC
+- `cast_vote` uses `ON CONFLICT DO UPDATE` — changing your vote is always a safe upsert, never a delete+insert race
+- `CommentThread` is a pure rendering component — pass it comments + callbacks, it knows nothing about sessions or clubs

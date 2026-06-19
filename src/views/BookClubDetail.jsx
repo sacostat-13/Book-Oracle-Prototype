@@ -8,6 +8,7 @@ import { useRouter } from '../lib/RouterContext';
 import { useAuth } from '../lib/AuthContext';
 import { supabase } from '../lib/supabase';
 import BookCover from '../components/BookCover';
+import ClubPolls from '../components/ClubPolls';
 
 function Avatar({ displayName, avatarUrl, size = 32 }) {
   const [imgFailed, setImgFailed] = useState(false);
@@ -307,6 +308,16 @@ export default function BookClubDetail() {
           </div>
         )}
       </section>
+
+      {/* Polls — v0.29 */}
+      <ClubPolls
+        clubId={clubId}
+        clubName={club.name}
+        clubGenres={(genres || []).map((g) => g.name)}
+        isAdmin={isAdmin}
+        recentBooks={(sessions || []).slice(0, 5).map((s) => ({ title: s.book?.title, author: s.book?.author })).filter((b) => b.title)}
+        onCreateSession={(winnerOption) => go('session-create', { clubId, prefillTitle: winnerOption.label, prefillAuthor: winnerOption.book_author })}
+      />
 
       {/* Members */}
       <section style={{ marginBottom: '2.5rem' }}>
