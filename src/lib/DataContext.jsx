@@ -7,7 +7,8 @@ import { supabase } from './supabase';
 import { useAuth } from './AuthContext';
 import { ALL_BOOKS, bookKey } from './bookHelpers';
 
-const LOCAL_KEY = 'wishlist_oracle_state_v2';
+const LOCAL_KEY    = 'wishlist_oracle_state_v2';
+const SESSION_KEY  = 'wishlist_oracle_session_v1'; // per-tab cache for instant loads
 
 const defaultState = {
   onboarded: false,
@@ -23,6 +24,7 @@ const defaultState = {
   wishlist: [],
   currentPlan: null,
   plans: [],
+  lists: [],
   shelfSortMode: 'recent',
   oracleMode: 'wishlist',
   // v0.12: a Map keyed by book_id (uuid) → array of { categoryId, name,
@@ -43,6 +45,38 @@ const defaultState = {
 };
 
 const DataContext = createContext(null);
+
+// ---------- sessionStorage cache ----------
+// Stores the last known Supabase state per user so new tabs render instantly.
+// Keyed by userId so switching accounts invalidates automatically.
+
+function loadSessionCache(userId) {
+  try {
+    const raw = sessionStorage.getItem(SESSION_KEY);
+    if (!raw) return null;
+    const { uid, state, ts } = JSON.parse(raw);
+    if (uid !== userId) return null; // wrong user, ignore
+    // Expire after 30 minutes — forces a fresh load if stale
+    if (Date.now() - ts > 30 * 60 * 1000) return null;
+    return state;
+  } catch (_) { return null; }
+}
+
+function saveSessionCache(userId, state) {
+  try {
+    // Don't cache heavy derived maps that rebuild fast anyway
+    const { categoriesByBookId, genresByBookId, genres, ...cacheable } = state;
+    sessionStorage.setItem(SESSION_KEY, JSON.stringify({
+      uid: userId,
+      state: cacheable,
+      ts: Date.now(),
+    }));
+  } catch (_) {} // quota errors — fail silently
+}
+
+function clearSessionCache() {
+  try { sessionStorage.removeItem(SESSION_KEY); } catch (_) {}
+}
 
 function dedupeBooks(books) {
   if (!books || books.length === 0) return books;
@@ -212,7 +246,7 @@ function rollupGenres(rows) {
 
 // ---------- Supabase loaders ----------
 async function loadFromSupabase(userId) {
-  const [profileRes, wishlistRes, readBooksRes, plansRes, currentlyReadingRes] = await Promise.all([
+  const [profileRes, wishlistRes, readBooksRes, plansRes, currentlyReadingRes, listsRes] = await Promise.all([
     supabase.from('profiles').select('*').eq('id', userId).maybeSingle(),
     supabase
       .from('wishlist_items')
@@ -231,6 +265,11 @@ async function loadFromSupabase(userId) {
       .from('currently_reading')
       .select('started_at, book:books(*, position_in_series, series:series(*))')
       .eq('user_id', userId),
+    supabase
+      .from('lists')
+      .select('*, list_items(position, note, added_at, book:books(*, position_in_series, series:series(*)))')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false }),
   ]);
 
   const profile = profileRes.data || {};
@@ -265,6 +304,14 @@ async function loadFromSupabase(userId) {
     createdAt: r.created_at,
   }));
   const currentPlan = plans[0] || null;
+
+  const lists = (listsRes?.data || []).map((l) => ({
+    ...l,
+    books: (l.list_items || [])
+      .sort((a, b) => a.position - b.position)
+      .map((li) => li.book ? { ...bookRowToClient(li.book), _listNote: li.note, _listPos: li.position } : null)
+      .filter(Boolean),
+  }));
 
   const currentlyReading = (currentlyReadingRes.data || [])
     .map((r) =>
@@ -444,6 +491,7 @@ async function loadFromSupabase(userId) {
     readNext: dedupeBooks(profile.preferences?.readNext || []),
     currentPlan,
     plans,
+    lists,
     shelfSortMode: profile.preferences?.shelfSortMode || 'recent',
     oracleMode: profile.preferences?.oracleMode || 'wishlist',
     categoriesByBookId,
@@ -492,28 +540,58 @@ export function DataProvider({ children }) {
   useEffect(() => {
     if (authLoading) return;
     const userId = user?.id || null;
+    // Clear session cache if switching users
+    if (loadedUserIdRef.current !== '__uninitialized__' &&
+        loadedUserIdRef.current !== null &&
+        loadedUserIdRef.current !== userId) {
+      clearSessionCache();
+    }
     if (loadedUserIdRef.current === userId) return;
     let cancelled = false;
     (async () => {
       if (user) {
-        // Only show spinner when actually fetching from Supabase
-        setLoading(true);
-        try {
-          const remote = await loadFromSupabase(user.id);
+        // Check session cache first — render instantly if available
+        const cached = loadSessionCache(user.id);
+        if (cached) {
+          // Merge cached state with default to ensure all keys exist
+          const merged = { ...defaultState, ...cached };
           if (!cancelled) {
-            setState(remote);
+            setState(merged);
             loadedUserIdRef.current = user.id;
+            setLoading(false);
           }
-        } catch (e) {
-          console.error('Failed to load from Supabase, falling back to local', e);
-          if (!cancelled) setState(loadLocal());
+          // Validate against Supabase in background (silent refresh)
+          // Don't set loading=true so the UI stays responsive
+          try {
+            const remote = await loadFromSupabase(user.id);
+            if (!cancelled) {
+              setState(remote);
+              saveSessionCache(user.id, remote);
+            }
+          } catch (e) {
+            console.error('Background Supabase refresh failed — keeping cached state', e);
+          }
+        } else {
+          // No cache — fetch from Supabase with spinner
+          setLoading(true);
+          try {
+            const remote = await loadFromSupabase(user.id);
+            if (!cancelled) {
+              setState(remote);
+              saveSessionCache(user.id, remote);
+              loadedUserIdRef.current = user.id;
+            }
+          } catch (e) {
+            console.error('Failed to load from Supabase, falling back to local', e);
+            if (!cancelled) setState(loadLocal());
+          }
+          if (!cancelled) setLoading(false);
         }
-        if (!cancelled) setLoading(false);
       } else {
         // Guest / logged-out: load from localStorage synchronously, no spinner needed
+        clearSessionCache();
         setState(loadLocal());
         loadedUserIdRef.current = null;
-        // Ensure loading is false (it starts false, but guard against any edge case)
         if (!cancelled) setLoading(false);
       }
     })();
@@ -525,6 +603,7 @@ export function DataProvider({ children }) {
     if (loading) return;
     saveLocal(state);
     if (user) {
+      saveSessionCache(user.id, state); // keep session cache fresh on mutations
       savePreferences(user.id, state).catch(console.error);
     }
   }, [state, loading, user]);
@@ -1354,6 +1433,68 @@ export function DataProvider({ children }) {
     [user]
   );
 
+  // ── List mutations ────────────────────────────────────────────────────────
+
+  const createList = useCallback(async (title, description = '') => {
+    if (!user) return null;
+    const { data, error } = await supabase
+      .from('lists')
+      .insert({ user_id: user.id, title, description, is_public: false })
+      .select('*')
+      .single();
+    if (error || !data) return null;
+    const newList = { ...data, books: [] };
+    setState((s) => ({ ...s, lists: [newList, ...(s.lists || [])] }));
+    return newList;
+  }, [user]);
+
+  const updateList = useCallback(async (listId, updates) => {
+    if (!user) return;
+    await supabase.from('lists').update(updates).eq('id', listId).eq('user_id', user.id);
+    setState((s) => ({
+      ...s,
+      lists: (s.lists || []).map((l) => l.id === listId ? { ...l, ...updates } : l),
+    }));
+  }, [user]);
+
+  const deleteList = useCallback(async (listId) => {
+    if (!user) return;
+    await supabase.from('lists').delete().eq('id', listId).eq('user_id', user.id);
+    setState((s) => ({ ...s, lists: (s.lists || []).filter((l) => l.id !== listId) }));
+  }, [user]);
+
+  const addBookToList = useCallback(async (listId, book) => {
+    if (!user || !book.bookId) return;
+    const list = (state.lists || []).find((l) => l.id === listId);
+    if (!list) return;
+    const position = (list.books || []).length;
+    const { error } = await supabase
+      .from('list_items')
+      .insert({ list_id: listId, book_id: book.bookId, position });
+    if (error) return;
+    setState((s) => ({
+      ...s,
+      lists: (s.lists || []).map((l) =>
+        l.id === listId
+          ? { ...l, books: [...(l.books || []), { ...book, _listPos: position }] }
+          : l
+      ),
+    }));
+  }, [user, state.lists]);
+
+  const removeBookFromList = useCallback(async (listId, bookId) => {
+    if (!user) return;
+    await supabase.from('list_items').delete().eq('list_id', listId).eq('book_id', bookId);
+    setState((s) => ({
+      ...s,
+      lists: (s.lists || []).map((l) =>
+        l.id === listId
+          ? { ...l, books: (l.books || []).filter((b) => b.bookId !== bookId) }
+          : l
+      ),
+    }));
+  }, [user]);
+
   const deletePlan = useCallback(
     async (planId) => {
       // Remove from local state immediately so UI reflects change without refresh
@@ -1446,8 +1587,14 @@ export function DataProvider({ children }) {
     setShelfSortMode,
     setOracleMode,
     plans: state.plans || [],
+    lists: state.lists || [],
     setCurrentPlan,
     deletePlan,
+    createList,
+    updateList,
+    deleteList,
+    addBookToList,
+    removeBookFromList,
     resetAll,
     vault,
     loadVault,

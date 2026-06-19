@@ -202,6 +202,8 @@
     margin-bottom: 0.8rem;
     padding-bottom: 0.4rem;
     border-bottom: 1px solid rgba(176, 140, 63, 0.2);
+
+    
   }
   .book-modal-description {
     color: var(--paper-aged);
@@ -320,6 +322,22 @@
     display: flex;
     gap: 0.5rem;
     flex-wrap: wrap;
+  }
+
+  .li-action {
+    background: transparent;
+    color: var(--paper-aged);
+    border: 1px solid rgba(244, 234, 213, .2);
+    cursor: pointer;
+    font-size: .75rem;
+    font-family: Special Elite,
+      monospace;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    padding: .4rem .7rem;
+    border-radius: 2px;
+    transition: all .2s;
+
   }
 
   .book-modal-actions {

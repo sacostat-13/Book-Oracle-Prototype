@@ -76,3 +76,34 @@
   .li-action.danger:hover { color: var(--blood-bright); border-color: var(--blood-bright); }
   .li-action.success:hover { color: var(--moss); border-color: var(--moss); }
 
+
+// ─── Form primitives (aliases for views that use form-input / form-label) ────
+// The original app uses .search-input for text inputs. These aliases ensure
+// Lists.jsx, ListDetail.jsx, and AddToListPicker render consistently.
+
+.form-input {
+  width: 100%;
+  background: var(--shadow);
+  color: var(--paper);
+  border: 1px solid rgba(176, 140, 63, 0.4);
+  padding: 0.9rem 1rem;
+  font-family: 'EB Garamond', serif;
+  font-size: 1rem;
+  border-radius: 2px;
+
+  &::placeholder { color: var(--paper-aged); opacity: 0.5; }
+  &:focus { outline: none; border-color: var(--gilt); }
+}
+
+textarea.form-input { resize: vertical; min-height: 80px; }
+
+.form-label {
+  display: block;
+  font-family: 'Special Elite', monospace;
+  font-size: 0.65rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--paper-aged);
+  opacity: 0.65;
+  margin-bottom: 0.4rem;
+}

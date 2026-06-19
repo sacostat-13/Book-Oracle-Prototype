@@ -57,6 +57,7 @@ export const SPINE_COLORS = [
 ];
 
 export function hashStr(s) {
+  if (!s) return 0;
   let h = 0;
   for (let i = 0; i < s.length; i++) h = ((h << 5) - h + s.charCodeAt(i)) | 0;
   return Math.abs(h);
@@ -81,4 +82,37 @@ export function cleanTitle(t) {
 
 export function cleanAuthor(a) {
   return (a || '').split(/[,&]|\sand\s/i)[0].trim();
+}
+
+// Open a book page in a new tab. Use this everywhere instead of go('book-page').
+// Encodes a minimal book snapshot in the URL so BookPage can render instantly
+// without waiting for DataContext to load from Supabase.
+export function openBookTab(book, from = 'app') {
+  const k = bookKey(book);
+  const lang = document.documentElement.lang || 'en';
+
+  // Snapshot: only the fields BookPage needs to render immediately
+  const snapshot = {
+    bookId:      book.bookId,
+    t:           book.t,
+    a:           book.a,
+    d:           book.d,
+    g:           book.g,
+    pp:          book.pp,
+    c:           book.c,
+    p:           book.p,
+    coverUrl:    book.coverUrl,
+    source:      book.source,
+    s:           book.s ? { name: book.s.name, n: book.s.n, total: book.s.total } : undefined,
+  };
+  // Strip undefined fields to keep URL short
+  Object.keys(snapshot).forEach(k => snapshot[k] === undefined && delete snapshot[k]);
+
+  let snapshotParam = '';
+  try {
+    snapshotParam = '&snap=' + btoa(encodeURIComponent(JSON.stringify(snapshot)));
+  } catch (_) {}
+
+  const url = `${window.location.pathname}?lang=${lang}#book-page?bookKey=${encodeURIComponent(k)}&from=${encodeURIComponent(from)}${snapshotParam}`;
+  window.open(url, '_blank', 'noopener');
 }

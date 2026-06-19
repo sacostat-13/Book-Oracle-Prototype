@@ -1,4 +1,8 @@
-import { useState, useEffect } from 'react';
+// src/components/Nav.jsx — v0.27
+// Primary nav: Dashboard · Wishlist · Library · Reading (dropdown) · Lists · Oracle
+// Overflow "···": Profile · About · Language · Sign out
+
+import { useState, useEffect, useRef } from 'react';
 import { useData } from '../lib/DataContext';
 import { useRouter } from '../lib/RouterContext';
 import { useAuth } from '../lib/AuthContext';
@@ -10,28 +14,42 @@ export default function Nav({ onPreviewBook }) {
   const { route, go } = useRouter();
   const { user, signInWithGoogle, signOut } = useAuth();
   const { lang, toggleLang, t } = useI18n();
-  const [menuOpen, setMenuOpen] = useState(false);
-  const wishCount = state.wishlist.length;
+  const [menuOpen, setMenuOpen]       = useState(false);
+  const [readingOpen, setReadingOpen] = useState(false);
+  const [moreOpen, setMoreOpen]       = useState(false);
+  const readingRef = useRef(null);
+  const moreRef    = useRef(null);
+  const isSpanish  = lang === 'es';
 
   const toggleLabel = lang === 'en' ? t('nav.switchToSpanish') : t('nav.switchToEnglish');
 
-  // Close menu on route change
-  useEffect(() => { setMenuOpen(false); }, [route.name]);
+  // Close dropdowns on route change
+  useEffect(() => { setMenuOpen(false); setReadingOpen(false); setMoreOpen(false); }, [route.name]);
 
-  // Lock body scroll while menu is open
+  // Close dropdowns on outside click
   useEffect(() => {
-    if (menuOpen) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = '';
+    function onDown(e) {
+      if (readingRef.current && !readingRef.current.contains(e.target)) setReadingOpen(false);
+      if (moreRef.current    && !moreRef.current.contains(e.target))    setMoreOpen(false);
     }
+    document.addEventListener('mousedown', onDown);
+    return () => document.removeEventListener('mousedown', onDown);
+  }, []);
+
+  // Body scroll lock for mobile menu
+  useEffect(() => {
+    document.body.style.overflow = menuOpen ? 'hidden' : '';
     return () => { document.body.style.overflow = ''; };
   }, [menuOpen]);
 
-  function navigate(name) {
-    setMenuOpen(false);
-    go(name);
+  function navigate(name, params) {
+    setMenuOpen(false); setReadingOpen(false); setMoreOpen(false);
+    go(name, params);
   }
+
+  const readingCount = (state.currentlyReading?.length || 0) + (state.readNext?.length || 0);
+  const readingActive = ['currently-reading','read-next'].includes(route.name);
+  const listsCount = (state.lists || []).length;
 
   return (
     <>
@@ -44,115 +62,146 @@ export default function Nav({ onPreviewBook }) {
 
         <div className="nav-spacer" />
 
-        {/* Desktop nav links */}
+        {/* ── Desktop nav ── */}
         <div className="nav-links">
-          <button
-            className={`nav-btn ${route.name === 'wishlist' ? 'active' : ''}`}
-            onClick={() => go('wishlist')}
-          >
-            {t('nav.wishlist')} {wishCount > 0 && <span className="nav-badge">{wishCount}</span>}
+
+          {/* Wishlist */}
+          <button className={`nav-btn${route.name==='wishlist'?' active':''}`} onClick={() => go('wishlist')}>
+            {t('nav.wishlist')}
+            {state.wishlist.length > 0 && <span className="nav-badge">{state.wishlist.length}</span>}
           </button>
-          <button
-            className={`nav-btn ${route.name === 'library' ? 'active' : ''}`}
-            onClick={() => go('library')}
-          >
-            {t('nav.library')} {state.library.length > 0 && <span className="nav-badge">{state.library.length}</span>}
+
+          {/* Library */}
+          <button className={`nav-btn${route.name==='library'?' active':''}`} onClick={() => go('library')}>
+            {t('nav.library')}
+            {state.library.length > 0 && <span className="nav-badge">{state.library.length}</span>}
           </button>
-          <button
-            className={`nav-btn ${route.name === 'read-next' ? 'active' : ''}`}
-            onClick={() => go('read-next')}
-          >
-            {t('nav.readNext')} {state.readNext.length > 0 && <span className="nav-badge">{state.readNext.length}</span>}
-          </button>
-          <button
-            className={`nav-btn ${route.name === 'currently-reading' ? 'active' : ''}`}
-            onClick={() => go('currently-reading')}
-          >
-            {t('nav.currentlyReading')} {state.currentlyReading?.length > 0 && <span className="nav-badge">{state.currentlyReading.length}</span>}
-          </button>
-          <button
-            className={`nav-btn ${route.name === 'profile' ? 'active' : ''}`}
-            onClick={() => go('profile')}
-          >
-            {t('nav.profile')}
-          </button>
-          <button
-            className={`nav-btn ${route.name === 'about' ? 'active' : ''}`}
-            onClick={() => go('about')}
-          >
-            {t('nav.about')}
-          </button>
-          <button className="nav-btn" onClick={toggleLang} title={toggleLabel} aria-label={toggleLabel}>
-            {toggleLabel}
-          </button>
-          {user ? (
-            <button className="nav-btn" onClick={signOut} title={user.email}>
-              {t('nav.signOut')}
+
+          {/* Reading — dropdown for Currently Reading + Read Next */}
+          <div className="nav-dropdown-wrap" ref={readingRef}>
+            <button
+              className={`nav-btn nav-btn--dropdown${readingActive?' active':''}`}
+              onClick={() => setReadingOpen((v) => !v)}
+              aria-haspopup="true"
+              aria-expanded={readingOpen}
+            >
+              {isSpanish ? 'Leyendo' : 'Reading'}
+              {readingCount > 0 && <span className="nav-badge">{readingCount}</span>}
+              <span className="nav-dropdown-caret" aria-hidden>▾</span>
             </button>
-          ) : (
-            <button className="nav-btn" onClick={signInWithGoogle}>
-              {t('nav.signIn')}
+            {readingOpen && (
+              <div className="nav-dropdown">
+                <button
+                  className={`nav-dropdown-item${route.name==='currently-reading'?' active':''}`}
+                  onClick={() => navigate('currently-reading')}
+                >
+                  {isSpanish ? 'Leyendo ahora' : 'Currently Reading'}
+                  {state.currentlyReading?.length > 0 && (
+                    <span className="nav-badge">{state.currentlyReading.length}</span>
+                  )}
+                </button>
+                <button
+                  className={`nav-dropdown-item${route.name==='read-next'?' active':''}`}
+                  onClick={() => navigate('read-next')}
+                >
+                  {t('nav.readNext')}
+                  {state.readNext?.length > 0 && (
+                    <span className="nav-badge">{state.readNext.length}</span>
+                  )}
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Lists */}
+          <button className={`nav-btn${route.name==='lists'?' active':''}`} onClick={() => go('lists')}>
+            {isSpanish ? 'Mis listas' : 'Lists'}
+            {listsCount > 0 && <span className="nav-badge">{listsCount}</span>}
+          </button>
+
+          {/* Oracle */}
+          <button className={`nav-btn${route.name==='oracle'?' active':''}`} onClick={() => go('oracle')}>
+            {isSpanish ? 'Oráculo' : 'Oracle'}
+          </button>
+
+          {/* ··· overflow dropdown */}
+          <div className="nav-dropdown-wrap nav-dropdown-wrap--right" ref={moreRef}>
+            <button
+              className={`nav-btn nav-btn--dropdown${['profile','about'].includes(route.name)?' active':''}`}
+              onClick={() => setMoreOpen((v) => !v)}
+              aria-haspopup="true"
+              aria-expanded={moreOpen}
+              title="More"
+            >
+              ···
             </button>
-          )}
+            {moreOpen && (
+              <div className="nav-dropdown nav-dropdown--right">
+                <button
+                  className={`nav-dropdown-item${route.name==='profile'?' active':''}`}
+                  onClick={() => navigate('profile')}
+                >
+                  {t('nav.profile')}
+                </button>
+                <button
+                  className={`nav-dropdown-item${route.name==='about'?' active':''}`}
+                  onClick={() => navigate('about')}
+                >
+                  {t('nav.about')}
+                </button>
+                <div className="nav-dropdown-divider" />
+                <button className="nav-dropdown-item" onClick={() => { toggleLang(); setMoreOpen(false); }}>
+                  {toggleLabel}
+                </button>
+                <div className="nav-dropdown-divider" />
+                {user ? (
+                  <button className="nav-dropdown-item nav-dropdown-item--muted" onClick={() => { signOut(); setMoreOpen(false); }} title={user.email}>
+                    {t('nav.signOut')}
+                  </button>
+                ) : (
+                  <button className="nav-dropdown-item" onClick={() => { signInWithGoogle(); setMoreOpen(false); }}>
+                    {t('nav.signIn')}
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Mobile hamburger */}
         <button
-          className={`nav-hamburger${menuOpen ? ' is-open' : ''}`}
+          className={`nav-hamburger${menuOpen?' is-open':''}`}
           onClick={() => setMenuOpen((v) => !v)}
           aria-label={menuOpen ? t('nav.closeMenu') : t('nav.openMenu')}
           aria-expanded={menuOpen}
         >
-          <span />
-          <span />
-          <span />
+          <span /><span /><span />
         </button>
       </nav>
 
-      {/* Mobile full-screen menu */}
+      {/* ── Mobile full-screen menu ── */}
       {menuOpen && (
         <div className="mobile-menu" role="dialog" aria-modal="true" aria-label={t('nav.menuLabel')}>
           <nav className="mobile-menu-links">
-            <button
-              className={`mobile-menu-btn${route.name === 'wishlist' ? ' active' : ''}`}
-              onClick={() => navigate('wishlist')}
-            >
-              {t('nav.wishlist')}
-              {wishCount > 0 && <span className="nav-badge">{wishCount}</span>}
-            </button>
-            <button
-              className={`mobile-menu-btn${route.name === 'library' ? ' active' : ''}`}
-              onClick={() => navigate('library')}
-            >
-              {t('nav.library')}
-              {state.library.length > 0 && <span className="nav-badge">{state.library.length}</span>}
-            </button>
-            <button
-              className={`mobile-menu-btn${route.name === 'read-next' ? ' active' : ''}`}
-              onClick={() => navigate('read-next')}
-            >
-              {t('nav.readNext')}
-              {state.readNext.length > 0 && <span className="nav-badge">{state.readNext.length}</span>}
-            </button>
-            <button
-              className={`mobile-menu-btn${route.name === 'currently-reading' ? ' active' : ''}`}
-              onClick={() => navigate('currently-reading')}
-            >
-              {t('nav.currentlyReading')}
-              {state.currentlyReading?.length > 0 && <span className="nav-badge">{state.currentlyReading.length}</span>}
-            </button>
-            <button
-              className={`mobile-menu-btn${route.name === 'profile' ? ' active' : ''}`}
-              onClick={() => navigate('profile')}
-            >
-              {t('nav.profile')}
-            </button>
-            <button
-              className={`mobile-menu-btn${route.name === 'about' ? ' active' : ''}`}
-              onClick={() => navigate('about')}
-            >
-              {t('nav.about')}
-            </button>
+            {[
+              { name:'wishlist',          label: t('nav.wishlist'),                 count: state.wishlist.length },
+              { name:'library',           label: t('nav.library'),                  count: state.library.length },
+              { name:'currently-reading', label: isSpanish?'Leyendo ahora':'Currently Reading', count: state.currentlyReading?.length },
+              { name:'read-next',         label: t('nav.readNext'),                 count: state.readNext?.length },
+              { name:'lists',             label: isSpanish?'Mis listas':'Lists',    count: listsCount },
+              { name:'oracle',            label: isSpanish?'Oráculo':'Oracle',      count: 0 },
+              { name:'profile',           label: t('nav.profile'),                  count: 0 },
+              { name:'about',             label: t('nav.about'),                    count: 0 },
+            ].map(({ name, label, count }) => (
+              <button
+                key={name}
+                className={`mobile-menu-btn${route.name===name?' active':''}`}
+                onClick={() => navigate(name)}
+              >
+                {label}
+                {count > 0 && <span className="nav-badge">{count}</span>}
+              </button>
+            ))}
 
             <div className="mobile-menu-divider" />
 

@@ -1,21 +1,58 @@
+import { useEffect, useState } from 'react';
 import { useData } from '../lib/DataContext';
 import { useRouter } from '../lib/RouterContext';
 import { bookKey, findBookByTitle } from '../lib/bookHelpers';
 import { useI18n } from '../lib/I18nContext';
+import { supabase } from '../lib/supabase';
 
 export default function PlanView() {
-  const { state, addToReadNext, markAsRead, deletePlan, showToast } = useData();
+  const { state, addToReadNext, markAsRead, deletePlan, setCurrentPlan, showToast } = useData();
   const { go, route } = useRouter();
   const { lang } = useI18n();
   const isSpanish = lang === 'es';
 
-  // Support planId route param so any plan can be viewed, not just the latest
   const planId = route.params?.planId;
-  const plan = planId
+
+  // Try local state first; if not found, fetch publicly via RPC (shared plan URL)
+  const localPlan = planId
     ? (state.plans || []).find((p) => p._id === planId) || state.currentPlan
     : state.currentPlan;
 
+  const [remotePlan, setRemotePlan] = useState(null);
+  const [remoteOwner, setRemoteOwner] = useState(null);
+  const [loadingRemote, setLoadingRemote] = useState(false);
+
+  useEffect(() => {
+    // Only fetch remotely if we have a planId and it wasn't found locally
+    if (!planId || localPlan) return;
+    setLoadingRemote(true);
+    supabase.rpc('get_public_plan', { p_plan_id: planId })
+      .then(({ data, error }) => {
+        if (!error && data) {
+          const content = data.plan?.content || {};
+          setRemotePlan({
+            ...content,
+            _id: data.plan.id,
+            title: data.plan.title || content.title,
+            createdAt: data.plan.created_at,
+          });
+          setRemoteOwner(data.owner);
+        }
+        setLoadingRemote(false);
+      });
+  }, [planId, localPlan]);
+
+  const plan = localPlan || remotePlan;
+  const isSharedView = !localPlan && remotePlan;
+
   const { genresByBookId } = state;
+
+  if (loadingRemote) return (
+    <div className="loading" style={{ paddingTop: '6rem' }}>
+      <div className="loading-spinner" />
+      <div className="loading-text">{isSpanish ? 'Cargando plan…' : 'Loading plan…'}</div>
+    </div>
+  );
 
   if (!plan) {
     return (
@@ -57,13 +94,31 @@ export default function PlanView() {
     go('dashboard');
   }
 
+  async function handleCopyPlan() {
+    const copy = {
+      ...plan,
+      title: `Copy of ${plan.title || 'plan'}`,
+      _id: undefined,
+      createdAt: undefined,
+    };
+    await setCurrentPlan(copy);
+    showToast(isSpanish ? 'Plan copiado a tu cuenta ✓' : 'Plan copied to your account ✓');
+    go('dashboard');
+  }
+
   return (
     <>
       <div className="breadcrumb">
         <a onClick={() => go('dashboard')}>Dashboard</a> · Reading Plan
       </div>
       <div className="page-header">
-        <div className="page-eyebrow">Your Reading Plan</div>
+        <div className="page-eyebrow">
+          {isSharedView && remoteOwner ? (
+            <>Reading plan by <strong style={{ color: '#d8b66a' }}>{remoteOwner.display_name}</strong></>
+          ) : (
+            isSpanish ? 'Tu plan de lectura' : 'Your Reading Plan'
+          )}
+        </div>
         <h1 className="page-title">{plan.title}</h1>
         <p className="page-subtitle">{plan.intro || ''}</p>
       </div>
@@ -80,12 +135,26 @@ export default function PlanView() {
         <button className="btn btn-gilt" onClick={addAllToQueue}>
           {isSpanish ? 'Agregar todo a la cola' : 'Add all to Read Next'}
         </button>
-        <button className="btn btn-ghost" onClick={() => go('plan-create')}>
-          {isSpanish ? 'Crear otro plan' : 'Create another plan'}
-        </button>
-        <button className="btn btn-ghost" onClick={handleDeletePlan}>
-          Delete this plan
-        </button>
+        {!isSharedView && (
+          <>
+            <button className="btn btn-ghost" onClick={() => go('plan-create')}>
+              {isSpanish ? 'Crear otro plan' : 'Create another plan'}
+            </button>
+            <button className="btn btn-ghost" onClick={handleDeletePlan}>
+              Delete this plan
+            </button>
+          </>
+        )}
+        {isSharedView && (
+          <>
+            <button className="btn btn-gilt" onClick={handleCopyPlan}>
+              {isSpanish ? '✦ Copiar este plan' : '✦ Copy this plan'}
+            </button>
+            <button className="btn btn-ghost" onClick={() => go('plan-create')}>
+              {isSpanish ? 'Crear mi propio plan' : 'Create my own plan'}
+            </button>
+          </>
+        )}
       </div>
 
       <div>

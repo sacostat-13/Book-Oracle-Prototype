@@ -213,3 +213,70 @@
     .nav-search { max-width: none; flex: 1; }
     .nav-search-dropdown { min-width: 0; left: -0.5rem; right: -0.5rem; }
   }
+
+// ─── Nav dropdowns (added v0.27) ─────────────────────────────────────────────
+
+.nav-dropdown-wrap {
+  position: relative;
+}
+
+.nav-btn--dropdown {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.nav-dropdown-caret {
+  font-size: 0.6rem;
+  opacity: 0.5;
+  margin-left: 0.1rem;
+}
+
+.nav-dropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  min-width: 190px;
+  background: var(--ink);
+  border: 1px solid rgba(176, 140, 63, 0.28);
+  border-radius: 3px;
+  box-shadow: 0 16px 40px rgba(0,0,0,0.65);
+  z-index: 200;
+  padding: 0.3rem 0;
+
+  &--right {
+    left: auto;
+    right: 0;
+  }
+}
+
+.nav-dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.55rem 1rem;
+  background: transparent;
+  border: none;
+  color: var(--paper-dim);
+  font-family: 'Special Elite', monospace;
+  font-size: 0.68rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.12s, color 0.12s;
+
+  &:hover, &.active {
+    background: rgba(176, 140, 63, 0.09);
+    color: var(--gilt);
+  }
+
+  &--muted { opacity: 0.6; }
+}
+
+.nav-dropdown-divider {
+  height: 1px;
+  background: rgba(176, 140, 63, 0.12);
+  margin: 0.3rem 0;
+}

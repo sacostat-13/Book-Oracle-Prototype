@@ -7,7 +7,7 @@ import { useEffect, useState } from 'react';
 import { useData } from '../lib/DataContext';
 import { useRouter } from '../lib/RouterContext';
 import { useI18n } from '../lib/I18nContext';
-import { bookKey, findBookByTitle } from '../lib/bookHelpers';
+import { bookKey, findBookByTitle, openBookTab } from '../lib/bookHelpers';
 import { enrichBookFromOpenLibrary, fetchSeriesBooks } from '../lib/enrichmentService';
 import { hardcoverGetBook } from '../lib/hardcoverService';
 import { fetchCoverURL } from '../lib/coverService';
@@ -16,8 +16,94 @@ import { purchaseLinks } from '../lib/purchaseLinks';
 import { fetchSeriesDescriptionFromWikipedia } from '../lib/seriesService';
 import BookCover from '../components/BookCover';
 import ReportBookForm from '../components/ReportBookForm';
+import AddToListPicker from '../components/AddToListPicker';
 
-export default function BookPage({ previewBookRef }) {
+
+// ─── Similar books ────────────────────────────────────────────────────────────
+
+function computeSimilar(display, genresByBookId, pool, limit = 12) {
+  // Build genre ID set for the current book
+  const thisGenreIds = new Set(
+    (genresByBookId?.[display.bookId] || []).map(g => g.genreId)
+  );
+  // Fallback to legacy single genre field if no Oracle genres
+  const thisGenreLegacy = display.g || '';
+
+  const thisKey = bookKey(display);
+
+  const scored = pool
+    .filter(b => bookKey(b) !== thisKey)
+    .map(b => {
+      let score = 0;
+
+      // Oracle genre overlap — most powerful signal
+      const bGenreIds = (genresByBookId?.[b.bookId] || []).map(g => g.genreId);
+      const overlap = bGenreIds.filter(id => thisGenreIds.has(id)).length;
+      score += overlap * 4;
+
+      // Legacy single genre fallback
+      if (!thisGenreIds.size && b.g && b.g === thisGenreLegacy) score += 3;
+
+      // Same author — strong signal
+      if (display.a && b.a && b.a === display.a) score += 3;
+
+      // Similar complexity (±1 step)
+      if (display.c && b.c && Math.abs(b.c - display.c) <= 1) score += 1;
+
+      // Similar length (within 30%)
+      if (display.pp && b.pp) {
+        const ratio = display.pp > 0 ? Math.abs(b.pp - display.pp) / display.pp : 1;
+        if (ratio < 0.3) score += 1;
+      }
+
+      return { book: b, score };
+    })
+    .filter(s => s.score > 0)
+    .sort((a, b) => b.score - a.score);
+
+  return scored.slice(0, limit).map(s => s.book);
+}
+
+function SimilarBooks({ similar, isSpanish }) {
+  if (!similar.length) return null;
+
+  return (
+    <div className="book-page-similar">
+      <div className="book-modal-section-title" style={{ marginBottom: '1.25rem' }}>
+        {isSpanish ? 'Libros similares' : 'You might also like'}
+      </div>
+      <div className="similar-grid">
+        {similar.map((b, i) => (
+          <div
+            key={bookKey(b) + i}
+            className="similar-card"
+            onClick={() => openBookTab(b, 'book-page')}
+            title={`${b.t}${b.a ? ' · ' + b.a : ''}`}
+          >
+            {b.coverUrl ? (
+              <img
+                src={b.coverUrl}
+                alt={b.t}
+                className="similar-card__cover"
+              />
+            ) : (
+              <div className="similar-card__cover similar-card__cover--fallback"
+                style={{ background: `linear-gradient(155deg,#3a2a1c,#1a100a)` }}>
+                <span className="similar-card__fallback-title">{b.t?.slice(0, 22)}</span>
+              </div>
+            )}
+            <div className="similar-card__info">
+              <div className="similar-card__title">{b.t?.length > 34 ? b.t.slice(0, 33) + '…' : b.t}</div>
+              <div className="similar-card__author">{b.a}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+export default function BookPage({ previewBookRef, isAuthed = true, authPending = false, dataReady = true }) {
   const {
     state,
     addToWishlist,
@@ -42,8 +128,18 @@ export default function BookPage({ previewBookRef }) {
   const [enrichment, setEnrichment] = useState(null);
   const [enrichedOverlay, setEnrichedOverlay] = useState({});
   const [seriesBooks, setSeriesBooks] = useState([]);
+  const [seriesLoading, setSeriesLoading] = useState(false);
   const [seriesDescription, setSeriesDescription] = useState(null);
   const [notFound, setNotFound] = useState(false);
+
+  // Read snapshot from URL immediately — renders before DataContext loads
+  const snapshotBook = (() => {
+    try {
+      const snap = route.params?.snap;
+      if (!snap) return null;
+      return JSON.parse(decodeURIComponent(atob(snap)));
+    } catch (_) { return null; }
+  })();
 
   // Resolve book: preview (from search) or collection lookup
   useEffect(() => {
@@ -61,10 +157,14 @@ export default function BookPage({ previewBookRef }) {
     const found = sources.find((b) => bookKey(b) === bookKey_);
     if (found) {
       setBook(found);
+    } else if (snapshotBook) {
+      // Collection not loaded yet or book not in collection — use snapshot.
+      // Once collection loads this effect re-runs and upgrades to the full record.
+      setBook(snapshotBook);
     } else {
       setNotFound(true);
     }
-  }, [bookKey_, route.params, previewBookRef, state.wishlist, state.library, state.readNext]);
+  }, [bookKey_, route.params, previewBookRef, state.wishlist, state.library, state.readNext, snapshotBook]);
 
   // Enrichment:
   // For preview books (from search), fetch the full Hardcover record by
@@ -148,8 +248,13 @@ export default function BookPage({ previewBookRef }) {
     const seriesName = book?.s?.name || enrichment?.series?.name;
     if (!seriesName) return;
     let cancelled = false;
+    setSeriesLoading(true);
+    setSeriesBooks([]); // reset on book change
     fetchSeriesBooks(seriesName).then((b) => {
-      if (!cancelled) setSeriesBooks(b);
+      if (!cancelled) {
+        setSeriesBooks(b);
+        setSeriesLoading(false);
+      }
     });
     fetchSeriesDescriptionFromWikipedia(seriesName, book?.a).then((d) => {
       if (!cancelled && d) setSeriesDescription(d);
@@ -176,6 +281,47 @@ export default function BookPage({ previewBookRef }) {
     );
   }
 
+  // While DataContext is loading, render from the URL snapshot if available
+  if (!book && snapshotBook) {
+    return (
+      <div className="book-page">
+        <div className="book-page-hero">
+          <div className="book-page-cover-col">
+            <BookCover title={snapshotBook.t || ''} author={snapshotBook.a || ''} coverUrl={snapshotBook.coverUrl} />
+          </div>
+          <div className="book-page-info-col">
+            {snapshotBook.g && (
+              <div className="book-modal-genres">
+                <span className="book-modal-genre">{snapshotBook.g}</span>
+              </div>
+            )}
+            <h2 className="book-modal-title">{snapshotBook.t}</h2>
+            <div className="book-modal-author">{snapshotBook.a}</div>
+            <div className="book-page-actions" style={{ marginTop: '1.5rem' }}>
+              {authPending || (isAuthed && !dataReady) ? (
+                <span style={{ fontSize: '0.8rem', color: 'rgba(233,223,202,0.35)', fontStyle: 'italic' }}>
+                  {isSpanish ? 'Cargando tu biblioteca…' : 'Loading your library…'}
+                </span>
+              ) : !isAuthed ? (
+                <a href={window.location.pathname} className="btn btn-ghost" style={{ textDecoration: 'none' }}>
+                  {isSpanish ? 'Iniciar sesión para agregar ↗' : 'Sign in to add to your library ↗'}
+                </a>
+              ) : null}
+            </div>
+          </div>
+        </div>
+        {snapshotBook.d && (
+          <div className="book-page-body">
+            <div className="book-modal-section-title">
+              {isSpanish ? 'Descripción' : 'Description'}
+            </div>
+            <p className="book-page-description">{snapshotBook.d}</p>
+          </div>
+        )}
+      </div>
+    );
+  }
+
   if (!book) return null;
 
   const enriched = findBookByTitle(book.t, state.wishlist) || book;
@@ -196,6 +342,10 @@ export default function BookPage({ previewBookRef }) {
   const genres = (oracleGenres && oracleGenres.length > 0)
     ? oracleGenres
     : (display.g ? [{ name: display.g, description: null }] : []);
+
+  // Similar books — scored by Oracle genre overlap, author, complexity, length
+  const allBooks = [...state.wishlist, ...state.library, ...state.readNext];
+  const similar = computeSimilar(display, state.genresByBookId, allBooks);
 
   // Series block — same logic as BookModal
   let seriesBlock = null;
@@ -312,7 +462,15 @@ export default function BookPage({ previewBookRef }) {
           </div>
 
           {/* Series */}
-          {seriesBlock && (
+          {seriesLoading && display.s?.name && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 0', opacity: 0.4 }}>
+              <div className="loading-spinner" style={{ width: 16, height: 16 }} />
+              <span style={{ fontFamily: "'Special Elite',monospace", fontSize: '0.65rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--paper-aged)' }}>
+                {isSpanish ? 'Cargando saga…' : 'Loading series…'}
+              </span>
+            </div>
+          )}
+          {!seriesLoading && seriesBlock && (
             <div className="book-page-series">
               <div className="book-page-series-label">
                 {isSpanish ? 'PARTE DE UNA SERIE' : 'PART OF A SERIES'}
@@ -332,7 +490,26 @@ export default function BookPage({ previewBookRef }) {
 
           {/* Actions */}
           <div className="book-page-actions">
-            {inLib ? (
+            {authPending ? (
+              // Auth check in progress — don't flash sign-in prompt
+              <span style={{ fontSize: '0.8rem', color: 'rgba(233,223,202,0.35)', fontStyle: 'italic' }}>
+                {isSpanish ? 'Cargando…' : 'Loading…'}
+              </span>
+            ) : !isAuthed ? (
+              // Confirmed not signed in — show sign-in prompt
+              <a
+                href={window.location.pathname}
+                className="btn btn-ghost"
+                style={{ textDecoration: 'none' }}
+              >
+                {isSpanish ? 'Iniciar sesión para agregar ↗' : 'Sign in to add to your library ↗'}
+              </a>
+            ) : !dataReady ? (
+              // Signed in but data still loading
+              <span style={{ fontSize: '0.8rem', color: 'rgba(233,223,202,0.35)', fontStyle: 'italic' }}>
+                {isSpanish ? 'Cargando tu biblioteca…' : 'Loading your library…'}
+              </span>
+            ) : inLib ? (
               <button className="btn btn-ghost" onClick={() => removeFromLibrary(display)}>
                 {isSpanish ? 'Quitar de la biblioteca' : 'Remove from library'}
               </button>
@@ -360,6 +537,7 @@ export default function BookPage({ previewBookRef }) {
                 </button>
               </>
             )}
+            {isAuthed && !authPending && dataReady && <AddToListPicker book={display} />}
           </div>
 
           {/* Purchase */}
@@ -422,6 +600,8 @@ export default function BookPage({ previewBookRef }) {
           </button>
         </div>
       )}
+
+      <SimilarBooks similar={similar} isSpanish={isSpanish} />
 
       <ReportBookForm book={display} isSpanish={isSpanish} />
     </div>

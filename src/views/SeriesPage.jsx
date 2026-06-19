@@ -19,6 +19,7 @@ import { bookKey } from '../lib/bookHelpers';
 import { fetchSeriesBooks } from '../lib/enrichmentService';
 import { fetchSeriesDescriptionFromWikipedia } from '../lib/seriesService';
 import BookCover from '../components/BookCover';
+import { openBookTab } from '../lib/bookHelpers';
 
 export default function SeriesPage() {
   const { state, addToWishlist, addToReadNext, markAsRead, removeFromLibrary } = useData();
@@ -264,7 +265,7 @@ export default function SeriesPage() {
                 {/* Cover */}
                 <div
                   className="series-page-book-cover"
-                  onClick={() => go('book-page', { bookKey: k, from: 'series-page', fromLabel: seriesName })}
+                  onClick={() => openBookTab(b, 'series-page')}
                   style={{ cursor: 'pointer' }}
                 >
                   <BookCover title={b.t} author={b.a} coverUrl={b.coverUrl} />

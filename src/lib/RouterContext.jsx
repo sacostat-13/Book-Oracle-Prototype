@@ -18,6 +18,9 @@ const KNOWN_ROUTES = new Set([
   'plan-view',
   'book-page',
   'series-page',
+  'lists',
+  'list-detail',
+  'list-view',
 ]);
 
 function parseHash() {

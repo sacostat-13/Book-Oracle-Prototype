@@ -13,6 +13,7 @@ import { fetchSeriesDescriptionFromWikipedia } from '../lib/seriesService';
 import BookCover from './BookCover';
 import RatingModal from './RatingModal';
 import CategoryAutocomplete from './CategoryAutocomplete';
+import AddToListPicker from './AddToListPicker';
 
 function computeSimilarBooks(book, limit = 4) {
   const candidates = ALL_BOOKS.filter((c) => bookKey(c) !== bookKey(book));
@@ -327,7 +328,7 @@ export default function BookModal({ book, onClose, onOpenBook }) {
               className="book-modal-see-more"
               onClick={() => { onClose(); go('book-page', { bookKey: k, from: 'wishlist', fromLabel: isSpanish ? 'Lista' : 'Wishlist' }); }}
             >
-              {isSpanish ? 'Ver más ↗' : 'See more ↗'}
+              {isSpanish ? 'Abrir página del libro ↗' : 'Open book page ↗'}
             </button>
             {liveRating > 0 && (
               <div className="book-modal-rating">
@@ -685,7 +686,8 @@ export default function BookModal({ book, onClose, onOpenBook }) {
               <button className="btn btn-ghost" onClick={() => { markAsRead(display); onClose(); }}>✓ Mark as read</button>
             </>
           )}
-        </div>
+        </div> 
+        <AddToListPicker book={display} /> 
 
         <ReportBookForm book={display} isSpanish={isSpanish} />
       </div>
