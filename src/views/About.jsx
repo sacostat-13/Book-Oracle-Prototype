@@ -184,6 +184,10 @@ export default function About() {
             {t('about.featureReadNextBody')}
           </Feature>
 
+          <Feature title={t('about.featureCurrentlyReadingTitle')}>
+            {t('about.featureCurrentlyReadingBody')}
+          </Feature>
+
           <Feature title={t('about.featureOracleTitle')}>
             <div style={{ marginBottom: '0.75rem' }}>{t('about.featureOracleBody')}</div>
             <div style={{ marginLeft: '1rem', marginBottom: '0.75rem' }}>
@@ -203,6 +207,18 @@ export default function About() {
 
           <Feature title={t('about.featurePlansTitle')}>
             {t('about.featurePlansBody')}
+          </Feature>
+
+          <Feature title={t('about.featureListsTitle')}>
+            {t('about.featureListsBody')}
+          </Feature>
+
+          <Feature title={t('about.featureClubsTitle')}>
+            {t('about.featureClubsBody')}
+          </Feature>
+
+          <Feature title={t('about.featureDiscussionTitle')}>
+            {t('about.featureDiscussionBody')}
           </Feature>
 
           <Feature title={t('about.featureDashboardTitle')}>
