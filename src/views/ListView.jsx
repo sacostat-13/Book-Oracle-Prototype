@@ -84,7 +84,7 @@ export default function ListView() {
           </div>
           <h1 className="page-title">{list.title}</h1>
           {list.description && (
-            <p style={{ color: 'rgba(233,223,202,.5)', marginTop: '0.5rem' }}>{list.description}</p>
+            <p style={{ color: 'var(--text-muted)', marginTop: '0.5rem' }}>{list.description}</p>
           )}
           <div style={{ marginTop: '0.75rem' }}>
             <span className="level-pill">▤ {books.length} books</span>
@@ -102,14 +102,14 @@ export default function ListView() {
         <div>
           {books.map((entry, i) => (
             <div key={i} className="list-item" style={{ borderLeftColor: 'rgba(201,162,75,.18)' }}>
-              <div className="li-num" style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: '0.7rem', color: 'rgba(233,223,202,.25)' }}>
+              <div className="li-num" style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: '0.7rem', color: 'var(--text-faint)' }}>
                 {i + 1}
               </div>
               <CoverImg book={entry.book} size={52} />
               <div className="li-content">
                 <div className="li-title">{entry.book.title || entry.book.t}</div>
                 <div className="li-author">{entry.book.author || entry.book.a}</div>
-                {entry.note && <div style={{ fontSize: '0.82rem', color: 'rgba(233,223,202,.4)', fontStyle: 'italic', marginTop: '0.2rem' }}>{entry.note}</div>}
+                {entry.note && <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)', fontStyle: 'italic', marginTop: '0.2rem' }}>{entry.note}</div>}
               </div>
               {user && (
                 <div className="li-actions">
@@ -142,7 +142,7 @@ export default function ListView() {
         </div>
         <h1 className="page-title">{plan.title || content.title}</h1>
         {content.intro && (
-          <p style={{ color: 'rgba(233,223,202,.5)', marginTop: '0.5rem' }}>{content.intro}</p>
+          <p style={{ color: 'var(--text-muted)', marginTop: '0.5rem' }}>{content.intro}</p>
         )}
         <div style={{ marginTop: '0.75rem' }}>
           <span className="level-pill">▤ {books.length} books</span>

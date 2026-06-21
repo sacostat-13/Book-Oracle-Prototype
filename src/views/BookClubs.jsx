@@ -17,7 +17,7 @@ export default function BookClubs() {
       <div className="page-header">
         <div className="page-eyebrow">Community</div>
         <h1 className="page-title">Book <span className="accent">Clubs</span></h1>
-        <p style={{ color: 'rgba(233,223,202,0.45)', fontSize: '0.95rem', marginTop: '0.5rem' }}>
+        <p style={{ color: 'var(--text-muted)', fontSize: '0.95rem', marginTop: '0.5rem' }}>
           Read together. Track progress. Discuss in sessions.
         </p>
       </div>

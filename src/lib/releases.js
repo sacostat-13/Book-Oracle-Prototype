@@ -16,9 +16,27 @@
 
 // The version label shown as "current" — keep in sync with package.json and
 // the README version line.
-export const CURRENT_VERSION = 'v0.29';
+export const CURRENT_VERSION = 'v0.30';
 
-export const RELEASES = [{version: 'v0.29',
+export const RELEASES = [{
+    version: 'v0.30',
+    date: '2026-06-20',
+    titleEn: 'Under the hood',
+    titleEs: 'Bajo el capó',
+    bodyEn: [
+      'This release is all internal: no new features, but the codebase is cleaner and more reliable going forward.',
+      'The stylesheet has been reorganised into a proper architecture — tokens, reset, layout, components, and pages each live in their own folder. Editing a button style now means opening one file, not hunting through a flat pile of partials.',
+      'Light mode is now available. Tap the theme toggle in the navigation to switch — the app remembers your preference and respects your OS setting on first visit.',
+      'A routing bug that caused book pages to break when the app language was set to Spanish has been fixed. The issue only affected local development, but it was annoying enough to squash now.',
+    ],
+    bodyEs: [
+      'Esta versión es completamente interna: sin funciones nuevas, pero el código está más limpio y confiable de aquí en adelante.',
+      'Las hojas de estilo se reorganizaron en una arquitectura ordenada — tokens, reset, layout, componentes y páginas cada uno en su propia carpeta. Editar el estilo de un botón ahora significa abrir un archivo, no buscar entre un montón de parciales sin estructura.',
+      'El modo claro ya está disponible. Tocá el selector de tema en la navegación para cambiar — la app recuerda tu preferencia y respeta la configuración de tu sistema operativo en la primera visita.',
+      'Se corrigió un error de rutas que hacía que las páginas de libros fallaran cuando el idioma de la app estaba en español. El problema solo afectaba el entorno de desarrollo local, pero era suficientemente molesto para resolverlo ahora.',
+    ],
+  },
+  {version: 'v0.29',
     date: '2026-06-19',
     titleEn: 'Discussion & Decisions',
     titleEs: 'Discusión y Decisiones',

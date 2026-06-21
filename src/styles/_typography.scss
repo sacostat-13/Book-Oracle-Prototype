@@ -1,0 +1,15 @@
+// _typography.scss
+// Text utility classes and surface utilities.
+// These map directly to the token system in _tokens.scss.
+
+.text-primary   { color: var(--text-primary); }
+.text-secondary { color: var(--text-secondary); }
+.text-muted     { color: var(--text-muted); }
+.text-dim       { color: var(--text-dim); }
+.text-faint     { color: var(--text-faint); }
+.text-ghost     { color: var(--text-ghost); }
+.text-gilt      { color: var(--gilt); }
+.text-blood     { color: var(--blood-bright); }
+
+.surface-tint  { background: var(--surface-tint); }
+.surface-hover { background: var(--surface-hover); }

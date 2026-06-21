@@ -376,7 +376,7 @@ export default function ClubPolls({ clubId, clubName, clubGenres = [], isAdmin, 
       )}
 
       {polls.length === 0 && !showCreate && (
-        <div style={{ color: 'rgba(233,223,202,0.3)', fontStyle: 'italic', fontSize: '0.88rem' }}>
+        <div style={{ color: 'var(--text-dim)', fontStyle: 'italic', fontSize: '0.88rem' }}>
           No polls yet.{isAdmin && ' Use the Oracle or create one manually.'}
         </div>
       )}

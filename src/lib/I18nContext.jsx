@@ -33,12 +33,14 @@ function detectInitialLang() {
 function syncLangParam(lang) {
   if (typeof window === 'undefined') return;
   try {
-    const url = new URL(window.location.href);
+    // Work on just the origin+pathname+search, preserve hash separately
+    const hash = window.location.hash;
+    const url = new URL(window.location.origin + window.location.pathname + window.location.search);
     const current = url.searchParams.get('lang');
     if (current === lang) return;
     url.searchParams.set('lang', lang);
-    window.history.replaceState(null, '', url.toString());
-  } catch {}
+    window.history.replaceState(null, '', url.toString() + hash);
+  } catch { }
 }
 
 // Resolve "a.b.c" against a nested catalog. Returns the key itself if missing,

@@ -222,7 +222,7 @@ export default function BookClubDetail() {
         </div>
         <h1 className="page-title">{club.name}</h1>
         {club.description && (
-          <p style={{ color: 'rgba(233,223,202,0.55)', fontSize: '0.95rem', marginTop: '0.4rem', lineHeight: 1.6 }}>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.95rem', marginTop: '0.4rem', lineHeight: 1.6 }}>
             {club.description}
           </p>
         )}
@@ -297,7 +297,7 @@ export default function BookClubDetail() {
           )}
         </div>
         {(activeSession ? otherSessions : sessions).length === 0 ? (
-          <div style={{ color: 'rgba(233,223,202,0.3)', fontStyle: 'italic', fontSize: '0.9rem' }}>
+          <div style={{ color: 'var(--text-dim)', fontStyle: 'italic', fontSize: '0.9rem' }}>
             {isAdmin ? 'No sessions yet. Create one to get started.' : 'No sessions yet.'}
           </div>
         ) : (

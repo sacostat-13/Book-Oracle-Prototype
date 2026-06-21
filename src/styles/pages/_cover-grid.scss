@@ -1,17 +1,15 @@
-// _cover-grid.scss
-// Lines 2437–2664 of original main.scss
+// pages/_cover-grid.scss
+// Cover grid view, view toggle, currently reading cards, progress bar.
+// Selection mode overlays → _lists.scss
 
-// ============================================================
-// v0.22: Library Cover Grid + Currently Reading
-// ============================================================
-
-// --- View toggle (List / Covers) ---
+// ── View toggle (List / Covers) ───────────────────────────────────────────────
 .view-toggle {
   display: flex;
-  border: 1px solid rgba(176, 140, 63, 0.25);
+  border: 1px solid rgba(176,140,63,0.25);
   border-radius: 2px;
   overflow: hidden;
 }
+
 .view-toggle-btn {
   background: transparent;
   border: none;
@@ -23,21 +21,21 @@
   cursor: pointer;
   transition: background 0.15s, color 0.15s;
   white-space: nowrap;
-  &:hover { background: rgba(176, 140, 63, 0.08); color: var(--paper); }
-  &.active {
-    background: rgba(176, 140, 63, 0.18);
-    color: var(--gilt);
-  }
+
+  &:hover  { background: rgba(176,140,63,0.08); color: var(--paper); }
+  &.active { background: rgba(176,140,63,0.18); color: var(--gilt); }
 }
 
-// --- Cover grid shelves ---
+// ── Cover grid shelves ────────────────────────────────────────────────────────
 .cover-grid-shelves {
   display: flex;
   flex-direction: column;
   gap: 2.5rem;
   margin-top: 1rem;
 }
+
 .cover-shelf {}
+
 .cover-shelf-label {
   font-family: 'Cormorant Garamond', serif;
   font-size: 1.25rem;
@@ -46,27 +44,40 @@
   letter-spacing: 0.02em;
   margin: 0 0 1rem 0;
   padding-bottom: 0.5rem;
-  border-bottom: 1px solid rgba(176, 140, 63, 0.2);
+  border-bottom: 1px solid var(--border-subtle);
+
   .count { color: var(--gilt); font-weight: 400; font-size: 1rem; opacity: 0.7; }
 }
+
 .cover-shelf-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
   gap: 1rem;
 }
+
 .cover-grid-item {
   position: relative;
   cursor: pointer;
+
   &:hover .cover-grid-hover { opacity: 1; }
-  &:hover .cover-grid-img { opacity: 0.55; }
+  &:hover .cover-grid-img   { opacity: 0.55; }
+
+  // Selection mode (managed by lists/selection state)
+  &--selected .cover-grid-img {
+    outline: 2px solid rgba(201,162,75,0.85);
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
 }
+
 .cover-grid-img {
-  aspect-ratio: 2 / 3;
+  aspect-ratio: 2/3;
   width: 100%;
   overflow: hidden;
   border-radius: 2px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.45);
   transition: opacity 0.18s;
+
   img, .placeholder {
     width: 100%;
     height: 100%;
@@ -74,6 +85,7 @@
     display: block;
   }
 }
+
 .cover-grid-rating {
   position: absolute;
   bottom: 0.35rem;
@@ -86,6 +98,7 @@
   text-shadow: 0 1px 3px rgba(0,0,0,0.8);
   pointer-events: none;
 }
+
 .cover-grid-hover {
   position: absolute;
   inset: 0;
@@ -99,6 +112,7 @@
   pointer-events: none;
   border-radius: 2px;
 }
+
 .cover-grid-hover-title {
   font-family: 'Cormorant Garamond', serif;
   font-size: 0.78rem;
@@ -107,57 +121,55 @@
   line-height: 1.2;
   margin-bottom: 0.2rem;
 }
+
 .cover-grid-hover-author {
   font-size: 0.68rem;
   color: var(--gilt);
   opacity: 0.9;
   margin-bottom: 0.3rem;
 }
+
 .cover-grid-hover-genres {
   display: flex;
   flex-wrap: wrap;
   gap: 0.2rem;
+
   .li-genre-pill { font-size: 0.56rem; padding: 0.1rem 0.3rem; }
 }
 
-@media (max-width: 600px) {
-  .cover-shelf-grid {
-    grid-template-columns: repeat(auto-fill, minmax(85px, 1fr));
-    gap: 0.65rem;
-  }
-}
-
-// --- Currently Reading view ---
+// ── Currently Reading cards ───────────────────────────────────────────────────
 .cr-grid {
   display: flex;
   flex-direction: column;
   gap: 1.25rem;
   margin-top: 0.5rem;
 }
+
 .cr-card {
   display: grid;
   grid-template-columns: 90px 1fr;
   gap: 1.25rem;
-  background: rgba(244, 234, 213, 0.03);
-  border: 1px solid rgba(176, 140, 63, 0.15);
+  background: var(--surface-tint);
+  border: 1px solid var(--border-subtle);
   border-radius: 2px;
   padding: 1.1rem;
   transition: border-color 0.18s;
-  &:hover { border-color: rgba(176, 140, 63, 0.35); }
+
+  &:hover { border-color: var(--border-mid); }
 }
+
 .cr-cover {
-  aspect-ratio: 2 / 3;
+  aspect-ratio: 2/3;
   width: 90px;
   overflow: hidden;
   border-radius: 2px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+
   img, .placeholder { width: 100%; height: 100%; object-fit: cover; display: block; }
 }
-.cr-info {
-  display: flex;
-  flex-direction: column;
-  gap: 0.3rem;
-}
+
+.cr-info { display: flex; flex-direction: column; gap: 0.3rem; }
+
 .cr-title {
   font-family: 'Cormorant Garamond', serif;
   font-size: 1.15rem;
@@ -166,29 +178,18 @@
   color: var(--paper);
   line-height: 1.2;
   transition: color 0.15s;
+
   &:hover { color: var(--gilt); }
 }
-.cr-author {
-  font-size: 0.85rem;
-  color: var(--paper-aged);
-  opacity: 0.7;
-}
-.cr-meta {
-  display: flex;
-  flex-direction: column;
-  gap: 0.2rem;
-  margin-top: 0.3rem;
-}
-.cr-started {
-  font-size: 0.8rem;
-  color: var(--paper-aged);
-  opacity: 0.65;
-}
-.cr-pages {
-  font-size: 0.75rem;
-  color: var(--paper-aged);
-  opacity: 0.45;
-}
+
+.cr-author { font-size: 0.85rem; color: var(--paper-aged); opacity: 0.7; }
+
+.cr-meta { display: flex; flex-direction: column; gap: 0.2rem; margin-top: 0.3rem; }
+
+.cr-started { font-size: 0.8rem; color: var(--paper-aged); opacity: 0.65; }
+
+.cr-pages { font-size: 0.75rem; color: var(--paper-aged); opacity: 0.45; }
+
 .cr-actions {
   display: flex;
   gap: 0.5rem;
@@ -197,25 +198,24 @@
   padding-top: 0.75rem;
 }
 
-// v0.28: reading progress bar
-.cr-progress {
-  display: flex;
-  flex-direction: column;
-  gap: 0.3rem;
-}
+// Reading progress bar
+.cr-progress { display: flex; flex-direction: column; gap: 0.3rem; }
+
 .cr-progress-bar-track {
   height: 3px;
-  background: rgba(176, 140, 63, 0.15);
+  background: rgba(176,140,63,0.15);
   border-radius: 2px;
   overflow: hidden;
 }
+
 .cr-progress-bar-fill {
   height: 100%;
-  background: var(--gilt, #b08c3f);
+  background: var(--gilt);
   border-radius: 2px;
   transition: width 0.3s ease;
   min-width: 2px;
 }
+
 .cr-progress-label {
   font-family: 'Special Elite', monospace;
   font-size: 0.72rem;
@@ -224,35 +224,28 @@
   opacity: 0.65;
 }
 
-@media (max-width: 500px) {
-  .cr-card { grid-template-columns: 72px 1fr; gap: 0.9rem; padding: 0.85rem; }
-  .cr-cover { width: 72px; }
-}
-
-// v0.22 mobile fixes
+// ── Mobile ────────────────────────────────────────────────────────────────────
 @media (max-width: 600px) {
-  // Cover grid: fixed 3 columns on mobile
   .cover-shelf-grid {
     grid-template-columns: repeat(3, 1fr) !important;
     gap: 0.55rem;
   }
+}
 
-  // List items: stack vertically — cover (hidden num), content, actions
-  .list-item {
-    grid-template-columns: 1fr;
-    gap: 0.5rem;
-    padding: 0.9rem 1rem;
-  }
-  .li-num { display: none; }
-  .li-actions {
-    flex-wrap: wrap;
-    gap: 0.4rem;
-    border-top: 1px solid rgba(176, 140, 63, 0.12);
-    padding-top: 0.5rem;
-    margin-top: 0.1rem;
-  }
-  .li-action {
-    flex: 1 1 auto;
-    text-align: center;
-  }
+@media (max-width: 500px) {
+  .cr-card  { grid-template-columns: 72px 1fr; gap: 0.9rem; padding: 0.85rem; }
+  .cr-cover { width: 72px; }
+}
+
+// ── Light mode ────────────────────────────────────────────────────────────────
+[data-theme="light"] .cr-card {
+  background: rgba(28,21,16,0.03);
+  border-color: rgba(28,21,16,0.12);
+
+  &:hover { border-color: rgba(28,21,16,0.25); }
+}
+
+[data-theme="light"] .cover-grid-title-overlay {
+  background: linear-gradient(to top, rgba(247,240,224,0.92) 0%, rgba(247,240,224,0.3) 60%, transparent 100%);
+  color: var(--paper);
 }

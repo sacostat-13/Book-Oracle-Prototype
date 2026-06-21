@@ -387,7 +387,7 @@ export default function SessionDetail() {
           <BookCover title={book.title} author={book.author} coverUrl={book.cover_url} />
         </div>
         <div>
-          <div style={{ fontFamily: "'Special Elite', monospace", fontSize: '0.7rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: isActive ? 'var(--gilt)' : isPast ? 'rgba(233,223,202,0.3)' : 'var(--paper-aged)', marginBottom: '0.4rem' }}>
+          <div style={{ fontFamily: "'Special Elite', monospace", fontSize: '0.7rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: isActive ? 'var(--gilt)' : isPast ? 'var(--text-dim)' : 'var(--paper-aged)', marginBottom: '0.4rem' }}>
             {isActive ? '✦ Active session' : isPast ? 'Past session' : 'Upcoming'}
           </div>
           <h1 style={{ fontFamily: "'Cormorant Garamond', serif", fontStyle: 'italic', fontSize: '1.7rem', color: 'var(--paper)', margin: 0, lineHeight: 1.15, marginBottom: '0.25rem' }}>
@@ -479,7 +479,7 @@ export default function SessionDetail() {
           Member progress · {(progress || []).length}
         </div>
         {sortedProgress.length === 0 ? (
-          <div style={{ color: 'rgba(233,223,202,0.3)', fontStyle: 'italic', fontSize: '0.9rem' }}>
+          <div style={{ color: 'var(--text-dim)', fontStyle: 'italic', fontSize: '0.9rem' }}>
             No members yet.
           </div>
         ) : (

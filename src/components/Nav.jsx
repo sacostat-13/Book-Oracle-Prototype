@@ -7,6 +7,7 @@ import { useData } from '../lib/DataContext';
 import { useRouter } from '../lib/RouterContext';
 import { useAuth } from '../lib/AuthContext';
 import { useI18n } from '../lib/I18nContext';
+import { useTheme } from '../lib/ThemeContext';
 import NavSearch from './NavSearch';
 
 export default function Nav({ onPreviewBook }) {
@@ -14,6 +15,7 @@ export default function Nav({ onPreviewBook }) {
   const { route, go } = useRouter();
   const { user, signInWithGoogle, signOut } = useAuth();
   const { lang, toggleLang, t } = useI18n();
+  const { theme, toggleTheme } = useTheme();
   const [menuOpen, setMenuOpen]       = useState(false);
   const [readingOpen, setReadingOpen] = useState(false);
   const [moreOpen, setMoreOpen]       = useState(false);
@@ -161,6 +163,9 @@ export default function Nav({ onPreviewBook }) {
                 <button className="nav-dropdown-item" onClick={() => { toggleLang(); setMoreOpen(false); }}>
                   {toggleLabel}
                 </button>
+                <button className="nav-dropdown-item" onClick={() => { toggleTheme(); setMoreOpen(false); }}>
+                  {theme === 'dark' ? '☀ Light mode' : '☾ Dark mode'}
+                </button>
                 <div className="nav-dropdown-divider" />
                 {user ? (
                   <button className="nav-dropdown-item nav-dropdown-item--muted" onClick={() => { signOut(); setMoreOpen(false); }} title={user.email}>
@@ -216,6 +221,9 @@ export default function Nav({ onPreviewBook }) {
 
             <button className="mobile-menu-btn mobile-menu-btn--secondary" onClick={() => { toggleLang(); setMenuOpen(false); }}>
               {toggleLabel}
+            </button>
+            <button className="mobile-menu-btn mobile-menu-btn--secondary" onClick={() => { toggleTheme(); setMenuOpen(false); }}>
+              {theme === 'dark' ? '☀ Light mode' : '☾ Dark mode'}
             </button>
             {user ? (
               <button className="mobile-menu-btn mobile-menu-btn--secondary" onClick={() => { signOut(); setMenuOpen(false); }} title={user.email}>

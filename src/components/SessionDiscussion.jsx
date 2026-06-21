@@ -295,7 +295,7 @@ export default function SessionDiscussion({ sessionId, clubId, isAdmin, book = {
 
   if (loading) {
     return (
-      <div style={{ color: 'rgba(233,223,202,0.3)', fontSize: '0.9rem', fontStyle: 'italic', padding: '1rem 0' }}>
+      <div style={{ color: 'var(--text-dim)', fontSize: '0.9rem', fontStyle: 'italic', padding: '1rem 0' }}>
         Loading discussion…
       </div>
     );
@@ -353,7 +353,7 @@ export default function SessionDiscussion({ sessionId, clubId, isAdmin, book = {
           )}
 
           {questions.length === 0 && !showAddQuestion && !oracleSuggestions && (
-            <div style={{ color: 'rgba(233,223,202,0.3)', fontStyle: 'italic', fontSize: '0.88rem', marginBottom: '1rem' }}>
+            <div style={{ color: 'var(--text-dim)', fontStyle: 'italic', fontSize: '0.88rem', marginBottom: '1rem' }}>
               No discussion questions yet.{isAdmin && ' Use the Oracle or add one manually.'}
             </div>
           )}
@@ -383,7 +383,7 @@ export default function SessionDiscussion({ sessionId, clubId, isAdmin, book = {
           )}
         </div>
         {comments.length === 0 && (
-          <div style={{ color: 'rgba(233,223,202,0.3)', fontStyle: 'italic', fontSize: '0.88rem', marginBottom: '0.75rem' }}>
+          <div style={{ color: 'var(--text-dim)', fontStyle: 'italic', fontSize: '0.88rem', marginBottom: '0.75rem' }}>
             No comments yet. Be the first.
           </div>
         )}

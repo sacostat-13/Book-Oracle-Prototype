@@ -106,7 +106,7 @@ export default function Lists() {
         <h1 className="page-title">
           {isSpanish ? 'Listas' : 'Curated'} <span className="accent">{isSpanish ? 'Curadas' : 'Lists'}</span>
         </h1>
-        <p style={{ color: 'rgba(233,223,202,0.45)', fontSize: '0.95rem', marginTop: '0.5rem' }}>
+        <p style={{ color: 'var(--text-muted)', fontSize: '0.95rem', marginTop: '0.5rem' }}>
           {isSpanish
             ? 'Creá listas temáticas y compartilas con quien quieras.'
             : 'Create themed reading lists and share them with anyone.'}
@@ -169,7 +169,7 @@ export default function Lists() {
 
                 {books.length === 0 ? (
                   <div
-                    style={{ padding: '1.5rem', textAlign: 'center', color: 'rgba(233,223,202,0.3)', fontStyle: 'italic', cursor: 'pointer', border: '1px dashed rgba(176,140,63,0.15)', borderRadius: 2 }}
+                    style={{ padding: '1.5rem', textAlign: 'center', color: 'var(--text-dim)', fontStyle: 'italic', cursor: 'pointer', border: '1px dashed rgba(176,140,63,0.15)', borderRadius: 2 }}
                     onClick={() => go('list-detail', { listId: list.id })}
                   >
                     {isSpanish ? 'Lista vacía — hacer clic para agregar libros' : 'Empty list — click to add books'}

@@ -50,7 +50,7 @@ function AddBookPicker({ list, onClose }) {
         />
         <div style={{ maxHeight: 400, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
           {candidates.length === 0 && (
-            <div style={{ padding: '1rem 0', color: 'rgba(233,223,202,.35)', fontStyle: 'italic' }}>
+            <div style={{ padding: '1rem 0', color: 'var(--text-dim)', fontStyle: 'italic' }}>
               {isSpanish ? 'Sin resultados.' : 'No books found.'}
             </div>
           )}
@@ -65,8 +65,8 @@ function AddBookPicker({ list, onClose }) {
                 <BookCover title={b.t} author={b.a} coverUrl={b.coverUrl} />
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontFamily: "'Cormorant Garamond',serif", fontStyle: 'italic', fontSize: '0.95rem', color: '#f0e6cc' }}>{b.t}</div>
-                <div style={{ fontSize: '0.75rem', color: 'rgba(233,223,202,.45)' }}>{b.a}</div>
+                <div style={{ fontFamily: "'Cormorant Garamond',serif", fontStyle: 'italic', fontSize: '0.95rem', color: 'var(--text-primary)' }}>{b.t}</div>
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{b.a}</div>
               </div>
               <span className="li-action" style={{ flexShrink: 0, opacity: adding === b.bookId ? 0.5 : 1 }}>
                 {adding === b.bookId ? '…' : '+ Add'}
@@ -126,7 +126,7 @@ export default function ListDetail() {
         <div className="page-eyebrow">{isSpanish ? 'Lista curada' : 'Curated List'}</div>
         <h1 className="page-title">{list.title}</h1>
         {list.description && (
-          <p style={{ color: 'rgba(233,223,202,.5)', marginTop: '0.5rem' }}>{list.description}</p>
+          <p style={{ color: 'var(--text-muted)', marginTop: '0.5rem' }}>{list.description}</p>
         )}
         <div style={{ marginTop: '0.75rem', display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
           <span className="level-pill">▤ {books.length} {isSpanish ? 'libros' : 'books'}</span>

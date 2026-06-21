@@ -299,7 +299,7 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
             <div className="book-modal-author">{snapshotBook.a}</div>
             <div className="book-page-actions" style={{ marginTop: '1.5rem' }}>
               {authPending || (isAuthed && !dataReady) ? (
-                <span style={{ fontSize: '0.8rem', color: 'rgba(233,223,202,0.35)', fontStyle: 'italic' }}>
+                <span style={{ fontSize: '0.8rem', color: 'var(--text-dim)', fontStyle: 'italic' }}>
                   {isSpanish ? 'Cargando tu biblioteca…' : 'Loading your library…'}
                 </span>
               ) : !isAuthed ? (
@@ -492,7 +492,7 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
           <div className="book-page-actions">
             {authPending ? (
               // Auth check in progress — don't flash sign-in prompt
-              <span style={{ fontSize: '0.8rem', color: 'rgba(233,223,202,0.35)', fontStyle: 'italic' }}>
+              <span style={{ fontSize: '0.8rem', color: 'var(--text-dim)', fontStyle: 'italic' }}>
                 {isSpanish ? 'Cargando…' : 'Loading…'}
               </span>
             ) : !isAuthed ? (
@@ -506,7 +506,7 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
               </a>
             ) : !dataReady ? (
               // Signed in but data still loading
-              <span style={{ fontSize: '0.8rem', color: 'rgba(233,223,202,0.35)', fontStyle: 'italic' }}>
+              <span style={{ fontSize: '0.8rem', color: 'var(--text-dim)', fontStyle: 'italic' }}>
                 {isSpanish ? 'Cargando tu biblioteca…' : 'Loading your library…'}
               </span>
             ) : inLib ? (

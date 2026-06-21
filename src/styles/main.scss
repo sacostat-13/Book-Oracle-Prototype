@@ -1,50 +1,38 @@
-// main.scss — Wishlist Oracle v0.26
-// Single entry point. All partials listed in dependency order.
-// Each partial is a standalone file in src/styles/.
-// To add a new partial: create src/styles/_name.scss and @use it here.
+// main.scss — Book Oracle v0.26
+// Single entry point. Using @import (not @use) for reliable Vite HMR
+// and [data-theme] attribute selector cascade across all partials.
 
-// ── Design tokens & base reset ─────────────────────────────────────────────
-@use 'tokens';
+// ── Tokens & reset ────────────────────────────────────────────────────────────
+@import 'tokens';
+@import 'reset';
+@import 'typography';
+@import 'global';
 
-// ── Layout ─────────────────────────────────────────────────────────────────
-@use 'layout';
+// ── Layout ────────────────────────────────────────────────────────────────────
+@import 'layout/layout';
+@import 'layout/nav';
+@import 'layout/mobile-nav';
+@import 'layout/shelf';
 
-// ── Navigation ─────────────────────────────────────────────────────────────
-@use 'nav';
-@use 'mobile-nav';
+// ── Components ────────────────────────────────────────────────────────────────
+@import 'components/buttons';
+@import 'components/badges';
+@import 'components/loading';
+@import 'components/toast';
+@import 'components/upload';
+@import 'components/card';
+@import 'components/modal';
 
-// ── Buttons & form primitives ──────────────────────────────────────────────
-@use 'buttons';
-@use 'upload';
-
-// ── Global UI ─────────────────────────────────────────────────────────────
-@use 'loading';
-@use 'toast';
-@use 'badges';
-
-// ── Onboarding ─────────────────────────────────────────────────────────────
-@use 'onboarding';
-
-// ── Dashboard ──────────────────────────────────────────────────────────────
-@use 'dashboard';
-@use 'dashboard-feed';   // v0.26: activity feed + currently reading strip
-@use 'shelf';
-
-// ── Book & list views ──────────────────────────────────────────────────────
-@use 'lists';
-@use 'book-page';
-@use 'cover-grid';
-@use 'series-page';
-
-// ── Modal ──────────────────────────────────────────────────────────────────
-@use 'modal';
-
-// ── Oracle ─────────────────────────────────────────────────────────────────
-@use 'oracle';
-@use 'oracle-ui';
-@use 'oracle-btn';
-@use 'similar';
-
-// ── Wishlist & plans ───────────────────────────────────────────────────────
-@use 'wishlist';
-@use 'plans';
+// ── Pages ─────────────────────────────────────────────────────────────────────
+@import 'pages/onboarding';
+@import 'pages/dashboard';
+@import 'pages/dashboard-feed';
+@import 'pages/oracle';
+@import 'pages/oracle-btn';
+@import 'pages/wishlist';
+@import 'pages/lists';
+@import 'pages/book-page';
+@import 'pages/similar';
+@import 'pages/cover-grid';
+@import 'pages/series-page';
+@import 'pages/plans';

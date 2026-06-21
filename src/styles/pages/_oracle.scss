@@ -1,0 +1,154 @@
+// pages/_oracle.scss
+// Oracle fork layout, controls panel, and mode toggle UI.
+
+// ── Oracle fork (two-column picker) ──────────────────────────────────────────
+.oracle-fork {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+}
+
+@media (max-width: 700px) { .oracle-fork { grid-template-columns: 1fr; } }
+
+// ── Controls panel ────────────────────────────────────────────────────────────
+.controls {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 1.5rem;
+  align-items: end;
+  margin-bottom: 3rem;
+  padding: 2rem;
+  background: var(--surface-tint);
+  border: 1px solid var(--border-subtle);
+  border-radius: 2px;
+  position: relative;
+
+  &::before, &::after {
+    content: "";
+    position: absolute;
+    width: 20px;
+    height: 20px;
+    border: 1px solid var(--gilt);
+    opacity: 0.4;
+  }
+
+  &::before { top: -5px;    left: -5px;  border-right: none; border-bottom: none; }
+  &::after  { bottom: -5px; right: -5px; border-left: none;  border-top: none; }
+}
+
+@media (max-width: 700px) { .controls { grid-template-columns: 1fr; } }
+
+// Field label
+.field label {
+  display: block;
+  font-family: 'Special Elite', monospace;
+  font-size: 0.7rem;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  color: var(--gilt);
+  margin-bottom: 0.7rem;
+  opacity: 0.8;
+}
+
+// Form primitives used in Oracle
+select, textarea {
+  width: 100%;
+  background: var(--shadow);
+  color: var(--paper);
+  border: 1px solid var(--input-border);
+  padding: 0.9rem 1rem;
+  font-family: 'EB Garamond', serif;
+  font-size: 1.05rem;
+  font-style: italic;
+  border-radius: 2px;
+  cursor: pointer;
+  appearance: none;
+  transition: border-color 0.2s;
+}
+
+textarea {
+  font-style: normal;
+  resize: vertical;
+  min-height: 100px;
+  cursor: text;
+}
+
+select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%23b08c3f' d='M6 8L0 0h12z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 1rem center;
+  padding-right: 2.5rem;
+}
+
+select:focus, select:hover, textarea:focus {
+  outline: none;
+  border-color: var(--gilt);
+}
+
+// ── Oracle mode toggle ────────────────────────────────────────────────────────
+.oracle-mode-toggle {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.oracle-mode-label {
+  font-family: 'Special Elite', monospace;
+  font-size: 0.7rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--gilt);
+  opacity: 0.8;
+}
+
+.toggle-group {
+  display: inline-flex;
+  background: rgba(13,9,7,0.6);
+  border: 1px solid var(--border-mid);
+  border-radius: 2px;
+  padding: 3px;
+  gap: 3px;
+}
+
+.toggle-btn {
+  background: transparent;
+  color: var(--paper-aged);
+  border: none;
+  padding: 0.6rem 1rem;
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 1rem;
+  font-style: italic;
+  cursor: pointer;
+  border-radius: 2px;
+  transition: all 0.2s;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  line-height: 1.1;
+  min-width: 160px;
+
+  .toggle-sub {
+    font-family: 'Special Elite', monospace;
+    font-size: 0.6rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    opacity: 0.6;
+    font-style: normal;
+    margin-top: 0.2rem;
+  }
+
+  &:hover { color: var(--paper); }
+
+  &.active {
+    background: rgba(176,140,63,0.15);
+    color: var(--gilt);
+
+    .toggle-sub { opacity: 0.8; }
+  }
+}
+
+@media (max-width: 600px) {
+  .toggle-btn { min-width: 0; flex: 1; padding: 0.5rem 0.7rem; font-size: 0.9rem; }
+}

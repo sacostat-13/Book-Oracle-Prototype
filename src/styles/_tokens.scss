@@ -1,0 +1,84 @@
+// _tokens.scss
+// Design tokens only: CSS custom properties + base box-sizing reset.
+// Body, app shell, ambient textures → _reset.scss
+// Text utility classes → _typography.scss
+
+// ── Dark mode (default) ───────────────────────────────────────────────────────
+:root {
+  --ink:          #1a1410;
+  --ink-deep:     #0d0907;
+  --paper:        #f4ead5;
+  --paper-aged:   #e8dcc0;
+  --paper-dim:    rgba(244,234,213,0.7);
+  --blood:        #6b1a1a;
+  --blood-bright: #8b2222;
+  --moss:         #3d4a36;
+  --gilt:         #b08c3f;
+  --gilt-bright:  #d4a574;
+  --shadow:       #0d0907;
+  --wood-dark:    #2a1810;
+  --wood-mid:     #3d2418;
+  --wood-light:   #5a3a2a;
+  --wood-grain:   #1f1109;
+
+  // Text hierarchy — use these instead of hardcoded rgba values
+  --text-primary:   var(--paper);
+  --text-secondary: var(--paper-aged);
+  --text-muted:     rgba(244,234,213,0.65);
+  --text-dim:       rgba(244,234,213,0.35);
+  --text-faint:     rgba(244,234,213,0.25);
+  --text-ghost:     rgba(244,234,213,0.15);
+
+  // Surface tokens
+  --surface:        var(--ink);
+  --surface-raised: var(--wood-mid);
+  --surface-tint:   rgba(244,234,213,0.04);
+  --surface-hover:  rgba(244,234,213,0.06);
+  --border-subtle:  rgba(176,140,63,0.18);
+  --border-mid:     rgba(176,140,63,0.30);
+  --input-bg:       rgba(176,140,63,0.04);
+  --input-border:   rgba(176,140,63,0.25);
+  --overlay-bg:     rgba(10,8,6,0.78);
+}
+
+// ── Light mode ────────────────────────────────────────────────────────────────
+[data-theme="light"] {
+  --ink:          #f7f0e0;
+  --ink-deep:     #ede3cc;
+  --paper:        #1c1510;
+  --paper-aged:   #3a2e22;
+  --paper-dim:    rgba(28,21,16,0.65);
+  --blood:        #7a1f1f;
+  --blood-bright: #9b2828;
+  --moss:         #3a4a34;
+  --gilt:         #8a6a28;
+  --gilt-bright:  #b08c3f;
+  --shadow:       rgba(28,21,16,0.15);
+  --wood-dark:    #e8ddc8;
+  --wood-mid:     #f0e8d4;
+  --wood-light:   #f7f2e6;
+  --wood-grain:   #e0d4b8;
+
+  --surface:        var(--ink);
+  --surface-raised: var(--wood-mid);
+  --surface-tint:   rgba(28,21,16,0.04);
+  --surface-hover:  rgba(28,21,16,0.06);
+  --border-subtle:  rgba(28,21,16,0.12);
+  --border-mid:     rgba(28,21,16,0.22);
+  --text-primary:   var(--paper);
+  --text-secondary: var(--paper-aged);
+  --text-muted:     rgba(28,21,16,0.70);
+  --text-dim:       rgba(28,21,16,0.40);
+  --text-faint:     rgba(28,21,16,0.28);
+  --text-ghost:     rgba(28,21,16,0.16);
+  --input-bg:       rgba(28,21,16,0.04);
+  --input-border:   rgba(28,21,16,0.18);
+  --overlay-bg:     rgba(240,232,212,0.88);
+}
+
+// ── Base reset ────────────────────────────────────────────────────────────────
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}

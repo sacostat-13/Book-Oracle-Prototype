@@ -391,7 +391,7 @@ export default function Dashboard({ onOpenBook }) {
       {events.length === 0 ? (
         <div className="feed-empty">
           <div style={{fontSize:'2rem',marginBottom:'0.75rem',opacity:0.25}}>❦</div>
-          <p style={{color:'rgba(233,223,202,0.35)',fontStyle:'italic',textAlign:'center'}}>
+          <p style={{color:'var(--text-dim)',fontStyle:'italic',textAlign:'center'}}>
             Your reading story starts here.<br/>
             Mark a book as read or add one to your wishlist.
           </p>

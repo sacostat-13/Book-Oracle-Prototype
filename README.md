@@ -4,7 +4,7 @@ A reading companion — wishlist, library, reading plans, book clubs, and an AI-
 for book discovery. Built with React + Vite + SCSS, backed by Supabase for auth
 and cross-device sync, and Netlify Functions for API proxying.
 
-> Current version: **v0.29** — see [Releases](#releases) below for changelog.
+> Current version: **v0.30** — see [Releases](#releases) below for changelog.
 > Upgrading from an earlier version? Check the matching `MIGRATION_*.md` / `UPDATE_*.md`.
 
 ---
@@ -127,31 +127,37 @@ oracle/
     ├── main.jsx                    Mount + providers
     ├── App.jsx                     Auth gate, route switch
     ├── styles/
-    │   ├── main.scss               Entry point — imports all partials
-    │   ├── tokens.scss             CSS variables + base reset
-    │   ├── nav.scss                Top nav + search
-    │   ├── mobile-nav.scss         Hamburger + mobile overlay
-    │   ├── layout.scss             App container
-    │   ├── buttons.scss            All button variants
-    │   ├── upload.scss             File upload UI
-    │   ├── loading.scss            Spinners + skeletons
-    │   ├── toast.scss              Toast notifications
-    │   ├── badges.scss             Reading level badges
-    │   ├── onboarding.scss         Onboarding flow
-    │   ├── dashboard.scss          Dashboard / library hero
-    │   ├── dashboard-feed.scss     Activity feed + currently reading strip (v0.26)
-    │   ├── shelf.scss              Shelf controls
-    │   ├── lists.scss              List views
-    │   ├── book-page.scss          Book detail page
-    │   ├── cover-grid.scss         Cover grid + currently reading cards + progress bars (v0.28)
-    │   ├── series-page.scss        Series page
-    │   ├── modal.scss              Book modal
-    │   ├── oracle.scss             Oracle page + cards
-    │   ├── oracle-ui.scss          Oracle mode toggle
-    │   ├── oracle-btn.scss         Oracle categorization button
-    │   ├── similar.scss            Similar books picker
-    │   ├── wishlist.scss           Wishlist toolbar + manual add
-    │   └── plans.scss              Reading plans
+    │   ├── main.scss               Entry point — @imports all partials in dependency order
+    │   ├── _tokens.scss            CSS custom properties (dark + light) + * box-sizing reset
+    │   ├── _reset.scss             html/body, app shell, ambient texture overlays
+    │   ├── _typography.scss        Text utility classes (.text-primary, .text-muted etc)
+    │   ├── _global.scss            Shared UI: .page-header, .empty-state, .breadcrumb
+    │   ├── layout/
+    │   │   ├── _layout.scss        .container
+    │   │   ├── _nav.scss           Top nav + nav search + nav dropdowns
+    │   │   ├── _mobile-nav.scss    Hamburger + full-screen mobile menu
+    │   │   └── _shelf.scss         Shelf controls bar
+    │   ├── components/
+    │   │   ├── _buttons.scss       .btn, .btn-ghost, .btn-gilt
+    │   │   ├── _badges.scss        Level pill + all genre/status pills
+    │   │   ├── _loading.scss       Spinner only
+    │   │   ├── _toast.scss         Toast notification
+    │   │   ├── _upload.scss        File upload drop zone
+    │   │   ├── _card.scss          Book card, cover, placeholder, pick-btn
+    │   │   └── _modal.scss         Backdrop, generic modal, book detail modal, series indicator
+    │   └── pages/
+    │       ├── _onboarding.scss    Onboarding flow
+    │       ├── _dashboard.scss     Library hero + book spines + CTA cards
+    │       ├── _dashboard-feed.scss Activity feed + currently reading strip + plan banner
+    │       ├── _oracle.scss        Oracle fork layout + controls + mode toggle
+    │       ├── _oracle-btn.scss    Oracle categorization button + progress indicator
+    │       ├── _wishlist.scss      Wishlist toolbar + manual add form
+    │       ├── _lists.scss         List/shelf views + selection mode + selection bar
+    │       ├── _book-page.scss     Book detail page + report form
+    │       ├── _similar.scss       Similar books picker + BookPage grid
+    │       ├── _cover-grid.scss    Cover grid + view toggle + currently reading cards
+    │       ├── _series-page.scss   Series page
+    │       └── _plans.scss         Reading plans
     ├── lib/
     │   ├── supabase.js             Supabase client
     │   ├── AuthContext.jsx         Google SSO via Supabase
@@ -313,13 +319,31 @@ and forward requests. Locally you need `netlify dev` to make them work.
 
 **Activity feed.** The dashboard feed is synthesised client-side from already-loaded state — no extra Supabase queries. Paginated at 5 events per page.
 
-**SCSS architecture.** `src/styles/main.scss` is a single entry point that `@use`s 25 focused partials. New features get their own partial where appropriate; smaller additions (like progress bars) go in the most relevant existing file.
+**SCSS architecture (v0.30).** `src/styles/main.scss` is a single entry point that `@import`s 28 focused partials organised into four layers: tokens/reset/global (root-level), then `layout/`, `components/`, and `pages/`. `@import` is used over `@use` for reliable Vite HMR and correct `[data-theme]` cascade across all partials. Max nesting depth is 3 levels. No layout rules inside component files; page files contain only page-specific overrides — shared patterns go in the nearest component partial.
 
 **Session cache.** `DataContext` caches Supabase state in `sessionStorage` so new tabs render instantly from cache, then validate in background. Cache keyed by userId with 30-minute expiry.
 
 ---
 
 ## Releases
+
+### v0.30 — Refactor: styles & routing
+
+**Light mode**
+- Theme toggle in the navigation switches between dark (default) and light mode. Preference persisted in `localStorage`; OS `prefers-color-scheme` respected on first visit.
+- All token overrides for light mode live in `_tokens.scss` under `[data-theme="light"]` — no inline styles anywhere. `ThemeContext.jsx` sets the attribute on `<html>`.
+
+**SCSS architecture rewrite**
+- Flat pile of 25 root-level partials reorganised into a proper four-layer hierarchy: root globals (`_tokens`, `_reset`, `_typography`, `_global`), then `layout/`, `components/`, and `pages/` subdirectories — 28 files in total.
+- Misplaced rules corrected: `.toast` extracted from `loading.scss`, `.empty-state`/`.breadcrumb` extracted from `toast.scss`, `.page-header` extracted from `dashboard.scss`, genre pills moved from `oracle-btn.scss` to `components/_badges.scss`, duplicate `.cover-grid-item` definition removed.
+- All files de-indented (phantom 2-space indent from the original monolith cut removed throughout).
+- Switched from `@use` to `@import` in `main.scss` — fixes Vite HMR not hot-reloading partial changes and ensures `[data-theme]` attribute selectors cascade correctly across all files.
+- Max 3-level nesting rule enforced. No layout rules inside component files.
+- `vite.config.js` updated with `server.watch` and `css.preprocessorOptions.scss.loadPaths` to ensure all subdirectory partials are watched.
+
+**Routing fix**
+- `syncLangParam()` in `I18nContext.jsx` was writing `?lang=es` into the URL via `new URL(window.location.href)`, which captured the hash and then re-serialised it incorrectly on Netlify Dev — causing book page URLs to break when the language was set to Spanish.
+- Fix: hash is now preserved separately and re-appended after the query param update, so the dev server never sees a URL change that could trigger a reload.
 
 ### v0.29 — Discussion & Decisions
 
@@ -499,7 +523,7 @@ and forward requests. Locally you need `netlify dev` to make them work.
 
 - `bookKey(book)` is the canonical book-equality function — use it for all dedup and `key=`
 - New mutations: dedupe input + mirror local state + persist via RPC + show toast
-- New view styles go in their own SCSS partial, `@use`d in `main.scss`
+- New view styles go in their own SCSS partial under `pages/`, `@import`ed in `main.scss`; shared UI patterns go in `components/`
 - `state.plans[]` holds all plans; `state.currentPlan` is the most recent (backwards compat)
 - `state.clubs[]` holds lightweight club entries (no sessions/members); full detail fetched on demand via `get_club_detail` RPC
 - The Vault (`vault` in DataContext) is a live Supabase query, not a bundled array

@@ -1,0 +1,71 @@
+// components/_badges.scss
+// Reading level badge + all genre/status pill variants used across the app.
+
+// ── Reading level badge ───────────────────────────────────────────────────────
+.level-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: rgba(176,140,63,0.1);
+  border: 1px solid rgba(176,140,63,0.4);
+  padding: 0.3rem 0.7rem;
+  border-radius: 20px;
+  font-family: 'Special Elite', monospace;
+  font-size: 0.65rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--gilt);
+}
+
+// ── Card genre tag ────────────────────────────────────────────────────────────
+.card-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  margin-bottom: 0.8rem;
+
+  .card-tag { margin-bottom: 0; }
+}
+
+// ── BookModal genre pills ─────────────────────────────────────────────────────
+.book-modal-genres {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-bottom: 0.5rem;
+}
+
+.book-modal-genres .book-modal-genre,
+.book-modal-genre {
+  display: inline-block;
+  font-family: 'Special Elite', monospace;
+  font-size: 0.65rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--gilt);
+  border: 1px solid rgba(176,140,63,0.35);
+  padding: 0.2rem 0.5rem;
+  border-radius: 2px;
+  cursor: default;
+}
+
+// ── List view genre pills ─────────────────────────────────────────────────────
+.li-genres {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  margin-top: 0.3rem;
+}
+
+.li-genre-pill {
+  font-family: 'Special Elite', monospace;
+  font-size: 0.58rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--gilt);
+  border: 1px solid rgba(176,140,63,0.3);
+  padding: 0.15rem 0.4rem;
+  border-radius: 2px;
+  opacity: 0.85;
+  cursor: default;
+}
