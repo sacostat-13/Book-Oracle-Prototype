@@ -1,28 +1,30 @@
 import { useRouter } from '../lib/RouterContext';
+import { useT } from '../lib/I18nContext';
 
 export default function OracleFork() {
   const { go } = useRouter();
+  const t = useT();
 
   return (
     <>
       <div className="breadcrumb">
-        <a onClick={() => go('dashboard')}>Dashboard</a> · Wishlist Oracle
+        <a onClick={() => go('dashboard')}>{t('oracle.breadcrumbDashboard')}</a> · {t('oracle.forkEyebrow')}
       </div>
       <div className="page-header">
-        <div className="page-eyebrow">Wishlist Oracle</div>
-        <h1 className="page-title">How shall we <span className="accent">divine</span>?</h1>
-        <p className="page-subtitle">Two ways to draw books from the vault.</p>
+        <div className="page-eyebrow">{t('oracle.forkEyebrow')}</div>
+        <h1 className="page-title">{t('oracle.forkTitle', { accent: <span className="accent">{t('oracle.forkTitleAccent')}</span> })}</h1>
+        <p className="page-subtitle">{t('oracle.forkSubtitle')}</p>
       </div>
       <div className="oracle-fork">
         <div className="cta-card" onClick={() => go('oracle-categories')}>
           <div className="cta-ornament">❦</div>
-          <h2 className="cta-title">By <span className="accent">genres</span></h2>
-          <p className="cta-desc">Pick a temperament — folk horror, gothic, sapphic, Latin American — and draw three books to choose from.</p>
+          <h2 className="cta-title">{t('oracle.forkByGenres', { accent: <span className="accent">{t('oracle.forkByGenresAccent')}</span> })}</h2>
+          <p className="cta-desc">{t('oracle.forkByGenresDesc')}</p>
         </div>
         <div className="cta-card" onClick={() => go('oracle-similar')}>
           <div className="cta-ornament">✦</div>
-          <h2 className="cta-title">Based on <span className="accent">other books</span></h2>
-          <p className="cta-desc">Tell us 1–3 books you've loved. We'll find others with the same blood in them.</p>
+          <h2 className="cta-title">{t('oracle.forkBySimilar', { accent: <span className="accent">{t('oracle.forkBySimilarAccent')}</span> })}</h2>
+          <p className="cta-desc">{t('oracle.forkBySimilarDesc')}</p>
         </div>
       </div>
     </>

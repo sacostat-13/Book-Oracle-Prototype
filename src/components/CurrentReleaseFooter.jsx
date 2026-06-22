@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { useI18n } from '../lib/I18nContext';
 import { publishedReleases, CURRENT_VERSION } from '../lib/releases';
+import { useT } from '../lib/I18nContext';
+
 import ReleaseNotesModal from './ReleaseNotesModal';
 
 // Small block intended for the bottom of the About page. Shows the current
@@ -13,13 +15,13 @@ import ReleaseNotesModal from './ReleaseNotesModal';
 export default function CurrentReleaseFooter() {
   const { lang } = useI18n();
   const [open, setOpen] = useState(false);
-  const isSpanish = lang === 'es';
+  const t = useT();
 
   const releases = publishedReleases();
   const current = releases.find((r) => r.version === CURRENT_VERSION) || releases[0];
   if (!current) return null;
 
-  const title = isSpanish ? current.titleEs : current.titleEn;
+  const title = t('releaseNotes.changelog');
 
   return (
     <>
@@ -50,7 +52,7 @@ export default function CurrentReleaseFooter() {
           >
             {current.version}
             {' · '}
-            {isSpanish ? 'versión actual' : 'current version'}
+            {t('releaseNotes.currentVersion')}
           </span>
         </div>
         <div
@@ -69,7 +71,7 @@ export default function CurrentReleaseFooter() {
           className="btn btn-ghost"
           style={{ fontSize: '0.85rem' }}
         >
-          {isSpanish ? 'Ver todas las versiones ❦' : 'See all releases ❦'}
+          {t('releaseNotes.seeAllReleases')}
         </button>
       </div>
 

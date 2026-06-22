@@ -1,4 +1,4 @@
-// src/components/ShelfScene.jsx — v0.26
+// src/components/ShelfScene.jsx — v0.31
 // npm install three
 //
 // FACE ASSIGNMENT (settled, no ambiguity):
@@ -28,6 +28,7 @@
 
 import { useEffect, useRef, useMemo, useState, useCallback } from 'react';
 import * as THREE from 'three';
+import { useT } from '../lib/I18nContext';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const MAX_VISIBLE  = 120;
@@ -229,9 +230,15 @@ export default function ShelfScene({books=[], onOpenBook, maxRows=ROWS}) {
   const [seed,setSeed]=useState(0);
   // Modal fade-in state: null | { book, opacity }
   const [modalFade,setModalFade]=useState(null);
+  const t = useT();
 
   const MODES =['recent','shuffle','by-genre','by-pages'];
-  const MLABEL={recent:'Most recent',shuffle:'Shuffled','by-genre':'By genre','by-pages':'By size'};
+  const MLABEL={
+    recent:   t('shelfScene.sortRecent'),
+    shuffle:  t('shelfScene.sortShuffle'),
+    'by-genre': t('shelfScene.sortGenre'),
+    'by-pages': t('shelfScene.sortSize'),
+  };
 
   const visible=useMemo(()=>{
     let pool=books.slice();
@@ -753,7 +760,7 @@ export default function ShelfScene({books=[], onOpenBook, maxRows=ROWS}) {
 
   if(!books.length) return(
     <div style={{padding:'2rem 0',color:'rgba(233,223,202,.3)',fontStyle:'italic',textAlign:'center'}}>
-      Your shelves are empty. Read a book or add one to fill them.
+      {t('shelfScene.empty')}
     </div>
   );
 
@@ -761,11 +768,11 @@ export default function ShelfScene({books=[], onOpenBook, maxRows=ROWS}) {
     <div style={{position:'relative',width:'100%',marginBottom:'0.5rem'}}>
       <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'14px'}}>
         <div style={{fontFamily:"'JetBrains Mono',monospace",fontSize:'11px',letterSpacing:'.22em',textTransform:'uppercase',color:'rgba(233,223,202,.4)'}}>
-          {books.length} books · <span style={{color:'#d8b66a'}}>{MLABEL[arrangement]}</span>
+          {t('shelfScene.bookCount', { count: books.length })} · <span style={{color:'#d8b66a'}}>{MLABEL[arrangement]}</span>
         </div>
         <button className="btn btn-ghost" onClick={cycleMode}
           style={{fontSize:'11px',letterSpacing:'.14em',textTransform:'uppercase'}}>
-          ✦ Re-arrange
+          {t('shelfScene.rearrange')}
         </button>
       </div>
       <div style={{position:'relative',width:'100%'}}

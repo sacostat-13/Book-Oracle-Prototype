@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useData } from '../lib/DataContext';
 import { useRouter } from '../lib/RouterContext';
 import ReportBookForm from './ReportBookForm';
-import { useI18n } from '../lib/I18nContext';
+import { useT } from '../lib/I18nContext';
 import { ALL_BOOKS, bookKey, findBookByTitle } from '../lib/bookHelpers';
 import { enrichBookFromOpenLibrary, fetchSeriesBooks } from '../lib/enrichmentService';
 import { lookupByTitle } from '../lib/bookLookup';
@@ -45,8 +45,7 @@ export default function BookModal({ book, onClose, onOpenBook }) {
     removeCategoryFromBook
   } = useData();
   const { go } = useRouter();
-  const { lang } = useI18n();
-  const isSpanish = lang === 'es';
+  const t = useT();
 
   const [enrichment, setEnrichment] = useState(null);
   const [seriesBooks, setSeriesBooks] = useState([]);
@@ -321,9 +320,9 @@ export default function BookModal({ book, onClose, onOpenBook }) {
             <div className="book-modal-author">{display.a}</div>
             <button
               className="book-modal-see-more"
-              onClick={() => { onClose(); go('book-page', { bookKey: k, from: 'wishlist', fromLabel: isSpanish ? 'Lista' : 'Wishlist' }); }}
+              onClick={() => { onClose(); go('book-page', { bookKey: k, from: 'wishlist', fromLabel: t('bookModal.fromWishlist') }); }}
             >
-              {isSpanish ? 'Ver más ↗' : 'See more ↗'}
+              {t('bookModal.seeMore')}
             </button>
             {liveRating > 0 && (
               <div className="book-modal-rating">
@@ -356,7 +355,7 @@ export default function BookModal({ book, onClose, onOpenBook }) {
                   ✓ Read
                 </span>
               )}
-              {inNext && <span className="level-pill">In Read Next</span>}
+              {inNext && <span className="level-pill">{t('bookPage.inNext')}</span>}
             </div>
           </div>
         </div>
@@ -365,7 +364,7 @@ export default function BookModal({ book, onClose, onOpenBook }) {
           {display.d && (
             <div className="book-modal-section">
               <div className="book-modal-section-title">
-                {isSpanish ? 'Descripción' : 'Description'}
+                {t('bookModal.description')}
                 {display.descriptionSource === 'wikipedia' && display.wikipediaUrl && (
                   <>
                     {' · '}
@@ -399,7 +398,7 @@ export default function BookModal({ book, onClose, onOpenBook }) {
               style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.6rem' }}
             >
               <span>
-                {isSpanish ? 'Categorías' : 'Categories'}
+                {t('bookModal.categories')}
                 {categories.length > 0 && (
                   <span style={{ opacity: 0.5, marginLeft: '0.4rem', fontSize: '0.7rem' }}>
                     · {categories.length}/10
@@ -413,8 +412,8 @@ export default function BookModal({ book, onClose, onOpenBook }) {
                   style={{ fontSize: '0.7rem', padding: '0.3rem 0.7rem' }}
                 >
                   {adderOpen
-                    ? (isSpanish ? 'Listo' : 'Done')
-                    : (isSpanish ? '+ Agregar' : '+ Add')}
+                    ? t('bookModal.done')
+                    : t('bookModal.addCategory')}
                 </button>
               )}
             </div>
@@ -428,9 +427,7 @@ export default function BookModal({ book, onClose, onOpenBook }) {
                   fontStyle: 'italic',
                 }}
               >
-                {isSpanish
-                  ? 'Aún no hay categorías.'
-                  : 'No categories yet.'}
+                {t('categories.noCategories')}
               </div>
             ) : (
               <div style={{ display: 'flex', gap: '0.45rem', flexWrap: 'wrap', alignItems: 'center' }}>
@@ -462,9 +459,7 @@ export default function BookModal({ book, onClose, onOpenBook }) {
                     fontStyle: 'italic',
                   }}
                 >
-                  {isSpanish
-                    ? 'Pulsá una pastilla con × para quitarla. Las verificadas (☩) no se pueden quitar — son globales.'
-                    : 'Click × on a pill to remove it. Verified (☩) ones are global and can\'t be removed.'}
+                  {t('categories.removeHelp')}
                 </div>
               </div>
             )}
@@ -476,15 +471,15 @@ export default function BookModal({ book, onClose, onOpenBook }) {
                 className="book-modal-section-title"
                 style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.6rem' }}
               >
-                <span>{isSpanish ? 'Tu calificación' : 'Your rating'}</span>
+                <span>{t('rating.eyebrowEdit')}</span>
                 <button
                   className="li-action"
                   onClick={() => setRatingEditorOpen(true)}
                   style={{ fontSize: '0.7rem', padding: '0.3rem 0.7rem' }}
                 >
                   {liveRating > 0 || liveNotes
-                    ? (isSpanish ? 'Editar' : 'Edit')
-                    : (isSpanish ? '+ Calificar' : '+ Add rating')}
+                    ? (t('common.edit'))
+                    : (t('bookModal.addRating'))}
                 </button>
               </div>
               {liveRating > 0 ? (
@@ -509,7 +504,7 @@ export default function BookModal({ book, onClose, onOpenBook }) {
                       fontStyle: 'italic',
                     }}
                   >
-                    {isSpanish ? 'Sin calificar aún.' : 'Not rated yet.'}
+                    {t('bookModal.notRatedYet')}
                   </div>
                 )
               )}
@@ -537,17 +532,17 @@ export default function BookModal({ book, onClose, onOpenBook }) {
           {seriesBlock && (
             <div className="book-modal-section">
               <div className="book-modal-section-title">
-                {isSpanish ? 'Parte de una serie' : 'Part of a series'} ·{' '}
+                {t('bookModal.partOfSeries')} ·{' '}
                 {seriesBlock.verified ? (
                   <span style={{ color: 'var(--gilt-bright)', fontSize: '0.65rem', letterSpacing: '0.08em' }}>
-                    ☩ {isSpanish ? 'verificada' : 'verified'}
+                    {t('bookModal.seriesVerifiedBadge')}
                   </span>
                 ) : seriesBlock.needsReview ? (
                   <span
                     style={{ color: 'var(--blood-bright)', fontSize: '0.65rem', letterSpacing: '0.08em', opacity: 0.85 }}
                     title="This series is in our catalog but hasn't been editor-verified yet."
                   >
-                    ⚠ {isSpanish ? 'requiere revisión' : 'needs review'}
+                    {t('bookModal.seriesNeedsReviewBadge')}
                   </span>
                 ) : (
                   <span style={{ opacity: 0.6, fontSize: '0.65rem' }}>{seriesBlock.sourceLabel}</span>
@@ -598,7 +593,7 @@ export default function BookModal({ book, onClose, onOpenBook }) {
               </div>
               <div style={{ marginTop: '0.8rem' }}>
                 <button className="li-action success" onClick={() => { onClose(); go('plan-create', { seriesName: seriesBlock.name }); }}>
-                  ✦ {isSpanish ? 'Crear un plan para terminar esta serie' : 'Create a plan to finish this series'}
+                  {t('bookModal.createSeriesPlan')}
                 </button>
               </div>
             </div>
@@ -606,7 +601,7 @@ export default function BookModal({ book, onClose, onOpenBook }) {
 
           {similar.length > 0 && (
             <div className="book-modal-section">
-              <div className="book-modal-section-title">{isSpanish ? 'Libros similares' : 'Similar books'}</div>
+              <div className="book-modal-section-title">{t('bookModal.similarBooks')}</div>
               <div className="similar-mini">
                 {similar.map((s, i) => {
                   const sk = bookKey(s);
@@ -634,7 +629,7 @@ export default function BookModal({ book, onClose, onOpenBook }) {
         </div>
 
         <div className="book-modal-purchase">
-          <div className="book-modal-purchase-label">Acquire this book</div>
+          <div className="book-modal-purchase-label">{t('bookModal.acquireLabel')}</div>
           <div className="book-modal-purchase-buttons">
             {purchaseLinks(display).map((link) => (
               <a
@@ -677,7 +672,7 @@ export default function BookModal({ book, onClose, onOpenBook }) {
           )}
         </div>
 
-        <ReportBookForm book={display} isSpanish={isSpanish} />
+        <ReportBookForm book={display} />
       </div>
 
       {ratingEditorOpen && libraryRow && (

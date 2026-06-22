@@ -1,12 +1,10 @@
-// src/views/ListView.jsx — v0.27
-// Public read-only view for shared lists and plans.
-// Rendered when a non-user (or any user) opens a share URL.
-// Route: #list-view/{listId} or #plan-view-public/{planId}
+// src/views/ListView.jsx — v0.31
 
 import { useState, useEffect } from 'react';
 import { useRouter } from '../lib/RouterContext';
 import { useAuth } from '../lib/AuthContext';
 import { useData } from '../lib/DataContext';
+import { useT } from '../lib/I18nContext';
 import { supabase } from '../lib/supabase';
 
 function CoverImg({ book, size = 60 }) {
@@ -26,9 +24,10 @@ export default function ListView() {
   const { route, go } = useRouter();
   const { user }      = useAuth();
   const { state }     = useData();
-  const [data, setData]     = useState(null);
+  const t             = useT();
+  const [data, setData]       = useState(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError]   = useState(null);
+  const [error, setError]     = useState(null);
 
   const listId = route.params?.listId;
   const planId = route.params?.planId;
@@ -40,11 +39,11 @@ export default function ListView() {
       try {
         if (mode === 'list') {
           const { data: d, error: e } = await supabase.rpc('get_public_list', { p_list_id: listId });
-          if (e || !d) throw new Error('List not found or not public');
+          if (e || !d) throw new Error(t('lists.notFound'));
           setData(d);
         } else {
           const { data: d, error: e } = await supabase.rpc('get_public_plan', { p_plan_id: planId });
-          if (e || !d) throw new Error('Plan not found');
+          if (e || !d) throw new Error(t('lists.notFound'));
           setData(d);
         }
       } catch (err) {
@@ -59,16 +58,16 @@ export default function ListView() {
   if (loading) return (
     <div className="loading" style={{ paddingTop: '6rem' }}>
       <div className="loading-spinner" />
-      <div className="loading-text">Loading…</div>
+      <div className="loading-text">{t('lists.loading')}</div>
     </div>
   );
 
   if (error || !data) return (
     <div className="empty-state">
       <div className="ornament">❦</div>
-      <div className="empty-state-title">{error || 'Not found'}</div>
-      <div className="empty-state-text">This list may be private or no longer exist.</div>
-      {user && <button className="btn" style={{ marginTop: '1.5rem' }} onClick={() => go('dashboard')}>Go to dashboard</button>}
+      <div className="empty-state-title">{error || t('lists.notFound')}</div>
+      <div className="empty-state-text">{t('lists.notFoundText')}</div>
+      {user && <button className="btn" style={{ marginTop: '1.5rem' }} onClick={() => go('dashboard')}>{t('lists.toDashboard')}</button>}
     </div>
   );
 
@@ -79,23 +78,20 @@ export default function ListView() {
       <>
         <div className="page-header">
           <div className="page-eyebrow" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <span>Curated by</span>
-            <strong style={{ color: '#d8b66a' }}>{owner.display_name}</strong>
+            {t('lists.curatedBy', { name: <strong style={{ color: '#d8b66a' }}>{owner.display_name}</strong> })}
           </div>
           <h1 className="page-title">{list.title}</h1>
           {list.description && (
             <p style={{ color: 'var(--text-muted)', marginTop: '0.5rem' }}>{list.description}</p>
           )}
           <div style={{ marginTop: '0.75rem' }}>
-            <span className="level-pill">▤ {books.length} books</span>
+            <span className="level-pill">▤ {t('lists.bookCount', { count: books.length })}</span>
           </div>
         </div>
 
         {user && (
           <div style={{ marginBottom: '1.5rem' }}>
-            <button className="btn btn-ghost" onClick={() => go('lists')}>
-              ↗ Save to my lists
-            </button>
+            <button className="btn btn-ghost" onClick={() => go('lists')}>{t('lists.saveToMyLists')}</button>
           </div>
         )}
 
@@ -114,10 +110,9 @@ export default function ListView() {
               {user && (
                 <div className="li-actions">
                   <button className="li-action" onClick={() => {
-                    // Open book modal if it's in the user's collection
                     go('book-page', { bookKey: `${(entry.book.title||'').toLowerCase().replace(/[^a-z0-9]/g,'')}|${(entry.book.author||'').toLowerCase().replace(/[^a-z0-9]/g,'').slice(0,10)}` });
                   }}>
-                    View →
+                    {t('lists.viewBook')}
                   </button>
                 </div>
               )}
@@ -137,23 +132,22 @@ export default function ListView() {
     <>
       <div className="page-header">
         <div className="page-eyebrow" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <span>Reading plan by</span>
-          <strong style={{ color: '#d8b66a' }}>{owner.display_name}</strong>
+          {t('plans.planBy', { name: <strong style={{ color: '#d8b66a' }}>{owner.display_name}</strong> })}
         </div>
         <h1 className="page-title">{plan.title || content.title}</h1>
         {content.intro && (
           <p style={{ color: 'var(--text-muted)', marginTop: '0.5rem' }}>{content.intro}</p>
         )}
         <div style={{ marginTop: '0.75rem' }}>
-          <span className="level-pill">▤ {books.length} books</span>
-          {content.timeline && <span className="level-pill" style={{ marginLeft: '0.5rem' }}>◷ {content.timeline} months</span>}
+          <span className="level-pill">▤ {t('plans.viewBooks', { count: books.length })}</span>
+          {content.timeline && <span className="level-pill" style={{ marginLeft: '0.5rem' }}>◷ {t('plans.timeline', { count: content.timeline })}</span>}
         </div>
       </div>
 
       {user && (
         <div style={{ marginBottom: '1.5rem' }}>
           <button className="btn btn-gilt" onClick={() => go('plan-view', { planId: plan.id })}>
-            Save this plan →
+            {t('plans.savePlan')}
           </button>
         </div>
       )}
@@ -161,7 +155,7 @@ export default function ListView() {
       <div>
         {books.map((b, i) => (
           <div key={i} className="plan-step">
-            <div className="plan-month">Month {b.month || i + 1}</div>
+            <div className="plan-month">{t('plans.month', { n: b.month || i + 1 })}</div>
             <div>
               <div className="plan-book">{b.title || b.t}</div>
               <div className="plan-author">{b.author || b.a}</div>

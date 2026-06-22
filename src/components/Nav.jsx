@@ -21,7 +21,6 @@ export default function Nav({ onPreviewBook }) {
   const [moreOpen, setMoreOpen]       = useState(false);
   const readingRef = useRef(null);
   const moreRef    = useRef(null);
-  const isSpanish  = lang === 'es';
 
   const toggleLabel = lang === 'en' ? t('nav.switchToSpanish') : t('nav.switchToEnglish');
 
@@ -89,7 +88,7 @@ export default function Nav({ onPreviewBook }) {
               aria-haspopup="true"
               aria-expanded={readingOpen}
             >
-              {isSpanish ? 'Leyendo' : 'Reading'}
+              {t('currentlyReading.titleAccent')}
               {readingCount > 0 && <span className="nav-badge">{readingCount}</span>}
               <span className="nav-dropdown-caret" aria-hidden>▾</span>
             </button>
@@ -99,7 +98,7 @@ export default function Nav({ onPreviewBook }) {
                   className={`nav-dropdown-item${route.name==='currently-reading'?' active':''}`}
                   onClick={() => navigate('currently-reading')}
                 >
-                  {isSpanish ? 'Leyendo ahora' : 'Currently Reading'}
+                  {t('about.featureCurrentlyReadingTitle')}
                   {state.currentlyReading?.length > 0 && (
                     <span className="nav-badge">{state.currentlyReading.length}</span>
                   )}
@@ -119,19 +118,19 @@ export default function Nav({ onPreviewBook }) {
 
           {/* Lists */}
           <button className={`nav-btn${route.name==='lists'?' active':''}`} onClick={() => go('lists')}>
-            {isSpanish ? 'Mis listas' : 'Lists'}
+            {t('about.featureListsTitle')}
             {listsCount > 0 && <span className="nav-badge">{listsCount}</span>}
           </button>
 
           {/* Book Clubs */}
           <button className={`nav-btn${clubsActive?' active':''}`} onClick={() => go('book-clubs')}>
-            {isSpanish ? 'Clubs' : 'Clubs'}
+            {t('clubs.titleAccent')}
             {clubsCount > 0 && <span className="nav-badge">{clubsCount}</span>}
           </button>
 
           {/* Oracle */}
           <button className={`nav-btn${route.name==='oracle'?' active':''}`} onClick={() => go('oracle')}>
-            {isSpanish ? 'Oráculo' : 'Oracle'}
+            {t('about.titleAccent')}
           </button>
 
           {/* ··· overflow dropdown */}
@@ -199,11 +198,11 @@ export default function Nav({ onPreviewBook }) {
             {[
               { name:'wishlist',          label: t('nav.wishlist'),                 count: state.wishlist.length },
               { name:'library',           label: t('nav.library'),                  count: state.library.length },
-              { name:'currently-reading', label: isSpanish?'Leyendo ahora':'Currently Reading', count: state.currentlyReading?.length },
+              { name:'currently-reading', label: t('nav.currentlyReadingFull'), count: state.currentlyReading?.length },
               { name:'read-next',         label: t('nav.readNext'),                 count: state.readNext?.length },
-              { name:'lists',             label: isSpanish?'Mis listas':'Lists',    count: listsCount },
-              { name:'book-clubs',        label: isSpanish?'Clubs':'Book Clubs',    count: clubsCount },
-              { name:'oracle',            label: isSpanish?'Oráculo':'Oracle',      count: 0 },
+              { name:'lists',             label: t('nav.lists'),    count: listsCount },
+              { name:'book-clubs',        label: t('nav.bookClubs'),    count: clubsCount },
+              { name:'oracle',            label: t('nav.oracle'),      count: 0 },
               { name:'profile',           label: t('nav.profile'),                  count: 0 },
               { name:'about',             label: t('nav.about'),                    count: 0 },
             ].map(({ name, label, count }) => (

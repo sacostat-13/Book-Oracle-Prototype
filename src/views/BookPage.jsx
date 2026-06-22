@@ -6,7 +6,7 @@
 import { useEffect, useState } from 'react';
 import { useData } from '../lib/DataContext';
 import { useRouter } from '../lib/RouterContext';
-import { useI18n } from '../lib/I18nContext';
+import { useT } from '../lib/I18nContext';
 import { bookKey, findBookByTitle, openBookTab } from '../lib/bookHelpers';
 import { enrichBookFromOpenLibrary, fetchSeriesBooks } from '../lib/enrichmentService';
 import { hardcoverGetBook } from '../lib/hardcoverService';
@@ -64,13 +64,15 @@ function computeSimilar(display, genresByBookId, pool, limit = 12) {
   return scored.slice(0, limit).map(s => s.book);
 }
 
-function SimilarBooks({ similar, isSpanish }) {
+function SimilarBooks({ similar }) {
+  const t = useT();
+  
   if (!similar.length) return null;
 
   return (
     <div className="book-page-similar">
       <div className="book-modal-section-title" style={{ marginBottom: '1.25rem' }}>
-        {isSpanish ? 'Libros similares' : 'You might also like'}
+        {t('bookPage.youMightAlsoLike')}
       </div>
       <div className="similar-grid">
         {similar.map((b, i) => (
@@ -115,8 +117,7 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
     upsertDiscoveredBook,
   } = useData();
   const { route, go } = useRouter();
-  const { lang } = useI18n();
-  const isSpanish = lang === 'es';
+  const t = useT();
 
   // The book is passed via App-level state (route.params.bookKey) and resolved
   // from wishlist + library + readNext. This avoids encoding large objects in URLs.
@@ -267,15 +268,13 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
       <div className="empty-state" style={{ paddingTop: '4rem' }}>
         <div className="ornament">❦</div>
         <div className="empty-state-title">
-          {isSpanish ? 'Libro no encontrado' : 'Book not found'}
+          {t('bookPage.notFound')}
         </div>
         <div className="empty-state-text">
-          {isSpanish
-            ? 'Este libro no está en tu lista, biblioteca o cola de lectura.'
-            : 'This book isn\'t in your wishlist, library, or read queue.'}
+          {t('bookPage.notInCollection')}
         </div>
         <button className="btn" style={{ marginTop: '1.5rem' }} onClick={() => go(from)}>
-          {isSpanish ? '← Volver' : '← Back'}
+          {t('onboarding.back')}
         </button>
       </div>
     );
@@ -300,11 +299,11 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
             <div className="book-page-actions" style={{ marginTop: '1.5rem' }}>
               {authPending || (isAuthed && !dataReady) ? (
                 <span style={{ fontSize: '0.8rem', color: 'var(--text-dim)', fontStyle: 'italic' }}>
-                  {isSpanish ? 'Cargando tu biblioteca…' : 'Loading your library…'}
+                  {t('bookPage.loadingLibrary')}
                 </span>
               ) : !isAuthed ? (
                 <a href={window.location.pathname} className="btn btn-ghost" style={{ textDecoration: 'none' }}>
-                  {isSpanish ? 'Iniciar sesión para agregar ↗' : 'Sign in to add to your library ↗'}
+                  {t('bookPage.signInToAdd')}
                 </a>
               ) : null}
             </div>
@@ -313,7 +312,7 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
         {snapshotBook.d && (
           <div className="book-page-body">
             <div className="book-modal-section-title">
-              {isSpanish ? 'Descripción' : 'Description'}
+              {t('bookModal.description')}
             </div>
             <p className="book-page-description">{snapshotBook.d}</p>
           </div>
@@ -435,28 +434,28 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
 
           {/* Meta pills */}
           <div className="book-modal-meta" style={{ marginTop: '0.75rem' }}>
-            {display.pp && <span className="level-pill">📄 {display.pp} {isSpanish ? 'páginas' : 'pages'}</span>}
+            {display.pp && <span className="level-pill">📄 {display.pp} {t('profile.statPages')}</span>}
             {display.c && <span className="level-pill">prose {'●'.repeat(display.c)}{'○'.repeat(5 - display.c)}</span>}
             {display.p && <span className="level-pill">depth {'●'.repeat(display.p)}{'○'.repeat(5 - display.p)}</span>}
             {(display.status === 'verified' || display.status === 'oracle_categorized') && (
               <span className="level-pill" style={{ background: 'rgba(176, 140, 63, 0.18)', borderColor: 'var(--gilt)', color: 'var(--gilt-bright)' }}
                 title="Curated · verified by our editors">
-                ☩ {isSpanish ? 'Verificado' : 'Verified'}
+                {t('bookPage.verified')}
               </span>
             )}
             {inLib && (
               <span className="level-pill" style={{ background: 'var(--moss)', color: 'var(--paper)', borderColor: 'var(--moss)' }}>
-                ✓ {isSpanish ? 'Leído' : 'Read'}
+                ✓ {t('navSearch.statusRead')}
               </span>
             )}
             {inWish && !inLib && (
               <span className="level-pill">
-                {isSpanish ? 'En tu lista' : 'In wishlist'}
+                {t('bookPage.inWishlistShort')}
               </span>
             )}
             {inNext && (
               <span className="level-pill">
-                {isSpanish ? 'En tu cola' : 'In Read Next'}
+                {t('bookPage.inReadNextShort')}
               </span>
             )}
           </div>
@@ -466,20 +465,20 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 0', opacity: 0.4 }}>
               <div className="loading-spinner" style={{ width: 16, height: 16 }} />
               <span style={{ fontFamily: "'Special Elite',monospace", fontSize: '0.65rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--paper-aged)' }}>
-                {isSpanish ? 'Cargando saga…' : 'Loading series…'}
+                {t('bookPage.loadingSeries')}
               </span>
             </div>
           )}
           {!seriesLoading && seriesBlock && (
             <div className="book-page-series">
               <div className="book-page-series-label">
-                {isSpanish ? 'PARTE DE UNA SERIE' : 'PART OF A SERIES'}
+                {t('bookPage.partOfSeries')}
               </div>
               <div className="series-name">{seriesBlock.name}</div>
               <div className="series-progress">
                 {seriesBlock.dots}
                 <span className="series-progress-text">
-                  {seriesBlock.readCount}/{seriesBlock.totalBooks} {isSpanish ? 'leídos' : 'read'}
+                  {t('bookPage.seriesRead', { read: seriesBlock.readCount, total: seriesBlock.totalBooks })}
                 </span>
               </div>
               {seriesDescription && (
@@ -493,7 +492,7 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
             {authPending ? (
               // Auth check in progress — don't flash sign-in prompt
               <span style={{ fontSize: '0.8rem', color: 'var(--text-dim)', fontStyle: 'italic' }}>
-                {isSpanish ? 'Cargando…' : 'Loading…'}
+                {t('common.loading')}
               </span>
             ) : !isAuthed ? (
               // Confirmed not signed in — show sign-in prompt
@@ -502,38 +501,38 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
                 className="btn btn-ghost"
                 style={{ textDecoration: 'none' }}
               >
-                {isSpanish ? 'Iniciar sesión para agregar ↗' : 'Sign in to add to your library ↗'}
+                {t('bookPage.signInToAdd')}
               </a>
             ) : !dataReady ? (
               // Signed in but data still loading
               <span style={{ fontSize: '0.8rem', color: 'var(--text-dim)', fontStyle: 'italic' }}>
-                {isSpanish ? 'Cargando tu biblioteca…' : 'Loading your library…'}
+                {t('bookPage.loadingLibrary')}
               </span>
             ) : inLib ? (
               <button className="btn btn-ghost" onClick={() => removeFromLibrary(display)}>
-                {isSpanish ? 'Quitar de la biblioteca' : 'Remove from library'}
+                {t('bookPage.removeFromLibrary')}
               </button>
             ) : inNext ? (
               <>
                 <button className="btn" onClick={() => markAsRead(display)}>
-                  ✓ {isSpanish ? 'Marcar como leído' : 'Mark as read'}
+                  {t('bookPage.markAsRead')}
                 </button>
                 <button className="btn btn-ghost" onClick={() => removeFromReadNext(display)}>
-                  {isSpanish ? 'Quitar de la cola' : 'Remove from queue'}
+                  {t('wishlist.remove')}
                 </button>
               </>
             ) : (
               <>
                 <button className="btn" onClick={() => addToReadNext(display)}>
-                  + {isSpanish ? 'Agregar a la cola' : 'Add to Read Next'}
+                  {t('bookPage.addToNext')}
                 </button>
                 {!inWish && (
                   <button className="btn btn-gilt" onClick={() => addToWishlist(display)}>
-                    + {isSpanish ? 'Agregar a la lista' : 'Add to Wishlist'}
+                    {t('bookPage.addToWishlist')}
                   </button>
                 )}
                 <button className="btn btn-ghost" onClick={() => markAsRead(display)}>
-                  ✓ {isSpanish ? 'Marcar como leído' : 'Mark as read'}
+                  {t('bookPage.markAsRead')}
                 </button>
               </>
             )}
@@ -564,7 +563,7 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
       {display.d && (
         <div className="book-page-body">
           <div className="book-modal-section-title">
-            {isSpanish ? 'Descripción' : 'Description'}
+            {t('bookModal.description')}
             {display.descriptionSource === 'wikipedia' && display.wikipediaUrl && (
               <>
                 {' · '}
@@ -590,20 +589,20 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
             className="btn"
             onClick={() => go('series-page', { seriesName: seriesBlock.name, from: 'book-page', fromLabel: display.t })}
           >
-            {isSpanish ? 'Abrir saga ↗' : 'Open Series ↗'}
+            {t('bookPage.openSeries')}
           </button>
           <button
             className="li-action success"
             onClick={() => go('plan-create', { seriesName: seriesBlock.name })}
           >
-            ✦ {isSpanish ? 'Crear plan' : 'Create plan'}
+            {t('bookModal.createPlan')}
           </button>
         </div>
       )}
 
-      <SimilarBooks similar={similar} isSpanish={isSpanish} />
+      <SimilarBooks similar={similar} />
 
-      <ReportBookForm book={display} isSpanish={isSpanish} />
+      <ReportBookForm book={display} />
     </div>
   );
 }

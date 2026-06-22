@@ -1,14 +1,16 @@
 import { useData } from '../lib/DataContext';
+import { useT } from '../lib/I18nContext';
 import { bookKey } from '../lib/bookHelpers';
 import BookCover from './BookCover';
 
 export default function BookCard({ book, reason, onClick }) {
   const { state, addToReadNext } = useData();
+  const t = useT();
   const k = bookKey(book);
   const inLib = state.library.some((b) => bookKey(b) === k);
   const inNext = state.readNext.some((b) => bookKey(b) === k);
   const disabled = inLib || inNext;
-  const label = inLib ? '✓ In Library' : inNext ? '✓ Claimed' : 'Read this one next';
+  const label = inLib ? t('bookPage.inLibrary') : inNext ? t('bookPage.inNext') : t('bookPage.addToNext');
   const btnClass = inLib ? 'in-library' : inNext ? 'picked' : '';
 
   // v0.15: show all Oracle genres as pills; fall back to b.g if not yet categorized.

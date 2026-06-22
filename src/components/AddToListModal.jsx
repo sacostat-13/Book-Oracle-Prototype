@@ -5,15 +5,14 @@
 import { useState } from 'react';
 import { useData } from '../lib/DataContext';
 import { useRouter } from '../lib/RouterContext';
-import { useI18n } from '../lib/I18nContext';
+import { useT } from '../lib/I18nContext';
 
 export default function AddToListModal({ books = [], onClose }) {
   // books can be a single book object or an array
   const bookList = Array.isArray(books) ? books : [books];
   const { state, addBookToList, createList } = useData();
   const { go } = useRouter();
-  const { lang } = useI18n();
-  const isSpanish = lang === 'es';
+  const t = useT();
   const [creating, setCreating] = useState(false);
   const [newTitle, setNewTitle] = useState('');
   const [saving, setSaving] = useState(false);
@@ -60,8 +59,8 @@ export default function AddToListModal({ books = [], onClose }) {
 
         <div className="book-modal-section-title" style={{ marginBottom: '1.25rem', paddingRight: '2rem' }}>
           {isSingle
-            ? (isSpanish ? 'Agregar a una lista' : 'Add to a list')
-            : (isSpanish ? `Agregar ${bookList.length} libros a una lista` : `Add ${bookList.length} books to a list`)}
+            ? (t('addToList.title'))
+            : t('addToList.addMultiple', { count: bookList.length })}
         </div>
 
         {/* Book preview(s) */}
@@ -93,14 +92,14 @@ export default function AddToListModal({ books = [], onClose }) {
             fontFamily: "'Cormorant Garamond',serif", fontStyle: 'italic', color: 'var(--paper-aged)',
           }}>
             {bookList.slice(0, 3).map(b => b.t).join(', ')}
-            {bookList.length > 3 && ` ${isSpanish ? 'y' : 'and'} ${bookList.length - 3} ${isSpanish ? 'más' : 'more'}…`}
+            {bookList.length > 3 && ` ${t('common.and')} ${bookList.length - 3} ${t('common.more')}…`}
           </div>
         )}
 
         {/* Lists */}
         {lists.length === 0 && !creating ? (
           <p style={{ color: 'var(--paper-aged)', fontStyle: 'italic', opacity: 0.6, marginBottom: '1rem' }}>
-            {isSpanish ? 'Todavía no tenés listas.' : "You don't have any lists yet."}
+            {t('addToList.noLists')}
           </p>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', marginBottom: '1rem' }}>
@@ -125,7 +124,7 @@ export default function AddToListModal({ books = [], onClose }) {
                     {list.title}
                   </span>
                   <span style={{ fontFamily: "'Special Elite',monospace", fontSize: '0.6rem', letterSpacing: '0.1em', textTransform: 'uppercase', opacity: 0.5, marginLeft: '0.75rem', flexShrink: 0 }}>
-                    {adding ? '…' : done ? `✓ ${isSpanish ? 'Agregado' : 'Added'}` : `${list.books?.length || 0} ${isSpanish ? 'libros' : 'books'}`}
+                    {adding ? '…' : done ? t('addToList.addedDone') : t('addToList.bookCount', { count: list.books?.length || 0 })}
                   </span>
                 </button>
               );
@@ -138,7 +137,7 @@ export default function AddToListModal({ books = [], onClose }) {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
             <input
               className="search-input"
-              placeholder={isSpanish ? 'Nombre de la lista' : 'List name'}
+              placeholder={t('addToList.listNamePlaceholder')}
               value={newTitle}
               onChange={e => setNewTitle(e.target.value)}
               autoFocus
@@ -146,21 +145,21 @@ export default function AddToListModal({ books = [], onClose }) {
             />
             <div style={{ display: 'flex', gap: '0.5rem' }}>
               <button className="btn" onClick={handleCreate} disabled={!newTitle.trim() || saving} style={{ flex: 1 }}>
-                {saving ? '…' : (isSpanish ? 'Crear y agregar' : 'Create & add')}
+                {saving ? '…' : (t('addToList.createAndAdd'))}
               </button>
               <button className="btn btn-ghost" onClick={() => { setCreating(false); setNewTitle(''); }}>
-                {isSpanish ? 'Cancelar' : 'Cancel'}
+                {t('common.cancel')}
               </button>
             </div>
           </div>
         ) : (
           <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'space-between', borderTop: '1px solid rgba(176,140,63,0.1)', paddingTop: '0.85rem' }}>
             <button className="btn" onClick={() => setCreating(true)}>
-              + {isSpanish ? 'Nueva lista' : 'New list'}
+              + {t('lists.newListBtn')}
             </button>
             <button className="btn btn-ghost" onClick={() => { onClose(); go('lists'); }}
               style={{ fontSize: '0.8rem' }}>
-              {isSpanish ? 'Gestionar listas ↗' : 'Manage lists ↗'}
+              {t('addToList.manageLists')}
             </button>
           </div>
         )}

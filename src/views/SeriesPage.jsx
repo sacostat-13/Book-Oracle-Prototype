@@ -14,7 +14,7 @@
 import { useEffect, useState, useMemo } from 'react';
 import { useData } from '../lib/DataContext';
 import { useRouter } from '../lib/RouterContext';
-import { useI18n } from '../lib/I18nContext';
+import { useT } from '../lib/I18nContext';
 import { bookKey } from '../lib/bookHelpers';
 import { fetchSeriesBooks } from '../lib/enrichmentService';
 import { fetchSeriesDescriptionFromWikipedia } from '../lib/seriesService';
@@ -24,12 +24,11 @@ import { openBookTab } from '../lib/bookHelpers';
 export default function SeriesPage() {
   const { state, addToWishlist, addToReadNext, markAsRead, removeFromLibrary } = useData();
   const { route, go } = useRouter();
-  const { lang } = useI18n();
-  const isSpanish = lang === 'es';
+  const t = useT();
 
   const seriesName = route.params?.seriesName;
   const from      = route.params?.from      || 'dashboard';
-  const fromLabel = route.params?.fromLabel || (isSpanish ? 'Dashboard' : 'Dashboard');
+  const fromLabel = route.params?.fromLabel || (t('about.featureDashboardTitle'));
 
   const [seriesBooks,    setSeriesBooks]    = useState([]);
   const [description,    setDescription]    = useState(null);
@@ -129,8 +128,8 @@ export default function SeriesPage() {
     return (
       <div className="empty-state" style={{ paddingTop: '4rem' }}>
         <div className="ornament">❦</div>
-        <div className="empty-state-title">{isSpanish ? 'Saga no encontrada' : 'Series not found'}</div>
-        <button className="btn" style={{ marginTop: '1.5rem' }} onClick={() => go(from)}>{isSpanish ? '← Volver' : '← Back'}</button>
+        <div className="empty-state-title">{t('seriesPage.notFound')}</div>
+        <button className="btn" style={{ marginTop: '1.5rem' }} onClick={() => go(from)}>{t('onboarding.back')}</button>
       </div>
     );
   }
@@ -147,15 +146,15 @@ export default function SeriesPage() {
       {/* Hero */}
       <div className="series-page-hero">
         <div className="page-eyebrow">
-          {isSpanish ? 'SAGA' : 'SERIES'}
+          {t('seriesPage.seriesLabel')}
           {publicationStatus === 'ongoing' && (
             <span className="series-page-status-pill series-page-status-ongoing">
-              {isSpanish ? 'En curso' : 'Ongoing'}
+              {t('seriesPage.statusOngoing')}
             </span>
           )}
           {publicationStatus === 'complete' && (
             <span className="series-page-status-pill series-page-status-complete">
-              {isSpanish ? 'Completa' : 'Complete'}
+              {t('seriesPage.statusComplete')}
             </span>
           )}
         </div>
@@ -173,15 +172,15 @@ export default function SeriesPage() {
               />
             </div>
             <div className="series-page-progress-label">
-              {readCount} {isSpanish ? 'de' : 'of'} {total} {isSpanish ? 'leídos' : 'read'}
+              {t('seriesPage.readCount', { read: readCount, total })}
               {queuedCount > 0 && (
                 <span style={{ opacity: 0.6, marginLeft: '0.6rem' }}>
-                  · {queuedCount} {isSpanish ? 'en cola' : 'queued'}
+                  · {t('seriesPage.queued', { count: queuedCount })}
                 </span>
               )}
               {readCount === total && (
                 <span style={{ color: 'var(--moss)', marginLeft: '0.6rem' }}>
-                  ✓ {isSpanish ? '¡Completa!' : 'Finished!'}
+                  {t('seriesPage.finished')}
                 </span>
               )}
             </div>
@@ -194,7 +193,7 @@ export default function SeriesPage() {
             className="btn"
             onClick={() => go('plan-create', { seriesName, from: 'series-page', fromLabel: seriesName })}
           >
-            ✦ {isSpanish ? 'Crear plan de lectura' : 'Create reading plan'}
+            {t('seriesPage.createPlan')}
           </button>
           {readCount === 0 && entries.length > 0 && (
             <button
@@ -202,7 +201,7 @@ export default function SeriesPage() {
               onClick={() => handleAction(entries[0], 'wishlist')}
               disabled={actionLoading === bookKey(entries[0])}
             >
-              + {isSpanish ? 'Agregar libro 1 a la lista' : 'Add book 1 to wishlist'}
+              {t('seriesPage.addFirstBook')}
             </button>
           )}
         </div>
@@ -212,7 +211,7 @@ export default function SeriesPage() {
       {description?.description && (
         <div className="series-page-description">
           <div className="book-modal-section-title">
-            {isSpanish ? 'Sobre esta saga' : 'About this series'}
+            {t('seriesPage.about')}
             {description.wikipediaUrl && (
               <>
                 {' · '}
@@ -236,20 +235,20 @@ export default function SeriesPage() {
       {/* Books */}
       <div className="series-page-books">
         <div className="book-modal-section-title">
-          {isSpanish ? 'Libros de la saga' : 'Books in the series'}
+          {t('seriesPage.booksInSeries')}
           {total && <span style={{ opacity: 0.5, marginLeft: '0.4rem' }}>· {total}</span>}
         </div>
 
         {loading && (
           <div className="loading" style={{ padding: '2rem' }}>
             <div className="loading-spinner" />
-            <div className="loading-text">{isSpanish ? 'Cargando…' : 'Loading…'}</div>
+            <div className="loading-text">{t('common.loading')}</div>
           </div>
         )}
 
         {!loading && entries.length === 0 && (
           <p style={{ color: 'var(--paper-aged)', opacity: 0.6, fontStyle: 'italic' }}>
-            {isSpanish ? 'No se encontraron libros para esta saga.' : 'No books found for this series.'}
+            {t('seriesPage.noBooks')}
           </p>
         )}
 
@@ -277,7 +276,7 @@ export default function SeriesPage() {
                 {/* Info */}
                 <div className="series-page-book-info">
                   <div className="series-page-book-position">
-                    {position ? `${isSpanish ? 'Libro' : 'Book'} ${position}` : '—'}
+                    {position ? t('seriesPage.bookN', { n: position }) : '—'}
                   </div>
                   <div
                     className="series-page-book-title"
@@ -288,7 +287,7 @@ export default function SeriesPage() {
                   </div>
                   {b.pp && (
                     <div className="series-page-book-pages">
-                      {b.pp} {isSpanish ? 'páginas' : 'pages'}
+                      {b.pp} {t('profile.statPages')}
                     </div>
                   )}
 
@@ -299,42 +298,42 @@ export default function SeriesPage() {
                         <span className="series-page-book-badge series-page-book-badge--read">
                           {b.dateRead
                             ? new Date(b.dateRead).toLocaleDateString(undefined, { month: 'short', year: 'numeric' })
-                            : (isSpanish ? 'Leído' : 'Read')}
+                            : (t('navSearch.statusRead'))}
                         </span>
                         <button
                           className="li-action danger"
                           onClick={() => handleAction(b, 'remove')}
                           disabled={isActioning}
                         >
-                          {isSpanish ? 'Quitar' : 'Remove'}
+                          {t('common.remove')}
                         </button>
                       </>
                     )}
                     {status === 'queued' && (
                       <>
                         <span className="series-page-book-badge series-page-book-badge--queued">
-                          {isSpanish ? 'En cola' : 'Queued'}
+                          {t('navSearch.statusQueued')}
                         </span>
                         <button
                           className="li-action success"
                           onClick={() => handleAction(b, 'read')}
                           disabled={isActioning}
                         >
-                          ✓ {isSpanish ? 'Marcar como leído' : 'Mark as read'}
+                          {t('bookPage.markAsRead')}
                         </button>
                       </>
                     )}
                     {status === 'wishlisted' && (
                       <>
                         <span className="series-page-book-badge series-page-book-badge--wishlist">
-                          {isSpanish ? 'En lista' : 'Wishlisted'}
+                          {t('seriesPage.wishlisted')}
                         </span>
                         <button
                           className="li-action"
                           onClick={() => handleAction(b, 'queue')}
                           disabled={isActioning}
                         >
-                          + {isSpanish ? 'Cola' : 'Queue'}
+                          + {t('readNext.eyebrow')}
                         </button>
                       </>
                     )}
@@ -345,14 +344,14 @@ export default function SeriesPage() {
                           onClick={() => handleAction(b, 'wishlist')}
                           disabled={isActioning}
                         >
-                          + {isSpanish ? 'Lista' : 'Wishlist'}
+                          + {t('navSearch.statusWishlist')}
                         </button>
                         <button
                           className="li-action success"
                           onClick={() => handleAction(b, 'read')}
                           disabled={isActioning}
                         >
-                          ✓ {isSpanish ? 'Leído' : 'Read'}
+                          ✓ {t('navSearch.statusRead')}
                         </button>
                       </>
                     )}

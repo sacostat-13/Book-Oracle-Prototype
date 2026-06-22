@@ -1,28 +1,26 @@
-// ReportBookForm.jsx — v0.20
-// Self-contained inline report form for BookModal and BookPage.
-// Supabase insert is done directly here to avoid a separate import
-// that could silently break if reportService.js isn't deployed yet.
+// ReportBookForm.jsx — v0.31
 
 import { useState, useEffect, useRef } from 'react';
 import { useData } from '../lib/DataContext';
+import { useT } from '../lib/I18nContext';
 import { supabase } from '../lib/supabase';
 
-const REPORT_FIELDS = [
-  { key: 'title',       labelEn: 'Title',       labelEs: 'Título' },
-  { key: 'description', labelEn: 'Description', labelEs: 'Descripción' },
-  { key: 'series',      labelEn: 'Series',      labelEs: 'Saga' },
-  { key: 'genres',      labelEn: 'Genres',      labelEs: 'Géneros' },
-];
-
-export default function ReportBookForm({ book, isSpanish }) {
+export default function ReportBookForm({ book }) {
   const { showToast } = useData();
+  const t = useT();
   const [open, setOpen] = useState(false);
   const [fields, setFields] = useState([]);
   const [comment, setComment] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const formRef = useRef(null);
 
-  // Scroll form into view and focus it when opened
+  const REPORT_FIELDS = [
+    { key: 'title',       label: t('report.fieldTitle') },
+    { key: 'description', label: t('report.fieldDescription') },
+    { key: 'series',      label: t('report.fieldSeries') },
+    { key: 'genres',      label: t('report.fieldGenres') },
+  ];
+
   useEffect(() => {
     if (open && formRef.current) {
       formRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -31,102 +29,58 @@ export default function ReportBookForm({ book, isSpanish }) {
   }, [open]);
 
   function toggleField(key) {
-    setFields((prev) =>
-      prev.includes(key) ? prev.filter((f) => f !== key) : [...prev, key]
-    );
+    setFields((prev) => prev.includes(key) ? prev.filter((f) => f !== key) : [...prev, key]);
   }
 
   async function handleSubmit() {
-    if (fields.length === 0) {
-      showToast(
-        isSpanish ? 'Seleccioná al menos un campo' : 'Select at least one field',
-        true
-      );
-      return;
-    }
-    if (!book?.bookId) {
-      showToast(
-        isSpanish
-          ? 'Agregá el libro a tu colección primero'
-          : 'Add the book to your collection first',
-        true
-      );
-      return;
-    }
+    if (fields.length === 0) { showToast(t('report.errorNoField'), true); return; }
+    if (!book?.bookId) { showToast(t('report.errorNoBook'), true); return; }
     setSubmitting(true);
     const { error } = await supabase.from('book_reports').insert({
-      book_id: book.bookId,
-      fields,
-      comment: comment.trim() || null,
-      status: 'open',
+      book_id: book.bookId, fields, comment: comment.trim() || null, status: 'open',
     });
     setSubmitting(false);
     if (error) {
       console.error('submitBookReport failed', error);
-      showToast(
-        isSpanish ? 'No se pudo enviar. Intentá de nuevo.' : 'Could not submit. Please try again.',
-        true
-      );
+      showToast(t('report.errorSubmit'), true);
       return;
     }
-    showToast(isSpanish ? 'Gracias, lo revisaremos pronto' : "Thanks — we'll review this soon");
-    setOpen(false);
-    setFields([]);
-    setComment('');
+    showToast(t('report.successToast'));
+    setOpen(false); setFields([]); setComment('');
   }
 
-  function handleCancel() {
-    setOpen(false);
-    setFields([]);
-    setComment('');
-  }
+  function handleCancel() { setOpen(false); setFields([]); setComment(''); }
 
   return (
     <div className="report-book">
       {!open ? (
-        <button
-          className="report-book-trigger"
-          onClick={() => setOpen(true)}
-          aria-expanded="false"
-        >
-          ⚑ {isSpanish ? 'Reportar un error' : 'Report an issue'}
+        <button className="report-book-trigger" onClick={() => setOpen(true)} aria-expanded="false">
+          {t('report.trigger')}
         </button>
       ) : (
         <div className="report-book-form" ref={formRef} tabIndex={-1}>
-          <div className="report-book-form-title">
-            {isSpanish ? '¿Qué está incorrecto?' : "What's incorrect?"}
-          </div>
+          <div className="report-book-form-title">{t('report.formTitle')}</div>
           <div className="report-book-fields">
-            {REPORT_FIELDS.map(({ key, labelEn, labelEs }) => (
+            {REPORT_FIELDS.map(({ key, label }) => (
               <label key={key} className="report-book-field">
-                <input
-                  type="checkbox"
-                  checked={fields.includes(key)}
-                  onChange={() => toggleField(key)}
-                />
-                <span>{isSpanish ? labelEs : labelEn}</span>
+                <input type="checkbox" checked={fields.includes(key)} onChange={() => toggleField(key)} />
+                <span>{label}</span>
               </label>
             ))}
           </div>
           <textarea
             className="report-book-comment"
-            placeholder={isSpanish ? 'Comentario (opcional)…' : 'Comment (optional)…'}
+            placeholder={t('report.commentPlaceholder')}
             value={comment}
             onChange={(e) => setComment(e.target.value)}
             rows={3}
           />
           <div className="report-book-actions">
             <button className="btn btn-ghost" onClick={handleCancel} disabled={submitting}>
-              {isSpanish ? 'Cancelar' : 'Cancel'}
+              {t('report.cancel')}
             </button>
-            <button
-              className="btn"
-              onClick={handleSubmit}
-              disabled={submitting || fields.length === 0}
-            >
-              {submitting
-                ? (isSpanish ? 'Enviando…' : 'Sending…')
-                : (isSpanish ? 'Enviar reporte' : 'Submit report')}
+            <button className="btn" onClick={handleSubmit} disabled={submitting || fields.length === 0}>
+              {submitting ? t('report.submitting') : t('report.submit')}
             </button>
           </div>
         </div>

@@ -19,7 +19,7 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useData } from '../lib/DataContext';
 import { useRouter } from '../lib/RouterContext';
-import { useI18n } from '../lib/I18nContext';
+import { useT } from '../lib/I18nContext';
 import { bookKey } from '../lib/bookHelpers';
 import { hardcoverSearchMulti } from '../lib/hardcoverService';
 import { callClaude, parseJSONResponse } from '../lib/claudeApi';
@@ -54,8 +54,7 @@ If s is not applicable, set it to null. If you cannot confidently identify a boo
 export default function NavSearch({ onPreviewBook }) {
   const { state } = useData();
   const { go } = useRouter();
-  const { lang } = useI18n();
-  const isSpanish = lang === 'es';
+  const t = useT();
 
   const [query, setQuery] = useState('');
   const [results, setResults] = useState([]);
@@ -78,9 +77,9 @@ export default function NavSearch({ onPreviewBook }) {
   // Collection status label for a book
   function collectionStatus(b) {
     const k = bookKey(b);
-    if (state.library.some((x) => bookKey(x) === k)) return isSpanish ? 'Leído' : 'Read';
-    if (state.readNext.some((x) => bookKey(x) === k)) return isSpanish ? 'En cola' : 'Queued';
-    if (state.wishlist.some((x) => bookKey(x) === k)) return isSpanish ? 'En lista' : 'Wishlist';
+    if (state.library.some((x) => bookKey(x) === k)) return t('navSearch.statusRead');
+    if (state.readNext.some((x) => bookKey(x) === k)) return t('navSearch.statusQueued');
+    if (state.wishlist.some((x) => bookKey(x) === k)) return t('navSearch.statusWishlist');
     return null;
   }
 
@@ -132,7 +131,7 @@ export default function NavSearch({ onPreviewBook }) {
 
     setResults([...localHits, ...newHits]);
     setLoading(false);
-  }, [collectionBooks, state.library, state.readNext, state.wishlist, isSpanish]);
+  }, [collectionBooks, state.library, state.readNext, state.wishlist, t]);
 
   // Debounce input changes
   useEffect(() => {
@@ -172,7 +171,7 @@ export default function NavSearch({ onPreviewBook }) {
       go('book-page', {
         bookKey: bookKey(book),
         from: 'search',
-        fromLabel: isSpanish ? 'Búsqueda' : 'Search',
+        fromLabel: t('navSearch.fromSearch'),
       });
     } else {
       // Preview book — pass through App state
@@ -180,7 +179,7 @@ export default function NavSearch({ onPreviewBook }) {
       go('book-page', {
         preview: 'true',
         from: 'search',
-        fromLabel: isSpanish ? 'Búsqueda' : 'Search',
+        fromLabel: t('navSearch.fromSearch'),
       });
     }
   }
@@ -213,12 +212,12 @@ export default function NavSearch({ onPreviewBook }) {
           type="search"
           autoComplete="off"
           spellCheck="false"
-          placeholder={isSpanish ? 'Buscar libros…' : 'Search books…'}
+          placeholder={t('search.placeholder')}
           value={query}
           onChange={(e) => { setQuery(e.target.value); setOpen(true); setActiveIdx(-1); }}
           onFocus={() => { if (query.length >= MIN_QUERY_LEN) setOpen(true); }}
           onKeyDown={onKeyDown}
-          aria-label={isSpanish ? 'Buscar libros' : 'Search books'}
+          aria-label={t('search.ariaLabel')}
           aria-expanded={showDropdown}
           aria-autocomplete="list"
           role="combobox"
@@ -231,7 +230,7 @@ export default function NavSearch({ onPreviewBook }) {
           ref={dropdownRef}
           className="nav-search-dropdown"
           role="listbox"
-          aria-label={isSpanish ? 'Resultados de búsqueda' : 'Search results'}
+          aria-label={t('navSearch.resultsAriaLabel')}
         >
           {results.map((book, idx) => {
             const isActive = idx === activeIdx;
@@ -266,7 +265,7 @@ export default function NavSearch({ onPreviewBook }) {
           })}
           {loading && results.length === 0 && (
             <li className="nav-search-loading" aria-live="polite">
-              {isSpanish ? 'Buscando…' : 'Searching…'}
+              {t('navSearch.loadingText')}
             </li>
           )}
         </ul>

@@ -1,26 +1,14 @@
-// src/views/Dashboard.jsx — v0.26
+// src/views/Dashboard.jsx — v0.31
 // Layout: Currently Reading → Current Plan → CTAs → Activity Feed (paginated)
 
 import { useMemo, useState } from 'react';
 import { useData } from '../lib/DataContext';
 import { useRouter } from '../lib/RouterContext';
+import { useT } from '../lib/I18nContext';
 
-const LEVEL_NAMES = { 1:'Casual', 2:'Steady', 3:'Devoted', 4:'Literary', 5:'Voracious' };
 const FEED_PAGE_SIZE = 5;
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function relativeDay(dateStr) {
-  if (!dateStr) return '';
-  const d    = new Date(dateStr);
-  const diff = Math.floor((Date.now() - d) / 86400000);
-  if (diff === 0) return 'Today';
-  if (diff === 1) return 'Yesterday';
-  if (diff <  7)  return `${diff} days ago`;
-  if (diff < 30)  return `${Math.floor(diff/7)}w ago`;
-  if (diff < 365) return `${Math.floor(diff/30)}mo ago`;
-  return d.toLocaleDateString(undefined,{month:'short',year:'numeric'});
-}
 
 function dayKey(dateStr) {
   if (!dateStr) return 'unknown';
@@ -60,8 +48,6 @@ function buildFeed(state) {
   }
 
   events.sort((a,b) => (!a.date?1:!b.date?-1:new Date(b.date)-new Date(a.date)));
-
-  // Flatten into a simple list (no day-bucketing for paginated view — day labels inline)
   return events;
 }
 
@@ -101,12 +87,12 @@ function Cover({ book, size=56, onClick, className='' }) {
 
 // ─── Currently Reading ────────────────────────────────────────────────────────
 
-function CurrentlyReading({ books, onOpenBook }) {
+function CurrentlyReadingSection({ books, onOpenBook, t }) {
   if (!books?.length) return null;
   return (
     <div className="db-cr">
       <div className="db-section-eyebrow">
-        <span className="db-ornament">❧</span> Currently Reading
+        <span className="db-ornament">❧</span> {t('dashboard.currentlyReading')}
       </div>
       <div className="db-cr__grid">
         {books.map((b, i) => (
@@ -116,10 +102,10 @@ function CurrentlyReading({ books, onOpenBook }) {
               <div className="db-cr__title">{b.t}</div>
               <div className="db-cr__author">{b.a}</div>
               {(b.startedAt||b.started_at) && (
-                <div className="db-cr__since">Since {relativeDay(b.startedAt||b.started_at)}</div>
+                <div className="db-cr__since">{t('dashboard.since')} {relativeDay(b.startedAt||b.started_at, t)}</div>
               )}
               <button className="db-cr__open btn btn-ghost" style={{marginTop:'auto'}}>
-                Open →
+                {t('dashboard.open')} →
               </button>
             </div>
           </div>
@@ -129,14 +115,28 @@ function CurrentlyReading({ books, onOpenBook }) {
   );
 }
 
+// ─── relativeDay (needs t passed in) ─────────────────────────────────────────
+
+function relativeDay(dateStr, t) {
+  if (!dateStr) return '';
+  const d    = new Date(dateStr);
+  const diff = Math.floor((Date.now() - d) / 86400000);
+  if (diff === 0) return t('dashboard.today');
+  if (diff === 1) return t('dashboard.yesterday');
+  if (diff <  7)  return t('dashboard.daysAgo', { count: diff });
+  if (diff < 30)  return t('dashboard.weeksAgo', { count: Math.floor(diff/7) });
+  if (diff < 365) return t('dashboard.monthsAgo', { count: Math.floor(diff/30) });
+  return d.toLocaleDateString(undefined,{month:'short',year:'numeric'});
+}
+
 // ─── Plans ───────────────────────────────────────────────────────────────────
 
-function AllPlans({ plans, go }) {
+function AllPlans({ plans, go, t }) {
   if (!plans?.length) return null;
   return (
     <div className="db-plans">
       <div className="db-section-eyebrow">
-        <span className="db-ornament">✦</span> Reading Plans
+        <span className="db-ornament">✦</span> {t('dashboard.readingPlans')}
       </div>
       {plans.map((plan, i) => (
         <div
@@ -148,14 +148,14 @@ function AllPlans({ plans, go }) {
             <div className="db-plan-banner__ornament">✦</div>
             <div className="db-plan-banner__body">
               {i === 0 && (
-                <div className="db-plan-banner__label">Current Reading Plan</div>
+                <div className="db-plan-banner__label">{t('dashboard.currentPlanLabel')}</div>
               )}
-              <div className="db-plan-banner__title">{plan.title || 'Untitled plan'}</div>
+              <div className="db-plan-banner__title">{plan.title || t('dashboard.untitledPlan')}</div>
               <div className="db-plan-banner__meta">
-                {(plan.books||[]).length} books · {plan.timeline} months
+                {t('dashboard.planMeta', { count: (plan.books||[]).length, months: plan.timeline })}
               </div>
             </div>
-            <div className="db-plan-banner__cta">View →</div>
+            <div className="db-plan-banner__cta">{t('dashboard.viewPlan')}</div>
           </div>
         </div>
       ))}
@@ -165,23 +165,35 @@ function AllPlans({ plans, go }) {
 
 // ─── CTAs ─────────────────────────────────────────────────────────────────────
 
-function QuickActions({ go }) {
+function QuickActions({ go, t }) {
   const actions = [
-    { label: 'The <span>Book Oracle</span>', sub: 'Draw from the vault by mood or genre', ornament: '❦', route: 'oracle', accent: true },
-    { label: 'Create a <span>Reading Plan</span>', sub: 'A curated path to your next obsession', ornament: '✦', route: 'plan-create', accent: false },
-    { label: 'Browse <span>Wishlist</span>', sub: `Your queue of books to read`, ornament: '↗', route: 'wishlist', accent: false },
-    { label: 'View <span>Library</span>', sub: 'Everything you\'ve read', ornament: '▤', route: 'library', accent: false },
+    {
+      label: t('dashboard.ctaOracle'), accent: t('dashboard.ctaOracleAccent'),
+      sub: t('dashboard.ctaOracleSub'), ornament: '❦', route: 'oracle', isAccent: true,
+    },
+    {
+      label: t('dashboard.ctaPlan'), accent: t('dashboard.ctaPlanAccent'),
+      sub: t('dashboard.ctaPlanSub'), ornament: '✦', route: 'plan-create', isAccent: false,
+    },
+    {
+      label: t('dashboard.ctaWishlist'), accent: t('dashboard.ctaWishlistAccent'),
+      sub: t('dashboard.ctaWishlistSub'), ornament: '↗', route: 'wishlist', isAccent: false,
+    },
+    {
+      label: t('dashboard.ctaLibrary'), accent: t('dashboard.ctaLibraryAccent'),
+      sub: t('dashboard.ctaLibrarySub'), ornament: '▤', route: 'library', isAccent: false,
+    },
   ];
   return (
     <div className="db-ctas">
-      {actions.map(({ label, sub, ornament, route, accent }) => (
+      {actions.map(({ label, accent, sub, ornament, route, isAccent }) => (
         <div
           key={route}
-          className={`db-cta-card${accent ? ' db-cta-card--accent' : ''}`}
+          className={`db-cta-card${isAccent ? ' db-cta-card--accent' : ''}`}
           onClick={() => go(route)}
         >
           <div className="db-cta-card__ornament">{ornament}</div>
-          <div className="db-cta-card__label" dangerouslySetInnerHTML={{ __html: label }}></div>
+          <div className="db-cta-card__label">{label} <span className="accent">{accent} </span></div>
           <div className="db-cta-card__sub">{sub}</div>
         </div>
       ))}
@@ -201,22 +213,22 @@ function FeedIcon({ type }) {
   return <div className={`feed-icon${cfg.mod ? ' feed-icon--'+cfg.mod : ''}`}>{cfg.char}</div>;
 }
 
-function FeedDateLabel({ date, prev }) {
+function FeedDateLabel({ date, prev, t }) {
   const dk  = dayKey(date);
   const pdk = prev ? dayKey(prev) : null;
   if (dk === pdk) return null;
-  return <div className="feed-date-label">{relativeDay(date)}</div>;
+  return <div className="feed-date-label">{relativeDay(date, t)}</div>;
 }
 
-function FinishedEvent({ ev, onOpenBook }) {
+function FinishedEvent({ ev, onOpenBook, t }) {
   const b = ev.book;
   return (
     <div className="feed-row feed-row--clickable" onClick={() => onOpenBook?.(b)}>
       <FeedIcon type="finished" />
       <div className="feed-row__body">
-        <span className="feed-verb">Finished</span>{' '}
+        <span className="feed-verb">{t('dashboard.feedFinished')}</span>{' '}
         <span className="feed-title">{b.t}</span>
-        {b.a && <span className="feed-author"> by {b.a}</span>}
+        {b.a && <span className="feed-author"> {t('dashboard.feedBy')} {b.a}</span>}
         {b.g && <span className="feed-tag">{b.g}</span>}
       </div>
       <Cover book={b} size={75} onClick={() => onOpenBook?.(b)} />
@@ -224,22 +236,22 @@ function FinishedEvent({ ev, onOpenBook }) {
   );
 }
 
-function StartedEvent({ ev, onOpenBook }) {
+function StartedEvent({ ev, onOpenBook, t }) {
   const b = ev.book;
   return (
     <div className="feed-row feed-row--clickable" onClick={() => onOpenBook?.(b)}>
       <FeedIcon type="started" />
       <div className="feed-row__body">
-        <span className="feed-verb">Started reading</span>{' '}
+        <span className="feed-verb">{t('dashboard.feedStarted')}</span>{' '}
         <span className="feed-title">{b.t}</span>
-        {b.a && <span className="feed-author"> by {b.a}</span>}
+        {b.a && <span className="feed-author"> {t('dashboard.feedBy')} {b.a}</span>}
       </div>
       <Cover book={b} size={75} onClick={() => onOpenBook?.(b)} />
     </div>
   );
 }
 
-function WishlistEvent({ ev, onOpenBook }) {
+function WishlistEvent({ ev, onOpenBook, t }) {
   const { books } = ev;
   if (books.length === 1) {
     const b = books[0];
@@ -247,9 +259,9 @@ function WishlistEvent({ ev, onOpenBook }) {
       <div className="feed-row feed-row--clickable" onClick={() => onOpenBook?.(b)}>
         <FeedIcon type="wishlisted" />
         <div className="feed-row__body">
-          <span className="feed-verb">Added to wishlist</span>{' '}
+          <span className="feed-verb">{t('dashboard.feedAddedOne')}</span>{' '}
           <span className="feed-title">{b.t}</span>
-          {b.a && <span className="feed-author"> by {b.a}</span>}
+          {b.a && <span className="feed-author"> {t('dashboard.feedBy')} {b.a}</span>}
         </div>
         <Cover book={b} size={75} onClick={() => onOpenBook?.(b)} />
       </div>
@@ -259,7 +271,7 @@ function WishlistEvent({ ev, onOpenBook }) {
     <div className="feed-row">
       <FeedIcon type="wishlisted" />
       <div className="feed-row__body">
-        <span className="feed-verb">Added {books.length} books to wishlist</span>
+        <span className="feed-verb">{t('dashboard.feedAddedMany', { count: books.length })}</span>
         <div className="feed-bulk">
           {books.slice(0,8).map((b,i) => (
             <Cover key={i} book={b} size={75}
@@ -274,43 +286,40 @@ function WishlistEvent({ ev, onOpenBook }) {
   );
 }
 
-function PlanEvent({ ev, go }) {
+function PlanEvent({ ev, go, t }) {
   const { plan } = ev;
   return (
     <div className="feed-row feed-row--clickable" onClick={() => go('plan-view')}>
       <FeedIcon type="plan" />
       <div className="feed-row__body">
-        <span className="feed-verb">Created reading plan</span>{' '}
-        <span className="feed-title">{plan.title||'Untitled plan'}</span>
-        <div className="feed-sub">{(plan.books||[]).length} books · {plan.timeline} months</div>
+        <span className="feed-verb">{t('dashboard.feedPlanCreated')}</span>{' '}
+        <span className="feed-title">{plan.title || t('dashboard.untitledPlan')}</span>
+        <div className="feed-sub">{t('dashboard.planMeta', { count: (plan.books||[]).length, months: plan.timeline })}</div>
       </div>
     </div>
   );
 }
 
-function FeedEvent({ ev, prev, onOpenBook, go }) {
+function FeedEvent({ ev, prev, onOpenBook, go, t }) {
   return (
     <>
-      <FeedDateLabel date={ev.date} prev={prev?.date} />
-      {ev.type==='finished'   && <FinishedEvent  ev={ev} onOpenBook={onOpenBook} />}
-      {ev.type==='started'    && <StartedEvent   ev={ev} onOpenBook={onOpenBook} />}
-      {ev.type==='wishlisted' && <WishlistEvent  ev={ev} onOpenBook={onOpenBook} />}
-      {ev.type==='plan'       && <PlanEvent      ev={ev} go={go} />}
+      <FeedDateLabel date={ev.date} prev={prev?.date} t={t} />
+      {ev.type==='finished'   && <FinishedEvent  ev={ev} onOpenBook={onOpenBook} t={t} />}
+      {ev.type==='started'    && <StartedEvent   ev={ev} onOpenBook={onOpenBook} t={t} />}
+      {ev.type==='wishlisted' && <WishlistEvent  ev={ev} onOpenBook={onOpenBook} t={t} />}
+      {ev.type==='plan'       && <PlanEvent      ev={ev} go={go} t={t} />}
     </>
   );
 }
 
 // ─── Dashboard ────────────────────────────────────────────────────────────────
 
-function ActiveClubSessions({ clubs, go }) {
+function ActiveClubSessions({ clubs, go, t }) {
   if (!clubs || clubs.length === 0) return null;
-  // We only have lightweight club data here — no sessions.
-  // Just show a prompt to visit clubs if they have any.
-  // Phase 5 can enrich this with a full active session query.
   return (
     <section style={{ marginBottom: '2rem' }}>
       <div className="db-section-eyebrow">
-        <span className="db-ornament">◈</span> Your Book Clubs
+        <span className="db-ornament">◈</span> {t('dashboard.yourClubs')}
       </div>
       <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
         {clubs.map((c) => (
@@ -328,7 +337,7 @@ function ActiveClubSessions({ clubs, go }) {
           style={{ fontSize: '0.85rem', padding: '0.35rem 0.85rem', opacity: 0.5 }}
           onClick={() => go('book-clubs')}
         >
-          All clubs →
+          {t('dashboard.allClubs')}
         </button>
       </div>
     </section>
@@ -338,6 +347,7 @@ function ActiveClubSessions({ clubs, go }) {
 export default function Dashboard({ onOpenBook }) {
   const { state } = useData();
   const { go }    = useRouter();
+  const t         = useT();
   const [visibleCount, setVisibleCount] = useState(FEED_PAGE_SIZE);
 
   const events  = useMemo(() => buildFeed(state), [state]);
@@ -346,61 +356,64 @@ export default function Dashboard({ onOpenBook }) {
   const hasMore = visibleCount < events.length;
 
   const firstName = (state.profile?.displayName || state.profile?.display_name || '').split(' ')[0];
+  const levelName = state.profile?.readingLevel
+    ? t(`dashboard.levelName.${state.profile.readingLevel}`)
+    : null;
 
   return (
     <>
       {/* ── Header ── */}
       <div className="page-header">
-        <div className="page-eyebrow">Your Library</div>
+        <div className="page-eyebrow">{t('dashboard.eyebrow')}</div>
         <h1 className="page-title">
           {firstName
-            ? <>Good to see you, <span className="accent">{firstName}</span></>
-            : <>Welcome <span className="accent">back</span></>}
+            ? <>{t('dashboard.greeting')} <span className="accent">{}</span></>
+            : <>{t('dashboard.greetingBack')} <span className="accent">{t('dashboard.greetingAccent')}</span></>}
         </h1>
         <div className="dashboard-pills">
-          {state.profile?.readingLevel && (
-            <span className="level-pill">◆ {LEVEL_NAMES[state.profile.readingLevel]} reader</span>
+          {levelName && (
+            <span className="level-pill">◆ {t('dashboard.levelPill', { level: levelName })}</span>
           )}
-          <span className="level-pill">▤ {state.library.length} read</span>
-          <span className="level-pill">❦ {(state.wishlist||[]).length} in wishlist</span>
+          <span className="level-pill">▤ {t('dashboard.booksRead', { count: state.library.length })}</span>
+          <span className="level-pill">❦ {t('dashboard.inWishlist', { count: (state.wishlist||[]).length })}</span>
           {(state.currentlyReading||[]).length > 0 && (
-            <span className="level-pill">❧ {state.currentlyReading.length} reading now</span>
+            <span className="level-pill">❧ {t('dashboard.readingNow', { count: state.currentlyReading.length })}</span>
           )}
         </div>
       </div>
 
       {/* ── CTAs ── */}
-      <QuickActions go={go} />
+      <QuickActions go={go} t={t} />
 
       {/* ── Currently Reading ── */}
-      <CurrentlyReading books={state.currentlyReading||[]} onOpenBook={onOpenBook} />
+      <CurrentlyReadingSection books={state.currentlyReading||[]} onOpenBook={onOpenBook} t={t} />
 
       {/* ── Active Book Club Sessions ── */}
-      <ActiveClubSessions clubs={state.clubs||[]} go={go} />
+      <ActiveClubSessions clubs={state.clubs||[]} go={go} t={t} />
 
       {/* ── Reading Plans ── */}
-      <AllPlans plans={state.plans||[]} go={go} />
+      <AllPlans plans={state.plans||[]} go={go} t={t} />
 
       {/* ── Activity Feed ── */}
       <div className="db-feed-header">
         <div className="db-section-eyebrow" style={{marginBottom:0}}>
-          <span className="db-ornament">◈</span> Recent Activity
+          <span className="db-ornament">◈</span> {t('dashboard.recentActivity')}
         </div>
       </div>
 
       {events.length === 0 ? (
         <div className="feed-empty">
-          <div style={{fontSize:'2rem',marginBottom:'0.75rem',opacity:0.25}}>❦</div>
+          <div style={{fontSize:'2rem',marginBottom:'0.75rem',opacity:0.25}}>{t('dashboard.emptyFeedOrnament')}</div>
           <p style={{color:'var(--text-dim)',fontStyle:'italic',textAlign:'center'}}>
-            Your reading story starts here.<br/>
-            Mark a book as read or add one to your wishlist.
+            {t('dashboard.emptyFeedText')}<br/>
+            {t('dashboard.emptyFeedSub')}
           </p>
         </div>
       ) : (
         <div className="feed">
           {visible.map((ev, i) => (
             <FeedEvent key={ev.key} ev={ev} prev={visible[i-1]||null}
-              onOpenBook={onOpenBook} go={go} />
+              onOpenBook={onOpenBook} go={go} t={t} />
           ))}
 
           {hasMore && (
@@ -408,7 +421,7 @@ export default function Dashboard({ onOpenBook }) {
               className="feed-load-more"
               onClick={() => setVisibleCount(c => c + FEED_PAGE_SIZE)}
             >
-              Show {Math.min(FEED_PAGE_SIZE, events.length-visibleCount)} more updates
+              {t('dashboard.showMore', { count: Math.min(FEED_PAGE_SIZE, events.length-visibleCount) })}
             </button>
           )}
         </div>

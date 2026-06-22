@@ -4,7 +4,7 @@
 import { useState } from 'react';
 import { useData } from '../lib/DataContext';
 import { useRouter } from '../lib/RouterContext';
-import { useI18n } from '../lib/I18nContext';
+import { useT } from '../lib/I18nContext';
 import { openBookTab, bookKey } from '../lib/bookHelpers';
 import { useSelection } from '../lib/useSelection';
 import SelectionBar from '../components/SelectionBar';
@@ -12,8 +12,7 @@ import BookCover from '../components/BookCover';
 
 function AddBookPicker({ list, onClose }) {
   const { state, addBookToList } = useData();
-  const { lang } = useI18n();
-  const isSpanish = lang === 'es';
+  const t = useT();
   const [query, setQuery] = useState('');
   const [adding, setAdding] = useState(null);
 
@@ -38,11 +37,11 @@ function AddBookPicker({ list, onClose }) {
       <div className="modal" style={{ maxWidth: 560 }} onClick={e => e.stopPropagation()}>
         <button className="book-modal-close" onClick={onClose} style={{ position: 'absolute', top: '1rem', right: '1rem' }}>✕</button>
         <div className="book-modal-section-title" style={{ marginBottom: '1rem' }}>
-          {isSpanish ? 'Agregar libro a la lista' : 'Add book to list'}
+          {t('listDetail.addBook')}
         </div>
         <input
           className="search-input"
-          placeholder={isSpanish ? 'Buscar en tu colección…' : 'Search your collection…'}
+          placeholder={t('listDetail.searchPlaceholder')}
           value={query}
           onChange={e => setQuery(e.target.value)}
           autoFocus
@@ -51,7 +50,7 @@ function AddBookPicker({ list, onClose }) {
         <div style={{ maxHeight: 400, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
           {candidates.length === 0 && (
             <div style={{ padding: '1rem 0', color: 'var(--text-dim)', fontStyle: 'italic' }}>
-              {isSpanish ? 'Sin resultados.' : 'No books found.'}
+              {t('listDetail.noResults')}
             </div>
           )}
           {candidates.map((b, i) => (
@@ -82,8 +81,7 @@ function AddBookPicker({ list, onClose }) {
 export default function ListDetail() {
   const { state, updateList, removeBookFromList } = useData();
   const { route, go } = useRouter();
-  const { lang } = useI18n();
-  const isSpanish = lang === 'es';
+  const t = useT();
   const [addingBook, setAddingBook] = useState(false);
   const [copied, setCopied] = useState(false);
 
@@ -93,9 +91,9 @@ export default function ListDetail() {
   if (!list) return (
     <div className="empty-state">
       <div className="ornament">❦</div>
-      <div className="empty-state-title">{isSpanish ? 'Lista no encontrada' : 'List not found'}</div>
+      <div className="empty-state-title">{t('listDetail.notFound')}</div>
       <button className="btn" onClick={() => go('lists')} style={{ marginTop: '1.5rem' }}>
-        ← {isSpanish ? 'Volver' : 'Back to lists'}
+        {t('listDetail.backToLists')}
       </button>
     </div>
   );
@@ -118,21 +116,21 @@ export default function ListDetail() {
   return (
     <>
       <div className="breadcrumb">
-        <a onClick={() => go('lists')}>{isSpanish ? 'Listas' : 'Lists'}</a>
+        <a onClick={() => go('lists')}>{t('about.featureListsTitle')}</a>
         {' · '}{list.title}
       </div>
 
       <div className="page-header">
-        <div className="page-eyebrow">{isSpanish ? 'Lista curada' : 'Curated List'}</div>
+        <div className="page-eyebrow">{t('listDetail.eyebrow')}</div>
         <h1 className="page-title">{list.title}</h1>
         {list.description && (
           <p style={{ color: 'var(--text-muted)', marginTop: '0.5rem' }}>{list.description}</p>
         )}
         <div style={{ marginTop: '0.75rem', display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
-          <span className="level-pill">▤ {books.length} {isSpanish ? 'libros' : 'books'}</span>
+          <span className="level-pill">▤ {books.length} {t('common.books')}</span>
           {list.is_public && (
             <span className="level-pill" style={{ borderColor: 'rgba(201,162,75,.5)', color: '#d8b66a' }}>
-              ✦ {isSpanish ? 'Pública' : 'Public'}
+              ✦ {t('lists.publicBadge')}
             </span>
           )}
         </div>
@@ -140,16 +138,16 @@ export default function ListDetail() {
 
       <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '2rem' }}>
         <button className="btn" onClick={() => setAddingBook(true)}>
-          + {isSpanish ? 'Agregar libro' : 'Add book'}
+          {t('listDetail.addBook')}
         </button>
         <button className="btn btn-ghost" onClick={togglePublic}>
           {list.is_public
-            ? (isSpanish ? 'Hacer privada' : 'Make private')
-            : (isSpanish ? 'Hacer pública' : 'Make public')}
+            ? (t('lists.makePrivate'))
+            : (t('lists.makePublic'))}
         </button>
         {list.is_public && (
           <button className="btn btn-gilt" onClick={copyLink}>
-            {copied ? '✓ Copied!' : (isSpanish ? 'Copiar enlace' : 'Copy share link')}
+            {copied ? '✓ Copied!' : (t('listDetail.copyLink'))}
           </button>
         )}
         {books.length > 0 && (
@@ -157,7 +155,7 @@ export default function ListDetail() {
             className={`btn btn-ghost${sel.active ? ' active' : ''}`}
             onClick={() => sel.active ? sel.exit() : sel.enter()}
           >
-            {sel.active ? (isSpanish ? 'Cancelar' : 'Cancel') : (isSpanish ? 'Seleccionar' : 'Select')}
+            {sel.active ? (t('common.cancel')) : (t('lists.selectMode'))}
           </button>
         )}
       </div>
@@ -165,9 +163,9 @@ export default function ListDetail() {
       {books.length === 0 ? (
         <div className="empty-state">
           <div className="ornament">❦</div>
-          <div className="empty-state-title">{isSpanish ? 'Lista vacía' : 'Empty list'}</div>
+          <div className="empty-state-title">{t('listDetail.emptyTitle')}</div>
           <div className="empty-state-text">
-            {isSpanish ? 'Agregá libros de tu colección.' : 'Add books from your collection.'}
+            {t('listDetail.emptyText')}
           </div>
         </div>
       ) : (
@@ -197,7 +195,7 @@ export default function ListDetail() {
                       style={{ marginTop: '0.5rem', color: 'var(--blood-bright)' }}
                       onClick={e => { e.stopPropagation(); removeBookFromList(list.id, b.bookId); }}
                     >
-                      {isSpanish ? 'Quitar' : 'Remove'}
+                      {t('common.remove')}
                     </button>
                   </div>
                 </div>

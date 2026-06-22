@@ -47,7 +47,7 @@ function SelectableCard({ book, selected, onClick }) {
 export default function OracleSimilar({ onOpenBook }) {
   const { state, setOracleMode, showToast } = useData();
   const { go } = useRouter();
-  const { lang } = useI18n();
+  const t = useT();
   const [selection, setSelection] = useState([]);
   const [results, setResults] = useState(null);
   const [loading, setLoading] = useState(false);

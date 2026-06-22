@@ -16,9 +16,25 @@
 
 // The version label shown as "current" — keep in sync with package.json and
 // the README version line.
-export const CURRENT_VERSION = 'v0.30';
+export const CURRENT_VERSION = 'v0.31';
 
 export const RELEASES = [{
+    version: 'v0.31',
+    date: '2026-06-22',
+    titleEn: 'Every word, in your language',
+    titleEs: 'Cada palabra, en tu idioma',
+    bodyEn: [
+      'The app is now fully bilingual. Every button, label, confirmation dialog, empty state, and status message across all 47 screens has been wired to the translation system — nothing is hardcoded in English anymore.',
+      'Spanish uses Costa Rican vos conventions throughout, not generic Latin American Spanish. The 697 original key pairs grew to 930 to cover strings that previously existed only in code.',
+      'The language toggle (in the ··· menu) now switches everything instantly. Your preference persists across sessions and can also be set via the ?lang=es URL parameter.',
+    ],
+    bodyEs: [
+      'La app es ahora completamente bilingüe. Cada botón, etiqueta, diálogo de confirmación, estado vacío y mensaje de estado en las 47 pantallas está conectado al sistema de traducción — ya nada está escrito en inglés de forma fija.',
+      'El español usa las convenciones del vos costarricense en toda la app, no español latinoamericano genérico. Los 697 pares de claves originales crecieron a 930 para cubrir textos que antes solo existían en el código.',
+      'El selector de idioma (en el menú ···) ahora cambia todo al instante. Tu preferencia se guarda entre sesiones y también se puede establecer con el parámetro de URL ?lang=es.',
+    ],
+  },
+  {
     version: 'v0.30',
     date: '2026-06-20',
     titleEn: 'Under the hood',

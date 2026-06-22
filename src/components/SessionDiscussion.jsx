@@ -15,6 +15,9 @@ import { useData } from '../lib/DataContext';
 import { supabase } from '../lib/supabase';
 import { callClaude } from '../lib/claudeApi';
 import CommentThread from './CommentThread';
+import { useT } from '../lib/I18nContext';
+
+
 
 const labelStyle = {
   display: 'block',
@@ -43,9 +46,10 @@ const inputStyle = {
 // ── Oracle question suggestion fetch ─────────────────────────────────────────
 
 async function fetchOracleQuestions({ book, existingQuestions = [] }) {
+  const t = useT();
   const existingList = existingQuestions.length
     ? existingQuestions.map((q) => `- ${q.body}`).join('\n')
-    : 'None yet.';
+    : t('discussion.noQuestions');
 
   const prompt = `You are helping a book club run a discussion for "${book.title}"${book.author ? ` by ${book.author}` : ''}.
 ${book.description ? `\nBook description: ${book.description}\n` : ''}
@@ -67,9 +71,11 @@ Respond with ONLY valid JSON — no preamble, no markdown, no explanation:
 // ── Oracle suggestion pick-list ───────────────────────────────────────────────
 
 function OracleSuggestions({ suggestions, onPick, onDismiss }) {
+  const t = useT();
   const [added, setAdded] = useState(new Set());
 
   async function handlePick(suggestion, i) {
+  const t = useT();
     await onPick(suggestion);
     setAdded((prev) => new Set([...prev, i]));
   }
@@ -84,13 +90,13 @@ function OracleSuggestions({ suggestions, onPick, onDismiss }) {
     }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
         <div style={{ fontFamily: "'Special Elite', monospace", fontSize: '0.65rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--gilt)', opacity: 0.9 }}>
-          ☩ Oracle suggestions — tap to add
+          {t('discussion.oracleSuggestionsTitle')}
         </div>
         <button
           onClick={onDismiss}
           style={{ fontSize: '0.7rem', color: 'var(--paper-aged)', opacity: 0.4, background: 'none', border: 'none', cursor: 'pointer', fontFamily: "'Special Elite', monospace", letterSpacing: '0.05em' }}
         >
-          Dismiss
+          {t('discussion.oracleDismiss')}
         </button>
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
@@ -132,10 +138,12 @@ function OracleSuggestions({ suggestions, onPick, onDismiss }) {
 // ── Add question form ─────────────────────────────────────────────────────────
 
 function AddQuestionForm({ onAdd, onCancel, nextPosition }) {
+  const t = useT();
   const [body, setBody] = useState('');
   const [saving, setSaving] = useState(false);
 
   async function handleAdd() {
+  const t = useT();
     if (!body.trim() || saving) return;
     setSaving(true);
     await onAdd(body.trim(), nextPosition);
@@ -148,7 +156,7 @@ function AddQuestionForm({ onAdd, onCancel, nextPosition }) {
       <label style={labelStyle}>New discussion question</label>
       <textarea
         style={{ ...inputStyle, marginBottom: '0.75rem' }}
-        placeholder="e.g. What did you think of the ending?"
+        {...{placeholder: t('discussion.newQuestionPlaceholder')}}
         value={body}
         onChange={(e) => setBody(e.target.value)}
         rows={2}
@@ -157,7 +165,7 @@ function AddQuestionForm({ onAdd, onCancel, nextPosition }) {
       <div style={{ display: 'flex', gap: '0.5rem' }}>
         <button className="btn btn-ghost" onClick={onCancel} style={{ fontSize: '0.85rem' }}>Cancel</button>
         <button className="btn" onClick={handleAdd} disabled={!body.trim() || saving} style={{ fontSize: '0.85rem' }}>
-          {saving ? 'Adding…' : 'Add question ❦'}
+          {saving ? t('discussion.adding') : t('discussion.addQuestionBtn')}
         </button>
       </div>
     </div>
@@ -167,6 +175,7 @@ function AddQuestionForm({ onAdd, onCancel, nextPosition }) {
 // ── Question block ────────────────────────────────────────────────────────────
 
 function QuestionBlock({ question, isAdmin, onPostAnswer, onDelete, onEditComment, onDeleteComment }) {
+  const t = useT();
   const [collapsed, setCollapsed] = useState(false);
 
   return (
@@ -190,14 +199,14 @@ function QuestionBlock({ question, isAdmin, onPostAnswer, onDelete, onEditCommen
               onClick={() => setCollapsed(!collapsed)}
               style={{ fontSize: '0.72rem', color: 'var(--paper-aged)', opacity: 0.45, background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontFamily: "'Special Elite', monospace", letterSpacing: '0.05em' }}
             >
-              {collapsed ? `Show ${question.answers?.length || 0} answer${question.answers?.length !== 1 ? 's' : ''}` : 'Collapse'}
+              {(collapsed ? (question.answers?.length === 1 ? t('discussion.showAnswers', { count: 1 }) : t('discussion.showAnswersPlural', { count: question.answers?.length || 0 })) : t('discussion.collapseAnswers'))}
             </button>
             {isAdmin && (
               <button
                 onClick={() => onDelete(question.id)}
                 style={{ fontSize: '0.72rem', color: 'rgba(180,60,60,0.55)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontFamily: "'Special Elite', monospace", letterSpacing: '0.05em' }}
               >
-                Remove
+                {t('discussion.removeQuestion')}
               </button>
             )}
           </div>
@@ -211,7 +220,7 @@ function QuestionBlock({ question, isAdmin, onPostAnswer, onDelete, onEditCommen
             onPost={(body) => onPostAnswer(body, question.id)}
             onDelete={onDeleteComment}
             onEdit={onEditComment}
-            placeholder="Share your thoughts on this question…"
+            {...{placeholder: t('discussion.answerPlaceholder')}}
             compact
           />
         </div>
@@ -231,6 +240,9 @@ export default function SessionDiscussion({ sessionId, clubId, isAdmin, book = {
   const [oracleError, setOracleError] = useState(null);
   const [oracleSuggestions, setOracleSuggestions] = useState(null);
 
+  const t = useT();
+
+
   const loadDiscussion = useCallback(async () => {
     const { data, error } = await supabase.rpc('get_session_discussion', { p_session_id: sessionId });
     setLoading(false);
@@ -240,37 +252,44 @@ export default function SessionDiscussion({ sessionId, clubId, isAdmin, book = {
   useEffect(() => { loadDiscussion(); }, [loadDiscussion]);
 
   async function handlePostComment(body, parentId = null) {
+  const t = useT();
     const comment = await postComment({ sessionId, clubId, body, parentId });
     if (comment) await loadDiscussion();
   }
 
   async function handlePostAnswer(body, questionId) {
+  const t = useT();
     const comment = await postComment({ sessionId, clubId, body, questionId });
     if (comment) await loadDiscussion();
   }
 
   async function handleDeleteComment(commentId) {
+  const t = useT();
     await deleteComment(commentId);
     await loadDiscussion();
   }
 
   async function handleEditComment(commentId, body) {
+  const t = useT();
     await editComment(commentId, body);
     await loadDiscussion();
   }
 
   async function handleAddQuestion(body, position) {
+  const t = useT();
     const q = await addQuestion({ sessionId, clubId, body, position });
     if (q) { setShowAddQuestion(false); await loadDiscussion(); }
   }
 
   async function handleDeleteQuestion(questionId) {
-    if (!confirm('Remove this discussion question? Existing answers will also be deleted.')) return;
+  const t = useT();
+    if (!confirm(t('discussion.confirmRemoveQuestion'))) return;
     await deleteQuestion(questionId);
     await loadDiscussion();
   }
 
   async function handleOracleSuggest() {
+  const t = useT();
     setOracleLoading(true);
     setOracleError(null);
     setOracleSuggestions(null);
@@ -282,12 +301,13 @@ export default function SessionDiscussion({ sessionId, clubId, isAdmin, book = {
       setOracleSuggestions(suggestions);
     } catch (e) {
       console.error('Oracle questions failed', e);
-      setOracleError("The Oracle couldn't generate suggestions right now. Try again.");
+      setOracleError(t('discussion.oracleError'));
     }
     setOracleLoading(false);
   }
 
   async function handlePickSuggestion(body) {
+  const t = useT();
     const position = (discussion?.questions || []).length;
     await addQuestion({ sessionId, clubId, body, position });
     await loadDiscussion();
@@ -310,7 +330,7 @@ export default function SessionDiscussion({ sessionId, clubId, isAdmin, book = {
       {(questions.length > 0 || isAdmin) && (
         <section style={{ marginBottom: '2rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
-            <div style={labelStyle}>Discussion questions</div>
+            <div style={labelStyle}>{t('discussion.questionsLabel')}</div>
             {isAdmin && (
               <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
                 <button
@@ -319,11 +339,11 @@ export default function SessionDiscussion({ sessionId, clubId, isAdmin, book = {
                   disabled={oracleLoading}
                   style={{ color: 'var(--gilt)', fontSize: '0.72rem' }}
                 >
-                  {oracleLoading ? '☩ Oracle thinking…' : '☩ Oracle suggests'}
+                  {oracleLoading ? t('discussion.oracleThinking') : t('discussion.oracleSuggestsBtn')}
                 </button>
                 {!showAddQuestion && (
                   <button className="li-action" style={{ fontSize: '0.72rem' }} onClick={() => setShowAddQuestion(true)}>
-                    + Add question
+                    {t('discussion.addQuestion')}
                   </button>
                 )}
               </div>
@@ -354,7 +374,7 @@ export default function SessionDiscussion({ sessionId, clubId, isAdmin, book = {
 
           {questions.length === 0 && !showAddQuestion && !oracleSuggestions && (
             <div style={{ color: 'var(--text-dim)', fontStyle: 'italic', fontSize: '0.88rem', marginBottom: '1rem' }}>
-              No discussion questions yet.{isAdmin && ' Use the Oracle or add one manually.'}
+              {isAdmin ? t('discussion.noQuestionsAdmin') : t('discussion.noQuestions')}
             </div>
           )}
 
@@ -375,7 +395,7 @@ export default function SessionDiscussion({ sessionId, clubId, isAdmin, book = {
       {/* Free comments */}
       <section>
         <div style={labelStyle}>
-          Comments
+          {t('discussion.commentsLabel')}
           {comments.length > 0 && (
             <span style={{ opacity: 0.4, marginLeft: '0.5rem', textTransform: 'none', letterSpacing: 0 }}>
               · {comments.length}

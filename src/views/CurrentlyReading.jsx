@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useData } from '../lib/DataContext';
 import { useRouter } from '../lib/RouterContext';
+import { useT } from '../lib/I18nContext';
 import { bookKey } from '../lib/bookHelpers';
 import BookCover from '../components/BookCover';
 import RatingModal from '../components/RatingModal';
@@ -9,6 +10,7 @@ import ProgressUpdateModal from '../components/ProgressUpdateModal';
 export default function CurrentlyReading({ onOpenBook }) {
   const { state, removeFromCurrentlyReading, finishReading, updateReadingProgress } = useData();
   const { go } = useRouter();
+  const t = useT();
   const [finishing, setFinishing] = useState(null);
   const [updatingProgress, setUpdatingProgress] = useState(null);
   const { currentlyReading } = state;
@@ -18,9 +20,9 @@ export default function CurrentlyReading({ onOpenBook }) {
     const start = new Date(startedAt);
     const now = new Date();
     const diff = Math.floor((now - start) / (1000 * 60 * 60 * 24));
-    if (diff === 0) return 'Started today';
-    if (diff === 1) return '1 day';
-    return `${diff} days`;
+    if (diff === 0) return t('currentlyReading.startedToday');
+    if (diff === 1) return t('currentlyReading.oneDay');
+    return t('currentlyReading.nDays', { count: diff });
   }
 
   async function handleFinish({ rating, notes, readAt }) {
@@ -38,28 +40,30 @@ export default function CurrentlyReading({ onOpenBook }) {
   return (
     <>
       <div className="breadcrumb">
-        <a onClick={() => go('dashboard')}>Dashboard</a> · Currently Reading
+        <a onClick={() => go('dashboard')}>{t('nav.dashboard')}</a> · {t('currentlyReading.title')}
       </div>
       <div className="page-header">
-        <div className="page-eyebrow">In Progress</div>
-        <h1 className="page-title">Currently <span className="accent">Reading</span></h1>
+        <div className="page-eyebrow">{t('currentlyReading.eyebrow')}</div>
+        <h1 className="page-title">{t('currentlyReading.title')} <span className="accent">{t('currentlyReading.titleAccent')}</span></h1>
         <p className="page-subtitle">
           {currentlyReading.length === 0
-            ? 'No books in progress.'
-            : `${currentlyReading.length} book${currentlyReading.length !== 1 ? 's' : ''} in progress.`}
+            ? t('currentlyReading.subtitleEmpty')
+            : currentlyReading.length === 1
+            ? t('currentlyReading.subtitleOne')
+            : t('currentlyReading.subtitleMany', { count: currentlyReading.length })}
         </p>
       </div>
 
       {currentlyReading.length === 0 ? (
         <div className="empty-state">
           <div className="ornament">❦</div>
-          <div className="empty-state-title">Nothing in progress</div>
+          <div className="empty-state-title">{t('currentlyReading.emptyTitle')}</div>
           <div className="empty-state-text">
-            Mark a book as currently reading from your Wishlist or Read Next queue.
+            {t('currentlyReading.emptyText')}
           </div>
           <div style={{ marginTop: '1.5rem', display: 'flex', gap: '0.75rem', justifyContent: 'center', flexWrap: 'wrap' }}>
-            <button className="btn btn-ghost" onClick={() => go('read-next')}>Read Next</button>
-            <button className="btn btn-ghost" onClick={() => go('wishlist')}>Wishlist</button>
+            <button className="btn btn-ghost" onClick={() => go('read-next')}>{t('nav.readNext')}</button>
+            <button className="btn btn-ghost" onClick={() => go('wishlist')}>{t('nav.wishlist')}</button>
           </div>
         </div>
       ) : (
@@ -117,13 +121,13 @@ export default function CurrentlyReading({ onOpenBook }) {
                       </div>
                       <div className="cr-progress-label">
                         {pagesRead > 0
-                          ? `${pagesRead} / ${b.pp} pages${pct !== null ? ` · ${pct}%` : ''}`
-                          : `0 / ${b.pp} pages`}
+                          ? t('currentlyReading.pagesReadPct', { read: pagesRead, total: b.pp, pct: pct ?? 0 })
+                          : t('currentlyReading.pagesRead', { read: 0, total: b.pp })}
                       </div>
                     </div>
                   ) : pagesRead > 0 ? (
                     <div className="cr-progress-label" style={{ marginTop: '0.5rem' }}>
-                      {pagesRead} pages read
+                      {t('currentlyReading.pagesReadOnly', { count: pagesRead })}
                     </div>
                   ) : null}
 
@@ -133,23 +137,23 @@ export default function CurrentlyReading({ onOpenBook }) {
                       onClick={() => setUpdatingProgress(b)}
                       style={{ color: 'var(--gilt)' }}
                     >
-                      ↑ Progress
+                      {t('currentlyReading.updateProgress')}
                     </button>
                     <button
                       className="li-action success"
                       onClick={() => setFinishing(b)}
                     >
-                      ✓ Finished
+                      {t('currentlyReading.markFinished')}
                     </button>
                     <button
                       className="li-action danger"
                       onClick={() => {
-                        if (confirm(`Remove "${b.t}" from currently reading?`)) {
+                        if (confirm(t('currentlyReading.confirmRemove', { title: b.t }))) {
                           removeFromCurrentlyReading(b);
                         }
                       }}
                     >
-                      Remove
+                      {t('currentlyReading.remove')}
                     </button>
                   </div>
                 </div>

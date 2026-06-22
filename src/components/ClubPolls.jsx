@@ -17,10 +17,12 @@ import { useAuth } from '../lib/AuthContext';
 import { supabase } from '../lib/supabase';
 import BookCover from './BookCover';
 import { callClaude } from '../lib/claudeApi';
+import { useT } from '../lib/I18nContext';
 
 // ── Oracle suggestion flow ────────────────────────────────────────────────────
 
 async function fetchOracleSuggestions({ clubName, clubGenres = [], recentBooks = [] }) {
+  const t = useT();
   const genreList = clubGenres.join(', ') || 'general fiction';
   const recentList = recentBooks.length
     ? recentBooks.map((b) => `"${b.title}" by ${b.author}`).join(', ')
@@ -51,6 +53,7 @@ Respond with ONLY valid JSON — no preamble, no markdown, no explanation:
 // ── Poll option card ──────────────────────────────────────────────────────────
 
 function PollOptionCard({ option, selected, myVote, totalVotes, closed, onVote }) {
+  const t = useT();
   const isLeading = option.vote_count > 0 && !closed
     ? false
     : option.vote_count === Math.max(...([])); // handled by parent
@@ -126,6 +129,7 @@ function PollOptionCard({ option, selected, myVote, totalVotes, closed, onVote }
 // ── Single poll card ──────────────────────────────────────────────────────────
 
 function PollCard({ poll, isAdmin, onVote, onClose, onDelete, onCreateSession }) {
+  const t = useT();
   const { user } = useAuth();
   const totalVotes = poll.options.reduce((s, o) => s + Number(o.vote_count), 0);
   const maxVotes = Math.max(...poll.options.map((o) => Number(o.vote_count)), 0);
@@ -140,7 +144,7 @@ function PollCard({ poll, isAdmin, onVote, onClose, onDelete, onCreateSession })
         <div style={{ flex: 1 }}>
           {poll.is_oracle_pick && (
             <div style={{ fontFamily: "'Special Elite', monospace", fontSize: '0.6rem', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--gilt)', opacity: 0.8, marginBottom: '0.25rem' }}>
-              ☩ Oracle suggestion
+              {t('polls.oracleLabel')}
             </div>
           )}
           <div style={{ fontFamily: "'Cormorant Garamond', serif", fontStyle: 'italic', fontSize: '1.1rem', color: 'var(--paper)', lineHeight: 1.3 }}>
@@ -148,19 +152,19 @@ function PollCard({ poll, isAdmin, onVote, onClose, onDelete, onCreateSession })
           </div>
           <div style={{ fontSize: '0.75rem', color: 'var(--paper-aged)', opacity: 0.4, marginTop: '0.25rem', fontFamily: "'Special Elite', monospace", letterSpacing: '0.04em' }}>
             {totalVotes} vote{totalVotes !== 1 ? 's' : ''}
-            {poll.closes_at && !poll.closed && ` · closes ${fmtDate(poll.closes_at)}`}
-            {poll.closed && ' · closed'}
+            {poll.closes_at && !poll.closed && ` · ${t('polls.closesOn', { date: fmtDate(poll.closes_at) })}`}
+            {poll.closed && t('polls.closed')}
           </div>
         </div>
         {isAdmin && (
           <div style={{ display: 'flex', gap: '0.35rem', flexShrink: 0 }}>
             {!poll.closed && (
               <button className="li-action" style={{ fontSize: '0.7rem' }} onClick={() => onClose(poll.id)}>
-                Close poll
+                {t('polls.closePoll')}
               </button>
             )}
             <button className="li-action danger" style={{ fontSize: '0.7rem' }} onClick={() => onDelete(poll.id)}>
-              Delete
+              {t('polls.deletePoll')}
             </button>
           </div>
         )}
@@ -187,7 +191,7 @@ function PollCard({ poll, isAdmin, onVote, onClose, onDelete, onCreateSession })
             Winner: {winner.label}
           </div>
           <button className="li-action" onClick={() => onCreateSession(winner)}>
-            Create session from this book →
+            {t('polls.createSessionFromWinner')}
           </button>
         </div>
       )}
@@ -198,17 +202,20 @@ function PollCard({ poll, isAdmin, onVote, onClose, onDelete, onCreateSession })
 // ── Create poll form ──────────────────────────────────────────────────────────
 
 function CreatePollForm({ onAdd, onCancel }) {
+  const t = useT();
   const [question, setQuestion] = useState('');
   const [options, setOptions] = useState([{ label: '' }, { label: '' }]);
   const [saving, setSaving] = useState(false);
 
   function setOptionLabel(i, val) {
+  const t = useT();
     setOptions((opts) => opts.map((o, idx) => idx === i ? { ...o, label: val } : o));
   }
 
   const validOptions = options.filter((o) => o.label.trim()).length >= 2;
 
   async function handleAdd() {
+  const t = useT();
     if (!question.trim() || !validOptions || saving) return;
     setSaving(true);
     await onAdd({
@@ -222,11 +229,11 @@ function CreatePollForm({ onAdd, onCancel }) {
   return (
     <div style={{ padding: '1rem', border: '1px solid rgba(176,140,63,0.2)', borderRadius: 2, marginBottom: '1rem', background: 'rgba(176,140,63,0.03)' }}>
       <div style={{ fontFamily: "'Special Elite', monospace", fontSize: '0.7rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--gilt)', marginBottom: '0.75rem' }}>
-        New poll
+        {t('polls.newPollLabel')}
       </div>
       <div style={{ marginBottom: '0.75rem' }}>
         <input
-          placeholder="Poll question e.g. What should we read next?"
+          {...{placeholder: t('polls.oraclePollQuestion')}}
           value={question}
           onChange={(e) => setQuestion(e.target.value)}
           autoFocus
@@ -236,7 +243,7 @@ function CreatePollForm({ onAdd, onCancel }) {
       {options.map((opt, i) => (
         <div key={i} style={{ marginBottom: '0.4rem', display: 'flex', gap: '0.4rem' }}>
           <input
-            placeholder={`Option ${i + 1}`}
+            {...{placeholder: t('polls.optionPlaceholder', { n: i + 1 })}}
             value={opt.label}
             onChange={(e) => setOptionLabel(i, e.target.value)}
             style={{ flex: 1, background: 'rgba(176,140,63,0.04)', border: '1px solid rgba(176,140,63,0.2)', borderRadius: 2, padding: '0.45rem 0.7rem', color: 'var(--paper)', fontFamily: "'Cormorant Garamond', serif", fontSize: '0.95rem', colorScheme: 'dark' }}
@@ -248,13 +255,13 @@ function CreatePollForm({ onAdd, onCancel }) {
       ))}
       {options.length < 5 && (
         <button className="li-action" style={{ fontSize: '0.72rem', marginTop: '0.35rem' }} onClick={() => setOptions((o) => [...o, { label: '' }])}>
-          + Add option
+          {t('polls.addOption')}
         </button>
       )}
       <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.85rem' }}>
-        <button className="btn btn-ghost" onClick={onCancel} style={{ fontSize: '0.85rem' }}>Cancel</button>
+        <button className="btn btn-ghost" onClick={onCancel} style={{ fontSize: '0.85rem' }}>{t('polls.cancel')}</button>
         <button className="btn" onClick={handleAdd} disabled={!question.trim() || !validOptions || saving} style={{ fontSize: '0.85rem' }}>
-          {saving ? 'Creating…' : 'Create poll ❦'}
+          {saving ? t('polls.creating') : t('polls.createPollBtn')}
         </button>
       </div>
     </div>
@@ -264,6 +271,7 @@ function CreatePollForm({ onAdd, onCancel }) {
 // ── Main component ────────────────────────────────────────────────────────────
 
 export default function ClubPolls({ clubId, clubName, clubGenres = [], isAdmin, recentBooks = [], onCreateSession }) {
+  const t = useT();
   const { createPoll, castVote, closePoll, deletePoll } = useData();
   const [polls, setPolls] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -280,6 +288,7 @@ export default function ClubPolls({ clubId, clubName, clubGenres = [], isAdmin, 
   useEffect(() => { loadPolls(); }, [loadPolls]);
 
   async function handleVote(pollId, optionId) {
+  const t = useT();
     const updatedCounts = await castVote(pollId, optionId);
     if (!updatedCounts) return;
     // Optimistically update vote counts + my_vote
@@ -297,29 +306,33 @@ export default function ClubPolls({ clubId, clubName, clubGenres = [], isAdmin, 
   }
 
   async function handleClose(pollId) {
+  const t = useT();
     await closePoll(pollId);
     setPolls((ps) => ps.map((p) => p.id === pollId ? { ...p, closed: true } : p));
   }
 
   async function handleDelete(pollId) {
-    if (!confirm('Delete this poll? This cannot be undone.')) return;
+  const t = useT();
+    if (!confirm(t('polls.confirmDeletePoll'))) return;
     await deletePoll(pollId);
     setPolls((ps) => ps.filter((p) => p.id !== pollId));
   }
 
   async function handleCreate({ question, options, isOraclePick }) {
+  const t = useT();
     const poll = await createPoll({ clubId, question, options, isOraclePick });
     if (poll) { setShowCreate(false); await loadPolls(); }
   }
 
   async function handleOracleSuggest() {
+  const t = useT();
     setOracleLoading(true);
     setOracleError(null);
     try {
       const suggestions = await fetchOracleSuggestions({ clubName, clubGenres, recentBooks });
       // Turn Oracle suggestions into a poll automatically
       await handleCreate({
-        question: 'What should we read next? (Oracle suggestions)',
+        question: t('polls.oraclePollQuestion'),
         options: suggestions.map((s) => ({
           label: s.title,
           bookAuthor: s.author,
@@ -329,7 +342,7 @@ export default function ClubPolls({ clubId, clubName, clubGenres = [], isAdmin, 
       });
     } catch (e) {
       console.error('Oracle suggest failed', e);
-      setOracleError('The Oracle couldn\'t generate suggestions right now. Try again.');
+      setOracleError(t('polls.oracleError'));
     }
     setOracleLoading(false);
   }
@@ -354,11 +367,11 @@ export default function ClubPolls({ clubId, clubName, clubGenres = [], isAdmin, 
               disabled={oracleLoading}
               style={{ color: 'var(--gilt)', fontSize: '0.72rem' }}
             >
-              {oracleLoading ? '☩ Oracle thinking…' : '☩ Oracle suggests'}
+              {oracleLoading ? t('polls.oracleThinking') : t('polls.oracleSuggestsBtn')}
             </button>
             {!showCreate && (
               <button className="li-action" style={{ fontSize: '0.72rem' }} onClick={() => setShowCreate(true)}>
-                + New poll
+                {t('polls.newPoll')}
               </button>
             )}
           </div>
@@ -377,7 +390,7 @@ export default function ClubPolls({ clubId, clubName, clubGenres = [], isAdmin, 
 
       {polls.length === 0 && !showCreate && (
         <div style={{ color: 'var(--text-dim)', fontStyle: 'italic', fontSize: '0.88rem' }}>
-          No polls yet.{isAdmin && ' Use the Oracle or create one manually.'}
+          {isAdmin ? t('polls.noPollsAdmin') : t('polls.noPolls')}
         </div>
       )}
 
@@ -398,7 +411,7 @@ export default function ClubPolls({ clubId, clubName, clubGenres = [], isAdmin, 
       {closedPolls.length > 0 && (
         <>
           <div style={{ fontFamily: "'Special Elite', monospace", fontSize: '0.65rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--paper-aged)', opacity: 0.35, margin: '1rem 0 0.75rem' }}>
-            Past polls
+            {t('polls.pastPolls')}
           </div>
           {closedPolls.map((poll) => (
             <PollCard

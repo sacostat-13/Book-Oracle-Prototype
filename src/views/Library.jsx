@@ -6,7 +6,7 @@ import BulkImport from '../components/BulkImport';
 import OracleCategorizationButton from '../components/OracleCategorizationButton';
 import RatingModal from '../components/RatingModal';
 import LibraryCoverGrid from '../components/LibraryCoverGrid';
-import { useI18n } from '../lib/I18nContext';
+import { useT } from '../lib/I18nContext';
 import { useSelection } from '../lib/useSelection';
 import SelectionBar from '../components/SelectionBar';
 
@@ -16,8 +16,7 @@ import SelectionBar from '../components/SelectionBar';
 export default function Library({ onOpenBook }) {
   const { state, removeFromLibrary, updateReadBook, getCategoriesForBook } = useData();
   const { go } = useRouter();
-  const { lang } = useI18n();
-  const isSpanish = lang === 'es';
+  const t = useT();
   const [bulkOpen, setBulkOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [genreFilter, setGenreFilter] = useState('all');
@@ -171,7 +170,7 @@ export default function Library({ onOpenBook }) {
               className={`btn btn-ghost${sel.active ? ' active' : ''}`}
               onClick={() => sel.active ? sel.exit() : sel.enter()}
             >
-              {sel.active ? (isSpanish ? 'Cancelar' : 'Cancel') : (isSpanish ? 'Seleccionar' : 'Select')}
+              {sel.active ? (t('common.cancel')) : (t('lists.selectMode'))}
             </button>
             <div className="view-toggle">
               <button

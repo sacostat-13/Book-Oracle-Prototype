@@ -1,13 +1,9 @@
 // OracleCategorizationButton.jsx
-// v0.15 phase 2.4 — "Let the Oracle categorize my books" button.
-//
-// Renders on Library and Wishlist views. Shows only when there are books
-// that need genres (unreviewed/incomplete AND no genres assigned yet).
-// While running: shows a progress bar and per-batch status updates.
-// After completion: shows a summary toast and resets.
+// v0.31 — localized
 
 import { useState, useCallback } from 'react';
 import { useData } from '../lib/DataContext';
+import { useT } from '../lib/I18nContext';
 import {
   getBooksNeedingGenres,
   runOracleCategorization,
@@ -16,6 +12,7 @@ import {
 export default function OracleCategorizationButton({ books }) {
   const { state, setBookGenres, showToast } = useData();
   const { genresByBookId } = state;
+  const t = useT();
 
   const [running, setRunning] = useState(false);
   const [progress, setProgress] = useState({ done: 0, total: 0 });
@@ -33,12 +30,8 @@ export default function OracleCategorizationButton({ books }) {
     const { processed, failed } = await runOracleCategorization({
       books: booksNeedingGenres,
       onProgress: (done, total) => setProgress({ done, total }),
-      onBatchResult: ({ assignments }) => {
-        setBookGenres(assignments);
-      },
-      onError: (msg) => {
-        setErrors((prev) => [...prev, msg]);
-      },
+      onBatchResult: ({ assignments }) => { setBookGenres(assignments); },
+      onError: (msg) => { setErrors((prev) => [...prev, msg]); },
     });
 
     setRunning(false);
@@ -46,16 +39,14 @@ export default function OracleCategorizationButton({ books }) {
 
     const successCount = processed - failed;
     if (failed === 0) {
-      showToast(`☩ The Oracle has categorized ${successCount} book${successCount !== 1 ? 's' : ''}.`);
+      showToast(successCount === 1
+        ? t('oracle.categorizeSuccess', { count: successCount })
+        : t('oracle.categorizeSuccessPlural', { count: successCount }));
     } else {
-      showToast(
-        `☩ Categorized ${successCount} book${successCount !== 1 ? 's' : ''}. ${failed} could not be processed.`,
-        true
-      );
+      showToast(t('oracle.categorizeFailed', { success: successCount, failed }), true);
     }
-  }, [running, count, booksNeedingGenres, setBookGenres, showToast]);
+  }, [running, count, booksNeedingGenres, setBookGenres, showToast, t]);
 
-  // Don't render if there's nothing to categorize
   if (count === 0) return null;
 
   const pct = progress.total > 0
@@ -70,19 +61,16 @@ export default function OracleCategorizationButton({ books }) {
           onClick={handleRun}
           title={`${count} book${count !== 1 ? 's' : ''} without genre assignments`}
         >
-          ☩ Let the Oracle categorize my books
+          {t('oracle.categorizeBtnLabel')}
           <span className="oracle-btn-count">{count}</span>
         </button>
       ) : (
         <div className="oracle-progress">
           <div className="oracle-progress-label">
-            ☩ Oracle is reading… {progress.done} / {progress.total}
+            {t('oracle.categorizeProgress', { done: progress.done, total: progress.total })}
           </div>
           <div className="oracle-progress-track">
-            <div
-              className="oracle-progress-fill"
-              style={{ width: `${pct}%` }}
-            />
+            <div className="oracle-progress-fill" style={{ width: `${pct}%` }} />
           </div>
           {errors.length > 0 && (
             <div className="oracle-progress-errors">

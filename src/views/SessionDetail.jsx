@@ -12,6 +12,7 @@ import { lookupByTitle } from '../lib/bookLookup';
 import BookCover from '../components/BookCover';
 import ProgressUpdateModal from '../components/ProgressUpdateModal';
 import SessionDiscussion from '../components/SessionDiscussion';
+import { useT } from '../lib/I18nContext';
 
 // ── Shared sub-components ─────────────────────────────────────────────────────
 
@@ -59,12 +60,12 @@ function MemberProgressRow({ member, totalPages }) {
             </div>
           ) : (
             <div style={{ fontFamily: "'Special Elite', monospace", fontSize: '0.68rem', letterSpacing: '0.04em', color: 'var(--paper-aged)', opacity: 0.55 }}>
-              {member.pages_read > 0 ? `${member.pages_read} pages read` : 'Reading — no page count yet'}
+              {member.pages_read > 0 ? t('sessions.pagesNoTotal', { count: member.pages_read }) : t('sessions.pagesNoTotalYet')}
             </div>
           )
         ) : (
           <div style={{ fontFamily: "'Special Elite', monospace", fontSize: '0.68rem', letterSpacing: '0.04em', color: 'var(--paper-aged)', opacity: 0.35 }}>
-            Not tracking progress
+            {t('sessions.notTracking')}
           </div>
         )}
       </div>
@@ -161,10 +162,10 @@ function EditSessionModal({ session, book, onSave, onClose }) {
     >
       <div style={{ background: 'var(--ink, #1a1410)', border: '1px solid rgba(176,140,63,0.35)', borderRadius: '4px', maxWidth: '520px', width: '100%', padding: '2rem 2.2rem', boxShadow: '0 20px 60px rgba(0,0,0,0.6)', maxHeight: '90vh', overflowY: 'auto' }}>
         <div style={{ fontFamily: "'Special Elite', monospace", fontSize: '0.75rem', letterSpacing: '0.18em', textTransform: 'uppercase', color: 'var(--gilt)', marginBottom: '0.5rem' }}>
-          Admin
+          {t('sessions.editEyebrow', { clubName: 'Admin' })}
         </div>
         <h2 style={{ fontFamily: "'Cormorant Garamond', serif", fontStyle: 'italic', fontSize: '1.6rem', color: 'var(--paper)', margin: '0 0 1.5rem' }}>
-          Edit session
+          {t('sessions.editTitle')}
         </h2>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
@@ -178,7 +179,7 @@ function EditSessionModal({ session, book, onSave, onClose }) {
                   <div style={{ fontFamily: "'Cormorant Garamond', serif", fontStyle: 'italic', color: 'var(--paper)', fontSize: '0.95rem' }}>{selectedBook.t || selectedBook.title}</div>
                   {(selectedBook.a || selectedBook.author) && <div style={{ fontSize: '0.78rem', color: 'var(--paper-aged)', opacity: 0.65 }}>{selectedBook.a || selectedBook.author}</div>}
                 </div>
-                <button className="li-action" onClick={() => { setSelectedBook(null); setBookResults([]); }}>Change</button>
+                <button className="li-action" onClick={() => { setSelectedBook(null); setBookResults([]); }}>{t('sessions.changeBook')}</button>
               </div>
             ) : (
               <div style={{ position: 'relative' }}>
@@ -244,7 +245,7 @@ function EditSessionModal({ session, book, onSave, onClose }) {
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', flexWrap: 'wrap' }}>
             <button className="btn btn-ghost" onClick={onClose} disabled={saving}>Cancel</button>
             <button className="btn" onClick={handleSave} disabled={!selectedBook || !startsAt || !endsAt || saving}>
-              {saving ? 'Saving…' : 'Save changes ❦'}
+              {saving ? t('sessions.saving') : t('sessions.saveButton')}
             </button>
           </div>
         </div>
@@ -256,6 +257,7 @@ function EditSessionModal({ session, book, onSave, onClose }) {
 // ── Main view ─────────────────────────────────────────────────────────────────
 
 export default function SessionDetail() {
+  const t = useT();
   const { state, updateReadingProgress, startReading, showToast } = useData();
   const { go, route } = useRouter();
   const { user } = useAuth();
@@ -284,7 +286,7 @@ export default function SessionDetail() {
     return (
       <div className="loading" style={{ paddingTop: '6rem' }}>
         <div className="loading-spinner" />
-        <div className="loading-text">Loading session…</div>
+        <div className="loading-text">{t('sessions.loadingSession')}</div>
       </div>
     );
   }
@@ -292,12 +294,12 @@ export default function SessionDetail() {
   if (!detail) {
     return (
       <>
-        <div className="breadcrumb"><a onClick={() => go('book-clubs')}>Book Clubs</a></div>
+        <div className="breadcrumb"><a onClick={() => go('book-clubs')}>{t('clubs.createBreadcrumb')}</a></div>
         <div className="empty-state">
           <div className="ornament">❦</div>
-          <div className="empty-state-title">Session not found</div>
-          <div className="empty-state-text">This session may have been removed, or you are not a member of the club.</div>
-          <button className="btn btn-ghost" style={{ marginTop: '1.5rem' }} onClick={() => go('book-clubs')}>Back to clubs</button>
+          <div className="empty-state-title">{t('sessions.sessionNotFound')}</div>
+          <div className="empty-state-text">{t('sessions.sessionNotFoundText')}</div>
+          <button className="btn btn-ghost" style={{ marginTop: '1.5rem' }} onClick={() => go('book-clubs')}>{t('sessions.backToClubs')}</button>
         </div>
       </>
     );
@@ -353,11 +355,11 @@ export default function SessionDetail() {
       .eq('id', sessionId);
     if (error) {
       console.error('Session update failed', error);
-      showToast('Could not save changes — try again', true);
+      showToast(t('sessions.saveChangesError'), true);
       return;
     }
     setShowEditModal(false);
-    showToast('Session updated');
+    showToast(t('sessions.saveChangesToast'));
     await loadDetail();
   }
 
@@ -367,7 +369,7 @@ export default function SessionDetail() {
     setDeleting(false);
     if (error) {
       console.error('Session delete failed', error);
-      showToast('Could not delete session — try again', true);
+      showToast(t('sessions.deleteError'), true);
       return;
     }
     go('book-club-detail', { clubId });
@@ -378,7 +380,7 @@ export default function SessionDetail() {
       <div className="breadcrumb">
         <a onClick={() => go('book-clubs')}>Book Clubs</a>
         {club && <> · <a onClick={() => go('book-club-detail', { clubId })}>{club.name}</a></>}
-        {' · Session'}
+        {' · '}{t('sessions.detailBreadcrumb')}
       </div>
 
       {/* Book header */}
@@ -388,7 +390,7 @@ export default function SessionDetail() {
         </div>
         <div>
           <div style={{ fontFamily: "'Special Elite', monospace", fontSize: '0.7rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: isActive ? 'var(--gilt)' : isPast ? 'var(--text-dim)' : 'var(--paper-aged)', marginBottom: '0.4rem' }}>
-            {isActive ? '✦ Active session' : isPast ? 'Past session' : 'Upcoming'}
+            {isActive ? t('sessions.statusActive') : isPast ? t('sessions.statusPast') : t('sessions.statusUpcoming')}
           </div>
           <h1 style={{ fontFamily: "'Cormorant Garamond', serif", fontStyle: 'italic', fontSize: '1.7rem', color: 'var(--paper)', margin: 0, lineHeight: 1.15, marginBottom: '0.25rem' }}>
             {session.title}
@@ -409,21 +411,21 @@ export default function SessionDetail() {
       {isAdmin && (
         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '2rem' }}>
           <button className="li-action" onClick={() => setShowEditModal(true)}>
-            ✎ Edit session
+            {t('sessions.editSession')}
           </button>
           {!confirmDelete ? (
             <button className="li-action danger" onClick={() => setConfirmDelete(true)}>
-              Delete session
+              {t('sessions.deleteSession')}
             </button>
           ) : (
             <>
               <span style={{ fontSize: '0.82rem', color: 'var(--paper-aged)', opacity: 0.7, alignSelf: 'center' }}>
-                Delete this session?
+                {t('sessions.deleteConfirm')}
               </span>
               <button className="li-action danger" onClick={handleDelete} disabled={deleting}>
-                {deleting ? 'Deleting…' : 'Yes, delete'}
+                {deleting ? t('sessions.deleting') : t('sessions.deleteYes')}
               </button>
-              <button className="li-action" onClick={() => setConfirmDelete(false)}>Cancel</button>
+              <button className="li-action" onClick={() => setConfirmDelete(false)}>{t('sessions.cancel')}</button>
             </>
           )}
         </div>
@@ -433,7 +435,7 @@ export default function SessionDetail() {
       {session.admin_notes && (
         <div style={{ borderLeft: '2px solid rgba(176,140,63,0.35)', paddingLeft: '1rem', marginBottom: '2rem' }}>
           <div style={{ fontFamily: "'Special Elite', monospace", fontSize: '0.65rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--gilt)', opacity: 0.7, marginBottom: '0.4rem' }}>
-            From the admin
+            {t('sessions.adminLabel')}
           </div>
           <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '1.05rem', color: 'var(--paper-aged)', lineHeight: 1.65, margin: 0 }}>
             {session.admin_notes}
@@ -445,7 +447,7 @@ export default function SessionDetail() {
       {book.description && (
         <div style={{ marginBottom: '2rem' }}>
           <div style={{ fontFamily: "'Special Elite', monospace", fontSize: '0.65rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--gilt)', opacity: 0.7, marginBottom: '0.5rem' }}>
-            About the book
+            {t('sessions.aboutBook')}
           </div>
           <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '1.05rem', color: 'var(--paper-aged)', lineHeight: 1.65, margin: 0 }}>
             {book.description}
@@ -458,15 +460,15 @@ export default function SessionDetail() {
         <div style={{ marginBottom: '2rem', display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
           {iAmReading ? (
             <button className="btn" onClick={() => setShowProgressModal(true)}>
-              ↑ Update my progress
+              {t('sessions.updateProgress')}
             </button>
           ) : (
             <>
               <button className="btn" onClick={handleStartReading}>
-                Start tracking this book
+                {t('sessions.startTracking')}
               </button>
               <span style={{ fontSize: '0.8rem', color: 'var(--paper-aged)', opacity: 0.5, alignSelf: 'center' }}>
-                Adds it to your Currently Reading
+                {t('sessions.startTrackingNote')}
               </span>
             </>
           )}
@@ -476,11 +478,11 @@ export default function SessionDetail() {
       {/* Progress grid */}
       <section>
         <div style={{ fontFamily: "'Special Elite', monospace", fontSize: '0.7rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--gilt)', marginBottom: '0.75rem' }}>
-          Member progress · {(progress || []).length}
+          {t('sessions.memberProgress', { count: (progress || []).length })}
         </div>
         {sortedProgress.length === 0 ? (
           <div style={{ color: 'var(--text-dim)', fontStyle: 'italic', fontSize: '0.9rem' }}>
-            No members yet.
+            {t('sessions.noMembers')}
           </div>
         ) : (
           <div>

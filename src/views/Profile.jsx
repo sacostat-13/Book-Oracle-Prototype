@@ -2,7 +2,7 @@ import { useRef, useMemo } from 'react';
 import { useData } from '../lib/DataContext';
 import { useAuth } from '../lib/AuthContext';
 import { useRouter } from '../lib/RouterContext';
-import { useI18n } from '../lib/I18nContext';
+import { useT } from '../lib/I18nContext';
 import { parseGoodreadsCSV } from '../lib/goodreadsImport';
 import { findBookByTitle, bookKey } from '../lib/bookHelpers';
 
@@ -126,8 +126,7 @@ export default function Profile() {
   const { state, resetAll, importGoodreads, showToast } = useData();
   const { user } = useAuth();
   const { go } = useRouter();
-  const { lang } = useI18n();
-  const isSpanish = lang === 'es';
+  const t = useT();
   const fileRef = useRef(null);
 
   // ── Stats derivation ────────────────────────────────────────────────────────
@@ -214,7 +213,7 @@ export default function Profile() {
       const text = await file.text();
       const books = parseGoodreadsCSV(text);
       if (books.length === 0) {
-        showToast(isSpanish ? 'No se encontraron libros en ese archivo.' : "Couldn't find any read books in that file.", true);
+        showToast(t('profile.csvErrorNoBooks'), true);
         return;
       }
       const enriched = books.map((gb) => {
@@ -223,7 +222,7 @@ export default function Profile() {
       });
       await importGoodreads(enriched);
     } catch {
-      showToast(isSpanish ? 'No se pudo leer ese archivo.' : "Couldn't read that file.", true);
+      showToast(t('profile.csvReadError'), true);
     }
   }
 
@@ -246,21 +245,19 @@ export default function Profile() {
   return (
     <>
       <div className="breadcrumb">
-        <a onClick={() => go('dashboard')}>Dashboard</a> · {isSpanish ? 'Perfil' : 'Profile'}
+        <a onClick={() => go('dashboard')}>Dashboard</a> · {t('profile.breadcrumb')}
       </div>
       <div className="page-header">
-        <div className="page-eyebrow">{isSpanish ? 'Perfil' : 'Profile'}</div>
+        <div className="page-eyebrow">{t('profile.eyebrowTitle')}</div>
         <h1 className="page-title">
-          {isSpanish ? 'Tu perfil de ' : 'Your '}
-          <span className="accent">{isSpanish ? 'lectora' : 'reader'}</span>
-          {isSpanish ? '' : ' profile'}
+          {t('profile.titlePrefix', { val: '' }).replace(/(Your |Tu perfil de )/, '') || 'Your '}
+          <span className="accent">{t('profile.titleAccent')}</span>{' profile'}
         </h1>
         {hasStats && (
           <p className="page-subtitle">
-            {isSpanish
-              ? `${stats.totalBooks} libros leídos${stats.totalPages > 0 ? ` · ${stats.totalPages.toLocaleString()} páginas` : ''}`
-              : `${stats.totalBooks} books read${stats.totalPages > 0 ? ` · ${stats.totalPages.toLocaleString()} pages` : ''}`
-            }
+
+            {`${stats.totalBooks} ${t('profile.booksRead')} ${stats.totalPages > 0 ? ` · ${stats.totalPages.toLocaleString()} ${t('profile.pagesRead')} ` : ''}`}
+
           </p>
         )}
       </div>
@@ -269,39 +266,39 @@ export default function Profile() {
       {hasStats && (
         <div style={{ maxWidth: '720px', marginBottom: '2rem' }}>
 
-          {sectionTitle(isSpanish ? 'Estadísticas' : 'Reading stats')}
+          {sectionTitle(t('profile.sectionStats'))}
 
           {/* Top-line numbers */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '0.75rem', marginBottom: '1.5rem' }}>
             <StatCard
               value={stats.totalBooks}
-              label={isSpanish ? 'libros leídos' : 'books read'}
-              sub={stats.booksThisYear > 0 ? `${stats.booksThisYear} ${isSpanish ? 'este año' : 'this year'}` : null}
+              label={t('profile.statBooksRead')}
+              sub={stats.booksThisYear > 0 ? t('profile.statThisYear', { count: stats.booksThisYear }) : null}
             />
             {stats.totalPages > 0 && (
               <StatCard
                 value={stats.totalPages.toLocaleString()}
-                label={isSpanish ? 'páginas' : 'pages'}
-                sub={stats.pagesThisYear > 0 ? `${stats.pagesThisYear.toLocaleString()} ${isSpanish ? 'este año' : 'this year'}` : null}
+                label={t('profile.statPages')}
+                sub={stats.pagesThisYear > 0 ? t('profile.statThisYear', { count: stats.pagesThisYear.toLocaleString() }) : null}
               />
             )}
             {stats.pace && (
               <StatCard
                 value={stats.pace}
-                label={isSpanish ? 'libros/mes' : 'books/month'}
-                sub={isSpanish ? 'últimos 12 meses' : 'last 12 months'}
+                label={t('profile.statBooksMonth')}
+                sub={t('profile.statLast12')}
               />
             )}
             {stats.avgRating && (
               <StatCard
                 value={`${stats.avgRating}★`}
-                label={isSpanish ? 'calificación media' : 'avg rating'}
+                label={t('profile.statAvgRating')}
               />
             )}
             {stats.seriesCompleted > 0 && (
               <StatCard
                 value={stats.seriesCompleted}
-                label={isSpanish ? 'sagas completas' : 'series finished'}
+                label={t('profile.statSeriesFinished')}
               />
             )}
           </div>
@@ -309,7 +306,7 @@ export default function Profile() {
           {/* Pace chart */}
           {stats.datedBooks.length > 0 && (
             <>
-              {sectionTitle(isSpanish ? 'Ritmo de lectura — últimos 12 meses' : 'Reading pace — last 12 months')}
+              {sectionTitle(t('profile.sectionPace'))}
               <div style={{ padding: '1rem 1.25rem', background: 'rgba(176, 140, 63, 0.04)', border: '1px solid rgba(176, 140, 63, 0.18)', borderRadius: '2px', marginBottom: '1.5rem' }}>
                 <PaceChart books={stats.datedBooks} />
               </div>
@@ -319,7 +316,7 @@ export default function Profile() {
           {/* Top genres */}
           {stats.topGenres.length > 0 && (
             <>
-              {sectionTitle(isSpanish ? 'Géneros más leídos' : 'Top genres')}
+              {sectionTitle(t('profile.sectionTopGenres'))}
               <div style={{ marginBottom: '1.5rem' }}>
                 {stats.topGenres.map((g) => (
                   <GenreBar key={g.name} name={g.name} count={g.count} max={stats.topGenres[0].count} />
@@ -331,11 +328,11 @@ export default function Profile() {
           {/* Favourite author */}
           {stats.topAuthor && stats.topAuthor[1] > 1 && (
             <>
-              {sectionTitle(isSpanish ? 'Autor/a favorita' : 'Most read author')}
+              {sectionTitle(t('profile.sectionTopAuthor'))}
               <p style={{ color: 'var(--paper)', fontFamily: "'Cormorant Garamond', serif", fontStyle: 'italic', fontSize: '1.15rem', marginBottom: '1.5rem' }}>
                 {stats.topAuthor[0]}
                 <span style={{ color: 'var(--paper-aged)', fontSize: '0.9rem', fontStyle: 'normal', marginLeft: '0.6rem', opacity: 0.7 }}>
-                  · {stats.topAuthor[1]} {isSpanish ? 'libros' : 'books'}
+                  · {t('profile.topAuthorBooks', { count: stats.topAuthor[1] })}
                 </span>
               </p>
             </>
@@ -344,24 +341,24 @@ export default function Profile() {
           {/* Series in progress */}
           {stats.seriesInProgress.length > 0 && (
             <>
-              {sectionTitle(isSpanish ? 'Sagas en progreso' : 'Series in progress')}
+              {sectionTitle(t('profile.sectionSeries'))}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1.5rem' }}>
                 {stats.seriesInProgress.map((s) => (
                   <div
                     key={s.name}
                     style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.6rem 1rem', background: 'rgba(176, 140, 63, 0.04)', border: '1px solid rgba(176, 140, 63, 0.15)', borderRadius: '2px', cursor: 'pointer' }}
-                    onClick={() => go('series-page', { seriesName: s.name, from: 'profile', fromLabel: isSpanish ? 'Perfil' : 'Profile' })}
-                    title={isSpanish ? 'Abrir saga' : 'Open Series'}
+                    onClick={() => go('series-page', { seriesName: s.name, from: 'profile', fromLabel: t('profile.fromProfile') })}
+                    title={t('profile.openSeries')}
                   >
                     <div>
                       <div style={{ color: 'var(--paper)', fontFamily: "'Cormorant Garamond', serif", fontStyle: 'italic' }}>{s.name}</div>
                       <div style={{ color: 'var(--paper-aged)', fontSize: '0.8rem', opacity: 0.7 }}>
-                        {s.read} of {s.total} {isSpanish ? 'leídos' : 'read'}
+                        {t('profile.seriesRead', { read: s.read, total: s.total })}
                       </div>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
                       <span style={{ fontFamily: "'Special Elite', monospace", fontSize: '0.6rem', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--gilt)', opacity: 0.8 }}>
-                        {isSpanish ? 'Abrir ↗' : 'Open ↗'}
+                        {t('profile.openLink')}
                       </span>
                       <div style={{ display: 'flex', gap: '4px' }}>
                       {Array.from({ length: s.total }).map((_, i) => (
@@ -378,7 +375,8 @@ export default function Profile() {
           {/* No date data nudge */}
           {stats.datedBooks.length === 0 && stats.totalBooks > 0 && (
             <p style={{ color: 'var(--paper-aged)', fontSize: '0.88rem', opacity: 0.6, fontStyle: 'italic', marginBottom: '1.5rem' }}>
-              {isSpanish
+              
+              {false ||isSpanish
                 ? 'Abrí cualquier libro en tu biblioteca, tocá "Editar calificación" y agregá la fecha en que lo terminaste para ver el ritmo de lectura.'
                 : 'Open any book in your library, tap "Edit rating" and add the date you finished it to see your reading pace.'}
             </p>
@@ -393,39 +391,39 @@ export default function Profile() {
         {user && (
           <>
             <h2 style={{ fontFamily: "'Cormorant Garamond', serif", fontStyle: 'italic', marginBottom: '1rem', color: 'var(--paper)' }}>
-              {isSpanish ? 'Cuenta' : 'Account'}
+              {t('profile.sectionAccount')}
             </h2>
             <p style={{ color: 'var(--paper-aged)', marginBottom: '1rem' }}>
               {state.profile.displayName || user.email}
               <br />
               <span style={{ color: 'var(--gilt)', fontSize: '0.9rem' }}>
-                {isSpanish ? 'Sincronizado · accesible desde cualquier dispositivo' : 'Synced to your account · accessible from any device'}
+                {t('profile.accountSynced')}
               </span>
             </p>
           </>
         )}
 
         <h2 style={{ fontFamily: "'Cormorant Garamond', serif", fontStyle: 'italic', margin: user ? '1.5rem 0 1rem' : '0 0 1rem', color: 'var(--paper)' }}>
-          {isSpanish ? 'Nivel de lectura' : 'Reading level'}
+          {t('profile.labelReadingLevel')}
         </h2>
         <p style={{ color: 'var(--paper-aged)', marginBottom: '1rem' }}>
-          {LEVEL_NAMES[state.profile.readingLevel] || (isSpanish ? 'No configurado' : 'Not set')}
+          {LEVEL_NAMES[state.profile.readingLevel] || t('profile.notSet')}
         </p>
 
         <h2 style={{ fontFamily: "'Cormorant Garamond', serif", fontStyle: 'italic', margin: '1.5rem 0 1rem', color: 'var(--paper)' }}>
-          {isSpanish ? 'Objetivo' : 'Goal'}
+          {t('profile.labelGoal')}
         </h2>
         <p style={{ color: 'var(--paper-aged)', marginBottom: '1rem' }}>
-          {GOAL_NAMES[state.profile.goal] || (isSpanish ? 'No configurado' : 'Not set')}
+          {GOAL_NAMES[state.profile.goal] || (t('profile.notSet'))}
         </p>
 
         <h2 style={{ fontFamily: "'Cormorant Garamond', serif", fontStyle: 'italic', margin: '1.5rem 0 1rem', color: 'var(--paper)' }}>
-          {isSpanish ? 'Biblioteca' : 'Library'}
+          {t('profile.labelLibrary')}
         </h2>
         <p style={{ color: 'var(--paper-aged)', marginBottom: '1.5rem' }}>
-          {state.library.length} {isSpanish ? 'libros leídos' : 'books read'} · {state.readNext.length} {isSpanish ? 'en cola' : 'queued'}
+          {t('profile.librarySummary', { books: state.library.length, queued: state.readNext.length })}
           {state.profile.goodreadsImported && (
-            <><br /><span style={{ color: 'var(--gilt)' }}>✓ Goodreads {isSpanish ? 'importado' : 'imported'}</span></>
+            <><br /><span style={{ color: 'var(--gilt)' }}>{t('profile.goodreadsImported')}</span></>
           )}
         </p>
 
@@ -442,8 +440,7 @@ export default function Profile() {
           />
           <button className="btn btn-ghost" onClick={() => fileRef.current?.click()}>
             {state.profile.goodreadsImported
-              ? (isSpanish ? 'Re-importar CSV de Goodreads' : 'Re-import Goodreads CSV')
-              : (isSpanish ? 'Importar CSV de Goodreads' : 'Import Goodreads CSV')}
+              ? t('profile.reimportGoodreads') : t('profile.importGoodreads')}
           </button>
         </div>
 
@@ -451,15 +448,13 @@ export default function Profile() {
           <button
             className="btn btn-ghost"
             onClick={() => {
-              if (confirm(isSpanish
-                ? '¿Borrar perfil, biblioteca, cola y plan de lectura?'
-                : 'This will erase your profile, library, queue, and reading plan. Continue?')) {
+              if (confirm(t('library.confirmReset'))) {
                 resetAll();
                 go('dashboard');
               }
             }}
           >
-            {isSpanish ? 'Reiniciar perfil' : 'Reset profile & start over'}
+            {t('profile.resetProfile')}
           </button>
         </div>
       </div>

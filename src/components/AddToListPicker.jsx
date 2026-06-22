@@ -2,12 +2,11 @@
 // Single-book "Add to list" button that opens AddToListModal.
 
 import { useState } from 'react';
-import { useI18n } from '../lib/I18nContext';
+import { useT } from '../lib/I18nContext';
 import AddToListModal from './AddToListModal';
 
 export default function AddToListPicker({ book }) {
-  const { lang } = useI18n();
-  const isSpanish = lang === 'es';
+  const t = useT();
   const [open, setOpen] = useState(false);
 
   if (!book) return null;
@@ -15,7 +14,7 @@ export default function AddToListPicker({ book }) {
   return (
     <>
       <button className="btn btn-ghost" onClick={() => setOpen(true)}>
-        ❦ {isSpanish ? 'Agregar a lista' : 'Add to list'}
+        {t('addToListPicker.btn')}
       </button>
       {open && <AddToListModal books={[book]} onClose={() => setOpen(false)} />}
     </>

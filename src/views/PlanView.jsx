@@ -2,14 +2,13 @@ import { useEffect, useState } from 'react';
 import { useData } from '../lib/DataContext';
 import { useRouter } from '../lib/RouterContext';
 import { bookKey, findBookByTitle } from '../lib/bookHelpers';
-import { useI18n } from '../lib/I18nContext';
+import { useT } from '../lib/I18nContext';
 import { supabase } from '../lib/supabase';
 
 export default function PlanView() {
   const { state, addToReadNext, markAsRead, deletePlan, setCurrentPlan, showToast } = useData();
   const { go, route } = useRouter();
-  const { lang } = useI18n();
-  const isSpanish = lang === 'es';
+  const t = useT();
 
   const planId = route.params?.planId;
 
@@ -50,7 +49,7 @@ export default function PlanView() {
   if (loadingRemote) return (
     <div className="loading" style={{ paddingTop: '6rem' }}>
       <div className="loading-spinner" />
-      <div className="loading-text">{isSpanish ? 'Cargando plan…' : 'Loading plan…'}</div>
+      <div className="loading-text">{t('plans.loadingPlan')}</div>
     </div>
   );
 
@@ -102,7 +101,7 @@ export default function PlanView() {
       createdAt: undefined,
     };
     await setCurrentPlan(copy);
-    showToast(isSpanish ? 'Plan copiado a tu cuenta ✓' : 'Plan copied to your account ✓');
+    showToast(t('plans.planCopied'));
     go('dashboard');
   }
 
@@ -116,7 +115,7 @@ export default function PlanView() {
           {isSharedView && remoteOwner ? (
             <>Reading plan by <strong style={{ color: '#d8b66a' }}>{remoteOwner.display_name}</strong></>
           ) : (
-            isSpanish ? 'Tu plan de lectura' : 'Your Reading Plan'
+            t('plans.yourPlan')
           )}
         </div>
         <h1 className="page-title">{plan.title}</h1>
@@ -127,18 +126,18 @@ export default function PlanView() {
         {plan.type === 'series' && plan.seriesName && (
           <button
             className="btn"
-            onClick={() => go('series-page', { seriesName: plan.seriesName, from: 'plan-view', fromLabel: isSpanish ? 'Plan' : 'Reading Plan' })}
+            onClick={() => go('series-page', { seriesName: plan.seriesName, from: 'plan-view', fromLabel: t('plans.readingPlanBreadcrumb') })}
           >
-            {isSpanish ? 'Abrir saga ↗' : 'Open Series ↗'}
+            {t('plans.openSeries')}
           </button>
         )}
         <button className="btn btn-gilt" onClick={addAllToQueue}>
-          {isSpanish ? 'Agregar todo a la cola' : 'Add all to Read Next'}
+          {t('plans.addAllToQueue')}
         </button>
         {!isSharedView && (
           <>
             <button className="btn btn-ghost" onClick={() => go('plan-create')}>
-              {isSpanish ? 'Crear otro plan' : 'Create another plan'}
+              {t('plans.createAnother')}
             </button>
             <button className="btn btn-ghost" onClick={handleDeletePlan}>
               Delete this plan
@@ -148,10 +147,10 @@ export default function PlanView() {
         {isSharedView && (
           <>
             <button className="btn btn-gilt" onClick={handleCopyPlan}>
-              {isSpanish ? '✦ Copiar este plan' : '✦ Copy this plan'}
+              {t('plans.copyPlan')}
             </button>
             <button className="btn btn-ghost" onClick={() => go('plan-create')}>
-              {isSpanish ? 'Crear mi propio plan' : 'Create my own plan'}
+              {t('plans.createOwnPlan')}
             </button>
           </>
         )}

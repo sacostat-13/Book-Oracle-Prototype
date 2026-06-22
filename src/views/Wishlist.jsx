@@ -5,7 +5,7 @@ import { GENRES, bookKey } from '../lib/bookHelpers';
 import BulkImport from '../components/BulkImport';
 import OracleCategorizationButton from '../components/OracleCategorizationButton';
 import LibraryCoverGrid from '../components/LibraryCoverGrid';
-import { useI18n } from '../lib/I18nContext';
+import { useT } from '../lib/I18nContext';
 import { useSelection } from '../lib/useSelection';
 import SelectionBar from '../components/SelectionBar';
 
@@ -26,8 +26,7 @@ export default function Wishlist({ onOpenBook }) {
     startReading,
   } = useData();
   const { go } = useRouter();
-  const { lang } = useI18n();
-  const isSpanish = lang === 'es';
+  const t = useT();
   const [search, setSearch] = useState('');
   const [genreFilter, setGenreFilter] = useState('all');
   const [categoryFilter, setCategoryFilter] = useState('all');
@@ -202,7 +201,7 @@ export default function Wishlist({ onOpenBook }) {
             className={`btn btn-ghost${sel.active ? ' active' : ''}`}
             onClick={() => sel.active ? sel.exit() : sel.enter()}
           >
-            {sel.active ? (isSpanish ? 'Cancelar' : 'Cancel') : (isSpanish ? 'Seleccionar' : 'Select')}
+            {sel.active ? (t('common.cancel')) : (t('lists.selectMode'))}
           </button>
         </div>
       </div>

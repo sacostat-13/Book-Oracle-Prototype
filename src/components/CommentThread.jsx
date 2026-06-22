@@ -12,6 +12,7 @@
 
 import { useState } from 'react';
 import { useAuth } from '../lib/AuthContext';
+import { useT } from '../lib/I18nContext';
 
 function Avatar({ displayName, avatarUrl, size = 26 }) {
   const [failed, setFailed] = useState(false);
@@ -29,7 +30,7 @@ function Avatar({ displayName, avatarUrl, size = 26 }) {
 function relativeTime(dateStr) {
   const diff = Date.now() - new Date(dateStr).getTime();
   const mins = Math.floor(diff / 60000);
-  if (mins < 1) return 'just now';
+  if (mins < 1) return t('discussion.justNow');
   if (mins < 60) return `${mins}m ago`;
   const hrs = Math.floor(mins / 60);
   if (hrs < 24) return `${hrs}h ago`;
@@ -39,6 +40,7 @@ function relativeTime(dateStr) {
 }
 
 function CommentInput({ onPost, placeholder = 'Add a comment…', autoFocus = false }) {
+  const t = useT();
   const [body, setBody] = useState('');
   const [posting, setPosting] = useState(false);
 
@@ -79,7 +81,7 @@ function CommentInput({ onPost, placeholder = 'Add a comment…', autoFocus = fa
         disabled={!body.trim() || posting}
         style={{ flexShrink: 0, alignSelf: 'flex-end', paddingBottom: '0.45rem' }}
       >
-        {posting ? '…' : 'Post'}
+        {posting ? t('discussion.posting') : t('discussion.post')}
       </button>
     </div>
   );
@@ -118,13 +120,14 @@ function EditInput({ initialBody, onSave, onCancel }) {
       />
       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
         <button className="li-action" onClick={handleSave} disabled={!body.trim() || saving}>{saving ? '…' : 'Save'}</button>
-        <button className="li-action" onClick={onCancel}>Cancel</button>
+        <button className="li-action" onClick={onCancel}>{t('discussion.cancelReply')}</button>
       </div>
     </div>
   );
 }
 
 function SingleComment({ comment, onPost, onDelete, onEdit, isReply = false }) {
+  const t = useT();
   const { user } = useAuth();
   const [replying, setReplying] = useState(false);
   const [editing, setEditing] = useState(false);
@@ -151,7 +154,7 @@ function SingleComment({ comment, onPost, onDelete, onEdit, isReply = false }) {
           </span>
           <span style={{ fontSize: '0.72rem', color: 'var(--paper-aged)', opacity: 0.45 }}>
             {relativeTime(comment.created_at)}
-            {comment.updated_at && comment.updated_at !== comment.created_at && ' · edited'}
+            {comment.updated_at && comment.updated_at !== comment.created_at && t('discussion.edited')}
           </span>
         </div>
 
@@ -177,7 +180,7 @@ function SingleComment({ comment, onPost, onDelete, onEdit, isReply = false }) {
                 onClick={() => setReplying(!replying)}
                 style={{ fontSize: '0.72rem', color: 'var(--paper-aged)', opacity: 0.5, background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontFamily: "'Special Elite', monospace", letterSpacing: '0.05em' }}
               >
-                {replying ? 'Cancel' : 'Reply'}
+                {replying ? t('discussion.cancelReply') : t('discussion.reply')}
               </button>
             )}
             {isMine && (
@@ -186,14 +189,12 @@ function SingleComment({ comment, onPost, onDelete, onEdit, isReply = false }) {
                   onClick={() => setEditing(true)}
                   style={{ fontSize: '0.72rem', color: 'var(--paper-aged)', opacity: 0.5, background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontFamily: "'Special Elite', monospace", letterSpacing: '0.05em' }}
                 >
-                  Edit
+                  {t('discussion.edit')}
                 </button>
                 <button
                   onClick={() => onDelete(comment.id)}
                   style={{ fontSize: '0.72rem', color: 'rgba(180,60,60,0.6)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontFamily: "'Special Elite', monospace", letterSpacing: '0.05em' }}
-                >
-                  Delete
-                </button>
+                >{t('discussion.delete')}</button>
               </>
             )}
           </div>
@@ -227,6 +228,7 @@ function SingleComment({ comment, onPost, onDelete, onEdit, isReply = false }) {
 }
 
 export default function CommentThread({ comments = [], onPost, onDelete, onEdit, placeholder, compact = false }) {
+  const t = useT();
   const { user } = useAuth();
 
   return (
@@ -245,7 +247,7 @@ export default function CommentThread({ comments = [], onPost, onDelete, onEdit,
         <div style={{ marginTop: comments.length > 0 ? '0.5rem' : 0 }}>
           <CommentInput
             onPost={(body) => onPost(body, null)}
-            placeholder={placeholder || 'Add a comment… (Cmd+Enter to post)'}
+            placeholder={placeholder || t('discussion.commentPlaceholder')}
           />
         </div>
       )}

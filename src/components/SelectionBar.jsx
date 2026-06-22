@@ -4,7 +4,7 @@
 
 import { useState } from 'react';
 import { useData } from '../lib/DataContext';
-import { useI18n } from '../lib/I18nContext';
+import { useT } from '../lib/I18nContext';
 import AddToListModal from './AddToListModal';
 
 export default function SelectionBar({
@@ -24,8 +24,7 @@ export default function SelectionBar({
     removeBookFromList,
     showToast,
   } = useData();
-  const { lang } = useI18n();
-  const isSpanish = lang === 'es';
+  const t = useT();
   const [showListPicker, setShowListPicker] = useState(false);
   const [working, setWorking] = useState(false);
 
@@ -43,16 +42,16 @@ export default function SelectionBar({
 
   async function handleRemove() {
     const books = selectedBooks();
-    const label = isSpanish ? 'libros' : 'books';
-    if (!confirm(`${isSpanish ? 'Eliminar' : 'Remove'} ${books.length} ${label}?`)) return;
+    const label = t('common.books');
+    if (!confirm(`${t('common.remove')} ${books.length} ${label}?`)) return;
     if (context === 'wishlist') {
-      await runOnAll(b => removeFromWishlist(b), `${books.length} ${isSpanish ? 'libros eliminados de la lista de deseos' : 'books removed from wishlist'}`);
+      await runOnAll(b => removeFromWishlist(b), `${books.length} ${t('selection.removedWishlist')}`);
     } else if (context === 'library') {
-      await runOnAll(b => removeFromLibrary(b), `${books.length} ${isSpanish ? 'libros eliminados de la biblioteca' : 'books removed from library'}`);
+      await runOnAll(b => removeFromLibrary(b), `${books.length} ${t('selection.removedLibrary')}`);
     } else if (context === 'list' && listId) {
       setWorking(true);
       for (const b of books) await removeBookFromList(listId, b.bookId);
-      showToast(`${books.length} ${isSpanish ? 'libros eliminados de la lista' : 'books removed from list'}`);
+      showToast(`${books.length} ${t('selection.removedList')}`);
       onExit();
       setWorking(false);
     }
@@ -60,7 +59,7 @@ export default function SelectionBar({
 
   async function handleMarkRead() {
     const books = selectedBooks();
-    await runOnAll(b => markAsRead(b), `${books.length} ${isSpanish ? 'libros marcados como leídos' : 'books marked as read'}`);
+    await runOnAll(b => markAsRead(b), `${books.length} ${t('selection.markedRead')}`);
   }
 
   return (
@@ -71,14 +70,14 @@ export default function SelectionBar({
             ✕
           </button>
           <span className="selection-bar__count">
-            <strong>{count}</strong> {isSpanish ? 'seleccionados' : 'selected'}
+            <strong>{count}</strong> {t('selection.selected')}
           </span>
           <button className="selection-bar__secondary" onClick={onSelectAll} disabled={working}>
-            {isSpanish ? 'Todos' : 'All'}
+            {t('selection.all')}
           </button>
           {count > 0 && (
             <button className="selection-bar__secondary" onClick={onClearAll} disabled={working}>
-              {isSpanish ? 'Ninguno' : 'None'}
+              {t('selection.none')}
             </button>
           )}
         </div>
@@ -92,7 +91,7 @@ export default function SelectionBar({
                 onClick={() => setShowListPicker(true)}
                 disabled={working}
               >
-                ❦ {isSpanish ? 'Agregar a lista' : 'Add to list'}
+                {t('selectionBar.addToListBtn')}
               </button>
 
               {/* Mark as read — wishlist only */}
@@ -102,7 +101,7 @@ export default function SelectionBar({
                   onClick={handleMarkRead}
                   disabled={working}
                 >
-                  ✓ {isSpanish ? 'Marcar leídos' : 'Mark read'}
+                  {t('selectionBar.markReadBtn')}
                 </button>
               )}
 
@@ -113,8 +112,8 @@ export default function SelectionBar({
                 disabled={working}
               >
                 {working ? '…' : (context === 'list'
-                  ? (isSpanish ? 'Quitar de lista' : 'Remove from list')
-                  : (isSpanish ? 'Eliminar' : 'Remove'))}
+                  ? (t('bulkImport.removeRow'))
+                  : (t('common.remove')))}
               </button>
             </>
           )}

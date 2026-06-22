@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useData } from '../lib/DataContext';
 import { useRouter } from '../lib/RouterContext';
-import { useI18n } from '../lib/I18nContext';
+import { useT } from '../lib/I18nContext';
 import { openBookTab } from '../lib/bookHelpers';
 import BookCover from '../components/BookCover';
 
@@ -11,8 +11,7 @@ function CreateListModal({ onSave, onClose }) {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [saving, setSaving] = useState(false);
-  const { lang } = useI18n();
-  const isSpanish = lang === 'es';
+  const t = useT();
 
   async function handleSave() {
     if (!title.trim()) return;
@@ -27,14 +26,14 @@ function CreateListModal({ onSave, onClose }) {
       <div className="modal" style={{ maxWidth: 480 }} onClick={e => e.stopPropagation()}>
         <button className="book-modal-close" onClick={onClose} style={{ position: 'absolute', top: '1rem', right: '1rem' }}>✕</button>
         <div className="book-modal-section-title" style={{ marginBottom: '1.25rem' }}>
-          {isSpanish ? 'Nueva lista' : 'New list'}
+          {t('lists.newListBtn')}
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           <div>
-            <label className="form-label">{isSpanish ? 'Título' : 'Title'}</label>
+            <label className="form-label">{t('report.fieldTitle')}</label>
             <input
               className="search-input"
-              placeholder={isSpanish ? 'p.ej. Mejor horror gótico' : 'e.g. Best Gothic Horror'}
+              placeholder={t('lists.newListPlaceholder')}
               value={title}
               onChange={e => setTitle(e.target.value)}
               autoFocus
@@ -43,12 +42,12 @@ function CreateListModal({ onSave, onClose }) {
           </div>
           <div>
             <label className="form-label">
-              {isSpanish ? 'Descripción' : 'Description'}{' '}
-              <span style={{ opacity: 0.4 }}>({isSpanish ? 'opcional' : 'optional'})</span>
+              {t('bookModal.description')}{' '}
+              <span style={{ opacity: 0.4 }}>({t('lists.optional')})</span>
             </label>
             <textarea
               className="search-input"
-              placeholder={isSpanish ? '¿De qué trata esta lista?' : "What's this list about?"}
+              placeholder={t('lists.descPlaceholder')}
               value={description}
               onChange={e => setDescription(e.target.value)}
               rows={3}
@@ -56,9 +55,9 @@ function CreateListModal({ onSave, onClose }) {
             />
           </div>
           <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-            <button className="btn btn-ghost" onClick={onClose}>{isSpanish ? 'Cancelar' : 'Cancel'}</button>
+            <button className="btn btn-ghost" onClick={onClose}>{t('common.cancel')}</button>
             <button className="btn" onClick={handleSave} disabled={!title.trim() || saving}>
-              {saving ? '…' : (isSpanish ? 'Crear lista' : 'Create list')}
+              {saving ? '…' : (t('lists.createList'))}
             </button>
           </div>
         </div>
@@ -70,8 +69,7 @@ function CreateListModal({ onSave, onClose }) {
 export default function Lists() {
   const { state, createList, updateList, deleteList } = useData();
   const { go } = useRouter();
-  const { lang } = useI18n();
-  const isSpanish = lang === 'es';
+  const t = useT();
   const [creating, setCreating] = useState(false);
 
   const lists = state.lists || [];
@@ -83,7 +81,7 @@ export default function Lists() {
 
   async function handleDelete(list, e) {
     e.stopPropagation();
-    if (!confirm(`${isSpanish ? 'Eliminar' : 'Delete'} "${list.title}"?`)) return;
+    if (!confirm(`${t('common.delete')} "${list.title}"?`)) return;
     await deleteList(list.id);
   }
 
@@ -102,31 +100,27 @@ export default function Lists() {
   return (
     <>
       <div className="page-header">
-        <div className="page-eyebrow">{isSpanish ? 'Mis listas' : 'My Lists'}</div>
+        <div className="page-eyebrow">{t('lists.eyebrow')}</div>
         <h1 className="page-title">
-          {isSpanish ? 'Listas' : 'Curated'} <span className="accent">{isSpanish ? 'Curadas' : 'Lists'}</span>
+          {t('lists.curated')} <span className="accent">{t('about.featureListsTitle')}</span>
         </h1>
         <p style={{ color: 'var(--text-muted)', fontSize: '0.95rem', marginTop: '0.5rem' }}>
-          {isSpanish
-            ? 'Creá listas temáticas y compartilas con quien quieras.'
-            : 'Create themed reading lists and share them with anyone.'}
+          {t('lists')}
         </p>
       </div>
 
       <div style={{ marginBottom: '2rem' }}>
         <button className="btn" onClick={() => setCreating(true)}>
-          + {isSpanish ? 'Nueva lista' : 'New list'}
+          + {t('lists.newListBtn')}
         </button>
       </div>
 
       {lists.length === 0 ? (
         <div className="empty-state">
           <div className="ornament">❦</div>
-          <div className="empty-state-title">{isSpanish ? 'Sin listas aún' : 'No lists yet'}</div>
+          <div className="empty-state-title">{t('lists.emptyTitle')}</div>
           <div className="empty-state-text">
-            {isSpanish
-              ? 'Creá tu primera lista y empezá a curar libros para compartir.'
-              : 'Create your first list and start curating books to share.'}
+            { t('emptyText') }
           </div>
         </div>
       ) : (
@@ -142,27 +136,27 @@ export default function Lists() {
                     onClick={() => go('list-detail', { listId: list.id })}
                   >
                     {list.title}
-                    <span className="count"> · {books.length} {isSpanish ? 'libros' : 'books'}</span>
+                    <span className="count"> · {books.length} {t('common.books')}</span>
                     {list.is_public && (
                       <span style={{ marginLeft: '0.5rem', fontFamily: "'Special Elite',monospace", fontSize: '0.6rem', letterSpacing: '0.1em', color: 'rgba(201,162,75,0.7)' }}>
-                        ✦ {isSpanish ? 'Pública' : 'Public'}
+                        ✦ {t('lists.publicBadge')}
                       </span>
                     )}
                   </span>
                   <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
                     <button className="li-action" onClick={e => togglePublic(list, e)}>
                       {list.is_public
-                        ? (isSpanish ? 'Hacer privada' : 'Make private')
-                        : (isSpanish ? 'Hacer pública' : 'Make public')}
+                        ? (t('lists.makePrivate'))
+                        : (t('lists.makePublic'))}
                     </button>
                     {list.is_public && (
                       <button className="li-action" onClick={e => copyLink(list, e)}>
-                        {isSpanish ? 'Copiar enlace' : 'Copy link'}
+                        {t('lists.copyLink')}
                       </button>
                     )}
                     <button className="li-action" style={{ color: 'var(--blood-bright)' }}
                       onClick={e => handleDelete(list, e)}>
-                      {isSpanish ? 'Eliminar' : 'Delete'}
+                      {t('common.delete')}
                     </button>
                   </div>
                 </div>
@@ -172,7 +166,7 @@ export default function Lists() {
                     style={{ padding: '1.5rem', textAlign: 'center', color: 'var(--text-dim)', fontStyle: 'italic', cursor: 'pointer', border: '1px dashed rgba(176,140,63,0.15)', borderRadius: 2 }}
                     onClick={() => go('list-detail', { listId: list.id })}
                   >
-                    {isSpanish ? 'Lista vacía — hacer clic para agregar libros' : 'Empty list — click to add books'}
+                    {t('lists.emptyList')}
                   </div>
                 ) : (
                   <div className="cover-shelf-grid">

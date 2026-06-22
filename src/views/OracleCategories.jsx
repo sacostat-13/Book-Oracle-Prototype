@@ -14,7 +14,7 @@ import BookCard from '../components/BookCard';
 export default function OracleCategories({ onOpenBook }) {
   const { state, setOracleMode, showToast, vault, loadVault } = useData();
   const { go } = useRouter();
-  const { lang } = useI18n();
+  const t = useT();
   const [genre, setGenre] = useState('all');
   const [draw, setDraw] = useState([]);
   const [loading, setLoading] = useState(false);

@@ -1,5 +1,18 @@
 // components/_buttons.scss
 // Base button variants: .btn, .btn-ghost, .btn-gilt
+[data-theme="light"] {
+  .btn {
+    color: white;
+
+    &::before {
+      border: 1px solid var(--gilt);
+    }
+  }
+  .btn-ghost{
+    color: var(--paper);
+  }
+}
+
 
 .btn {
   background: var(--blood);

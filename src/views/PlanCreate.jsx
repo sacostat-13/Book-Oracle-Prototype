@@ -16,7 +16,7 @@ const LEVEL_BLURB = {
 export default function PlanCreate() {
   const { state, setCurrentPlan, showToast, vault, loadVault } = useData();
   const { go, route } = useRouter();
-  const { lang } = useI18n();
+  const t = useT();
   const [type, setType] = useState(null);
   const [target, setTarget] = useState(route.params?.seriesName || null);
   const [timeline, setTimeline] = useState(6);
@@ -274,7 +274,7 @@ Return ONLY valid JSON in this exact format:
     return (
       <>
         <div className="breadcrumb">
-          <a onClick={() => go('dashboard')}>Dashboard</a> · Your Reading Plan
+          <a onClick={() => go('dashboard')}>{t('plans.breadcrumb')}</a> · {t('plans.yourPlanBreadcrumb')}
         </div>
         <div className="loading">
           <div className="loading-spinner"></div>
@@ -293,7 +293,7 @@ Return ONLY valid JSON in this exact format:
   return (
     <>
       <div className="breadcrumb">
-        <a onClick={() => go('dashboard')}>Dashboard</a> · Create Reading Plan
+        <a onClick={() => go('dashboard')}>{t('plans.breadcrumb')}</a> · {t('plans.createPlanBreadcrumb')}
       </div>
       <div className="page-header">
         <div className="page-eyebrow">Create a reading plan</div>

@@ -1,10 +1,12 @@
 import { useData } from '../lib/DataContext';
 import { useRouter } from '../lib/RouterContext';
+import { useT } from '../lib/I18nContext';
 import { bookKey } from '../lib/bookHelpers';
 
 export default function ReadNext({ onOpenBook }) {
   const { state, markAsRead, removeFromReadNext, startReading } = useData();
   const { go } = useRouter();
+  const t = useT();
 
   // Books actively being read are shown in Currently Reading, not here.
   const readingKeys = new Set((state.currentlyReading || []).map(bookKey));
@@ -13,21 +15,21 @@ export default function ReadNext({ onOpenBook }) {
   return (
     <>
       <div className="breadcrumb">
-        <a onClick={() => go('dashboard')}>Dashboard</a> · Read Next
+        <a onClick={() => go('dashboard')}>{t('readNext.breadcrumb')}</a> · {t('readNext.title')}
       </div>
       <div className="page-header">
-        <div className="page-eyebrow">Queue</div>
-        <h1 className="page-title">To Read <span className="accent">Next</span></h1>
-        <p className="page-subtitle">{queue.length} books waiting.</p>
+        <div className="page-eyebrow">{t('readNext.eyebrow')}</div>
+        <h1 className="page-title">{t('readNext.title')} <span className="accent">{t('readNext.titleAccent')}</span></h1>
+        <p className="page-subtitle">{queue.length === 1 ? t('readNext.subtitleOne') : t('readNext.subtitle', { count: queue.length })}</p>
       </div>
 
       {queue.length === 0 ? (
         <div className="empty-state">
           <div className="ornament">❦</div>
-          <div className="empty-state-title">Nothing queued yet</div>
-          <div className="empty-state-text">Use the Oracle to draw books from the vault.</div>
+          <div className="empty-state-title">{t('readNext.emptyTitle')}</div>
+          <div className="empty-state-text">{t('readNext.emptyText')}</div>
           <div style={{ marginTop: '1.5rem' }}>
-            <button className="btn" onClick={() => go('oracle')}>Open the Oracle</button>
+            <button className="btn" onClick={() => go('oracle')}>{t('readNext.openOracle')}</button>
           </div>
         </div>
       ) : (
@@ -41,9 +43,9 @@ export default function ReadNext({ onOpenBook }) {
               </div>
             </div>
             <div className="li-actions">
-              <button className="li-action" onClick={() => startReading(b)}>▶ Start</button>
-              <button className="li-action success" onClick={() => markAsRead(b)}>✓ Read</button>
-              <button className="li-action danger" onClick={() => removeFromReadNext(b)}>Remove</button>
+              <button className="li-action" onClick={() => startReading(b)}>{t('readNext.start')}</button>
+              <button className="li-action success" onClick={() => markAsRead(b)}>{t('readNext.markRead')}</button>
+              <button className="li-action danger" onClick={() => removeFromReadNext(b)}>{t('readNext.remove')}</button>
             </div>
           </div>
         ))
