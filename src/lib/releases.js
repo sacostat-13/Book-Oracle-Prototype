@@ -16,16 +16,36 @@
 
 // The version label shown as "current" — keep in sync with package.json and
 // the README version line.
-export const CURRENT_VERSION = 'v0.32';
+export const CURRENT_VERSION = 'v0.33';
 
 export const RELEASES = [{
+    version: 'v0.33',
+    date: '2026-06-23',
+    titleEn: 'Subscription polish',
+    titleEs: 'Ajustes a la suscripción',
+    bodyEn: [
+      'Oracle usage is now tracked for all users, including Pro. Previously, Pro accounts never incremented the monthly counter, making it impossible to monitor AI costs per user.',
+      'Fixed a bug where the quota counter reset to its starting value on every page refresh. The Netlify function was firing consume_oracle_call as a fire-and-forget call that the Lambda killed before it completed — it is now awaited correctly.',
+      'Stripe webhook events now handle the newer Stripe API shape (2026-05-27). The invoice.payment_succeeded and checkout.session.completed handlers were updated to find user_id and subscription ID in their new nested locations.',
+      'The subscription tier badge in Profile now refreshes automatically when you switch back to the tab — useful when a webhook fires or a DB change is made while the app is open.',
+      'Fixed a React rendering error where refreshQuota was called during render on return from Stripe Checkout. Moved to a useEffect with polling (immediate, 2s, 5s) to handle webhook delivery delay.',
+    ],
+    bodyEs: [
+      'El uso del Oráculo ahora se registra para todos los usuarios, incluidos los Pro. Antes, las cuentas Pro nunca incrementaban el contador mensual, haciendo imposible monitorear los costos de IA por usuario.',
+      'Se corrigió un error donde el contador de cuota se reiniciaba en cada recarga de página. La función de Netlify ejecutaba consume_oracle_call sin esperar la respuesta — ahora se espera correctamente.',
+      'Los eventos del webhook de Stripe ahora manejan la nueva estructura de la API de Stripe (2026-05-27). Los manejadores de invoice.payment_succeeded y checkout.session.completed fueron actualizados para encontrar user_id e ID de suscripción en sus nuevas ubicaciones anidadas.',
+      'El indicador de nivel de suscripción en el Perfil ahora se actualiza automáticamente al volver a la pestaña — útil cuando llega un webhook o se hace un cambio en la DB mientras la app está abierta.',
+      'Se corrigió un error de renderizado de React donde refreshQuota era llamada durante el renderizado al volver de Stripe Checkout. Se movió a un useEffect con reintentos (inmediato, 2s, 5s) para manejar el retraso en la entrega del webhook.',
+    ],
+  },
+  {
     version: 'v0.32',
     date: '2026-06-23',
     titleEn: 'The Oracle has a price',
     titleEs: 'El Oráculo tiene un precio',
     bodyEn: [
       'Free accounts now include 5 AI calls per month — shared across Oracle draws, reading plans, book categorization, and all other AI features. The counter resets on the first of each month.',
-      'A Pro plan ($7/month) unlocks unlimited AI usage across everything. Upgrade from your Profile page. Stripe handles all payments — we never store card details.',
+      'A Pro plan ($5/month) unlocks unlimited AI usage across everything. Upgrade from your Profile page. Stripe handles all payments — we never store card details.',
       'Your subscription tier is shown clearly in Profile with a usage bar, reset date, and a direct link to manage or cancel via the Stripe customer portal.',
       'The dashboard now shows an AI usage widget so you always know how many calls remain without having to navigate away.',
     ],
@@ -70,7 +90,8 @@ export const RELEASES = [{
       'Se corrigió un error de rutas que hacía que las páginas de libros fallaran cuando el idioma de la app estaba en español. El problema solo afectaba el entorno de desarrollo local, pero era suficientemente molesto para resolverlo ahora.',
     ],
   },
-  {version: 'v0.29',
+  {
+    version: 'v0.29',
     date: '2026-06-19',
     titleEn: 'Discussion & Decisions',
     titleEs: 'Discusión y Decisiones',
@@ -87,7 +108,8 @@ export const RELEASES = [{
       'Los administradores pueden cerrar una encuesta cuando termina la votación, eliminarla por completo, o crear la próxima sesión directamente desde la opción ganadora.',
     ],
   },
-  {version: 'v0.28',
+  {
+    version: 'v0.28',
     date: '2026-06-19',
     titleEn: 'Book Clubs',
     titleEs: 'Clubs de Lectura',
@@ -102,7 +124,8 @@ export const RELEASES = [{
       'El seguimiento del progreso de lectura ahora está integrado en Leyendo Ahora. Agregá cuántas páginas leíste de cualquier libro en curso — una barra de progreso sutil mantiene tu lugar a la vista.',
     ],
   },
-  {version: 'v0.27',
+  {
+    version: 'v0.27',
     date: '2026-06-18',
     titleEn: 'Lists, sharing, and smarter browsing',
     titleEs: 'Listas, compartir y mejor navegación',
@@ -121,7 +144,8 @@ export const RELEASES = [{
       'Seleccioná varios libros en Lista de Deseos, Biblioteca o una Lista para agregarlos en bloque a una lista, marcarlos como leídos o eliminarlos — funciona en vistas de lista y de portadas.',
     ],
   },
-  {version: 'v0.26',
+  {
+    version: 'v0.26',
     date: '2026-06-18',
     titleEn: 'Your dashboard, alive',
     titleEs: 'Tu panel, con vida propia',
@@ -140,7 +164,8 @@ export const RELEASES = [{
       'El SCSS del proyecto se dividió en 25 archivos parciales para facilitar el mantenimiento.',
     ],
   },
-  {version: 'v0.25',
+  {
+    version: 'v0.25',
     date: '2026-06-17',
     titleEn: 'Currently Reading & cover shelves',
     titleEs: 'Leyendo ahora y estantes de portadas',
