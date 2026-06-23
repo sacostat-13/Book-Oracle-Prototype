@@ -1,8 +1,9 @@
-import { useRef, useMemo } from 'react';
+import { useRef, useMemo, useState } from 'react';
 import { useData } from '../lib/DataContext';
 import { useAuth } from '../lib/AuthContext';
 import { useRouter } from '../lib/RouterContext';
 import { useT } from '../lib/I18nContext';
+import { useOracleQuota } from '../lib/OracleQuotaContext';
 import { parseGoodreadsCSV } from '../lib/goodreadsImport';
 import { findBookByTitle, bookKey } from '../lib/bookHelpers';
 
@@ -125,9 +126,69 @@ function PaceChart({ books }) {
 export default function Profile() {
   const { state, resetAll, importGoodreads, showToast } = useData();
   const { user } = useAuth();
-  const { go } = useRouter();
+  const { go, route } = useRouter();
   const t = useT();
   const fileRef = useRef(null);
+  const { quota, refresh: refreshQuota } = useOracleQuota();
+  const [checkoutLoading, setCheckoutLoading] = useState(false);
+  const [portalLoading, setPortalLoading] = useState(false);
+
+  // Refresh quota when returning from Stripe Checkout so the tier badge
+  // updates immediately. Must be in useEffect — never call setState during render.
+  const checkoutResult = route.params?.checkout;
+  useEffect(() => {
+    if (checkoutResult === 'success') {
+      showToast(t('subscription.checkoutSuccess'));
+      // Poll a couple of times — webhook may take a moment to update the profile
+      refreshQuota();
+      const t1 = setTimeout(() => refreshQuota(), 2000);
+      const t2 = setTimeout(() => refreshQuota(), 5000);
+      return () => { clearTimeout(t1); clearTimeout(t2); };
+    }
+    if (checkoutResult === 'cancelled') {
+      showToast(t('subscription.checkoutCancelled'));
+    }
+  }, [checkoutResult]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function handleUpgrade() {
+    if (!user) return;
+    setCheckoutLoading(true);
+    try {
+      const { data } = await import('../lib/supabase').then(m => m.supabase.auth.getSession());
+      const token = data?.session?.access_token;
+      const res = await fetch('/.netlify/functions/create-checkout-session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      });
+      const json = await res.json();
+      if (json.url) window.location.href = json.url;
+      else showToast(json.error || 'Checkout failed', true);
+    } catch (e) {
+      showToast('Could not open checkout. Try again.', true);
+    } finally {
+      setCheckoutLoading(false);
+    }
+  }
+
+  async function handleManage() {
+    if (!user) return;
+    setPortalLoading(true);
+    try {
+      const { data } = await import('../lib/supabase').then(m => m.supabase.auth.getSession());
+      const token = data?.session?.access_token;
+      const res = await fetch('/.netlify/functions/manage-subscription', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      });
+      const json = await res.json();
+      if (json.url) window.location.href = json.url;
+      else showToast(json.error || 'Could not open billing portal', true);
+    } catch (e) {
+      showToast('Could not open billing portal. Try again.', true);
+    } finally {
+      setPortalLoading(false);
+    }
+  }
 
   // ── Stats derivation ────────────────────────────────────────────────────────
   const stats = useMemo(() => {
@@ -255,9 +316,10 @@ export default function Profile() {
         </h1>
         {hasStats && (
           <p className="page-subtitle">
-
-            {`${stats.totalBooks} ${t('profile.booksRead')} ${stats.totalPages > 0 ? ` · ${stats.totalPages.toLocaleString()} ${t('profile.pagesRead')} ` : ''}`}
-
+            {t('profile.subtitleStats', {
+              books: stats.totalBooks,
+              pages: stats.totalPages > 0 ? t('profile.subtitlePages', { pages: stats.totalPages.toLocaleString() }) : '',
+            })}
           </p>
         )}
       </div>
@@ -375,10 +437,7 @@ export default function Profile() {
           {/* No date data nudge */}
           {stats.datedBooks.length === 0 && stats.totalBooks > 0 && (
             <p style={{ color: 'var(--paper-aged)', fontSize: '0.88rem', opacity: 0.6, fontStyle: 'italic', marginBottom: '1.5rem' }}>
-              
-              {false ||isSpanish
-                ? 'Abrí cualquier libro en tu biblioteca, tocá "Editar calificación" y agregá la fecha en que lo terminaste para ver el ritmo de lectura.'
-                : 'Open any book in your library, tap "Edit rating" and add the date you finished it to see your reading pace.'}
+              {t('profile.paceNudge')}
             </p>
           )}
 
@@ -444,6 +503,91 @@ export default function Profile() {
           </button>
         </div>
 
+        {/* ── Subscription section ──────────────────────────────────────────── */}
+        {user && (
+          <div style={{ borderTop: '1px solid rgba(176, 140, 63, 0.2)', paddingTop: '1.5rem', marginTop: '1.5rem' }}>
+            <h2 style={{ fontFamily: "'Cormorant Garamond', serif", fontStyle: 'italic', marginBottom: '1rem', color: 'var(--paper)' }}>
+              {t('subscription.sectionTitle')}
+            </h2>
+
+            {/* Tier badge */}
+            {(() => {
+              const status = quota?.subscription_status || 'free';
+              const isPro     = status === 'active';
+              const isPastDue = status === 'past_due';
+              return (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
+                  <span style={{
+                    fontFamily:    "'Special Elite', monospace",
+                    fontSize:      '0.7rem',
+                    letterSpacing: '0.15em',
+                    textTransform: 'uppercase',
+                    padding:       '0.25rem 0.75rem',
+                    borderRadius:  '2px',
+                    border:        `1px solid ${isPro ? 'rgba(201,162,75,0.6)' : isPastDue ? 'rgba(180,60,60,0.5)' : 'rgba(201,162,75,0.25)'}`,
+                    background:    isPro ? 'rgba(201,162,75,0.12)' : isPastDue ? 'rgba(180,60,60,0.08)' : 'transparent',
+                    color:         isPro ? 'var(--gilt-bright, #e8c560)' : isPastDue ? 'rgba(220,80,80,0.9)' : 'var(--paper-aged)',
+                  }}>
+                    {isPro ? `✦ ${t('subscription.tierPro')}` : isPastDue ? `⚠ ${t('subscription.tierPastDue')}` : t('subscription.tierFree')}
+                  </span>
+                  <span style={{ color: 'var(--paper-aged)', fontSize: '0.88rem', opacity: 0.7 }}>
+                    {isPro
+                      ? t('subscription.proDesc')
+                      : isPastDue
+                      ? t('subscription.pastDueDesc')
+                      : t('subscription.freeDesc', {
+                          remaining: quota?.calls_remaining ?? 5,
+                          limit:     quota?.calls_limit ?? 5,
+                        })}
+                  </span>
+                </div>
+              );
+            })()}
+
+            {/* Quota bar for free users */}
+            {quota && !quota.unlimited && (
+              <div style={{ marginBottom: '1.25rem' }}>
+                <div style={{ height: '3px', background: 'rgba(201,162,75,0.12)', borderRadius: '2px', overflow: 'hidden', marginBottom: '0.4rem' }}>
+                  <div style={{
+                    height: '100%',
+                    width: `${Math.round(((quota.calls_used ?? 0) / (quota.calls_limit ?? 5)) * 100)}%`,
+                    background: quota.calls_remaining === 0 ? 'rgba(180,60,60,0.7)' : 'var(--gilt)',
+                    borderRadius: '2px',
+                    transition: 'width 0.3s ease',
+                  }} />
+                </div>
+                {quota.reset_at && (
+                  <div style={{ fontSize: '0.78rem', color: 'var(--paper-aged)', opacity: 0.55 }}>
+                    {t('subscription.resetsOn', { date: new Date(quota.reset_at).toLocaleDateString(undefined, { month: 'long', day: 'numeric' }) })}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* CTA */}
+            {quota?.subscription_status === 'active' ? (
+              <button className="btn btn-ghost" onClick={handleManage} disabled={portalLoading}>
+                {portalLoading ? t('subscription.redirecting') : t('subscription.manageBtn')}
+              </button>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', maxWidth: '380px' }}>
+                <button className="btn" onClick={handleUpgrade} disabled={checkoutLoading}>
+                  {checkoutLoading ? t('subscription.redirecting') : t('subscription.upgradeBtn')}
+                </button>
+                <div style={{ fontSize: '0.8rem', color: 'var(--paper-aged)', opacity: 0.55 }}>
+                  {t('subscription.upgradePrice')} ·{' '}
+                  {[
+                    t('subscription.upgradeFeature1'),
+                    t('subscription.upgradeFeature2'),
+                    t('subscription.upgradeFeature3'),
+                  ].join(' · ')}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── Danger zone ───────────────────────────────────────────────────── */}
         <div style={{ borderTop: '1px solid rgba(176, 140, 63, 0.2)', paddingTop: '1.5rem', marginTop: '2rem' }}>
           <button
             className="btn btn-ghost"

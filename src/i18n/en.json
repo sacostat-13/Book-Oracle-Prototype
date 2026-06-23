@@ -91,7 +91,13 @@
     "weeksAgo": "{count}w ago",
     "monthsAgo": "{count}mo ago",
     "since": "Since",
-    "open": "Open"
+    "open": "Open",
+    "aiQuotaTitle": "AI features",
+    "aiQuotaFree": "{used} of {limit} monthly calls used",
+    "aiQuotaUnlimited": "Unlimited · Pro plan",
+    "aiQuotaResetsOn": "Resets {date}",
+    "aiQuotaUpgrade": "Upgrade for unlimited →",
+    "aiQuotaIncludes": "Includes Oracle draws, reading plans, categorization & more"
   },
   "currentlyReading": {
     "breadcrumb": "Dashboard",
@@ -446,7 +452,10 @@
     "resetProfile": "Reset profile & start over",
     "notSet": "Not set",
     "createOwnPlan": "Create my own plan",
-    "fromProfile": "Profile"
+    "fromProfile": "Profile",
+    "subtitleStats": "{books} books read{pages}",
+    "subtitlePages": " · {pages} pages",
+    "paceNudge": "Open any book in your library, tap \"Edit rating\" and add the date you finished it to see your reading pace."
   },
   "onboarding": {
     "step1Eyebrow": "Step 1 of 3 · Reader profile",
@@ -1040,5 +1049,25 @@
   },
   "planCreate": {
     "fallbackToast": "Couldn't reach the Oracle. Built a plan from the Vault."
+  },
+  "subscription": {
+    "tierFree": "Free",
+    "tierPro": "Pro",
+    "tierPastDue": "Past due",
+    "sectionTitle": "Subscription",
+    "freeDesc": "{remaining} of {limit} AI calls remaining this month.",
+    "proDesc": "Unlimited Oracle calls, reading plans, and AI features.",
+    "pastDueDesc": "Payment failed. Update your payment method to restore access.",
+    "upgradeBtn": "Upgrade to Pro ❦",
+    "manageBtn": "Manage subscription →",
+    "upgradePrice": "$5/month · cancel anytime",
+    "upgradeFeature1": "Unlimited Oracle draws",
+    "upgradeFeature2": "Unlimited AI reading plans",
+    "upgradeFeature3": "Unlimited book categorization",
+    "upgradeFeature4": "Priority support",
+    "resetsOn": "Quota resets {date}",
+    "redirecting": "Opening checkout…",
+    "checkoutSuccess": "Payment successful! Activating your Pro plan…",
+    "checkoutCancelled": "Checkout cancelled — no charge was made."
   }
 }

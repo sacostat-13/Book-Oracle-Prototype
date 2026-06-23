@@ -91,7 +91,13 @@
     "weeksAgo": "Hace {count}s",
     "monthsAgo": "Hace {count}m",
     "since": "Desde",
-    "open": "Abrir"
+    "open": "Abrir",
+    "aiQuotaTitle": "Funciones de IA",
+    "aiQuotaFree": "{used} de {limit} consultas mensuales usadas",
+    "aiQuotaUnlimited": "Ilimitadas · Plan Pro",
+    "aiQuotaResetsOn": "Se renueva el {date}",
+    "aiQuotaUpgrade": "Mejorar para acceso ilimitado →",
+    "aiQuotaIncludes": "Incluye consultas al Oráculo, planes de lectura, categorización y más"
   },
   "currentlyReading": {
     "breadcrumb": "Inicio",
@@ -446,7 +452,10 @@
     "resetProfile": "Reiniciar perfil",
     "notSet": "No configurado",
     "createOwnPlan": "Crear mi propio plan",
-    "fromProfile": "Perfil"
+    "fromProfile": "Perfil",
+    "subtitleStats": "{books} libros leídos{pages}",
+    "subtitlePages": " · {pages} páginas",
+    "paceNudge": "Abrí cualquier libro en tu biblioteca, tocá \"Editar calificación\" y agregá la fecha en que lo terminaste para ver el ritmo de lectura."
   },
   "onboarding": {
     "step1Eyebrow": "Paso 1 de 3 · Perfil lector",
@@ -1040,5 +1049,25 @@
   },
   "planCreate": {
     "fallbackToast": "No se pudo contactar al Oráculo. Se generó un plan desde la Bóveda."
+  },
+  "subscription": {
+    "tierFree": "Gratis",
+    "tierPro": "Pro",
+    "tierPastDue": "Pago vencido",
+    "sectionTitle": "Suscripción",
+    "freeDesc": "{remaining} de {limit} consultas de IA restantes este mes.",
+    "proDesc": "Consultas ilimitadas al Oráculo, planes de lectura y funciones de IA.",
+    "pastDueDesc": "El pago falló. Actualizá tu método de pago para restaurar el acceso.",
+    "upgradeBtn": "Mejorar a Pro ❦",
+    "manageBtn": "Gestionar suscripción →",
+    "upgradePrice": "$5/mes · cancelá cuando quieras",
+    "upgradeFeature1": "Consultas ilimitadas al Oráculo",
+    "upgradeFeature2": "Planes de lectura ilimitados con IA",
+    "upgradeFeature3": "Categorización ilimitada de libros",
+    "upgradeFeature4": "Soporte prioritario",
+    "resetsOn": "Cuota se renueva el {date}",
+    "redirecting": "Abriendo pago…",
+    "checkoutSuccess": "¡Pago exitoso! Activando tu plan Pro…",
+    "checkoutCancelled": "Pago cancelado — no se realizó ningún cobro."
   }
 }

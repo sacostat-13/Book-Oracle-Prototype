@@ -5,6 +5,7 @@ import { useMemo, useState } from 'react';
 import { useData } from '../lib/DataContext';
 import { useRouter } from '../lib/RouterContext';
 import { useT } from '../lib/I18nContext';
+import { useOracleQuota } from '../lib/OracleQuotaContext';
 
 const FEED_PAGE_SIZE = 5;
 
@@ -193,7 +194,7 @@ function QuickActions({ go, t }) {
           onClick={() => go(route)}
         >
           <div className="db-cta-card__ornament">{ornament}</div>
-          <div className="db-cta-card__label">{label} <span className="accent">{accent} </span></div>
+          <div className="db-cta-card__label">{label} <span className="accent">{accent}</span></div>
           <div className="db-cta-card__sub">{sub}</div>
         </div>
       ))}
@@ -312,7 +313,78 @@ function FeedEvent({ ev, prev, onOpenBook, go, t }) {
   );
 }
 
-// ─── Dashboard ────────────────────────────────────────────────────────────────
+// ─── AI Quota Widget ─────────────────────────────────────────────────────────
+
+function AIQuotaWidget({ go, t }) {
+  const { quota, loading } = useOracleQuota();
+  if (loading || !quota) return null;
+
+  const isEmpty   = !quota.unlimited && quota.calls_remaining === 0;
+  const pct       = quota.unlimited ? 100 : Math.round(((quota.calls_used ?? 0) / (quota.calls_limit ?? 5)) * 100);
+  const resetDate = quota.reset_at
+    ? new Date(quota.reset_at).toLocaleDateString(undefined, { month: 'long', day: 'numeric' })
+    : null;
+
+  return (
+    <div style={{
+      border: `1px solid ${isEmpty ? 'rgba(180,60,60,0.3)' : 'rgba(201,162,75,0.2)'}`,
+      borderRadius: '4px',
+      padding: '1rem 1.25rem',
+      marginBottom: '2rem',
+      background: isEmpty ? 'rgba(180,60,60,0.04)' : 'rgba(201,162,75,0.03)',
+      display: 'flex',
+      flexDirection: 'column',
+      gap: '0.6rem',
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem' }}>
+        <div style={{ fontFamily: "'Special Elite', monospace", fontSize: '0.65rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--gilt)', opacity: 0.8 }}>
+          {t('dashboard.aiQuotaTitle')}
+        </div>
+        {quota.unlimited ? (
+          <span style={{ fontFamily: "'Special Elite', monospace", fontSize: '0.65rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--gilt)', background: 'rgba(201,162,75,0.12)', border: '1px solid rgba(201,162,75,0.3)', padding: '0.1rem 0.5rem', borderRadius: '2px' }}>
+            {t('dashboard.aiQuotaUnlimited')}
+          </span>
+        ) : (
+          <span style={{ fontFamily: "'Special Elite', monospace", fontSize: '0.7rem', color: isEmpty ? 'rgba(180,60,60,0.9)' : 'var(--paper-aged)', opacity: isEmpty ? 1 : 0.7 }}>
+            {t('dashboard.aiQuotaFree', { used: quota.calls_used ?? 0, limit: quota.calls_limit ?? 5 })}
+          </span>
+        )}
+      </div>
+
+      {!quota.unlimited && (
+        <div style={{ height: '3px', background: 'rgba(201,162,75,0.12)', borderRadius: '2px', overflow: 'hidden' }}>
+          <div style={{
+            height: '100%',
+            width: `${pct}%`,
+            background: isEmpty ? 'rgba(180,60,60,0.7)' : 'var(--gilt)',
+            borderRadius: '2px',
+            transition: 'width 0.3s ease',
+          }} />
+        </div>
+      )}
+
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', flexWrap: 'wrap' }}>
+        <span style={{ fontSize: '0.78rem', color: 'var(--paper-aged)', opacity: 0.55 }}>
+          {t('dashboard.aiQuotaIncludes')}
+          {resetDate && !quota.unlimited && (
+            <> · {t('dashboard.aiQuotaResetsOn', { date: resetDate })}</>
+          )}
+        </span>
+        {!quota.unlimited && (
+          <button
+            className="btn btn-ghost"
+            style={{ fontSize: '0.75rem', padding: '0.3rem 0.75rem' }}
+            onClick={() => go('profile')}
+          >
+            {t('dashboard.aiQuotaUpgrade')}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+
 
 function ActiveClubSessions({ clubs, go, t }) {
   if (!clubs || clubs.length === 0) return null;
@@ -367,7 +439,7 @@ export default function Dashboard({ onOpenBook }) {
         <div className="page-eyebrow">{t('dashboard.eyebrow')}</div>
         <h1 className="page-title">
           {firstName
-            ? <>{t('dashboard.greeting')} <span className="accent">{firstName}</span></>
+            ? <>{t('dashboard.greeting', { name: firstName })}</>
             : <>{t('dashboard.greetingBack')} <span className="accent">{t('dashboard.greetingAccent')}</span></>}
         </h1>
         <div className="dashboard-pills">
@@ -384,6 +456,9 @@ export default function Dashboard({ onOpenBook }) {
 
       {/* ── CTAs ── */}
       <QuickActions go={go} t={t} />
+
+      {/* ── AI Quota ── */}
+      <AIQuotaWidget go={go} t={t} />
 
       {/* ── Currently Reading ── */}
       <CurrentlyReadingSection books={state.currentlyReading||[]} onOpenBook={onOpenBook} t={t} />

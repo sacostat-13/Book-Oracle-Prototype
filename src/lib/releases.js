@@ -16,9 +16,27 @@
 
 // The version label shown as "current" — keep in sync with package.json and
 // the README version line.
-export const CURRENT_VERSION = 'v0.31';
+export const CURRENT_VERSION = 'v0.32';
 
 export const RELEASES = [{
+    version: 'v0.32',
+    date: '2026-06-23',
+    titleEn: 'The Oracle has a price',
+    titleEs: 'El Oráculo tiene un precio',
+    bodyEn: [
+      'Free accounts now include 5 AI calls per month — shared across Oracle draws, reading plans, book categorization, and all other AI features. The counter resets on the first of each month.',
+      'A Pro plan ($7/month) unlocks unlimited AI usage across everything. Upgrade from your Profile page. Stripe handles all payments — we never store card details.',
+      'Your subscription tier is shown clearly in Profile with a usage bar, reset date, and a direct link to manage or cancel via the Stripe customer portal.',
+      'The dashboard now shows an AI usage widget so you always know how many calls remain without having to navigate away.',
+    ],
+    bodyEs: [
+      'Las cuentas gratuitas ahora incluyen 5 consultas de IA por mes — compartidas entre el Oráculo, planes de lectura, categorización de libros y todas las demás funciones de IA. El contador se renueva el primero de cada mes.',
+      'El plan Pro ($5/mes) desbloquea uso ilimitado de IA en todo. Mejorá desde tu perfil. Stripe maneja todos los pagos — nunca almacenamos datos de tarjetas.',
+      'Tu nivel de suscripción se muestra claramente en el perfil con una barra de uso, fecha de renovación y un enlace directo para gestionar o cancelar desde el portal de clientes de Stripe.',
+      'El panel ahora muestra un widget de uso de IA para que siempre sepas cuántas consultas te quedan sin tener que navegar a otro lado.',
+    ],
+  },
+  {
     version: 'v0.31',
     date: '2026-06-22',
     titleEn: 'Every word, in your language',

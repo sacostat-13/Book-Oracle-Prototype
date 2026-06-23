@@ -27,7 +27,16 @@ function json(statusCode, data) {
   return { statusCode, headers: { ...CORS, 'Content-Type': 'application/json' }, body: JSON.stringify(data) };
 }
 
-async function supabaseRpc(supabaseUrl, serviceKey, rpcName, params) {
+// Log once at cold start if env vars are missing so it's visible in deploy logs
+// but doesn't spam on every request.
+const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
+const serviceKey  = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const QUOTA_ENABLED = !!(supabaseUrl && serviceKey);
+if (!QUOTA_ENABLED) {
+  console.warn('claude.js: SUPABASE_SERVICE_ROLE_KEY not set — quota enforcement disabled (local dev mode)');
+}
+
+async function supabaseRpc(rpcName, params) {
   try {
     const res = await fetch(`${supabaseUrl}/rest/v1/rpc/${rpcName}`, {
       method: 'POST',
@@ -41,12 +50,11 @@ async function supabaseRpc(supabaseUrl, serviceKey, rpcName, params) {
     if (!res.ok) {
       const text = await res.text();
       console.error(`${rpcName} RPC error ${res.status}:`, text);
-      return null; // fail open
+      return null;
     }
     return await res.json();
   } catch (e) {
-    // Network failure talking to Supabase (e.g. local dev without env vars).
-    // Fail open rather than blocking the user.
+    // Only log if we expected this to work (env vars were present).
     console.error(`${rpcName} fetch failed:`, String(e));
     return null;
   }
@@ -65,16 +73,14 @@ export async function handler(event) {
   if (!prompt) return json(400, { error: 'Missing prompt' });
 
   // ── 2. Quota enforcement ─────────────────────────────────────────────────────
-  const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
-  const serviceKey  = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  const authHeader  = event.headers?.authorization || event.headers?.Authorization || '';
-  const jwt         = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+  const authHeader = event.headers?.authorization || event.headers?.Authorization || '';
+  const jwt        = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
 
   let userId = null;
   let quotaEnforced = false;
 
-  if (!supabaseUrl || !serviceKey) {
-    console.warn('claude.js: Supabase env vars missing — quota enforcement skipped (local dev?)');
+  if (!QUOTA_ENABLED) {
+    // Local dev without service role key — skip quota silently.
   } else if (!jwt) {
     return json(401, { error: 'unauthenticated', message: 'Sign in to use the Oracle.' });
   } else {
@@ -89,7 +95,7 @@ export async function handler(event) {
     if (!userId) return json(401, { error: 'invalid_token', message: 'Auth token missing user ID.' });
 
     // READ quota first — does not consume a slot yet.
-    const quota = await supabaseRpc(supabaseUrl, serviceKey, 'get_oracle_quota', { p_user_id: userId });
+    const quota = await supabaseRpc('get_oracle_quota', { p_user_id: userId });
 
     if (quota && quota.status !== 'error') {
       quotaEnforced = true;
@@ -138,11 +144,9 @@ export async function handler(event) {
   }
 
   // ── 4. Consume quota ONLY on Anthropic success ───────────────────────────────
-  // This ensures a failed Anthropic call never costs the user a slot.
+  // Must be awaited — fire-and-forget is killed when the Lambda returns.
   if (quotaEnforced && userId && upstreamStatus >= 200 && upstreamStatus < 300) {
-    // Fire-and-forget — don't delay the response waiting for this.
-    supabaseRpc(supabaseUrl, serviceKey, 'consume_oracle_call', { p_user_id: userId })
-      .catch((e) => console.error('consume_oracle_call (post-success) failed:', e));
+    await supabaseRpc('consume_oracle_call', { p_user_id: userId });
   }
 
   return {
