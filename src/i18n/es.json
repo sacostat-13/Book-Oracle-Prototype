@@ -50,7 +50,7 @@
     "greeting": "Qué bueno verte, ",
     "greetingBack": "Bienvenida de ",
     "greetingAccent": "vuelta",
-    "levelPill": "{level}",
+    "levelPill": "Lector Nivel {level}",
     "booksRead": "{count} leídos",
     "inWishlist": "{count} en lista",
     "readingNow": "{count} leyendo ahora",

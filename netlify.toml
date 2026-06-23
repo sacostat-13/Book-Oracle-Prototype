@@ -11,6 +11,7 @@
   port = 8888
   targetPort = 5173
   framework = "#custom"
+  envFile = ".env.local"
 
 # SPA fallback: any unknown route returns index.html so client-side
 # routing (and the OAuth redirect after Google sign-in) works.

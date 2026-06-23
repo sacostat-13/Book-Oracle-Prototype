@@ -22,12 +22,12 @@ export default function OracleFork() {
       <div className="oracle-fork">
         <div className="cta-card" onClick={() => go('oracle-categories')}>
           <div className="cta-ornament">❦</div>
-          <h2 className="cta-title">{t('oracle.forkByGenres', { accent: <span className="accent">{t('oracle.forkByGenresAccent')}</span> })}</h2>
+          <h2 className="cta-title">{t('oracle.forkByGenres')} <span className="accent">{t('oracle.forkByGenresAccent')}</span></h2>
           <p className="cta-desc">{t('oracle.forkByGenresDesc')}</p>
         </div>
         <div className="cta-card" onClick={() => go('oracle-similar')}>
           <div className="cta-ornament">✦</div>
-          <h2 className="cta-title">{t('oracle.forkBySimilar', { accent: <span className="accent">{t('oracle.forkBySimilarAccent')}</span> })}</h2>
+          <h2 className="cta-title">{t('oracle.forkBySimilar')} <span className="accent">{t('oracle.forkBySimilarAccent')}</span></h2>
           <p className="cta-desc">{t('oracle.forkBySimilarDesc')}</p>
         </div>
       </div>

@@ -429,7 +429,7 @@ export default function Dashboard({ onOpenBook }) {
 
   const firstName = (state.profile?.displayName || state.profile?.display_name || '').split(' ')[0];
   const levelName = state.profile?.readingLevel
-    ? t(`dashboard.levelName.${state.profile.readingLevel}`)
+    ? state.profile.readingLevel
     : null;
 
   return (
@@ -439,7 +439,7 @@ export default function Dashboard({ onOpenBook }) {
         <div className="page-eyebrow">{t('dashboard.eyebrow')}</div>
         <h1 className="page-title">
           {firstName
-            ? <>{t('dashboard.greeting', { name: firstName })}</>
+            ? <>{t('dashboard.greeting')} <span className="accent">{firstName}</span></>
             : <>{t('dashboard.greetingBack')} <span className="accent">{t('dashboard.greetingAccent')}</span></>}
         </h1>
         <div className="dashboard-pills">
