@@ -1,4 +1,4 @@
-import { useRef, useMemo, useState } from 'react';
+import { useRef, useMemo, useState, useEffect } from 'react';
 import { useData } from '../lib/DataContext';
 import { useAuth } from '../lib/AuthContext';
 import { useRouter } from '../lib/RouterContext';
