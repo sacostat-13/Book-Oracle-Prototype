@@ -22,7 +22,7 @@ import { useRouter } from '../lib/RouterContext';
 import { useT } from '../lib/I18nContext';
 import { bookKey } from '../lib/bookHelpers';
 import { hardcoverSearchMulti } from '../lib/hardcoverService';
-import { callClaude, parseJSONResponse } from '../lib/claudeApi';
+import { callClaude, parseJSONResponse, QuotaExceededError } from '../lib/claudeApi';
 import BookCover from './BookCover';
 
 const DEBOUNCE_MS = 300;
@@ -46,7 +46,8 @@ If s is not applicable, set it to null. If you cannot confidently identify a boo
     const parsed = parseJSONResponse(raw);
     if (!parsed || !parsed.t || !parsed.a) return null;
     return { ...parsed, fromClaude: true, needsReview: true };
-  } catch {
+  } catch (err) {
+    if (err instanceof QuotaExceededError) return null; // silently skip — search just shows no AI result
     return null;
   }
 }

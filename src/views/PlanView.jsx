@@ -12,10 +12,12 @@ export default function PlanView() {
 
   const planId = route.params?.planId;
 
-  // Try local state first; if not found, fetch publicly via RPC (shared plan URL)
-  const localPlan = planId
+  // Try local state first. Also accept the plan object passed directly via
+  // route params — this covers the case where we've just created a plan and
+  // React hasn't flushed the setState from setCurrentPlan yet.
+  const localPlan = (planId
     ? (state.plans || []).find((p) => p._id === planId) || state.currentPlan
-    : state.currentPlan;
+    : state.currentPlan) || route.params?.plan || null;
 
   const [remotePlan, setRemotePlan] = useState(null);
   const [remoteOwner, setRemoteOwner] = useState(null);
@@ -57,14 +59,14 @@ export default function PlanView() {
     return (
       <>
         <div className="breadcrumb">
-          <a onClick={() => go('dashboard')}>Dashboard</a> · Your Reading Plan
+          <a onClick={() => go('dashboard')}>{t('nav.dashboard')}</a> · {t('plans.readingPlanBreadcrumb')}
         </div>
         <div className="empty-state">
           <div className="ornament">❦</div>
-          <div className="empty-state-title">No active plan</div>
-          <div className="empty-state-text">Create one from the dashboard.</div>
+          <div className="empty-state-title">{t('plans.noActivePlan')}</div>
+          <div className="empty-state-text">{t('plans.noActivePlanText')}</div>
           <div style={{ marginTop: '1.5rem' }}>
-            <button className="btn" onClick={() => go('plan-create')}>Create a plan</button>
+            <button className="btn" onClick={() => go('plan-create')}>{t('plans.createOwnPlan')}</button>
           </div>
         </div>
       </>

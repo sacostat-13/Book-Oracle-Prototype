@@ -1,17 +1,24 @@
 import { useRef, useState, useMemo } from 'react';
 import { useData } from '../lib/DataContext';
 import { useT } from '../lib/I18nContext';
+import { useOracleQuota } from '../lib/OracleQuotaContext';
 import { parseGoodreadsToReadCSV, parseGoodreadsCSV } from '../lib/goodreadsImport';
 import { findBookByTitle, bookKey } from '../lib/bookHelpers';
 import { extractAsinFromUrl, lookupByAsin, lookupByTitle, parseTitleList } from '../lib/bookLookup';
-import { callClaude, parseJSONResponse } from '../lib/claudeApi';
+import { callClaude, QuotaExceededError, parseJSONResponse } from '../lib/claudeApi';
 
 async function claudeBookFallback(title, author) {
   try {
     const query = author ? `${title} by ${author}` : title;
     const systemPrompt = 'You are a book identification assistant. Return only valid JSON with no markdown fences.';
     const prompt = `Identify this book: "${query}"\nReturn ONLY valid JSON (no markdown, no explanation):\n{"t":"exact title","a":"author full name","d":"2-3 sentence description","g":"primary genre","s":{"name":"series name or null","n":1,"total":null}}\nSet s to null if not part of a series. Return the JSON literal null if you cannot confidently identify the book.`;
-    const raw = await callClaude(prompt, systemPrompt);
+    let raw = null;
+    try {
+      raw = await callClaude(prompt, systemPrompt);
+    } catch (err) {
+      if (err instanceof QuotaExceededError) return null; // treated as no match
+      throw err;
+    }
     const parsed = parseJSONResponse(raw);
     if (!parsed || !parsed.t || !parsed.a) return null;
     return { ...parsed, fromClaude: true, needsReview: true };
@@ -21,6 +28,7 @@ async function claudeBookFallback(title, author) {
 export default function BulkImport({ onClose, target = 'wishlist' }) {
   const { state, addToWishlist, bulkAddToLibrary, importGoodreads, showToast } = useData();
   const t = useT();
+  const { handleQuotaError, onCallSucceeded } = useOracleQuota();
 
   const isLibrary = target === 'library';
   const goodreadsAvailable = !isLibrary || !state.profile.goodreadsImported;

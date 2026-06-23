@@ -2,8 +2,10 @@ import { useState, useMemo, useEffect } from 'react';
 import { useData } from '../lib/DataContext';
 import { useRouter } from '../lib/RouterContext';
 import { ALL_BOOKS, bookKey } from '../lib/bookHelpers';
-import { callClaude, parseJSONResponse } from '../lib/claudeApi';
-import { useI18n, langDirective } from '../lib/I18nContext';
+import { callClaude, parseJSONResponse, QuotaExceededError } from '../lib/claudeApi';
+import { useOracleQuota } from '../lib/OracleQuotaContext';
+import { OracleQuotaBadge, OracleQuotaWall } from '../components/OracleQuotaBadge';
+import { useT, useI18n, langDirective } from '../lib/I18nContext';
 import BookCard from '../components/BookCard';
 
 // v0.15 phase 2.6: copy pass — "categories" → "genres" throughout.
@@ -15,6 +17,8 @@ export default function OracleCategories({ onOpenBook }) {
   const { state, setOracleMode, showToast, vault, loadVault } = useData();
   const { go } = useRouter();
   const t = useT();
+  const { lang } = useI18n();
+  const { quota, handleQuotaError, onCallSucceeded } = useOracleQuota();
   const [genre, setGenre] = useState('all');
   const [draw, setDraw] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -118,10 +122,21 @@ Do NOT recommend any book in this list (already known to them): ${exclude}
 Return ONLY valid JSON in this format:
 {"books":[{"title":"...","author":"...","genre":"...","complexity":1-5,"depth":1-5,"description":"one-sentence description"}]}`;
 
-      const response = await callClaude(
-        prompt,
-        `You are a literary curator. Recommend books accurately. Always return valid JSON. ${langDirective(lang)} Any natural-language field in the JSON (description, genre label) MUST be in that language; titles and author names stay in their original language.`
-      );
+      let response = null;
+      try {
+        response = await callClaude(
+          prompt,
+          `You are a literary curator. Recommend books accurately. Always return valid JSON. ${langDirective(lang)} Any natural-language field in the JSON (description, genre label) MUST be in that language; titles and author names stay in their original language.`
+        );
+        onCallSucceeded();
+      } catch (err) {
+        if (err instanceof QuotaExceededError) {
+          handleQuotaError(err);
+          setLoading(false);
+          return;
+        }
+        throw err;
+      }
 
       let books = null;
       if (response) {
@@ -167,6 +182,8 @@ Return ONLY valid JSON in this format:
     ai: 'from anywhere (AI)',
   }[mode];
 
+  const quotaExhausted = quota && !quota.unlimited && quota.calls_remaining === 0;
+
   return (
     <>
       <div className="breadcrumb">
@@ -208,9 +225,14 @@ Return ONLY valid JSON in this format:
             ))}
           </select>
         </div>
-        <button className="btn" onClick={handleDraw} disabled={loading}>
-          {loading ? 'Divining…' : 'Give me a book ❦'}
+        <button className="btn" onClick={handleDraw} disabled={loading || (mode === 'ai' && quotaExhausted)}>
+          {loading ? t('oracle.categoriesDrawing') : t('oracle.categoriesDraw')}
         </button>
+        {mode === 'ai' && quotaExhausted && (
+          <div style={{ marginTop: '0.75rem' }}>
+            <OracleQuotaWall />
+          </div>
+        )}
       </section>
 
       <section className="cards">

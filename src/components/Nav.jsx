@@ -8,6 +8,7 @@ import { useRouter } from '../lib/RouterContext';
 import { useAuth } from '../lib/AuthContext';
 import { useI18n } from '../lib/I18nContext';
 import { useTheme } from '../lib/ThemeContext';
+import { OracleQuotaBadge } from '../components/OracleQuotaBadge';
 import NavSearch from './NavSearch';
 
 export default function Nav({ onPreviewBook }) {
@@ -131,6 +132,7 @@ export default function Nav({ onPreviewBook }) {
           {/* Oracle */}
           <button className={`nav-btn${route.name==='oracle'?' active':''}`} onClick={() => go('oracle')}>
             {t('about.titleAccent')}
+            <OracleQuotaBadge style={{ marginLeft: '0.4rem', verticalAlign: 'middle' }} />
           </button>
 
           {/* ··· overflow dropdown */}

@@ -16,13 +16,15 @@ import { useData } from '../lib/DataContext';
 import { useAuth } from '../lib/AuthContext';
 import { supabase } from '../lib/supabase';
 import BookCover from './BookCover';
-import { callClaude } from '../lib/claudeApi';
+import { callClaude, QuotaExceededError } from '../lib/claudeApi';
 import { useT } from '../lib/I18nContext';
+import { useOracleQuota } from '../lib/OracleQuotaContext';
 
 // ── Oracle suggestion flow ────────────────────────────────────────────────────
 
 async function fetchOracleSuggestions({ clubName, clubGenres = [], recentBooks = [] }) {
   const t = useT();
+  const { handleQuotaError, onCallSucceeded } = useOracleQuota();
   const genreList = clubGenres.join(', ') || 'general fiction';
   const recentList = recentBooks.length
     ? recentBooks.map((b) => `"${b.title}" by ${b.author}`).join(', ')
@@ -44,7 +46,17 @@ Respond with ONLY valid JSON — no preamble, no markdown, no explanation:
 
   const systemPrompt = 'You are a knowledgeable book curator. Respond only with the JSON array requested. No preamble, no markdown fences.';
 
-  const raw = await callClaude(prompt, systemPrompt);
+  let raw = null;
+  try {
+    raw = await callClaude(prompt, systemPrompt);
+    onCallSucceeded?.();
+  } catch (err) {
+    if (err instanceof QuotaExceededError) {
+      handleQuotaError(err);
+      return null; // caller checks for null
+    }
+    throw err;
+  }
   const text = typeof raw === 'string' ? raw : raw?.content?.[0]?.text || '';
   const clean = text.replace(/```json|```/g, '').trim();
   return JSON.parse(clean);

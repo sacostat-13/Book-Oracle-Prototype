@@ -14,7 +14,7 @@
 // progress callbacks so the UI can show a progress bar.
 
 import { supabase } from './supabase';
-import { callClaude, parseJSONResponse } from './claudeApi';
+import { callClaude, parseJSONResponse, QuotaExceededError } from './claudeApi';
 
 const BATCH_SIZE = 10;
 
@@ -211,7 +211,13 @@ export async function runOracleCategorization({ books, onProgress, onBatchResult
 
     try {
       const { systemPrompt, userPrompt } = buildPrompt(batch, existingGenres);
-      const raw = await callClaude(userPrompt, systemPrompt);
+      let raw;
+      try {
+        raw = await callClaude(userPrompt, systemPrompt);
+      } catch (err) {
+        if (err instanceof QuotaExceededError) throw err; // propagate to button
+        throw err;
+      }
       const parsed = parseJSONResponse(raw);
 
       if (!Array.isArray(parsed)) {

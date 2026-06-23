@@ -13,11 +13,10 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useData } from '../lib/DataContext';
 import { supabase } from '../lib/supabase';
-import { callClaude } from '../lib/claudeApi';
+import { callClaude, QuotaExceededError } from '../lib/claudeApi';
 import CommentThread from './CommentThread';
 import { useT } from '../lib/I18nContext';
-
-
+import { useOracleQuota } from '../lib/OracleQuotaContext';
 
 const labelStyle = {
   display: 'block',
@@ -47,6 +46,7 @@ const inputStyle = {
 
 async function fetchOracleQuestions({ book, existingQuestions = [] }) {
   const t = useT();
+  const { handleQuotaError, onCallSucceeded } = useOracleQuota();
   const existingList = existingQuestions.length
     ? existingQuestions.map((q) => `- ${q.body}`).join('\n')
     : t('discussion.noQuestions');
@@ -62,7 +62,17 @@ Avoid duplicating the existing questions. Focus on themes, characters, emotional
 Respond with ONLY valid JSON — no preamble, no markdown, no explanation:
 ["Question one?", "Question two?", "Question three?", "Question four?", "Question five?"]`;
 
-  const raw = await callClaude(prompt, 'You are a thoughtful book club facilitator. Respond only with the JSON array requested. No preamble, no markdown fences.');
+  let raw = null;
+  try {
+    raw = await callClaude(prompt, 'You are a thoughtful book club facilitator. Respond only with the JSON array requested. No preamble, no markdown fences.');
+    onCallSucceeded?.();
+  } catch (err) {
+    if (err instanceof QuotaExceededError) {
+      handleQuotaError(err);
+      return null;
+    }
+    throw err;
+  }
   const text = typeof raw === 'string' ? raw : raw?.content?.[0]?.text || '';
   const clean = text.replace(/```json|```/g, '').trim();
   return JSON.parse(clean);
@@ -239,9 +249,6 @@ export default function SessionDiscussion({ sessionId, clubId, isAdmin, book = {
   const [oracleLoading, setOracleLoading] = useState(false);
   const [oracleError, setOracleError] = useState(null);
   const [oracleSuggestions, setOracleSuggestions] = useState(null);
-
-  const t = useT();
-
 
   const loadDiscussion = useCallback(async () => {
     const { data, error } = await supabase.rpc('get_session_discussion', { p_session_id: sessionId });

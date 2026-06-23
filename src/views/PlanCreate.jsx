@@ -3,8 +3,9 @@ import { useData } from '../lib/DataContext';
 import { useRouter } from '../lib/RouterContext';
 import { bookKey, findBookByTitle } from '../lib/bookHelpers';
 import { fetchSeriesBooks } from '../lib/enrichmentService';
-import { callClaude, parseJSONResponse } from '../lib/claudeApi';
-import { useI18n, langDirective } from '../lib/I18nContext';
+import { callClaude, QuotaExceededError, parseJSONResponse } from '../lib/claudeApi';
+import { useT, useI18n, langDirective } from '../lib/I18nContext';
+import { useOracleQuota } from '../lib/OracleQuotaContext';
 
 const LEVEL_NAMES = ['', '', '', 'Devoted', 'Literary', 'Voracious'];
 const LEVEL_BLURB = {
@@ -17,6 +18,8 @@ export default function PlanCreate() {
   const { state, setCurrentPlan, showToast, vault, loadVault } = useData();
   const { go, route } = useRouter();
   const t = useT();
+  const { lang } = useI18n();
+  const { handleQuotaError, onCallSucceeded } = useOracleQuota();
   const [type, setType] = useState(null);
   const [target, setTarget] = useState(route.params?.seriesName || null);
   const [timeline, setTimeline] = useState(6);
@@ -251,20 +254,31 @@ Return ONLY valid JSON in this exact format:
 }`;
       }
 
-      const response = await callClaude(
-        prompt,
-        `You are a literary curator building personalized reading plans. Always return valid JSON. ${langDirective(lang)} Any natural-language field in the JSON (title, intro, reason) MUST be in that language; book titles and author names stay in their original language.`
-      );
+      let response = null;
+      try {
+        response = await callClaude(
+          prompt,
+          `You are a literary curator building personalized reading plans. Always return valid JSON. ${langDirective(lang)} Any natural-language field in the JSON (title, intro, reason) MUST be in that language; book titles and author names stay in their original language.`
+        );
+        onCallSucceeded?.();
+      } catch (err) {
+        if (err instanceof QuotaExceededError) {
+          handleQuotaError(err);
+          showToast(t('oracle.quotaWallTitle'), true);
+          return;
+        }
+        throw err;
+      }
       let plan = response ? parseJSONResponse(response) : null;
       if (!plan?.books?.length) {
-        showToast("Couldn't reach the AI. Built a fallback plan from the Vault.", true);
+        showToast(t('planCreate.fallbackToast'), true);
         plan = buildFallbackPlan(catalogSource);
       }
       plan.books = plan.books.slice(0, timeline);
       plan.timeline = timeline;
       plan.type = type;
-      await setCurrentPlan(plan);
-      go('plan-view');
+      const saved = await setCurrentPlan(plan);
+      go('plan-view', { planId: saved?._id, plan: saved });
     } finally {
       setGenerating(false);
     }

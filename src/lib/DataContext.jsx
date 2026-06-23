@@ -8,7 +8,7 @@ import { useAuth } from './AuthContext';
 import { ALL_BOOKS, bookKey } from './bookHelpers';
 
 const LOCAL_KEY    = 'wishlist_oracle_state_v2';
-const SESSION_KEY  = 'wishlist_oracle_session_v2'; // bumped v0.27: includes genresByBookId
+const SESSION_KEY  = 'wishlist_oracle_session_v3'; // bumped v0.31: genres now included in cache
 
 const defaultState = {
   onboarded: false,
@@ -68,12 +68,12 @@ function loadSessionCache(userId) {
 
 function saveSessionCache(userId, state) {
   try {
-    // Cache everything — genres are critical for Library grouping
-    // genres (full catalog) is large so we still exclude it; it rebuilds from genresByBookId
-    const { genres, ...cacheable } = state;
+    // Cache the full state including genres — the full genre list is small
+    // (a few dozen rows) and is needed by PlanCreate, genre browsers, etc.
+    // Excluding it caused genres to be empty whenever the cache was hit.
     sessionStorage.setItem(SESSION_KEY, JSON.stringify({
       uid: userId,
-      state: cacheable,
+      state,
       ts: Date.now(),
     }));
   } catch (_) {} // quota errors — fail silently
@@ -1465,7 +1465,8 @@ export function DataProvider({ children }) {
 
   const setCurrentPlan = useCallback(
     async (plan) => {
-      if (user && plan) {
+      if (!plan) return null;
+      if (user) {
         const { data, error } = await supabase
           .from('plans')
           .insert({
@@ -1482,13 +1483,23 @@ export function DataProvider({ children }) {
             currentPlan: saved,
             plans: [saved, ...(s.plans || [])],
           }));
+          return saved;
+        } else {
+          if (error) console.error('setCurrentPlan Supabase insert failed:', error);
+          setState((s) => ({
+            ...s,
+            currentPlan: plan,
+            plans: [plan, ...(s.plans || [])],
+          }));
+          return plan;
         }
-      } else if (plan) {
+      } else {
         setState((s) => ({
           ...s,
           currentPlan: plan,
           plans: [plan, ...(s.plans || [])],
         }));
+        return plan;
       }
     },
     [user]

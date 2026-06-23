@@ -4,6 +4,8 @@
 import { useState, useCallback } from 'react';
 import { useData } from '../lib/DataContext';
 import { useT } from '../lib/I18nContext';
+import { QuotaExceededError } from '../lib/claudeApi';
+import { useOracleQuota } from '../lib/OracleQuotaContext';
 import {
   getBooksNeedingGenres,
   runOracleCategorization,
@@ -13,6 +15,7 @@ export default function OracleCategorizationButton({ books }) {
   const { state, setBookGenres, showToast } = useData();
   const { genresByBookId } = state;
   const t = useT();
+  const { handleQuotaError } = useOracleQuota();
 
   const [running, setRunning] = useState(false);
   const [progress, setProgress] = useState({ done: 0, total: 0 });
@@ -32,6 +35,13 @@ export default function OracleCategorizationButton({ books }) {
       onProgress: (done, total) => setProgress({ done, total }),
       onBatchResult: ({ assignments }) => { setBookGenres(assignments); },
       onError: (msg) => { setErrors((prev) => [...prev, msg]); },
+    }).catch((err) => {
+      if (err instanceof QuotaExceededError) {
+        handleQuotaError(err);
+        showToast(t('oracle.quotaWallTitle'), true);
+        return { processed: 0, failed: 0 };
+      }
+      throw err;
     });
 
     setRunning(false);

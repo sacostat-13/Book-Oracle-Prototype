@@ -1,4 +1,5 @@
 import { useRouter } from '../lib/RouterContext';
+import { OracleQuotaBadge } from '../components/OracleQuotaBadge';
 import { useT } from '../lib/I18nContext';
 
 export default function OracleFork() {
@@ -13,7 +14,10 @@ export default function OracleFork() {
       <div className="page-header">
         <div className="page-eyebrow">{t('oracle.forkEyebrow')}</div>
         <h1 className="page-title">{t('oracle.forkTitle', { accent: <span className="accent">{t('oracle.forkTitleAccent')}</span> })}</h1>
-        <p className="page-subtitle">{t('oracle.forkSubtitle')}</p>
+        <p className="page-subtitle">
+          {t('oracle.forkSubtitle')}
+          {' '}<OracleQuotaBadge style={{ verticalAlign: 'middle' }} />
+        </p>
       </div>
       <div className="oracle-fork">
         <div className="cta-card" onClick={() => go('oracle-categories')}>

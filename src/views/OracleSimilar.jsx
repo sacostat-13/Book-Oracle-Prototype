@@ -2,8 +2,10 @@ import { useState, useMemo } from 'react';
 import { useData } from '../lib/DataContext';
 import { useRouter } from '../lib/RouterContext';
 import { ALL_BOOKS, bookKey, PALETTES, ORNAMENTS, hashStr } from '../lib/bookHelpers';
-import { callClaude, parseJSONResponse } from '../lib/claudeApi';
-import { useI18n, langDirective } from '../lib/I18nContext';
+import { callClaude, parseJSONResponse, QuotaExceededError } from '../lib/claudeApi';
+import { useOracleQuota } from '../lib/OracleQuotaContext';
+import { OracleQuotaWall } from '../components/OracleQuotaBadge';
+import { useT, useI18n, langDirective } from '../lib/I18nContext';
 import BookCard from '../components/BookCard';
 
 function fallbackSimilar(selection, candidates) {
@@ -48,6 +50,8 @@ export default function OracleSimilar({ onOpenBook }) {
   const { state, setOracleMode, showToast } = useData();
   const { go } = useRouter();
   const t = useT();
+  const { lang } = useI18n();
+  const { quota, handleQuotaError, onCallSucceeded } = useOracleQuota();
   const [selection, setSelection] = useState([]);
   const [results, setResults] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -214,10 +218,13 @@ Return ONLY valid JSON in this exact format:
         />
       </div>
 
-      <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '2rem' }}>
-        <button className="btn" onClick={findSimilar} disabled={selection.length === 0 || loading}>
-          {loading ? 'Divining…' : 'Find similar books ❦'}
+      <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '2rem', flexDirection: 'column', alignItems: 'center', gap: '0.75rem' }}>
+        <button className="btn" onClick={findSimilar} disabled={selection.length === 0 || loading || (mode === 'ai' && quota && !quota.unlimited && quota.calls_remaining === 0)}>
+          {loading ? t('oracle.similarDivining') : t('oracle.similarFind')}
         </button>
+        {mode === 'ai' && quota && !quota.unlimited && quota.calls_remaining === 0 && (
+          <OracleQuotaWall />
+        )}
       </div>
 
       <div>

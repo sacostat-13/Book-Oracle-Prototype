@@ -367,7 +367,7 @@ export default function Dashboard({ onOpenBook }) {
         <div className="page-eyebrow">{t('dashboard.eyebrow')}</div>
         <h1 className="page-title">
           {firstName
-            ? <>{t('dashboard.greeting')} <span className="accent">{}</span></>
+            ? <>{t('dashboard.greeting')} <span className="accent">{firstName}</span></>
             : <>{t('dashboard.greetingBack')} <span className="accent">{t('dashboard.greetingAccent')}</span></>}
         </h1>
         <div className="dashboard-pills">
