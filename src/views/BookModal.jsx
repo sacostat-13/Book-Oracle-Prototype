@@ -127,7 +127,10 @@ export default function BookModal({ book, onClose, onOpenBook }) {
     return () => {
       cancelled = true;
     };
-  }, [book, cacheBookFields]);
+  // Stable identifiers only — [book] would loop because cacheBookFields writes
+  // back to DataContext producing a new book object ref on every enrichment.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [book?.t, book?.a, book?.hardcoverId, !!(book?.coverUrl), !!(book?.pp), !!(book?.d), !!(book?.s)]);
 
   useEffect(() => {
     // Include enrichedOverlay so this re-fires when series data arrives
@@ -144,7 +147,10 @@ export default function BookModal({ book, onClose, onOpenBook }) {
     return () => {
       cancelled = true;
     };
-  }, [book, enrichment, enrichedOverlay]);
+  // Depend on stable strings, not object references — object refs change every render
+  // when cacheBookFields writes back to DataContext, which would create an infinite loop.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [enrichedOverlay?.s?.name, book?.s?.name, enrichment?.series?.name, book?.a]);
 
   useEffect(() => {
     function onKey(e) {

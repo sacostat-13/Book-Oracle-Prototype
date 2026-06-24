@@ -116,3 +116,30 @@ export function openBookTab(book, from = 'app') {
   const url = `${window.location.pathname}?lang=${lang}#book-page?bookKey=${encodeURIComponent(k)}&from=${encodeURIComponent(from)}${snapshotParam}`;
   window.open(url, '_blank', 'noopener');
 }
+
+// Build the route params for go('book-page', ...) including a snap payload.
+// Use this for in-app series/similar navigation where the target book may not
+// be in the user's collection. Without snap, BookPage shows "Not Found" for
+// uncollected books, and the back button also stays broken.
+export function buildBookPageParams(book, from = 'app', fromLabel = '') {
+  const k = bookKey(book);
+  const snapshot = {
+    bookId:   book.bookId,
+    t:        book.t,
+    a:        book.a,
+    d:        book.d,
+    g:        book.g,
+    pp:       book.pp,
+    c:        book.c,
+    p:        book.p,
+    coverUrl: book.coverUrl,
+    source:   book.source,
+    s:        book.s ? { name: book.s.name, n: book.s.n, total: book.s.total } : undefined,
+  };
+  Object.keys(snapshot).forEach(key => snapshot[key] === undefined && delete snapshot[key]);
+  let snap = '';
+  try { snap = btoa(encodeURIComponent(JSON.stringify(snapshot))); } catch (_) {}
+  const params = { bookKey: k, from, fromLabel };
+  if (snap) params.snap = snap;
+  return params;
+}

@@ -16,9 +16,33 @@
 
 // The version label shown as "current" — keep in sync with package.json and
 // the README version line.
-export const CURRENT_VERSION = 'v0.33';
+export const CURRENT_VERSION = 'v0.33.1';
 
 export const RELEASES = [{
+    version: 'v0.33.1',
+    date: '2026-06-24',
+    titleEn: 'Bug fixes — series navigation & feed',
+    titleEs: 'Correcciones — navegación de series y actividad',
+    bodyEn: [
+      'Finishing a book now correctly appears in the Dashboard activity feed. The feed was reading the wrong date field (readAt instead of dateRead), so completed books were silently omitted.',
+      'Series navigation from a Book Page no longer shows "Not Found" for books outside your collection. Every series dot now carries a book snapshot in the URL so the page can render immediately.',
+      'Going back in browser history after visiting a series book now restores the previous page correctly instead of staying broken until a refresh.',
+      'Fixed an infinite loop that hammered the Wikipedia function whenever a Book Page or Book Modal was open. The useEffect dependency arrays were watching object references that changed on every render, causing series data to be re-fetched endlessly.',
+      'Book Page now shows your star rating, reading notes, and personal categories — previously these were only visible in the modal. You can also edit your rating directly from the Book Page.',
+      'Profile reading chart now shows a tooltip on hover and a book list when you click any month bar.',
+      'Oracle Categories toggle group is no longer invisible in light mode (was hardcoded to a near-black background).',
+    ],
+    bodyEs: [
+      'Terminar un libro ahora aparece correctamente en el feed de actividad del Panel. El feed leía el campo de fecha equivocado (readAt en lugar de dateRead), por lo que los libros completados no se mostraban.',
+      'La navegación de series desde una Página de libro ya no muestra "No encontrado" para libros fuera de tu colección. Cada punto de la serie ahora lleva un resumen del libro en la URL para que la página pueda renderizarse de inmediato.',
+      'Retroceder en el historial del navegador después de visitar un libro de una serie ahora restaura la página anterior correctamente en lugar de quedarse roto hasta recargar.',
+      'Se corrigió un bucle infinito que saturaba la función de Wikipedia cuando una Página de libro o Modal de libro estaba abierta. Los arrays de dependencias de useEffect observaban referencias de objetos que cambiaban en cada render, causando que los datos de la serie se recargaran indefinidamente.',
+      'La Página de libro ahora muestra tu calificación con estrellas, notas de lectura y categorías personales — antes solo eran visibles en el modal. También podés editar tu calificación directamente desde la Página de libro.',
+      'El gráfico de lectura en el Perfil ahora muestra un tooltip al pasar el cursor y una lista de libros al hacer clic en cualquier barra mensual.',
+      'El grupo de botones de Categorías del Oráculo ya no es invisible en modo claro (tenía un fondo casi negro fijo en el código).',
+    ],
+  },
+  {
     version: 'v0.33',
     date: '2026-06-23',
     titleEn: 'Subscription polish',

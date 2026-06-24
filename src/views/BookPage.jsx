@@ -1,4 +1,4 @@
-// BookPage.jsx — v0.18
+// BookPage.jsx — v0.19
 // Full book detail page. Reached from BookModal's "See more" link.
 // Shares data-fetching logic with BookModal but renders as a full page
 // with more room for description, series, and genre detail.
@@ -7,7 +7,7 @@ import { useEffect, useState } from 'react';
 import { useData } from '../lib/DataContext';
 import { useRouter } from '../lib/RouterContext';
 import { useT } from '../lib/I18nContext';
-import { bookKey, findBookByTitle, openBookTab } from '../lib/bookHelpers';
+import { bookKey, findBookByTitle, openBookTab, buildBookPageParams } from '../lib/bookHelpers';
 import { enrichBookFromOpenLibrary, fetchSeriesBooks } from '../lib/enrichmentService';
 import { hardcoverGetBook } from '../lib/hardcoverService';
 import { fetchCoverURL } from '../lib/coverService';
@@ -17,6 +17,8 @@ import { fetchSeriesDescriptionFromWikipedia } from '../lib/seriesService';
 import BookCover from '../components/BookCover';
 import ReportBookForm from '../components/ReportBookForm';
 import AddToListPicker from '../components/AddToListPicker';
+import RatingModal from '../components/RatingModal';
+import CategoryAutocomplete from '../components/CategoryAutocomplete';
 
 
 // ─── Similar books ────────────────────────────────────────────────────────────
@@ -105,6 +107,29 @@ function SimilarBooks({ similar }) {
   );
 }
 
+// ─── Category pill ────────────────────────────────────────────────────────────
+
+function CategoryPill({ category, removing, canRemove, onRemove }) {
+  const { name, verified } = category;
+  const baseStyle = verified
+    ? { background: 'rgba(176,140,63,0.18)', borderColor: 'var(--gilt)', color: 'var(--gilt-bright)' }
+    : { background: 'rgba(176,140,63,0.04)', borderColor: 'rgba(176,140,63,0.3)', color: 'var(--paper-aged)', opacity: 0.9 };
+  const showRemove = canRemove && !verified;
+  return (
+    <span
+      className="level-pill"
+      style={{ ...baseStyle, opacity: removing ? 0.4 : baseStyle.opacity || 1, display: 'inline-flex', alignItems: 'center', gap: showRemove ? '0.35rem' : 0 }}
+      title={verified ? 'Verified by our editors' : 'Your private category'}
+    >
+      {verified && <span style={{ flexShrink: 0 }}>☩</span>}
+      <span>{name}</span>
+      {showRemove && (
+        <button onClick={onRemove} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'inherit', opacity: 0.6, fontSize: '1rem', padding: '0 0.1rem', lineHeight: 1 }}>×</button>
+      )}
+    </span>
+  );
+}
+
 export default function BookPage({ previewBookRef, isAuthed = true, authPending = false, dataReady = true }) {
   const {
     state,
@@ -115,6 +140,9 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
     removeFromLibrary,
     cacheBookFields,
     upsertDiscoveredBook,
+    updateReadBook,
+    getCategoriesForBook,
+    removeCategoryFromBook,
   } = useData();
   const { route, go } = useRouter();
   const t = useT();
@@ -132,6 +160,9 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
   const [seriesLoading, setSeriesLoading] = useState(false);
   const [seriesDescription, setSeriesDescription] = useState(null);
   const [notFound, setNotFound] = useState(false);
+  const [ratingEditorOpen, setRatingEditorOpen] = useState(false);
+  const [adderOpen, setAdderOpen] = useState(false);
+  const [pendingRemoveId, setPendingRemoveId] = useState(null);
 
   // Read snapshot from URL immediately — renders before DataContext loads
   const snapshotBook = (() => {
@@ -158,6 +189,19 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
     const found = sources.find((b) => bookKey(b) === bookKey_);
     if (found) {
       setBook(found);
+      // If the current URL has no snap, silently patch it in so the browser
+      // back button can restore this book even if the collection isn't loaded
+      // yet when the user navigates back (race between popstate and DataContext).
+      if (!route.params?.snap) {
+        const params = buildBookPageParams(found, route.params?.from || 'app', route.params?.fromLabel || '');
+        const qs = Object.entries(params)
+          .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`)
+          .join('&');
+        const next = '#book-page?' + qs;
+        if (window.location.hash !== next) {
+          history.replaceState(null, '', next);
+        }
+      }
     } else if (snapshotBook) {
       // Collection not loaded yet or book not in collection — use snapshot.
       // Once collection loads this effect re-runs and upgrades to the full record.
@@ -171,6 +215,16 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
   // For preview books (from search), fetch the full Hardcover record by
   // hardcoverId first. Typesense hits often lack descriptions entirely.
   // For collection books, only fetch what is missing.
+  // Enrichment — keyed on stable identifiers to avoid re-firing when DataContext
+  // produces a new book object reference after cacheBookFields writes back.
+  // Using [book] would loop: cacheBookFields → state update → new book ref → re-fire.
+  const bookTitle      = book?.t || null;
+  const bookAuthor     = book?.a || null;
+  const bookHardcoverId = book?.hardcoverId || null;
+  const isPreviewParam = route.params?.preview === 'true';
+  const hasCover       = !!(book?.coverUrl);
+  const hasPages       = !!(book?.pp);
+  const hasDesc        = !!(book?.d);
   useEffect(() => {
     if (!book) return;
     let cancelled = false;
@@ -181,10 +235,9 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
 
     async function run() {
       const patch = {};
-      const isPreview = route.params?.preview === 'true';
 
       // Preview path: fetch full Hardcover record by ID for reliable description
-      if (isPreview && book.hardcoverId && !book.d) {
+      if (isPreviewParam && book.hardcoverId && !book.d) {
         const full = await hardcoverGetBook(book.hardcoverId);
         if (cancelled) return;
         if (full) {
@@ -213,7 +266,6 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
         if (coverUrl) patch.coverUrl = coverUrl;
       }
       // Fast path for missing descriptions: fetch full Hardcover record by ID.
-      // Covers collection books added before descriptions were stored.
       if (needsDescription && book.hardcoverId) {
         const full = await hardcoverGetBook(book.hardcoverId);
         if (cancelled) return;
@@ -242,26 +294,31 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
     }
     run();
     return () => { cancelled = true; };
-  }, [book, cacheBookFields, route.params]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bookTitle, bookAuthor, bookHardcoverId, isPreviewParam, hasCover, hasPages, hasDesc]);
 
-  // Series fetch
+  // Series fetch — keyed on stable string values, NOT object references.
+  // Depending on [book, enrichment] caused an infinite loop: cacheBookFields
+  // updates DataContext → book gets a new object ref → effect fires again → Wikipedia again.
+  const seriesNameForEffect = book?.s?.name || enrichment?.series?.name || null;
+  const authorForEffect = book?.a || null;
   useEffect(() => {
-    const seriesName = book?.s?.name || enrichment?.series?.name;
-    if (!seriesName) return;
+    if (!seriesNameForEffect) return;
     let cancelled = false;
     setSeriesLoading(true);
-    setSeriesBooks([]); // reset on book change
-    fetchSeriesBooks(seriesName).then((b) => {
+    setSeriesBooks([]);
+    fetchSeriesBooks(seriesNameForEffect).then((b) => {
       if (!cancelled) {
         setSeriesBooks(b);
         setSeriesLoading(false);
       }
     });
-    fetchSeriesDescriptionFromWikipedia(seriesName, book?.a).then((d) => {
+    fetchSeriesDescriptionFromWikipedia(seriesNameForEffect, authorForEffect).then((d) => {
       if (!cancelled && d) setSeriesDescription(d);
     });
     return () => { cancelled = true; };
-  }, [book, enrichment]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [seriesNameForEffect, authorForEffect]);
 
   if (notFound) {
     return (
@@ -337,6 +394,26 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
   const inNext = state.readNext.some((b) => bookKey(b) === k);
   const inWish = state.wishlist.some((b) => bookKey(b) === k);
 
+  const libraryRow = inLib ? state.library.find((b) => bookKey(b) === k) : null;
+  const liveRating = libraryRow?.rating ?? display.rating ?? null;
+  const liveNotes  = libraryRow?.notes ?? null;
+
+  const categories = getCategoriesForBook ? getCategoriesForBook(display) : [];
+  const existingCategoryIds = new Set(categories.map((c) => c.categoryId));
+  const atCategoryCap = categories.length >= 10;
+  const canAddCategories = !!display.bookId || !state.profile?.displayName;
+
+  async function handleSaveRating({ rating, notes, readAt }) {
+    if (!libraryRow) return;
+    await updateReadBook(libraryRow, { rating, notes, readAt });
+  }
+
+  async function handleRemoveCategory(categoryId) {
+    setPendingRemoveId(categoryId);
+    try { await removeCategoryFromBook(display, categoryId); }
+    finally { setPendingRemoveId(null); }
+  }
+
   const oracleGenres = state.genresByBookId?.[display.bookId];
   const genres = (oracleGenres && oracleGenres.length > 0)
     ? oracleGenres
@@ -360,22 +437,36 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
       seen.add(kk);
       entries.push(b);
     }
-    for (const ob of seriesBooks) {
+    // Only merge fetched series books if they actually belong to this series.
+    // Hardcover search can return a wrong series (e.g. searching "Bride" returns
+    // "Scared Sexy"). Validate by checking the fetched books' s.name.
+    const fetchedSeriesName = seriesBooks[0]?.s?.name;
+    const normalize = (s) => (s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    const fetchedMatchesSeries = fetchedSeriesName &&
+      normalize(fetchedSeriesName) === normalize(seriesName);
+    const validSeriesBooks = fetchedMatchesSeries ? seriesBooks : [];
+    for (const ob of validSeriesBooks) {
       if (!entries.some((e) => bookKey(e) === bookKey(ob))) entries.push(ob);
     }
     if (!entries.some((e) => bookKey(e) === bookKey(display))) entries.push({ ...display });
     entries.sort((a, b) => (a.s?.n || 999) - (b.s?.n || 999));
 
     const totalKnown = entries.length;
-    const totalFromSeriesFetch = seriesBooks.length > 0
-      ? (seriesBooks.find((b) => b.s?.total)?.s?.total || null)
+    const totalFromSeriesFetch = validSeriesBooks.length > 0
+      ? (validSeriesBooks.find((b) => b.s?.total)?.s?.total || null)
       : null;
     const totalBooks = totalFromSeriesFetch || display.s.total || totalKnown || 1;
     const readCount = entries.filter((e) => state.library.some((l) => bookKey(l) === bookKey(e))).length;
 
     const dots = [];
+    // Separate entries with explicit positions from those without
+    const positionedEntries = entries.filter((e) => e.s?.n != null);
+    const unpositionedEntries = entries.filter((e) => e.s?.n == null);
     for (let i = 1; i <= totalBooks; i++) {
-      const entry = entries.find((e) => e.s?.n === i);
+      // First try explicit position match, then fall back to unpositioned entries
+      // assigned by array order (for Hardcover data that occasionally has null positions)
+      const entry = positionedEntries.find((e) => e.s?.n === i)
+        || (unpositionedEntries[i - 1 - positionedEntries.filter(e => e.s?.n < i).length] ?? null);
       if (entry) {
         const isCurrent = bookKey(entry) === k;
         const read = state.library.some((l) => bookKey(l) === bookKey(entry));
@@ -386,7 +477,7 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
             key={i}
             className={`series-dot ${cls}`}
             title={`${entry.t}${read ? ' — read' : queued ? ' — queued' : ''}`}
-            onClick={() => !isCurrent && go('book-page', { bookKey: bookKey(entry), from: 'book-page', fromLabel: display.t })}
+            onClick={() => !isCurrent && go('book-page', buildBookPageParams(entry, 'book-page', display.t))}
             style={{ cursor: isCurrent ? 'default' : 'pointer' }}
           >
             {i}
@@ -600,9 +691,112 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
         </div>
       )}
 
+      {/* Rating & notes — only shown for books in library */}
+      {inLib && (
+        <div className="book-page-body" style={{ marginTop: '2rem' }}>
+          <div
+            className="book-modal-section-title"
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.6rem' }}
+          >
+            <span>{t('rating.eyebrowEdit')}</span>
+            <button
+              className="li-action"
+              onClick={() => setRatingEditorOpen(true)}
+              style={{ fontSize: '0.7rem', padding: '0.3rem 0.7rem' }}
+            >
+              {liveRating > 0 || liveNotes ? t('common.edit') : t('bookModal.addRating')}
+            </button>
+          </div>
+          {liveRating > 0 ? (
+            <div style={{ color: 'var(--gilt-bright)', fontSize: '1.4rem', letterSpacing: '0.1em', marginBottom: liveNotes ? '0.8rem' : 0 }}>
+              {'★'.repeat(liveRating)}
+              <span style={{ color: 'rgba(176,140,63,0.25)' }}>{'★'.repeat(5 - liveRating)}</span>
+            </div>
+          ) : (
+            !liveNotes && (
+              <div style={{ color: 'var(--paper-aged)', opacity: 0.6, fontSize: '0.9rem', fontStyle: 'italic' }}>
+                {t('bookModal.notRatedYet')}
+              </div>
+            )
+          )}
+          {liveNotes && (
+            <div style={{ color: 'var(--paper-aged)', lineHeight: 1.55, fontStyle: 'italic', fontSize: '1rem', fontFamily: "'EB Garamond', serif", maxWidth: '680px' }}>
+              {liveNotes}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Categories */}
+      <div className="book-page-body" style={{ marginTop: '2rem' }}>
+        <div
+          className="book-modal-section-title"
+          style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.6rem' }}
+        >
+          <span>
+            {t('bookModal.categories')}
+            {categories.length > 0 && (
+              <span style={{ opacity: 0.5, marginLeft: '0.4rem', fontSize: '0.7rem' }}>· {categories.length}/10</span>
+            )}
+          </span>
+          {canAddCategories && !atCategoryCap && (
+            <button
+              className="li-action"
+              onClick={() => setAdderOpen((v) => !v)}
+              style={{ fontSize: '0.7rem', padding: '0.3rem 0.7rem' }}
+            >
+              {adderOpen ? t('bookModal.done') : t('bookModal.addCategory')}
+            </button>
+          )}
+        </div>
+
+        {categories.length === 0 && !adderOpen ? (
+          <div style={{ color: 'var(--paper-aged)', opacity: 0.6, fontSize: '0.9rem', fontStyle: 'italic' }}>
+            {t('categories.noCategories')}
+          </div>
+        ) : (
+          <div style={{ display: 'flex', gap: '0.45rem', flexWrap: 'wrap', alignItems: 'center' }}>
+            {categories.map((c) => (
+              <CategoryPill
+                key={c.categoryId}
+                category={c}
+                removing={pendingRemoveId === c.categoryId}
+                canRemove={adderOpen}
+                onRemove={() => handleRemoveCategory(c.categoryId)}
+              />
+            ))}
+          </div>
+        )}
+        {adderOpen && canAddCategories && (
+          <div style={{ marginTop: categories.length > 0 ? '0.85rem' : '0.6rem' }}>
+            <CategoryAutocomplete
+              book={display}
+              existingIds={existingCategoryIds}
+              onCapHit={() => setAdderOpen(false)}
+            />
+            <div style={{ marginTop: '0.5rem', fontSize: '0.75rem', color: 'var(--paper-aged)', opacity: 0.55, fontStyle: 'italic' }}>
+              {t('categories.removeHelp')}
+            </div>
+          </div>
+        )}
+      </div>
+
       <SimilarBooks similar={similar} />
 
       <ReportBookForm book={display} />
+
+      {/* Rating editor modal */}
+      {ratingEditorOpen && libraryRow && (
+        <RatingModal
+          book={libraryRow}
+          initialRating={liveRating}
+          initialNotes={liveNotes}
+          initialReadAt={libraryRow?.dateRead}
+          mode="edit"
+          onSave={handleSaveRating}
+          onSkip={() => setRatingEditorOpen(false)}
+        />
+      )}
     </div>
   );
 }

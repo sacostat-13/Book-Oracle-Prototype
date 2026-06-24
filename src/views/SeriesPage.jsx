@@ -15,7 +15,7 @@ import { useEffect, useState, useMemo } from 'react';
 import { useData } from '../lib/DataContext';
 import { useRouter } from '../lib/RouterContext';
 import { useT } from '../lib/I18nContext';
-import { bookKey } from '../lib/bookHelpers';
+import { bookKey, buildBookPageParams } from '../lib/bookHelpers';
 import { fetchSeriesBooks } from '../lib/enrichmentService';
 import { fetchSeriesDescriptionFromWikipedia } from '../lib/seriesService';
 import BookCover from '../components/BookCover';
@@ -68,8 +68,17 @@ export default function SeriesPage() {
     const seen = new Set();
     const merged = [];
 
+    // Validate fetched books actually belong to this series.
+    // Hardcover search can match a different series with a similar name.
+    const normalize = (s) => (s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    const fetchedSeriesName = seriesBooks[0]?.s?.name;
+    const validSeriesBooks = fetchedSeriesName &&
+      normalize(fetchedSeriesName) === normalize(seriesName)
+      ? seriesBooks
+      : [];
+
     // Start from fetched (ordered) list
-    for (const b of seriesBooks) {
+    for (const b of validSeriesBooks) {
       const k = bookKey(b);
       if (seen.has(k)) continue;
       seen.add(k);
@@ -280,7 +289,7 @@ export default function SeriesPage() {
                   </div>
                   <div
                     className="series-page-book-title"
-                    onClick={() => go('book-page', { bookKey: k, from: 'series-page', fromLabel: seriesName })}
+                    onClick={() => go('book-page', buildBookPageParams(b, 'series-page', seriesName))}
                     style={{ cursor: 'pointer' }}
                   >
                     {b.t}

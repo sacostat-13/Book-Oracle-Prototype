@@ -1,9 +1,27 @@
 // pages/_book-page.scss
 // Full book detail page. Similar book grid → _similar.scss
+[data-theme="light"] {
+  .book-page {
+    .level-pill {
+      &:nth-of-type(3) {
+        color: var(--ink);
+      }
+    }
+    .btn.btn-gilt{
+      color: var(--paper);
+    }
+  }
+}
 
 .book-page {
   max-width: 860px;
   margin: 0 auto;
+
+  .level-pill {
+    &:nth-of-type(3) {
+      color: var(--paper);
+    }
+  }
 }
 
 .book-page-hero {
@@ -22,7 +40,12 @@
   overflow: hidden;
   aspect-ratio: 2/3;
 
-  img, .placeholder { width: 100%; height: 100%; object-fit: cover; }
+  img,
+  .placeholder {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
 }
 
 .book-page-title {
@@ -42,10 +65,12 @@
   margin-bottom: 0.2rem;
 }
 
+
+
 .book-page-series {
   margin-top: 1.25rem;
   padding: 1rem 1.25rem;
-  background: rgba(176,140,63,0.04);
+  background: rgba(176, 140, 63, 0.04);
   border: 1px solid var(--border-subtle);
   border-radius: 2px;
 }
@@ -115,7 +140,9 @@
   padding: 0;
   transition: opacity 0.2s;
 
-  &:hover { opacity: 0.85; }
+  &:hover {
+    opacity: 0.85;
+  }
 }
 
 .report-book-form {
@@ -172,8 +199,14 @@
   margin-bottom: 0.75rem;
   box-sizing: border-box;
 
-  &:focus { border-color: rgba(176,140,63,0.45); }
-  &::placeholder { color: var(--paper-aged); opacity: 0.4; }
+  &:focus {
+    border-color: rgba(176, 140, 63, 0.45);
+  }
+
+  &::placeholder {
+    color: var(--paper-aged);
+    opacity: 0.4;
+  }
 }
 
 .report-book-actions {
@@ -184,13 +217,30 @@
 
 // ── Mobile ────────────────────────────────────────────────────────────────────
 @media (max-width: 700px) {
-  .book-page-hero { grid-template-columns: 1fr; gap: 1.5rem; }
-  .book-page-cover { width: 140px; }
-  .book-page-actions { flex-direction: column; }
-  .book-page-actions .btn { width: 100%; }
+  .book-page-hero {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+
+  .book-page-cover {
+    width: 140px;
+  }
+
+  .book-page-actions {
+    flex-direction: column;
+  }
+
+  .book-page-actions .btn {
+    width: 100%;
+  }
 }
 
 @media (max-width: 700px) {
-  .report-book-actions { flex-direction: column; }
-  .report-book-actions .btn { width: 100%; }
+  .report-book-actions {
+    flex-direction: column;
+  }
+
+  .report-book-actions .btn {
+    width: 100%;
+  }
 }

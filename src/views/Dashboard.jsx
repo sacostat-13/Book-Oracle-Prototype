@@ -20,7 +20,7 @@ function buildFeed(state) {
   const events = [];
 
   (state.library || []).forEach(b => {
-    const date = b.readAt || b.read_at;
+    const date = b.dateRead || b.readAt || b.read_at;
     if (date) events.push({ type:'finished', date, book:b, key:`fin-${b.bookId||b.t}` });
   });
 

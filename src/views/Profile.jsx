@@ -5,7 +5,7 @@ import { useRouter } from '../lib/RouterContext';
 import { useT } from '../lib/I18nContext';
 import { useOracleQuota } from '../lib/OracleQuotaContext';
 import { parseGoodreadsCSV } from '../lib/goodreadsImport';
-import { findBookByTitle, bookKey } from '../lib/bookHelpers';
+import { findBookByTitle, bookKey, openBookTab } from '../lib/bookHelpers';
 
 const LEVEL_NAMES = {
   1: 'Casual companion', 2: 'Steady reader', 3: 'Devoted reader',
@@ -79,7 +79,10 @@ function GenreBar({ name, count, max }) {
 }
 
 // ── Reading pace by month ─────────────────────────────────────────────────────
-function PaceChart({ books }) {
+function PaceChart({ books, onOpenBook }) {
+  const [hovered, setHovered] = useState(null);   // month key being hovered
+  const [selected, setSelected] = useState(null); // month key clicked for drill-down
+
   // Last 12 months
   const now = new Date();
   const months = [];
@@ -88,7 +91,9 @@ function PaceChart({ books }) {
     months.push({
       key: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`,
       label: d.toLocaleDateString(undefined, { month: 'short' }),
+      fullLabel: d.toLocaleDateString(undefined, { month: 'long', year: 'numeric' }),
       count: 0,
+      booksInMonth: [],
     });
   }
   for (const b of books) {
@@ -96,29 +101,130 @@ function PaceChart({ books }) {
     const d = new Date(b.dateRead);
     const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
     const m = months.find((m) => m.key === key);
-    if (m) m.count++;
+    if (m) { m.count++; m.booksInMonth.push(b); }
   }
   const maxCount = Math.max(...months.map((m) => m.count), 1);
 
+  const selectedMonth = selected ? months.find((m) => m.key === selected) : null;
+
   return (
-    <div style={{ display: 'flex', alignItems: 'flex-end', gap: '4px', height: '64px' }}>
-      {months.map((m) => (
-        <div key={m.key} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px' }}>
-          <div
-            title={`${m.count} book${m.count !== 1 ? 's' : ''} in ${m.label}`}
-            style={{
-              width: '100%',
-              height: `${Math.max(m.count / maxCount * 48, m.count > 0 ? 4 : 1)}px`,
-              background: m.count > 0 ? 'var(--gilt)' : 'rgba(176, 140, 63, 0.15)',
-              borderRadius: '1px',
-              transition: 'height 0.3s',
-            }}
-          />
-          <div style={{ fontSize: '0.55rem', color: 'var(--paper-aged)', opacity: 0.5, letterSpacing: '0.05em' }}>
-            {m.label[0]}
+    <div>
+      {/* Bar chart */}
+      <div style={{ display: 'flex', alignItems: 'flex-end', gap: '4px', height: '72px' }}>
+        {months.map((m) => {
+          const isHovered = hovered === m.key;
+          const isSelected = selected === m.key;
+          return (
+            <div
+              key={m.key}
+              style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px', position: 'relative' }}
+              onMouseEnter={() => setHovered(m.key)}
+              onMouseLeave={() => setHovered(null)}
+            >
+              {/* Tooltip */}
+              {isHovered && (
+                <div style={{
+                  position: 'absolute',
+                  bottom: '100%',
+                  left: '50%',
+                  transform: 'translateX(-50%)',
+                  background: 'var(--surface-raised)',
+                  border: '1px solid var(--border-mid)',
+                  borderRadius: '2px',
+                  padding: '4px 8px',
+                  whiteSpace: 'nowrap',
+                  fontSize: '0.65rem',
+                  fontFamily: "'Special Elite', monospace",
+                  letterSpacing: '0.05em',
+                  color: 'var(--paper)',
+                  zIndex: 10,
+                  pointerEvents: 'none',
+                  marginBottom: '4px',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.4)',
+                }}>
+                  {m.count} book{m.count !== 1 ? 's' : ''}<br />
+                  <span style={{ opacity: 0.6 }}>{m.fullLabel}</span>
+                  {m.count > 0 && <div style={{ opacity: 0.5, marginTop: 2 }}>click to see list</div>}
+                </div>
+              )}
+              {/* Bar */}
+              <div
+                onClick={() => m.count > 0 && setSelected(selected === m.key ? null : m.key)}
+                style={{
+                  width: '100%',
+                  height: `${Math.max(m.count / maxCount * 52, m.count > 0 ? 4 : 1)}px`,
+                  background: isSelected
+                    ? 'var(--gilt-bright)'
+                    : m.count > 0
+                    ? (isHovered ? 'var(--gilt-bright)' : 'var(--gilt)')
+                    : 'rgba(176,140,63,0.15)',
+                  borderRadius: '1px',
+                  transition: 'height 0.3s, background 0.15s',
+                  cursor: m.count > 0 ? 'pointer' : 'default',
+                  outline: isSelected ? '1px solid var(--gilt)' : 'none',
+                }}
+              />
+              {/* Month label */}
+              <div style={{ fontSize: '0.55rem', color: 'var(--paper-aged)', opacity: isSelected ? 1 : 0.5, letterSpacing: '0.05em' }}>
+                {m.label[0]}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Drill-down list for selected month */}
+      {selectedMonth && selectedMonth.booksInMonth.length > 0 && (
+        <div style={{
+          marginTop: '1rem',
+          padding: '0.85rem 1rem',
+          background: 'var(--surface-tint)',
+          border: '1px solid var(--border-subtle)',
+          borderRadius: '2px',
+        }}>
+          <div style={{
+            fontFamily: "'Special Elite', monospace",
+            fontSize: '0.65rem',
+            letterSpacing: '0.15em',
+            textTransform: 'uppercase',
+            color: 'var(--gilt)',
+            opacity: 0.8,
+            marginBottom: '0.6rem',
+          }}>
+            {selectedMonth.fullLabel} · {selectedMonth.count} book{selectedMonth.count !== 1 ? 's' : ''}
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+            {selectedMonth.booksInMonth.map((b, i) => (
+              <div
+                key={b.bookId || b.t + i}
+                onClick={() => onOpenBook?.(b)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.6rem',
+                  cursor: onOpenBook ? 'pointer' : 'default',
+                  padding: '0.2rem 0',
+                }}
+              >
+                {b.coverUrl ? (
+                  <img src={b.coverUrl} alt={b.t} style={{ width: 28, height: 42, objectFit: 'cover', borderRadius: 1, flexShrink: 0 }} />
+                ) : (
+                  <div style={{ width: 28, height: 42, background: 'var(--surface-raised)', borderRadius: 1, flexShrink: 0 }} />
+                )}
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontFamily: "'Cormorant Garamond', serif", fontStyle: 'italic', fontSize: '0.9rem', color: 'var(--paper)', lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{b.t}</div>
+                  <div style={{ fontFamily: "'Special Elite', monospace", fontSize: '0.6rem', letterSpacing: '0.08em', color: 'var(--paper-aged)', opacity: 0.7, marginTop: '0.15rem' }}>{b.a}</div>
+                  {b.rating > 0 && (
+                    <div style={{ color: 'var(--gilt)', fontSize: '0.7rem', marginTop: '0.1rem' }}>
+                      {'★'.repeat(b.rating)}<span style={{ color: 'rgba(176,140,63,0.3)' }}>{'★'.repeat(5 - b.rating)}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
           </div>
         </div>
-      ))}
+      )}
     </div>
   );
 }
@@ -370,7 +476,7 @@ export default function Profile() {
             <>
               {sectionTitle(t('profile.sectionPace'))}
               <div style={{ padding: '1rem 1.25rem', background: 'rgba(176, 140, 63, 0.04)', border: '1px solid rgba(176, 140, 63, 0.18)', borderRadius: '2px', marginBottom: '1.5rem' }}>
-                <PaceChart books={stats.datedBooks} />
+                <PaceChart books={stats.datedBooks} onOpenBook={(b) => openBookTab(b, 'profile')} />
               </div>
             </>
           )}
