@@ -535,7 +535,7 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
               </span>
             )}
             {inLib && (
-              <span className="level-pill" style={{ background: 'var(--moss)', color: 'var(--paper)', borderColor: 'var(--moss)' }}>
+              <span className="level-pill" style={{ background: 'var(--moss)', borderColor: 'var(--moss)' }}>
                 ✓ {t('navSearch.statusRead')}
               </span>
             )}
