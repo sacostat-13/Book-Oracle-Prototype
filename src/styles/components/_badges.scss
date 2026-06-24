@@ -1,7 +1,7 @@
 // components/_badges.scss
 // Reading level badge + all genre/status pill variants used across the app.
 
-// ── Reading level badge ───────────────────────────────────────────────────────
+// ── Reading level / meta pill ─────────────────────────────────────────────────
 .level-pill {
   display: inline-flex;
   align-items: center;
@@ -11,10 +11,51 @@
   padding: 0.3rem 0.7rem;
   border-radius: 20px;
   font-family: 'Special Elite', monospace;
-  font-size: 0.65rem;
-  letter-spacing: 0.15em;
+  font-size: var(--text-xs);
+  letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--gilt);
+}
+
+// ── Semantic status pills ─────────────────────────────────────────────────────
+// Use these everywhere for read/reading/queued/wishlist states.
+// Replaces ad-hoc rgba() values throughout the codebase.
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.25rem 0.65rem;
+  border-radius: 20px;
+  border: 1px solid;
+  font-family: 'Special Elite', monospace;
+  font-size: var(--text-xs);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.status-pill--read {
+  background: var(--status-read-bg);
+  color: var(--status-read-fg);
+  border-color: var(--status-read-border);
+}
+
+.status-pill--reading {
+  background: var(--status-reading-bg);
+  color: var(--status-reading-fg);
+  border-color: var(--status-reading-border);
+}
+
+.status-pill--queued {
+  background: var(--status-queued-bg);
+  color: var(--status-queued-fg);
+  border-color: var(--status-queued-border);
+}
+
+.status-pill--wishlist {
+  background: var(--status-wishlist-bg);
+  color: var(--status-wishlist-fg);
+  border-color: var(--status-wishlist-border);
 }
 
 // ── Card genre tag ────────────────────────────────────────────────────────────
@@ -39,8 +80,8 @@
 .book-modal-genre {
   display: inline-block;
   font-family: 'Special Elite', monospace;
-  font-size: 0.65rem;
-  letter-spacing: 0.15em;
+  font-size: var(--text-xs);
+  letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--gilt);
   border: 1px solid rgba(176,140,63,0.35);
@@ -59,8 +100,8 @@
 
 .li-genre-pill {
   font-family: 'Special Elite', monospace;
-  font-size: 0.58rem;
-  letter-spacing: 0.12em;
+  font-size: var(--text-xs);
+  letter-spacing: 0.10em;
   text-transform: uppercase;
   color: var(--gilt);
   border: 1px solid rgba(176,140,63,0.3);

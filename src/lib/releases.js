@@ -16,9 +16,28 @@
 
 // The version label shown as "current" — keep in sync with package.json and
 // the README version line.
-export const CURRENT_VERSION = 'v0.33.1';
+export const CURRENT_VERSION = 'v0.34';
 
-export const RELEASES = [{
+export const RELEASES = [
+  {
+    version: 'v0.34',
+    date: '2026-06-24',
+    titleEn: 'Design system overhaul',
+    titleEs: 'Renovación del sistema de diseño',
+    bodyEn: [
+      'Light mode is now a warm parchment theme instead of a mechanical colour inversion. Text contrast passes WCAG AA across all surfaces.',
+      'Finishing, starting, wishlisting and planning events in the Dashboard feed each have a distinct colour accent bar and icon, making your reading history scannable at a glance.',
+      'Book series with more than 6 entries now show a sleek progress track instead of crowded numbered dots. Short series dots have been updated with clearer status colours.',
+      'Font sizes across the app now respect a 12px minimum — small labels in the feed, similar books grid, and chart have all been brought up to the floor.',
+    ],
+    bodyEs: [
+      'El modo claro ahora es un tema de pergamino cálido en lugar de una inversión mecánica de colores. El contraste de texto cumple WCAG AA en todas las superficies.',
+      'Los eventos del feed del Panel — terminar, empezar, agregar a lista de deseos y planificar — tienen ahora una barra de acento y un ícono de color distinto, haciendo tu historial de lectura escaneable de un vistazo.',
+      'Las series de libros con más de 6 entregas ahora muestran una barra de progreso elegante en lugar de puntos numerados apretados. Los puntos de series cortas se actualizaron con colores de estado más claros.',
+      'Los tamaños de fuente en la app ahora respetan un mínimo de 12px — las etiquetas pequeñas en el feed, la grilla de libros similares y el gráfico se ajustaron al límite.',
+    ],
+  },
+  {
     version: 'v0.33.1',
     date: '2026-06-24',
     titleEn: 'Bug fixes — series navigation & feed',

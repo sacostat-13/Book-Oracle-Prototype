@@ -21,13 +21,18 @@
   --wood-light:   #5a3a2a;
   --wood-grain:   #1f1109;
 
-  // Text hierarchy — use these instead of hardcoded rgba values
+  // Text hierarchy — use these instead of ad-hoc opacity values
   --text-primary:   var(--paper);
   --text-secondary: var(--paper-aged);
   --text-muted:     rgba(244,234,213,0.65);
-  --text-dim:       rgba(244,234,213,0.35);
-  --text-faint:     rgba(244,234,213,0.25);
+  --text-dim:       rgba(244,234,213,0.40);
+  --text-faint:     rgba(244,234,213,0.28);
   --text-ghost:     rgba(244,234,213,0.15);
+
+  // Font-size floor — never go below --text-xs in any UI element
+  --text-xs:   0.75rem;   // 12px absolute minimum
+  --text-sm:   0.875rem;  // 14px
+  --text-base: 1rem;      // 16px
 
   // Surface tokens
   --surface:        var(--ink);
@@ -39,41 +44,90 @@
   --input-bg:       rgba(176,140,63,0.04);
   --input-border:   rgba(176,140,63,0.25);
   --overlay-bg:     rgba(10,8,6,0.78);
+
+  // Spacing scale — use these instead of ad-hoc rem values
+  --space-1:  8px;
+  --space-2: 16px;
+  --space-3: 24px;
+  --space-4: 40px;
+  --space-5: 64px;
+
+  // ── Semantic status tokens ──────────────────────────────────────────────────
+  // Use these for read/reading/queued/wishlist states everywhere.
+  // Keeps brand gold (--gilt) reserved for decorative/premium use only.
+
+  --status-read-bg:         rgba(61,74,54,0.25);
+  --status-read-fg:         #7aab6a;
+  --status-read-border:     rgba(61,74,54,0.55);
+
+  --status-reading-bg:      rgba(176,140,63,0.12);
+  --status-reading-fg:      var(--gilt-bright);
+  --status-reading-border:  rgba(176,140,63,0.45);
+
+  --status-queued-bg:       rgba(80,110,160,0.12);
+  --status-queued-fg:       #8aade0;
+  --status-queued-border:   rgba(80,110,160,0.40);
+
+  --status-wishlist-bg:     rgba(120,80,160,0.12);
+  --status-wishlist-fg:     #b08ad4;
+  --status-wishlist-border: rgba(120,80,160,0.38);
 }
 
-// ── Light mode ────────────────────────────────────────────────────────────────
+// ── Light mode — parchment, not inversion ─────────────────────────────────────
+// Backgrounds are warm cream grades. Text is sepia, not near-black.
+// Gold stays warm — doesn't grey out. Borders are ink-based, not gilt-based.
 [data-theme="light"] {
-  --ink:          #f7f0e0;
-  --ink-deep:     #ede3cc;
-  --paper:        #1c1510;
-  --paper-aged:   #3a2e22;
-  --paper-dim:    rgba(28,21,16,0.65);
+  --ink:          #f5edd8;
+  --ink-deep:     #ede3c8;
+  --paper:        #2a1d0e;
+  --paper-aged:   #4a3828;
+  --paper-dim:    rgba(42,29,14,0.65);
   --blood:        #7a1f1f;
   --blood-bright: #9b2828;
   --moss:         #3a4a34;
-  --gilt:         #8a6a28;
-  --gilt-bright:  #b08c3f;
-  --shadow:       rgba(28,21,16,0.15);
-  --wood-dark:    #e8ddc8;
-  --wood-mid:     #f0e8d4;
-  --wood-light:   #f7f2e6;
-  --wood-grain:   #e0d4b8;
+  --gilt:         #9a7a2e;
+  --gilt-bright:  #c4982a;
+  --shadow:       rgba(42,29,14,0.15);
+  --wood-dark:    #e8dab8;
+  --wood-mid:     #e8dab8;
+  --wood-light:   #f2ead4;
+  --wood-grain:   #ddd0b0;
 
   --surface:        var(--ink);
   --surface-raised: var(--wood-mid);
-  --surface-tint:   rgba(28,21,16,0.04);
-  --surface-hover:  rgba(28,21,16,0.06);
-  --border-subtle:  rgba(28,21,16,0.12);
-  --border-mid:     rgba(28,21,16,0.22);
-  --text-primary:   var(--paper);
-  --text-secondary: var(--paper-aged);
-  --text-muted:     rgba(28,21,16,0.70);
-  --text-dim:       rgba(28,21,16,0.40);
-  --text-faint:     rgba(28,21,16,0.28);
-  --text-ghost:     rgba(28,21,16,0.16);
-  --input-bg:       rgba(28,21,16,0.04);
-  --input-border:   rgba(28,21,16,0.18);
-  --overlay-bg:     rgba(240,232,212,0.88);
+  --surface-tint:   rgba(42,29,14,0.04);
+  --surface-hover:  rgba(42,29,14,0.06);
+  --border-subtle:  rgba(42,29,14,0.14);
+  --border-mid:     rgba(42,29,14,0.26);
+
+  // Explicit hex text tokens — no rgba chains that compound contrast loss
+  --text-primary:   #2a1d0e;
+  --text-secondary: #4a3828;
+  --text-muted:     #6b5340;
+  --text-dim:       #8c7060;
+  --text-faint:     #b09880;
+  --text-ghost:     rgba(42,29,14,0.16);
+
+  --input-bg:       rgba(42,29,14,0.04);
+  --input-border:   rgba(42,29,14,0.18);
+  --overlay-bg:     rgba(237,227,200,0.92);
+
+  // Status tokens — light-mode overrides for legibility on warm cream
+  --status-read-bg:         rgba(61,74,54,0.12);
+  --status-read-fg:         #3a5c32;
+  --status-read-border:     rgba(61,74,54,0.38);
+
+  --status-reading-bg:      rgba(154,122,46,0.12);
+  --status-reading-fg:      #7a5a18;
+  --status-reading-border:  rgba(154,122,46,0.38);
+
+  --status-queued-bg:       rgba(40,80,140,0.10);
+  --status-queued-fg:       #2c5496;
+  --status-queued-border:   rgba(40,80,140,0.32);
+
+  --status-wishlist-bg:     rgba(90,50,130,0.10);
+  --status-wishlist-fg:     #6b3aa0;
+  --status-wishlist-border: rgba(90,50,130,0.30);
 }
 
 // ── Base reset ────────────────────────────────────────────────────────────────

@@ -2,6 +2,12 @@
 // Shared UI primitives used across multiple pages:
 // page headers, empty states, breadcrumbs, and misc utilities.
 
+@media (max-width: 500px) {
+  * {
+    font-size: 1.3rem;
+  }
+}
+
 // ── Page header ───────────────────────────────────────────────────────────────
 .page-header {
   margin-bottom: 2.5rem;
@@ -24,8 +30,8 @@
 
 .page-eyebrow {
   font-family: 'Special Elite', monospace;
-  font-size: 0.7rem;
-  letter-spacing: 0.4em;
+  font-size: var(--text-xs);
+  letter-spacing: 0.35em; // Tier 1 — widest tracking, gilt only here
   color: var(--gilt);
   margin-bottom: 0.5rem;
   text-transform: uppercase;
@@ -36,16 +42,18 @@
   font-style: italic;
   font-weight: 500;
   font-size: clamp(2rem, 5vw, 3.2rem);
-  color: var(--paper);
+  color: var(--text-primary);
   line-height: 1.05;
   margin-bottom: 0.5rem;
 
-  .accent { color: var(--blood-bright); font-weight: 600; }
+  .accent {
+    color: var(--blood-bright);
+    font-weight: 600;
+  }
 }
 
 .page-subtitle {
-  color: var(--paper-aged);
-  opacity: 0.7;
+  color: var(--text-muted);
   font-style: italic;
   font-size: 1.05rem;
 }
@@ -81,12 +89,11 @@
 
 // ── Breadcrumb ────────────────────────────────────────────────────────────────
 .breadcrumb {
-  margin-bottom: 1rem;
+  margin-bottom: var(--space-2);
   font-family: 'Special Elite', monospace;
-  font-size: 0.7rem;
+  font-size: var(--text-xs);
   letter-spacing: 0.15em;
-  color: var(--paper-aged);
-  opacity: 0.6;
+  color: var(--text-muted);
   text-transform: uppercase;
 
   a {
@@ -94,9 +101,13 @@
     cursor: pointer;
     text-decoration: none;
 
-    &:hover { text-decoration: underline; }
+    &:hover {
+      text-decoration: underline;
+    }
   }
 }
 
 // ── Misc utilities ────────────────────────────────────────────────────────────
-.file-hidden { display: none; }
+.file-hidden {
+  display: none;
+}

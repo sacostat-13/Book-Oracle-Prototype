@@ -489,7 +489,7 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
         );
       }
     }
-    seriesBlock = { name: seriesName, dots, readCount, totalBooks };
+    seriesBlock = { name: seriesName, dots, readCount, totalBooks, entries, currentKey: k };
   }
 
   const links = purchaseLinks(display);
@@ -560,23 +560,58 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
               </span>
             </div>
           )}
-          {!seriesLoading && seriesBlock && (
-            <div className="book-page-series">
-              <div className="book-page-series-label">
-                {t('bookPage.partOfSeries')}
-              </div>
-              <div className="series-name">{seriesBlock.name}</div>
-              <div className="series-progress">
-                {seriesBlock.dots}
+          {!seriesLoading && seriesBlock && (() => {
+            const { name, dots, readCount, totalBooks, entries, currentKey } = seriesBlock;
+            const useTrack = totalBooks > 6;
+            const currentEntry = entries.find((e) => bookKey(e) === currentKey);
+            const currentPos = currentEntry?.s?.n || entries.findIndex((e) => bookKey(e) === currentKey) + 1;
+            const trackReadPct = totalBooks > 0 ? (readCount / totalBooks) * 100 : 0;
+            const trackCursorPct = totalBooks > 1 ? ((currentPos - 1) / (totalBooks - 1)) * 100 : 0;
+            const goToSeries = () => go('series-page', { seriesName: name, from: 'book-page', fromLabel: display.t });
+            return (
+              <div className="book-page-series">
+                {/* Label row — eyebrow left, open-series pill right */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.4rem' }}>
+                  <div className="book-page-series-label" style={{ marginBottom: 0 }}>
+                    {t('bookPage.partOfSeries')}
+                  </div>
+                  <button
+                    onClick={goToSeries}
+                    title={t('bookPage.openSeries')}
+                    className="series-open-btn"
+                  >
+                    {t('bookPage.openSeries')}
+                  </button>
+                </div>
+
+                {/* Series name — clickable */}
+                <div
+                  className="series-name"
+                  onClick={goToSeries}
+                  style={{ cursor: 'pointer' }}
+                >
+                  {name}
+                </div>
+
+                {useTrack ? (
+                  <div className="series-track">
+                    <div className="series-track__fill" style={{ width: `${trackReadPct}%` }} />
+                    <div className="series-track__cursor" style={{ left: `${Math.max(0, Math.min(100, trackCursorPct))}%` }} />
+                  </div>
+                ) : (
+                  <div className="series-progress">
+                    {dots}
+                  </div>
+                )}
                 <span className="series-progress-text">
-                  {t('bookPage.seriesRead', { read: seriesBlock.readCount, total: seriesBlock.totalBooks })}
+                  {t('bookPage.seriesRead', { read: readCount, total: totalBooks })}
                 </span>
+                {seriesDescription && (
+                  <p className="book-page-series-desc">{seriesDescription.description}</p>
+                )}
               </div>
-              {seriesDescription && (
-                <p className="book-page-series-desc">{seriesDescription.description}</p>
-              )}
-            </div>
-          )}
+            );
+          })()}
 
           {/* Actions */}
           <div className="book-page-actions">
@@ -673,15 +708,9 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
         </div>
       )}
 
-      {/* Series plan CTA */}
-      {seriesBlock && (
-        <div style={{ marginTop: '2rem', display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
-          <button
-            className="btn"
-            onClick={() => go('series-page', { seriesName: seriesBlock.name, from: 'book-page', fromLabel: display.t })}
-          >
-            {t('bookPage.openSeries')}
-          </button>
+      {/* Series plan CTA — open series now lives in the series block above */}
+      {/* {seriesBlock && (
+        <div style={{ marginTop: '1rem', display: 'flex', gap: '0.6rem', flexWrap: 'wrap', paddingLeft: '1.25rem' }}>
           <button
             className="li-action success"
             onClick={() => go('plan-create', { seriesName: seriesBlock.name })}
@@ -689,7 +718,7 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
             {t('bookModal.createPlan')}
           </button>
         </div>
-      )}
+      )} */}
 
       {/* Rating & notes — only shown for books in library */}
       {inLib && (

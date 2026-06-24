@@ -1,15 +1,14 @@
 // pages/_dashboard-feed.scss
 // Activity feed, currently reading strip, CTAs, current plan banner.
-// Tokens replace most hardcoded rgba values.
 
 // ── Shared eyebrow ────────────────────────────────────────────────────────────
 .db-section-eyebrow {
   font-family: 'Special Elite', monospace;
-  font-size: 0.68rem;
-  letter-spacing: 0.22em;
+  font-size: var(--text-xs);
+  letter-spacing: 0.20em;
   text-transform: uppercase;
   color: var(--text-muted);
-  margin-bottom: 1rem;
+  margin-bottom: var(--space-2);
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -25,7 +24,7 @@
 }
 
 // ── Currently Reading strip ───────────────────────────────────────────────────
-.db-cr { margin-bottom: 2rem; }
+.db-cr { margin-bottom: var(--space-4); }
 
 .db-cr__grid {
   display: flex;
@@ -39,6 +38,7 @@
   align-items: flex-start;
   background: var(--surface-tint);
   border: 1px solid var(--border-subtle);
+  border-left: 3px solid var(--status-reading-border);
   border-radius: 3px;
   padding: 1.1rem 1.25rem;
   cursor: pointer;
@@ -47,8 +47,9 @@
   transition: background 0.18s, border-color 0.18s;
 
   &:hover {
-    background: rgba(176,140,63,0.06);
+    background: var(--surface-hover);
     border-color: var(--border-mid);
+    border-left-color: var(--status-reading-fg);
   }
 }
 
@@ -70,15 +71,14 @@
 }
 
 .db-cr__author {
-  font-family: 'Special Elite', monospace;
-  font-size: 0.65rem;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: rgba(201,162,75,0.65);
+  font-family: 'EB Garamond', serif;
+  font-style: italic;
+  font-size: var(--text-sm);
+  color: var(--text-muted);
 }
 
 .db-cr__since {
-  font-size: 0.75rem;
+  font-size: var(--text-xs);
   color: var(--text-dim);
   margin-top: 0.15rem;
 }
@@ -90,19 +90,20 @@
 }
 
 // ── Current Plan banner ───────────────────────────────────────────────────────
+.db-plans { margin-bottom: var(--space-4); }
+
 .db-plan-banner {
   margin-bottom: 1.75rem;
   border: 1px solid var(--border-mid);
-  border-left: 3px solid rgba(176,140,63,0.6);
+  border-left: 3px solid var(--status-queued-border);
   border-radius: 3px;
   background: var(--input-bg);
   cursor: pointer;
   transition: background 0.18s, border-color 0.18s;
 
   &:hover {
-    background: rgba(176,140,63,0.09);
-    border-color: rgba(176,140,63,0.45);
-    border-left-color: rgba(176,140,63,0.8);
+    background: var(--surface-hover);
+    border-left-color: var(--status-queued-fg);
   }
 
   &__inner {
@@ -112,16 +113,16 @@
     padding: 1rem 1.25rem;
   }
 
-  &__ornament { font-size: 1.1rem; color: rgba(176,140,63,0.6); flex-shrink: 0; }
+  &__ornament { font-size: 1.1rem; color: var(--status-queued-fg); opacity: 0.75; flex-shrink: 0; }
 
   &__body { flex: 1; min-width: 0; }
 
   &__label {
     font-family: 'Special Elite', monospace;
-    font-size: 0.6rem;
-    letter-spacing: 0.2em;
+    font-size: var(--text-xs);
+    letter-spacing: 0.18em;
     text-transform: uppercase;
-    color: rgba(176,140,63,0.6);
+    color: var(--text-muted);
     margin-bottom: 0.2rem;
   }
 
@@ -134,13 +135,13 @@
     line-height: 1.2;
   }
 
-  &__meta { font-size: 0.8rem; color: var(--text-muted); margin-top: 0.15rem; }
+  &__meta { font-size: var(--text-sm); color: var(--text-muted); margin-top: 0.15rem; }
 
   &__cta {
     font-family: 'Cormorant Garamond', serif;
     font-style: italic;
     font-size: 0.95rem;
-    color: rgba(176,140,63,0.7);
+    color: var(--text-dim);
     white-space: nowrap;
     flex-shrink: 0;
     transition: color 0.18s;
@@ -154,7 +155,7 @@
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(500px, 1fr));
   gap: 1rem;
-  margin-bottom: 2.5rem;
+  margin-bottom: var(--space-4);
 }
 
 .db-cta-card {
@@ -166,8 +167,8 @@
   transition: background 0.18s, border-color 0.18s, transform 0.18s;
 
   &:hover {
-    background: rgba(176,140,63,0.07);
-    border-color: rgba(176,140,63,0.38);
+    background: var(--surface-hover);
+    border-color: var(--border-mid);
     transform: translateY(-1px);
   }
 
@@ -202,7 +203,7 @@
     span { color: var(--blood-bright); font-weight: 600; }
   }
 
-  &__sub { font-size: 1.1rem; color: var(--text-muted); line-height: 1.4; }
+  &__sub { font-size: 1.05rem; color: var(--text-muted); line-height: 1.4; }
 }
 
 // ── Feed ──────────────────────────────────────────────────────────────────────
@@ -210,7 +211,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 1.25rem;
+  margin-bottom: var(--space-3);
   padding-bottom: 0.6rem;
   border-bottom: 1px solid var(--border-subtle);
 }
@@ -221,8 +222,8 @@
 
 .feed-date-label {
   font-family: 'Special Elite', monospace;
-  font-size: 0.62rem;
-  letter-spacing: 0.2em;
+  font-size: var(--text-xs);
+  letter-spacing: 0.18em;
   text-transform: uppercase;
   color: var(--text-faint);
   padding: 1rem 0 0.5rem;
@@ -230,13 +231,14 @@
   &:first-child { padding-top: 0; }
 }
 
+// ── Feed row — left-accent bar + icon dot ─────────────────────────────────────
 .feed-row {
   display: flex;
   align-items: flex-start;
-  gap: 1rem;
-  padding: 0.85rem 0.75rem;
-  border-radius: 3px;
-  margin-bottom: 0.15rem;
+  gap: 10px;
+  padding: 10px 10px 10px 0;
+  border-radius: 4px;
+  margin-bottom: 2px;
   transition: background 0.15s;
 
   &--clickable {
@@ -247,36 +249,53 @@
   &__body {
     flex: 1;
     min-width: 0;
-    padding-top: 0.25rem;
+    padding-top: 0.2rem;
     line-height: 1.5;
   }
 }
 
+// Left accent bar — colour-codes each event type at a glance
+.feed-accent {
+  width: 3px;
+  align-self: stretch;
+  border-radius: 99px;
+  flex-shrink: 0;
+  margin-left: 4px;
+
+  &--finished   { background: var(--status-read-fg); }
+  &--started    { background: var(--status-reading-fg); }
+  &--wishlisted { background: var(--status-wishlist-fg); }
+  &--plan       { background: var(--status-queued-fg); }
+}
+
+// Icon dot — larger (32px) and coloured by event type
 .feed-icon {
   flex-shrink: 0;
-  width: 26px;
-  height: 26px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
-  background: var(--surface-tint);
-  border: 1px solid var(--border-subtle);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 11px;
-  color: var(--text-muted);
-  margin-top: 0.2rem;
+  font-size: 14px;
+  margin-top: 0.1rem;
+  background: var(--surface-tint);
+  border: 1px solid var(--border-subtle);
 
-  &--reading { border-color: rgba(176,140,63,0.4);  color: rgba(176,140,63,0.85); }
-  &--wish    { border-color: rgba(80,160,100,0.35); color: rgba(80,160,100,0.85); }
-  &--plan    { border-color: rgba(100,130,200,0.3); color: rgba(100,130,200,0.8); }
+  &--finished   { background: var(--status-read-bg);     color: var(--status-read-fg);     border-color: var(--status-read-border); }
+  &--started    { background: var(--status-reading-bg);  color: var(--status-reading-fg);  border-color: var(--status-reading-border); }
+  &--wishlisted { background: var(--status-wishlist-bg); color: var(--status-wishlist-fg); border-color: var(--status-wishlist-border); }
+  &--plan       { background: var(--status-queued-bg);   color: var(--status-queued-fg);   border-color: var(--status-queued-border); }
 }
 
+// Verb — italic prose instead of uppercase monospace (Tier 3 metadata)
 .feed-verb {
-  font-family: 'Special Elite', monospace;
-  font-size: 0.62rem;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+  font-family: 'EB Garamond', serif;
+  font-size: 0.95rem;
+  font-style: italic;
   color: var(--text-muted);
+  text-transform: none;
+  letter-spacing: 0;
   margin-right: 0.25rem;
 }
 
@@ -288,7 +307,7 @@
   color: var(--text-primary);
 }
 
-.feed-author { font-size: 0.88rem; color: var(--text-muted); }
+.feed-author { font-size: var(--text-sm); color: var(--text-muted); }
 
 .feed-tag {
   display: inline-block;
@@ -297,14 +316,14 @@
   border: 1px solid var(--border-subtle);
   border-radius: 2px;
   font-family: 'Special Elite', monospace;
-  font-size: 0.58rem;
-  letter-spacing: 0.1em;
+  font-size: var(--text-xs);
+  letter-spacing: 0.10em;
   text-transform: uppercase;
-  color: rgba(176,140,63,0.6);
+  color: var(--text-dim);
   vertical-align: middle;
 }
 
-.feed-sub { margin-top: 2px; font-size: 0.8rem; color: var(--text-dim); }
+.feed-sub { margin-top: 2px; font-size: var(--text-sm); color: var(--text-dim); }
 
 // Bulk wishlist cover strip
 .feed-bulk {
@@ -314,7 +333,7 @@
   margin-top: 0.75rem;
   align-items: flex-end;
 
-  img { width: 75px; height: auto; }
+  img { width: 75px; height: auto; border-radius: 2px; }
 
   &__more {
     display: flex;
@@ -326,7 +345,7 @@
     border: 1px solid var(--border-subtle);
     border-radius: 2px;
     font-family: 'Special Elite', monospace;
-    font-size: 0.6rem;
+    font-size: var(--text-xs);
     color: var(--text-dim);
   }
 }
@@ -348,7 +367,7 @@
   text-align: center;
 
   &:hover {
-    background: rgba(176,140,63,0.07);
+    background: var(--surface-hover);
     border-color: var(--border-mid);
     color: var(--text-secondary);
   }
@@ -359,5 +378,5 @@
   .db-ctas       { grid-template-columns: 1fr; }
   .db-cr__card   { max-width: none; flex: 1 1 100%; }
   .db-plan-banner__cta { display: none; }
-  .feed-row      { padding: 0.7rem 0.4rem; }
+  .feed-row      { padding: 8px 4px 8px 0; }
 }

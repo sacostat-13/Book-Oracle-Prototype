@@ -7,7 +7,8 @@
         color: var(--ink);
       }
     }
-    .btn.btn-gilt{
+
+    .btn.btn-gilt {
       color: var(--paper);
     }
   }
@@ -16,12 +17,6 @@
 .book-page {
   max-width: 860px;
   margin: 0 auto;
-
-  .level-pill {
-    &:nth-of-type(3) {
-      color: var(--paper);
-    }
-  }
 }
 
 .book-page-hero {
@@ -40,12 +35,7 @@
   overflow: hidden;
   aspect-ratio: 2/3;
 
-  img,
-  .placeholder {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-  }
+  img, .placeholder { width: 100%; height: 100%; object-fit: cover; }
 }
 
 .book-page-title {
@@ -65,50 +55,84 @@
   margin-bottom: 0.2rem;
 }
 
-
-
 .book-page-series {
-  margin-top: 1.25rem;
+  margin-top: var(--space-3);
   padding: 1rem 1.25rem;
-  background: rgba(176, 140, 63, 0.04);
+  background: rgba(176,140,63,0.04);
   border: 1px solid var(--border-subtle);
   border-radius: 2px;
 }
 
 .book-page-series-label {
   font-family: 'Special Elite', monospace;
-  font-size: 0.6rem;
-  letter-spacing: 0.3em;
-  color: var(--gilt);
-  opacity: 0.7;
+  font-size: var(--text-xs);
+  letter-spacing: 0.18em;
+  color: var(--text-muted);
+  opacity: 1;
   margin-bottom: 0.4rem;
+  text-transform: uppercase;
+}
+
+// Open-series pill — lives in the series block header row
+.series-open-btn {
+  background: none;
+  border: 1px solid var(--border-subtle);
+  border-radius: 3px;
+  color: var(--gilt);
+  cursor: pointer;
+  padding: 0.2rem 0.55rem;
+  font-family: 'Special Elite', monospace;
+  font-size: var(--text-xs);
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  transition: background 0.15s, border-color 0.15s;
+  line-height: 1;
+  white-space: nowrap;
+
+  &:hover {
+    background: rgba(176,140,63,0.10);
+    border-color: var(--gilt);
+  }
+}
+
+// Series name is also a link to the series page
+.series-name {
+  &[style*="cursor: pointer"]:hover {
+    color: var(--gilt);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    text-decoration-color: rgba(176,140,63,0.4);
+  }
 }
 
 .book-page-series-desc {
-  color: var(--paper-aged);
-  font-size: 0.9rem;
+  color: var(--text-muted);
+  font-size: var(--text-sm);
   line-height: 1.55;
   margin-top: 0.6rem;
-  opacity: 0.85;
 }
 
 .book-page-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.6rem;
-  margin-top: 1.5rem;
+  gap: var(--space-1);
+  margin-top: var(--space-3);
 }
 
 .book-page-purchase {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.5rem;
-  margin-top: 0.75rem;
+  gap: var(--space-1);
+  margin-top: var(--space-2);
 }
 
 .book-page-body {
   border-top: 1px solid var(--border-subtle);
-  padding-top: 2rem;
+  padding-top: var(--space-4);
+  margin-top: var(--space-4);
 }
 
 .book-page-description {
@@ -140,9 +164,7 @@
   padding: 0;
   transition: opacity 0.2s;
 
-  &:hover {
-    opacity: 0.85;
-  }
+  &:hover { opacity: 0.85; }
 }
 
 .report-book-form {
@@ -199,14 +221,8 @@
   margin-bottom: 0.75rem;
   box-sizing: border-box;
 
-  &:focus {
-    border-color: rgba(176, 140, 63, 0.45);
-  }
-
-  &::placeholder {
-    color: var(--paper-aged);
-    opacity: 0.4;
-  }
+  &:focus { border-color: rgba(176,140,63,0.45); }
+  &::placeholder { color: var(--paper-aged); opacity: 0.4; }
 }
 
 .report-book-actions {
@@ -217,30 +233,13 @@
 
 // ── Mobile ────────────────────────────────────────────────────────────────────
 @media (max-width: 700px) {
-  .book-page-hero {
-    grid-template-columns: 1fr;
-    gap: 1.5rem;
-  }
-
-  .book-page-cover {
-    width: 140px;
-  }
-
-  .book-page-actions {
-    flex-direction: column;
-  }
-
-  .book-page-actions .btn {
-    width: 100%;
-  }
+  .book-page-hero { grid-template-columns: 1fr; gap: var(--space-3); }
+  .book-page-cover { width: 140px; margin: 0 auto; }  // centred, not left-aligned
+  .book-page-actions { flex-direction: column; }
+  .book-page-actions .btn { width: 100%; }
 }
 
 @media (max-width: 700px) {
-  .report-book-actions {
-    flex-direction: column;
-  }
-
-  .report-book-actions .btn {
-    width: 100%;
-  }
+  .report-book-actions { flex-direction: column; }
+  .report-book-actions .btn { width: 100%; }
 }

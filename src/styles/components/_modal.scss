@@ -181,12 +181,12 @@
 
 .book-modal-section-title {
   font-family: 'Special Elite', monospace;
-  font-size: 0.7rem;
-  letter-spacing: 0.25em;
+  font-size: var(--text-xs);
+  letter-spacing: 0.18em;       // reduced from 0.25em — less shout
   text-transform: uppercase;
-  color: var(--gilt);
-  margin-bottom: 0.8rem;
-  padding-bottom: 0.4rem;
+  color: var(--text-muted);     // was var(--gilt) — gilt reserved for page-level only
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.35rem;
   border-bottom: 1px solid var(--border-subtle);
 }
 
@@ -226,49 +226,105 @@
   font-family: 'Cormorant Garamond', serif;
   font-style: italic;
   font-size: 1.1rem;
-  color: var(--paper);
-  margin-bottom: 0.8rem;
+  color: var(--text-primary);
+  margin-bottom: 0.6rem;
 }
 
+// ── Short-series dot row (≤ 6 books) ─────────────────────────────────────────
 .series-progress {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  margin-bottom: 0.8rem;
+  gap: 0.4rem;
+  flex-wrap: wrap;       // graceful wrap on narrow screens
+  row-gap: 0.4rem;
+  margin-bottom: 0.75rem;
 }
 
 .series-dot {
-  width: 22px;
-  height: 22px;
+  width: 26px;
+  height: 26px;
   border-radius: 50%;
-  border: 1px solid rgba(176,140,63,0.4);
+  border: 1.5px solid var(--border-subtle);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.7rem;
-  color: var(--paper-aged);
+  font-size: var(--text-xs);
+  color: var(--text-dim);
   font-family: 'Special Elite', monospace;
+  cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.15s, border-color 0.15s;
 
-  &.read    { background: var(--moss);  border-color: var(--moss);  color: var(--paper); }
-  &.current { background: var(--gilt);  border-color: var(--gilt);  color: var(--ink); font-weight: 700; transform: scale(1.15); }
-  &.queued  { background: rgba(176,140,63,0.15); border-color: var(--gilt); color: var(--gilt); }
+  &:hover:not(.current) {
+    border-color: var(--border-mid);
+    color: var(--text-secondary);
+  }
+
+  &.read {
+    background: var(--status-read-bg);
+    border-color: var(--status-read-border);
+    color: var(--status-read-fg);
+  }
+
+  &.current {
+    background: var(--gilt);
+    border-color: var(--gilt);
+    color: var(--ink);
+    font-weight: 700;
+    transform: scale(1.2);
+    box-shadow: 0 0 0 3px rgba(176,140,63,0.22);
+    cursor: default;
+  }
+
+  &.queued {
+    background: var(--status-queued-bg);
+    border-color: var(--status-queued-border);
+    color: var(--status-queued-fg);
+  }
+}
+
+// ── Long-series progress track (> 6 books) ────────────────────────────────────
+.series-track {
+  height: 4px;
+  background: var(--surface-tint);
+  border: 1px solid var(--border-subtle);
+  border-radius: 2px;
+  position: relative;
+  margin: 10px 0 14px;
+}
+
+.series-track__fill {
+  height: 100%;
+  background: var(--status-read-fg);
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
+
+.series-track__cursor {
+  position: absolute;
+  top: -7px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--gilt);
+  border: 2px solid var(--ink);
+  box-shadow: 0 0 0 2px rgba(176,140,63,0.30);
+  transform: translateX(-50%);
+  transition: left 0.3s ease;
 }
 
 .series-progress-text {
   font-family: 'Special Elite', monospace;
-  font-size: 0.7rem;
-  letter-spacing: 0.15em;
-  color: var(--paper-aged);
-  opacity: 0.7;
+  font-size: var(--text-xs);
+  letter-spacing: 0.12em;
+  color: var(--text-muted);
   text-transform: uppercase;
-  margin-left: 0.5rem;
+  margin-left: 0.4rem;
 }
 
 .series-caveat {
-  color: var(--paper-aged);
-  opacity: 0.6;
+  color: var(--text-muted);
   font-style: italic;
-  font-size: 0.85rem;
+  font-size: var(--text-sm);
   margin-top: 0.5rem;
 }
 

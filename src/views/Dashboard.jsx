@@ -204,14 +204,25 @@ function QuickActions({ go, t }) {
 
 // ─── Feed event renderers ─────────────────────────────────────────────────────
 
+const FEED_CFG = {
+  finished:   { char: '✓', label: 'finished'   },
+  started:    { char: '❧', label: 'started'    },
+  wishlisted: { char: '♡', label: 'wishlisted' },
+  plan:       { char: '✦', label: 'plan'       },
+};
+
+function FeedAccent({ type }) {
+  const mod = FEED_CFG[type]?.label || '';
+  return <div className={`feed-accent${mod ? ' feed-accent--'+mod : ''}`} />;
+}
+
 function FeedIcon({ type }) {
-  const cfg = {
-    finished:   { char:'✓', mod:''        },
-    started:    { char:'❧', mod:'reading' },
-    wishlisted: { char:'+', mod:'wish'    },
-    plan:       { char:'✦', mod:'plan'    },
-  }[type] || { char:'·', mod:'' };
-  return <div className={`feed-icon${cfg.mod ? ' feed-icon--'+cfg.mod : ''}`}>{cfg.char}</div>;
+  const cfg = FEED_CFG[type] || { char: '·', label: '' };
+  return (
+    <div className={`feed-icon${cfg.label ? ' feed-icon--'+cfg.label : ''}`}>
+      {cfg.char}
+    </div>
+  );
 }
 
 function FeedDateLabel({ date, prev, t }) {
@@ -225,12 +236,18 @@ function FinishedEvent({ ev, onOpenBook, t }) {
   const b = ev.book;
   return (
     <div className="feed-row feed-row--clickable" onClick={() => onOpenBook?.(b)}>
+      <FeedAccent type="finished" />
       <FeedIcon type="finished" />
       <div className="feed-row__body">
         <span className="feed-verb">{t('dashboard.feedFinished')}</span>{' '}
         <span className="feed-title">{b.t}</span>
         {b.a && <span className="feed-author"> {t('dashboard.feedBy')} {b.a}</span>}
-        {b.g && <span className="feed-tag">{b.g}</span>}
+        {b.rating > 0 && (
+          <span className="feed-sub" style={{ color: 'var(--gilt)' }}>
+            {'★'.repeat(b.rating)}<span style={{ opacity: 0.25 }}>{'★'.repeat(5 - b.rating)}</span>
+          </span>
+        )}
+        {b.g && !b.rating && <span className="feed-tag">{b.g}</span>}
       </div>
       <Cover book={b} size={75} onClick={() => onOpenBook?.(b)} />
     </div>
@@ -241,6 +258,7 @@ function StartedEvent({ ev, onOpenBook, t }) {
   const b = ev.book;
   return (
     <div className="feed-row feed-row--clickable" onClick={() => onOpenBook?.(b)}>
+      <FeedAccent type="started" />
       <FeedIcon type="started" />
       <div className="feed-row__body">
         <span className="feed-verb">{t('dashboard.feedStarted')}</span>{' '}
@@ -258,6 +276,7 @@ function WishlistEvent({ ev, onOpenBook, t }) {
     const b = books[0];
     return (
       <div className="feed-row feed-row--clickable" onClick={() => onOpenBook?.(b)}>
+        <FeedAccent type="wishlisted" />
         <FeedIcon type="wishlisted" />
         <div className="feed-row__body">
           <span className="feed-verb">{t('dashboard.feedAddedOne')}</span>{' '}
@@ -270,6 +289,7 @@ function WishlistEvent({ ev, onOpenBook, t }) {
   }
   return (
     <div className="feed-row">
+      <FeedAccent type="wishlisted" />
       <FeedIcon type="wishlisted" />
       <div className="feed-row__body">
         <span className="feed-verb">{t('dashboard.feedAddedMany', { count: books.length })}</span>
@@ -291,6 +311,7 @@ function PlanEvent({ ev, go, t }) {
   const { plan } = ev;
   return (
     <div className="feed-row feed-row--clickable" onClick={() => go('plan-view')}>
+      <FeedAccent type="plan" />
       <FeedIcon type="plan" />
       <div className="feed-row__body">
         <span className="feed-verb">{t('dashboard.feedPlanCreated')}</span>{' '}

@@ -114,8 +114,8 @@ select:focus, select:hover, textarea:focus {
 
 .toggle-btn {
   background: transparent;
-  color: var(--paper-aged);
-  border: none;
+  color: var(--text-muted);
+  border: 1px solid transparent;
   padding: 0.6rem 1rem;
   font-family: 'Cormorant Garamond', serif;
   font-size: 1rem;
@@ -128,10 +128,12 @@ select:focus, select:hover, textarea:focus {
   align-items: flex-start;
   line-height: 1.1;
   min-width: 160px;
+  min-height: 44px;      // iOS HIG minimum tap target
+  justify-content: center;
 
   .toggle-sub {
     font-family: 'Special Elite', monospace;
-    font-size: 0.6rem;
+    font-size: var(--text-xs);
     letter-spacing: 0.1em;
     text-transform: uppercase;
     opacity: 0.6;
@@ -139,16 +141,30 @@ select:focus, select:hover, textarea:focus {
     margin-top: 0.2rem;
   }
 
-  &:hover { color: var(--paper); }
+  &:hover { color: var(--text-primary); }
 
   &.active {
-    background: rgba(176,140,63,0.15);
+    background: rgba(176,140,63,0.12);
     color: var(--gilt);
+    border-color: var(--gilt);   // border makes active visible in both modes
 
     .toggle-sub { opacity: 0.8; }
   }
 }
 
 @media (max-width: 600px) {
-  .toggle-btn { min-width: 0; flex: 1; padding: 0.5rem 0.7rem; font-size: 0.9rem; }
+  .toggle-group {
+    width: 100%;           // full-width on narrow screens
+  }
+  .toggle-btn {
+    min-width: 0;
+    flex: 1;
+    padding: 0.5rem 0.7rem;
+    font-size: 0.9rem;
+    flex-direction: row;   // label + sub side-by-side saves vertical space
+    gap: 0.5rem;
+    align-items: center;
+
+    .toggle-sub { margin-top: 0; }
+  }
 }
