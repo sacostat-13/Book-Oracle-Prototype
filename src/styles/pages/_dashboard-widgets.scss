@@ -1,0 +1,394 @@
+// pages/_dashboard-widgets.scss
+// Styles for v0.35 dashboard widgets: Oracle Spark, Stats, Goal, Series, Streak,
+// and the widget settings panel.
+
+// ── Widget settings panel (bottom sheet) ─────────────────────────────────────
+.widget-settings-overlay {
+  position: fixed;
+  inset: 0;
+  background: var(--overlay-bg);
+  z-index: 200;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.widget-settings-sheet {
+  background: var(--ink);
+  border: 1px solid var(--border-mid);
+  border-radius: 4px 4px 0 0;
+  width: 100%;
+  max-width: 520px;
+  max-height: 80vh;
+  overflow-y: auto;
+  padding: 1.5rem;
+}
+
+.widget-settings-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 1.25rem;
+}
+
+.widget-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.65rem 0.9rem;
+  background: var(--surface-tint);
+  border: 1px solid var(--border-subtle);
+  border-radius: 3px;
+  margin-bottom: 0.4rem;
+  transition: background 0.15s;
+
+  &--hidden { opacity: 0.5; }
+
+  &__toggle {
+    width: 28px;
+    height: 28px;
+    border-radius: 3px;
+    border: 1px solid var(--border-subtle);
+    background: var(--surface-tint);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-size: 0.9rem;
+    transition: all 0.15s;
+    color: var(--text-dim);
+
+    &--on {
+      background: var(--status-read-bg);
+      border-color: var(--status-read-border);
+      color: var(--status-read-fg);
+    }
+  }
+
+  &__name {
+    flex: 1;
+    font-family: 'Cormorant Garamond', serif;
+    font-style: italic;
+    font-size: 1rem;
+    color: var(--text-primary);
+  }
+
+  &__arrows {
+    display: flex;
+    gap: 3px;
+    flex-shrink: 0;
+  }
+
+  &__arrow {
+    background: none;
+    border: 1px solid var(--border-subtle);
+    border-radius: 2px;
+    width: 26px;
+    height: 26px;
+    cursor: pointer;
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: border-color 0.12s, color 0.12s;
+
+    &:disabled { opacity: 0.25; cursor: default; }
+    &:not(:disabled):hover { border-color: var(--border-mid); color: var(--text-primary); }
+  }
+}
+
+// ── Oracle Spark widget ───────────────────────────────────────────────────────
+.spark-widget {
+  border: 1px solid var(--border-subtle);
+  border-radius: 3px;
+  padding: 1.25rem;
+  background: var(--surface-tint);
+}
+
+.spark-result {
+  display: flex;
+  gap: 1.25rem;
+  align-items: flex-start;
+}
+
+.spark-result__cover {
+  flex-shrink: 0;
+  cursor: pointer;
+
+  &:hover { opacity: 0.85; }
+}
+
+.spark-result__meta { flex: 1; min-width: 0; }
+
+.spark-result__eyebrow {
+  font-family: 'Special Elite', monospace;
+  font-size: var(--text-xs);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 0.35rem;
+}
+
+.spark-result__title {
+  font-family: 'Cormorant Garamond', serif;
+  font-style: italic;
+  font-weight: 600;
+  font-size: 1.2rem;
+  color: var(--text-primary);
+  line-height: 1.2;
+  margin-bottom: 0.2rem;
+  cursor: pointer;
+
+  &:hover { color: var(--gilt); }
+}
+
+.spark-result__author {
+  font-family: 'EB Garamond', serif;
+  font-style: italic;
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+  margin-bottom: 0.6rem;
+}
+
+.spark-result__reason {
+  font-family: 'EB Garamond', serif;
+  font-style: italic;
+  font-size: 0.95rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+  margin-bottom: 0.9rem;
+}
+
+// ── Reading stats widget ──────────────────────────────────────────────────────
+.stats-widget-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-1);
+  margin-bottom: var(--space-2);
+}
+
+.stats-widget-cell {
+  background: var(--surface-tint);
+  border: 1px solid var(--border-subtle);
+  border-radius: 3px;
+  padding: 0.75rem 1rem;
+}
+
+.stats-widget-value {
+  font-family: 'Cormorant Garamond', serif;
+  font-style: italic;
+  font-weight: 500;
+  font-size: 1.6rem;
+  color: var(--text-primary);
+  line-height: 1;
+}
+
+.stats-widget-label {
+  font-family: 'Special Elite', monospace;
+  font-size: var(--text-xs);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-top: 0.3rem;
+}
+
+// ── Reading goal widget ───────────────────────────────────────────────────────
+.goal-widget {
+  border: 1px solid var(--border-subtle);
+  border-radius: 3px;
+  padding: 1rem 1.25rem;
+  background: var(--surface-tint);
+}
+
+.goal-widget__count {
+  font-family: 'Cormorant Garamond', serif;
+  font-style: italic;
+  font-weight: 500;
+  font-size: 1.5rem;
+  line-height: 1;
+  color: var(--text-primary);
+
+  &--reached { color: var(--status-read-fg); }
+  span { font-size: 1rem; opacity: 0.5; }
+}
+
+.goal-widget__track {
+  position: relative;
+  height: 6px;
+  background: var(--border-subtle);
+  border-radius: 3px;
+  margin: 0.5rem 0;
+}
+
+.goal-widget__fill {
+  height: 100%;
+  background: var(--gilt);
+  border-radius: 3px;
+  transition: width 0.4s ease;
+
+  &--reached { background: var(--status-read-fg); }
+}
+
+.goal-widget__pace-marker {
+  position: absolute;
+  top: -3px;
+  width: 2px;
+  height: 12px;
+  background: var(--text-dim);
+  border-radius: 1px;
+  opacity: 0.45;
+  transform: translateX(-50%);
+}
+
+.goal-widget__status {
+  font-family: 'EB Garamond', serif;
+  font-style: italic;
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+
+  &--ahead  { color: var(--status-read-fg); }
+  &--behind { color: var(--blood-bright); }
+  &--done   { color: var(--status-read-fg); }
+}
+
+// ── Series progress widget ────────────────────────────────────────────────────
+.series-widget-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.65rem 0.9rem;
+  background: var(--surface-tint);
+  border: 1px solid var(--border-subtle);
+  border-radius: 3px;
+  cursor: pointer;
+  margin-bottom: 0.4rem;
+  transition: background 0.15s;
+
+  &:hover { background: var(--surface-hover); }
+}
+
+.series-widget-row__cover {
+  width: 32px;
+  height: 48px;
+  object-fit: cover;
+  border-radius: 1px;
+  flex-shrink: 0;
+}
+
+.series-widget-row__name {
+  font-family: 'Cormorant Garamond', serif;
+  font-style: italic;
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: var(--text-primary);
+  margin-bottom: 0.3rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.series-widget-row__track {
+  height: 3px;
+  background: var(--border-subtle);
+  border-radius: 2px;
+  margin-bottom: 0.25rem;
+}
+
+.series-widget-row__fill {
+  height: 100%;
+  background: var(--status-read-fg);
+  border-radius: 2px;
+}
+
+.series-widget-row__label {
+  font-family: 'Special Elite', monospace;
+  font-size: var(--text-xs);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+// ── Streak widget ─────────────────────────────────────────────────────────────
+.streak-widget {
+  border: 1px solid var(--border-subtle);
+  border-radius: 3px;
+  padding: 1rem 1.25rem;
+  background: var(--surface-tint);
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+}
+
+.streak-widget__count {
+  text-align: center;
+  flex-shrink: 0;
+
+  &__value {
+    font-family: 'Cormorant Garamond', serif;
+    font-style: italic;
+    font-weight: 500;
+    font-size: 2.4rem;
+    line-height: 1;
+  }
+
+  &__unit {
+    font-family: 'Special Elite', monospace;
+    font-size: var(--text-xs);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-top: 0.2rem;
+  }
+}
+
+.streak-widget__label {
+  font-family: 'EB Garamond', serif;
+  font-style: italic;
+  font-size: 1rem;
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+
+.streak-widget__date {
+  font-family: 'Special Elite', monospace;
+  font-size: var(--text-xs);
+  letter-spacing: 0.08em;
+  color: var(--text-dim);
+  margin-top: 0.3rem;
+}
+
+// ── Profile reading challenge section ─────────────────────────────────────────
+.challenge-bar {
+  position: relative;
+  height: 8px;
+  background: var(--border-subtle);
+  border-radius: 4px;
+  margin-bottom: 0.6rem;
+}
+
+.challenge-bar__fill {
+  height: 100%;
+  background: var(--gilt);
+  border-radius: 4px;
+  transition: width 0.5s ease;
+
+  &--reached { background: var(--status-read-fg); }
+}
+
+.challenge-bar__pace {
+  position: absolute;
+  top: -3px;
+  width: 2px;
+  height: 14px;
+  background: var(--text-dim);
+  border-radius: 1px;
+  opacity: 0.5;
+  transform: translateX(-50%);
+}
+
+@media (max-width: 500px) {
+  .stats-widget-grid { grid-template-columns: 1fr 1fr; }
+  .stats-widget-grid > :last-child { grid-column: 1 / -1; }
+}

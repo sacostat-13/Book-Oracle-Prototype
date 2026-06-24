@@ -16,9 +16,33 @@
 
 // The version label shown as "current" — keep in sync with package.json and
 // the README version line.
-export const CURRENT_VERSION = 'v0.34';
+export const CURRENT_VERSION = 'v0.35';
 
 export const RELEASES = [
+  {
+    version: 'v0.35',
+    date: '2026-06-24',
+    titleEn: 'Customizable dashboard & reading challenge',
+    titleEs: 'Panel personalizable y desafío de lectura',
+    bodyEn: [
+      'The dashboard is now fully customizable. A gear icon in the header opens a settings sheet where you can show or hide any widget and reorder them with up/down arrows.',
+      'New Oracle Spark widget: one tap picks a surprising book from your wishlist using the Oracle AI. Uses one quota slot like any other Oracle call.',
+      'New Reading Challenge: set an annual book goal on your Profile page and track it across both a dedicated widget and the full-featured challenge section on your profile, complete with a pace marker showing whether you\'re ahead or behind.',
+      'New Reading Stats widget shows your total books, pace per month, and total pages at a glance.',
+      'New Series in Progress widget surfaces your unfinished series with individual progress bars.',
+      'New Reading Streak widget counts consecutive months with at least one book finished.',
+      'Widget visibility and order are saved to your profile and sync across devices.',
+    ],
+    bodyEs: [
+      'El panel ahora es completamente personalizable. Un ícono de engranaje en el encabezado abre un panel donde podés mostrar u ocultar widgets y reordenarlos con flechas arriba/abajo.',
+      'Nuevo widget Chispa del Oráculo: con un toque, el Oráculo elige un libro sorpresa de tu lista de deseos. Usa un cupo de llamada como cualquier otra función del Oráculo.',
+      'Nuevo Desafío de lectura: establecé una meta anual de libros en tu Perfil y seguí tu progreso con un marcador de ritmo que indica si estás adelante o atrás.',
+      'Nuevo widget de Estadísticas muestra tus libros totales, ritmo mensual y páginas de un vistazo.',
+      'Nuevo widget de Series en progreso muestra tus series incompletas con barras de progreso individuales.',
+      'Nuevo widget de Racha de lectura cuenta los meses consecutivos con al menos un libro terminado.',
+      'La visibilidad y el orden de los widgets se guardan en tu perfil y se sincronizan entre dispositivos.',
+    ],
+  },
   {
     version: 'v0.34',
     date: '2026-06-24',

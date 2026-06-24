@@ -4,7 +4,7 @@ A reading companion — wishlist, library, reading plans, book clubs, and an AI-
 for book discovery. Built with React + Vite + SCSS, backed by Supabase for auth
 and cross-device sync, and Netlify Functions for API proxying.
 
-> Current version: **v0.34** — see [Releases](#releases) below for changelog.
+> Current version: **v0.35** — see [Releases](#releases) below for changelog.
 > Upgrading from an earlier version? Check the matching `MIGRATION_*.md` / `UPDATE_*.md`.
 
 ---
@@ -326,6 +326,26 @@ and forward requests. Locally you need `netlify dev` to make them work.
 ---
 
 ## Releases
+
+### v0.35 — Customizable dashboard & reading challenge
+
+**No DB migrations required.** All new state is stored in the existing `preferences jsonb` column on profiles.
+
+**Customizable dashboard.** The dashboard now renders widgets from a user-controlled ordered list (`preferences.dashboardLayout`) rather than a hardcoded sequence. A gear button in the dashboard header opens a bottom-sheet settings panel. Each widget has a visibility toggle and up/down arrow buttons for reordering. The resolved layout merges the saved order with any new widgets introduced in future releases so existing users automatically get new widgets appended at the bottom without losing their custom order. `DEFAULT_DASHBOARD_LAYOUT` in `Dashboard.jsx` is the canonical widget registry — adding a new widget means adding it there.
+
+**Oracle Spark.** A new `oracle-spark` widget shows a "Surprise me" prompt that calls Claude with a random slice of the user's wishlist and asks it to pick one title with a one-sentence reason. The result renders inline with cover, title, author, and the Oracle's reasoning. Costs one quota slot via the existing `callClaude` / `/.netlify/functions/claude` path. Handles quota-empty and no-wishlist states with appropriate fallback UI. A "Try another" button resets to idle without consuming another quota slot until the user taps the draw button again.
+
+**Reading challenge.** `readingGoalCount` (a plain integer, books per year) is a new `preferences` field. The Profile page replaces the old motivational-goal dropdown with a full reading challenge section: set a target, see a progress bar with a semi-transparent pace marker (a thin vertical bar at the current day-of-year position), a live count of books finished vs target, and a colour-coded pace status (ahead in green, behind in red, on-track in muted). The Dashboard `reading-goal` widget shows the same data in compact form. Both use identical pace logic: `expected = target × (dayOfYear / daysInYear)`, `delta = done − expected`.
+
+**Reading Stats widget.** Compact three-cell grid showing total books read, average monthly pace over the last 12 months, and total pages. Links to the full Profile stats.
+
+**Series in Progress widget.** Reads from the same series computation used by Profile stats. Shows up to 4 in-progress series, each with a mini progress bar and read/total count. Clicking navigates to the series page.
+
+**Reading Streak widget.** Counts consecutive months (working backwards from now) in which at least one book was finished. Colour-scales from muted (1–2 months) to gilt (3–5) to gilt-bright (6+).
+
+**New SCSS.** `_dashboard-widgets.scss` covers the settings sheet, all new widget shells, and the profile challenge bar. Imported in `main.scss`.
+
+**i18n.** 40+ new keys added to both `en.json` and `es.json` covering all new widget labels, challenge states (ahead/behind/complete/on-pace), and settings panel copy.
 
 ### v0.34 — Design system overhaul
 

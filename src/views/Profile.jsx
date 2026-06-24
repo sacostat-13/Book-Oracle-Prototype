@@ -229,8 +229,163 @@ function PaceChart({ books, onOpenBook }) {
   );
 }
 
+// ── Reading Challenge ─────────────────────────────────────────────────────────
+// Full-featured annual reading goal: set target, track progress, show pace.
+function ReadingChallenge({ library, readingGoalCount, setReadingGoalCount, t }) {
+  const [editing, setEditing] = useState(false);
+  const [inputVal, setInputVal] = useState('');
+
+  const now      = new Date();
+  const year     = now.getFullYear();
+  const target   = readingGoalCount;
+
+  // Books finished this calendar year
+  const done = library.filter((b) => {
+    if (!b.dateRead) return false;
+    return new Date(b.dateRead).getFullYear() === year;
+  }).length;
+
+  // Pace calculation: days elapsed / days in year × target = expected by now
+  const dayOfYear    = Math.floor((now - new Date(year, 0, 1)) / 86400000) + 1;
+  const daysInYear   = ((year % 4 === 0 && year % 100 !== 0) || year % 400 === 0) ? 366 : 365;
+  const yearFraction = dayOfYear / daysInYear;
+  const expected     = target ? Math.round(target * yearFraction) : 0;
+  const projected    = target ? Math.round(done / Math.max(yearFraction, 0.01)) : 0;
+  const delta        = target ? done - expected : 0; // positive = ahead, negative = behind
+  const pct          = target ? Math.min(100, Math.round((done / target) * 100)) : 0;
+  const reached      = target && done >= target;
+
+  function save() {
+    const n = parseInt(inputVal, 10);
+    if (n > 0 && n <= 9999) setReadingGoalCount(n);
+    setEditing(false);
+  }
+
+  function remove() {
+    setReadingGoalCount(null);
+    setEditing(false);
+  }
+
+  if (editing) {
+    return (
+      <div style={{ marginBottom: '1.5rem' }}>
+        <p style={{ color: 'var(--text-muted)', fontStyle: 'italic', fontSize: '0.95rem', marginBottom: '0.85rem' }}>
+          {t('profile.challengeSubtitle')}
+        </p>
+        <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap' }}>
+          <input
+            type="number" min="1" max="9999"
+            placeholder={t('profile.challengePlaceholder')}
+            value={inputVal}
+            onChange={(e) => setInputVal(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && save()}
+            autoFocus
+            style={{ width: '110px', fontFamily: "'Cormorant Garamond', serif", fontStyle: 'italic', fontSize: '1.2rem', background: 'var(--input-bg)', border: '1px solid var(--input-border)', color: 'var(--text-primary)', padding: '0.45rem 0.7rem', borderRadius: '2px' }}
+          />
+          <button className="btn" onClick={save}>{t('profile.challengeSave')}</button>
+          <button className="btn btn-ghost" onClick={() => setEditing(false)}>{t('common.cancel')}</button>
+          {target && (
+            <button
+              onClick={remove}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-dim)', fontSize: 'var(--text-sm)', fontStyle: 'italic', marginLeft: '0.25rem' }}
+            >
+              {t('profile.challengeRemove')}
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  if (!target) {
+    return (
+      <div style={{ marginBottom: '1.5rem' }}>
+        <p style={{ color: 'var(--text-muted)', fontStyle: 'italic', fontSize: '0.95rem', marginBottom: '0.85rem' }}>
+          {t('profile.challengeSubtitle')}
+        </p>
+        <button className="btn btn-ghost" onClick={() => { setInputVal(''); setEditing(true); }}>
+          {t('profile.challengeSet')}
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ marginBottom: '1.5rem' }}>
+      {/* Year label */}
+      <div style={{ fontFamily: "'Special Elite', monospace", fontSize: 'var(--text-xs)', letterSpacing: '0.18em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '0.75rem' }}>
+        {t('profile.challengeYear', { year })}
+      </div>
+
+      {/* Progress bar */}
+      <div style={{ position: 'relative', height: '8px', background: 'var(--border-subtle)', borderRadius: '4px', marginBottom: '0.6rem' }}>
+        <div style={{
+          height: '100%',
+          width: `${pct}%`,
+          background: reached ? 'var(--status-read-fg)' : 'var(--gilt)',
+          borderRadius: '4px',
+          transition: 'width 0.5s ease',
+        }} />
+        {/* Pace marker — where you should be */}
+        {!reached && (
+          <div style={{
+            position: 'absolute',
+            top: '-3px',
+            left: `${Math.min(100, Math.round(yearFraction * 100))}%`,
+            transform: 'translateX(-50%)',
+            width: '2px',
+            height: '14px',
+            background: 'var(--text-dim)',
+            borderRadius: '1px',
+            opacity: 0.5,
+          }} />
+        )}
+      </div>
+
+      {/* Counts row */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '0.5rem' }}>
+        <span style={{ fontFamily: "'Cormorant Garamond', serif", fontStyle: 'italic', fontWeight: 500, fontSize: '1.5rem', color: reached ? 'var(--status-read-fg)' : 'var(--text-primary)', lineHeight: 1 }}>
+          {done} <span style={{ fontSize: '1rem', opacity: 0.5 }}>/ {target}</span>
+        </span>
+        <span style={{ fontFamily: "'Special Elite', monospace", fontSize: 'var(--text-xs)', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>
+          {pct}%
+        </span>
+      </div>
+
+      {/* Status line */}
+      <div style={{ fontFamily: "'EB Garamond', serif", fontStyle: 'italic', fontSize: '0.95rem', lineHeight: 1.5, marginBottom: '0.9rem' }}>
+        {reached ? (
+          <span style={{ color: 'var(--status-read-fg)' }}>
+            {t('profile.challengeComplete', { done })}
+          </span>
+        ) : delta === 0 ? (
+          <span style={{ color: 'var(--text-muted)' }}>
+            {t('profile.challengePace', { projected })}
+          </span>
+        ) : delta > 0 ? (
+          <span style={{ color: 'var(--status-read-fg)' }}>
+            {t('profile.challengeAhead', { ahead: delta })} · {t('profile.challengePace', { projected })}
+          </span>
+        ) : (
+          <span style={{ color: 'var(--blood-bright)' }}>
+            {t('profile.challengeBehind', { behind: Math.abs(delta) })} · {t('profile.challengePace', { projected })}
+          </span>
+        )}
+      </div>
+
+      <button
+        className="btn btn-ghost"
+        style={{ fontSize: 'var(--text-xs)', padding: '0.3rem 0.75rem' }}
+        onClick={() => { setInputVal(String(target)); setEditing(true); }}
+      >
+        {t('profile.challengeEdit')}
+      </button>
+    </div>
+  );
+}
+
 export default function Profile() {
-  const { state, resetAll, importGoodreads, showToast } = useData();
+  const { state, resetAll, importGoodreads, showToast, setReadingGoalCount } = useData();
   const { user } = useAuth();
   const { go, route } = useRouter();
   const t = useT();
@@ -576,11 +731,14 @@ export default function Profile() {
         </p>
 
         <h2 style={{ fontFamily: "'Cormorant Garamond', serif", fontStyle: 'italic', margin: '1.5rem 0 1rem', color: 'var(--paper)' }}>
-          {t('profile.labelGoal')}
+          {t('profile.labelReadingChallenge')}
         </h2>
-        <p style={{ color: 'var(--paper-aged)', marginBottom: '1rem' }}>
-          {GOAL_NAMES[state.profile.goal] || (t('profile.notSet'))}
-        </p>
+        <ReadingChallenge
+          library={state.library}
+          readingGoalCount={state.readingGoalCount}
+          setReadingGoalCount={setReadingGoalCount}
+          t={t}
+        />
 
         <h2 style={{ fontFamily: "'Cormorant Garamond', serif", fontStyle: 'italic', margin: '1.5rem 0 1rem', color: 'var(--paper)' }}>
           {t('profile.labelLibrary')}

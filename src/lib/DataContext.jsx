@@ -27,6 +27,10 @@ const defaultState = {
   lists: [],
   shelfSortMode: 'recent',
   oracleMode: 'wishlist',
+  // v0.35: dashboard layout — ordered list of widget configs
+  dashboardLayout: null,  // null = use DEFAULT_DASHBOARD_LAYOUT
+  // v0.35: numeric reading goal (books per year), null = not set
+  readingGoalCount: null,
   // v0.12: a Map keyed by book_id (uuid) → array of { categoryId, name,
   // verified, usageCount, source: 'verified' | 'user' }. Populated on load
   // and kept in sync by addCategoryToBook / removeCategoryFromBook.
@@ -517,6 +521,8 @@ async function loadFromSupabase(userId) {
     lists,
     shelfSortMode: profile.preferences?.shelfSortMode || 'recent',
     oracleMode: profile.preferences?.oracleMode || 'wishlist',
+    dashboardLayout: profile.preferences?.dashboardLayout || null,
+    readingGoalCount: profile.preferences?.readingGoalCount || null,
     categoriesByBookId,
     genresByBookId,
     genres,
@@ -545,6 +551,8 @@ async function savePreferences(userId, state) {
         readNext: state.readNext,
         shelfSortMode: state.shelfSortMode,
         oracleMode: state.oracleMode,
+        dashboardLayout: state.dashboardLayout,
+        readingGoalCount: state.readingGoalCount,
       },
       updated_at: new Date().toISOString(),
     })
@@ -1463,6 +1471,16 @@ export function DataProvider({ children }) {
     setState((s) => ({ ...s, oracleMode: mode }));
   }, []);
 
+  // v0.35: dashboard layout customization
+  const setDashboardLayout = useCallback((layout) => {
+    setState((s) => ({ ...s, dashboardLayout: layout }));
+  }, []);
+
+  // v0.35: numeric reading goal (books per year)
+  const setReadingGoalCount = useCallback((count) => {
+    setState((s) => ({ ...s, readingGoalCount: count }));
+  }, []);
+
   const setCurrentPlan = useCallback(
     async (plan) => {
       if (!plan) return null;
@@ -1823,6 +1841,8 @@ export function DataProvider({ children }) {
     setOnboarded,
     setShelfSortMode,
     setOracleMode,
+    setDashboardLayout,
+    setReadingGoalCount,
     plans: state.plans || [],
     lists: state.lists || [],
     clubs: state.clubs || [],
