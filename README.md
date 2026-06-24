@@ -4,7 +4,7 @@ A reading companion — wishlist, library, reading plans, book clubs, and an AI-
 for book discovery. Built with React + Vite + SCSS, backed by Supabase for auth
 and cross-device sync, and Netlify Functions for API proxying.
 
-> Current version: **v0.35** — see [Releases](#releases) below for changelog.
+> Current version: **v0.35.1** — see [Releases](#releases) below for changelog.
 > Upgrading from an earlier version? Check the matching `MIGRATION_*.md` / `UPDATE_*.md`.
 
 ---
@@ -326,6 +326,16 @@ and forward requests. Locally you need `netlify dev` to make them work.
 ---
 
 ## Releases
+
+### v0.35.1 — Bug fix: book not removed from Reading Next when started
+
+**No DB migrations required.**
+
+`startReading` in `DataContext.jsx` had an asymmetry between its guest and authenticated paths. The guest path correctly filtered `readNext` when adding a book to `currentlyReading`. The authenticated path (the one used by all logged-in users) was missing that filter — it upserted the `currently_reading` row in Supabase and updated local `currentlyReading` state, but never touched `readNext`. The book stayed in the queue indefinitely.
+
+Fix: the authenticated path now includes `readNext: s.readNext.filter((b) => bookKey(b) !== k)` in its `setState` call, matching the guest path.
+
+For users already affected (book stuck in `readNext` in saved preferences), a second fix was added to the state hydration block that runs on login: `readNext` loaded from preferences is now filtered against both `currentlyReading` and `library` before being written to state. Any stale entry is silently removed, and the cleaned list is persisted the next time preferences save. No user action required.
 
 ### v0.35 — Customizable dashboard & reading challenge
 

@@ -16,9 +16,23 @@
 
 // The version label shown as "current" — keep in sync with package.json and
 // the README version line.
-export const CURRENT_VERSION = 'v0.35';
+export const CURRENT_VERSION = 'v0.35.1';
 
 export const RELEASES = [
+  {
+    version: 'v0.35.1',
+    date: '2026-06-24',
+    titleEn: 'Bug fix — book not removed from Reading Next when started',
+    titleEs: 'Corrección — libro no se eliminaba de Leer después al empezar a leer',
+    bodyEn: [
+      'Fixed a bug where starting to read a book left it stranded in the Reading Next queue. The authenticated path in startReading was adding the book to Currently Reading but missing the readNext filter that the guest path had. The book now correctly disappears from Reading Next the moment you start it.',
+      'As a safeguard, the app now also cleans up stale Reading Next entries on login — any book already in Currently Reading or your Library is automatically removed from the queue, fixing existing affected profiles without manual intervention.',
+    ],
+    bodyEs: [
+      'Se corrigió un error donde empezar a leer un libro lo dejaba varado en la cola de Leer después. El camino autenticado en startReading agregaba el libro a Leyendo ahora pero le faltaba el filtro de readNext que sí tenía el camino de invitado. El libro ahora desaparece correctamente de Leer después en el momento en que empezás a leerlo.',
+      'Como medida de seguridad, la app ahora también limpia entradas desactualizadas en Leer después al iniciar sesión — cualquier libro que ya esté en Leyendo ahora o en tu Biblioteca se elimina automáticamente de la cola, corrigiendo los perfiles afectados existentes sin intervención manual.',
+    ],
+  },
   {
     version: 'v0.35',
     date: '2026-06-24',

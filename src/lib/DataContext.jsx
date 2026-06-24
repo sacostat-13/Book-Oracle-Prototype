@@ -515,7 +515,16 @@ async function loadFromSupabase(userId) {
     },
     wishlist: dedupeBooks(wishlist),
     library: dedupeBooks(library),
-    readNext: dedupeBooks(profile.preferences?.readNext || []),
+    // v0.35.1: filter readNext against currentlyReading and library on load.
+    // Stale entries can persist in preferences when startReading or markAsRead
+    // failed to clean up readNext (e.g. the pre-fix authenticated startReading path).
+    readNext: dedupeBooks(
+      (profile.preferences?.readNext || []).filter((b) => {
+        const k = bookKey(b);
+        return !currentlyReading.some((cr) => bookKey(cr) === k)
+            && !library.some((lb) => bookKey(lb) === k);
+      })
+    ),
     currentPlan,
     plans,
     lists,
@@ -957,6 +966,7 @@ export function DataProvider({ children }) {
       setState((s) => ({
         ...s,
         currentlyReading: [...s.currentlyReading, { ...enriched, bookId }],
+        readNext: s.readNext.filter((b) => bookKey(b) !== k),  // fix: was missing in authed path
       }));
       showToast(`Started reading "${book.t}"`);
     },
