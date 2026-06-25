@@ -146,62 +146,72 @@ function FriendLibrary({ library, go, t }) {
   const hasFilter = search || genreFilter !== 'all' || yearFilter !== 'all' || sort !== 'recent';
 
   const selectStyle = {
-    background: 'var(--input-bg)',
+    background: 'var(--shadow)',
+    color: 'var(--paper)',
     border: '1px solid var(--input-border)',
-    color: 'var(--text-primary)',
     borderRadius: '2px',
-    padding: '0.4rem 0.6rem',
-    fontFamily: "'Special Elite', monospace",
-    fontSize: 'var(--text-xs)',
-    letterSpacing: '0.08em',
+    padding: '0.9rem 1rem',
+    fontFamily: "'EB Garamond', serif",
+    fontSize: '1.05rem',
+    fontStyle: 'italic',
     cursor: 'pointer',
+    appearance: 'none',
+    WebkitAppearance: 'none',
+    backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%23b08c3f' d='M6 8L0 0h12z'/%3E%3C/svg%3E\")",
+    backgroundRepeat: 'no-repeat',
+    backgroundPosition: 'right 1rem center',
+    paddingRight: '2.5rem',
+    transition: 'border-color 0.2s',
   };
 
   return (
     <>
-      {/* Toolbar */}
-      <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center', marginBottom: '1.25rem' }}>
-        {/* Search */}
-        <input
-          type="text"
-          placeholder={t('friends.librarySearch')}
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          style={{ ...selectStyle, fontFamily: "'EB Garamond', serif", fontSize: 'var(--text-sm)', fontStyle: 'italic', minWidth: '200px', flex: '1 1 200px', maxWidth: '300px' }}
-        />
+      {/* Toolbar — matches Library/Wishlist layout */}
+      <div className="wishlist-toolbar">
+        <div className="wishlist-filters">
+          {/* Search */}
+          <input
+            type="text"
+            className="search-input"
+            placeholder={t('friends.librarySearch')}
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            style={{ maxWidth: '280px' }}
+          />
 
-        {/* Genre filter */}
-        {genreOptions.length > 0 && (
-          <select value={genreFilter} onChange={(e) => setGenreFilter(e.target.value)} style={selectStyle}>
-            <option value="all">{t('friends.libraryAllGenres')}</option>
-            {genreOptions.map((o) => (
-              <option key={o.normalized_name} value={o.normalized_name}>☩ {o.name}</option>
-            ))}
+          {/* Genre filter */}
+          {genreOptions.length > 0 && (
+            <select value={genreFilter} onChange={(e) => setGenreFilter(e.target.value)} style={selectStyle}>
+              <option value="all">{t('friends.libraryAllGenres')}</option>
+              {genreOptions.map((o) => (
+                <option key={o.normalized_name} value={o.normalized_name}>☩ {o.name}</option>
+              ))}
+            </select>
+          )}
+
+          {/* Year filter */}
+          {yearOptions.length > 1 && (
+            <select value={yearFilter} onChange={(e) => setYearFilter(e.target.value)} style={selectStyle}>
+              <option value="all">{t('friends.libraryAllYears')}</option>
+              {yearOptions.map((y) => (
+                <option key={y} value={y}>{y}</option>
+              ))}
+            </select>
+          )}
+        </div>
+
+        {/* Sort + count — right side */}
+        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexShrink: 0 }}>
+          <select value={sort} onChange={(e) => setSort(e.target.value)} style={selectStyle}>
+            <option value="recent">{t('friends.librarySortRecent')}</option>
+            <option value="rating">{t('friends.librarySortRating')}</option>
+            <option value="title">{t('friends.librarySortTitle')}</option>
+            <option value="author">{t('friends.librarySortAuthor')}</option>
           </select>
-        )}
-
-        {/* Year filter */}
-        {yearOptions.length > 1 && (
-          <select value={yearFilter} onChange={(e) => setYearFilter(e.target.value)} style={selectStyle}>
-            <option value="all">{t('friends.libraryAllYears')}</option>
-            {yearOptions.map((y) => (
-              <option key={y} value={y}>{y}</option>
-            ))}
-          </select>
-        )}
-
-        {/* Sort */}
-        <select value={sort} onChange={(e) => setSort(e.target.value)} style={{ ...selectStyle, marginLeft: 'auto' }}>
-          <option value="recent">{t('friends.librarySortRecent')}</option>
-          <option value="rating">{t('friends.librarySortRating')}</option>
-          <option value="title">{t('friends.librarySortTitle')}</option>
-          <option value="author">{t('friends.librarySortAuthor')}</option>
-        </select>
-
-        {/* Result count */}
-        <span style={{ fontFamily: "'Special Elite', monospace", fontSize: 'var(--text-xs)', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-dim)', whiteSpace: 'nowrap' }}>
-          {t('friends.libraryCount', { count: filtered.length })}
-        </span>
+          <span style={{ fontFamily: "'Special Elite', monospace", fontSize: 'var(--text-xs)', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-dim)', whiteSpace: 'nowrap' }}>
+            {t('friends.libraryCount', { count: filtered.length })}
+          </span>
+        </div>
       </div>
 
       {/* Grid */}

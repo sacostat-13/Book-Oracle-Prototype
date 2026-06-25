@@ -16,9 +16,21 @@
 
 // The version label shown as "current" — keep in sync with package.json and
 // the README version line.
-export const CURRENT_VERSION = 'v0.36.3';
+export const CURRENT_VERSION = 'v0.36.4';
 
 export const RELEASES = [
+  {
+    version: 'v0.36.4',
+    date: '2026-06-24',
+    titleEn: 'Bug fix — friend library toolbar styling',
+    titleEs: 'Corrección — estilo del toolbar de biblioteca de amigo',
+    bodyEn: [
+      'The search input and dropdowns in the friend library now match the Library and Wishlist pages exactly. Previously they used inline styles with light-mode input tokens, rendering as plain unstyled browser defaults. Now using the app\'s .wishlist-toolbar, .wishlist-filters, and .search-input classes with the same dark background, gilt caret, and EB Garamond italic that the rest of the app uses for filter controls.',
+    ],
+    bodyEs: [
+      'El campo de búsqueda y los desplegables en la biblioteca de amigos ahora coinciden exactamente con las páginas de Biblioteca y Lista de deseos. Antes usaban estilos en línea con tokens de modo claro, mostrándose como controles de navegador sin estilo. Ahora usa las clases .wishlist-toolbar, .wishlist-filters y .search-input de la app con el mismo fondo oscuro, flecha dorada y EB Garamond itálica que el resto de la app usa para los controles de filtro.',
+    ],
+  },
   {
     version: 'v0.36.3',
     date: '2026-06-24',

@@ -4,7 +4,7 @@ A reading companion — wishlist, library, reading plans, book clubs, and an AI-
 for book discovery. Built with React + Vite + SCSS, backed by Supabase for auth
 and cross-device sync, and Netlify Functions for API proxying.
 
-> Current version: **v0.36.3** — see [Releases](#releases) below for changelog.
+> Current version: **v0.36.4** — see [Releases](#releases) below for changelog.
 > Upgrading from an earlier version? Check the matching `MIGRATION_*.md` / `UPDATE_*.md`.
 
 ---
@@ -326,6 +326,14 @@ and forward requests. Locally you need `netlify dev` to make them work.
 ---
 
 ## Releases
+
+### v0.36.4 — Bug fix: friend library toolbar styling
+
+**No DB migrations required.**
+
+The `FriendLibrary` toolbar in `FriendProfile.jsx` was using inline `style` objects with `var(--input-bg)`, `var(--text-primary)`, Special Elite monospace font, and no custom caret — matching neither dark nor light mode appearance of the rest of the app's filter controls.
+
+Fixed by switching to the established CSS classes: `.wishlist-toolbar` (flex row with space-between, wraps on mobile), `.wishlist-filters` (left group with gap), `.search-input` (dark background, gilt border, EB Garamond italic). The `select` elements now use inline styles that replicate the global `select` rule from `_oracle.scss` — `var(--shadow)` background, gilt SVG caret via `background-image`, `appearance: none`, EB Garamond italic. This matches the Library and Wishlist toolbar appearance exactly.
 
 ### v0.36.3 — Bug fix: friend library was empty
 
