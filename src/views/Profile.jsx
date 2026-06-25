@@ -840,8 +840,7 @@ export default function Profile() {
       <div className="page-header">
         <div className="page-eyebrow">{t('profile.eyebrowTitle')}</div>
         <h1 className="page-title">
-          {t('profile.title')}
-          <span className="accent">{t('profile.titleAccent')}</span>{' profile'}
+          {t('profile.title')} <span className="accent">{t('profile.titleAccent')}</span>
         </h1>
         {hasStats && (
           <p className="page-subtitle">
