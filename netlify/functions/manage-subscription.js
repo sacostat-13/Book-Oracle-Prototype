@@ -1,14 +1,17 @@
 // netlify/functions/manage-subscription.js
+// Returns the Lemon Squeezy customer portal URL for the current user.
 //
-// Creates a Stripe Customer Portal session so the user can manage
-// their subscription (cancel, update card, view invoices) without
-// us ever touching payment data.
+// LS provides a customer portal URL per subscription at:
+//   https://app.lemonsqueezy.com/my-orders
+// We can deep-link to a specific subscription's management page
+// if we have the ls_subscription_id stored on the profile.
 //
 // Required env vars:
-//   STRIPE_SECRET_KEY
+//   LEMONSQUEEZY_API_KEY
 //   SUPABASE_URL
 //   SUPABASE_SERVICE_ROLE_KEY
-//   URL  (Netlify sets this automatically)
+
+const LS_API = 'https://api.lemonsqueezy.com/v1';
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -24,12 +27,11 @@ export async function handler(event) {
   if (event.httpMethod === 'OPTIONS') return { statusCode: 204, headers: CORS, body: '' };
   if (event.httpMethod !== 'POST') return json(405, { error: 'Method not allowed' });
 
-  const stripeKey   = process.env.STRIPE_SECRET_KEY;
+  const apiKey      = process.env.LEMONSQUEEZY_API_KEY;
   const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
   const serviceKey  = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  const siteUrl     = process.env.URL || 'http://localhost:8888';
 
-  if (!stripeKey) return json(500, { error: 'Stripe not configured' });
+  if (!apiKey) return json(500, { error: 'LEMONSQUEEZY_API_KEY not set' });
 
   const authHeader = event.headers?.authorization || event.headers?.Authorization || '';
   const jwt        = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
@@ -39,52 +41,50 @@ export async function handler(event) {
   try {
     const payload = JSON.parse(Buffer.from(jwt.split('.')[1], 'base64url').toString());
     userId = payload.sub;
-  } catch {
-    return json(401, { error: 'invalid_token' });
-  }
+  } catch { return json(401, { error: 'invalid_token' }); }
 
-  // Get Stripe customer ID from profile
-  let customerId = null;
+  // Look up LS subscription ID from profile
+  let lsSubscriptionId = null;
   if (supabaseUrl && serviceKey) {
     try {
-      const res = await fetch(`${supabaseUrl}/rest/v1/profiles?id=eq.${userId}&select=stripe_customer_id`, {
-        headers: { 'apikey': serviceKey, 'Authorization': `Bearer ${serviceKey}` },
-      });
+      const res = await fetch(
+        `${supabaseUrl}/rest/v1/profiles?id=eq.${userId}&select=ls_subscription_id`,
+        { headers: { 'apikey': serviceKey, 'Authorization': `Bearer ${serviceKey}` } }
+      );
       if (res.ok) {
         const rows = await res.json();
-        customerId = rows[0]?.stripe_customer_id || null;
+        lsSubscriptionId = rows[0]?.ls_subscription_id || null;
       }
-    } catch (e) {
-      console.error('Profile lookup failed:', e);
-    }
+    } catch (e) { console.error('Profile lookup failed:', e); }
   }
 
-  if (!customerId) {
-    return json(404, { error: 'no_customer', message: 'No Stripe customer found for this account.' });
+  if (!lsSubscriptionId) {
+    // No subscription on file — send to general orders page
+    return json(200, { url: 'https://app.lemonsqueezy.com/my-orders' });
   }
 
-  // Create portal session
+  // Fetch the subscription from LS to get the management URL
   try {
-    const res = await fetch('https://api.stripe.com/v1/billing_portal/sessions', {
-      method: 'POST',
+    const res = await fetch(`${LS_API}/subscriptions/${lsSubscriptionId}`, {
       headers: {
-        'Authorization': `Bearer ${stripeKey}`,
-        'Content-Type': 'application/x-www-form-urlencoded',
+        'Authorization': `Bearer ${apiKey}`,
+        'Accept': 'application/vnd.api+json',
       },
-      body: new URLSearchParams({
-        customer:   customerId,
-        return_url: `${siteUrl}/#profile`,
-      }).toString(),
     });
-
-    const session = await res.json();
+    const data = await res.json();
     if (!res.ok) {
-      console.error('Stripe portal error:', session);
-      return json(502, { error: 'Portal creation failed', detail: session.error?.message });
+      console.error('LS subscription fetch error:', data);
+      return json(200, { url: 'https://app.lemonsqueezy.com/my-orders' });
     }
 
-    return json(200, { url: session.url });
+    // LS returns a urls object with customer_portal and update_payment_method
+    const portalUrl = data.data?.attributes?.urls?.customer_portal
+      || 'https://app.lemonsqueezy.com/my-orders';
+
+    return json(200, { url: portalUrl });
   } catch (e) {
-    return json(502, { error: 'Stripe request failed', detail: String(e) });
+    console.error('LS manage error:', String(e));
+    // Fallback to generic orders page rather than erroring
+    return json(200, { url: 'https://app.lemonsqueezy.com/my-orders' });
   }
 }

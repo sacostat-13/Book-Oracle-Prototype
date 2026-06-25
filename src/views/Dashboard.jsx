@@ -718,9 +718,11 @@ function FeedWidget({ state, onOpenBook, go, t, eyebrow }) {
 function AIQuotaBar({ go, t }) {
   const { quota, loading } = useOracleQuota();
   if (loading || !quota) return null;
-  const isEmpty   = !quota.unlimited && quota.calls_remaining === 0;
-  const pct       = quota.unlimited ? 100 : Math.round(((quota.calls_used ?? 0) / (quota.calls_limit ?? 5)) * 100);
-  const resetDate = quota.reset_at ? new Date(quota.reset_at).toLocaleDateString(undefined, { month: 'long', day: 'numeric' }) : null;
+  const isPro     = quota.subscription_status === 'active';
+  const isDay     = quota.period === 'day';
+  const isEmpty   = quota.calls_remaining === 0;
+  const pct       = Math.round(((quota.calls_used ?? 0) / (quota.calls_limit ?? 5)) * 100);
+  const resetDate = quota.reset_at ? quota.reset_at.toLocaleDateString(undefined, { month: 'long', day: 'numeric' }) : null;
 
   return (
     <div style={{ border: `1px solid ${isEmpty ? 'rgba(180,60,60,0.3)' : 'var(--border-subtle)'}`, borderRadius: '4px', padding: '1rem 1.25rem', marginBottom: 'var(--space-4)', background: isEmpty ? 'rgba(180,60,60,0.04)' : 'var(--surface-tint)', display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
@@ -728,27 +730,19 @@ function AIQuotaBar({ go, t }) {
         <div style={{ fontFamily: "'Special Elite', monospace", fontSize: 'var(--text-xs)', letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--gilt)', opacity: 0.8 }}>
           {t('dashboard.aiQuotaTitle')}
         </div>
-        {quota.unlimited ? (
-          <span style={{ fontFamily: "'Special Elite', monospace", fontSize: 'var(--text-xs)', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--gilt)', background: 'rgba(201,162,75,0.12)', border: '1px solid rgba(201,162,75,0.3)', padding: '0.1rem 0.5rem', borderRadius: '2px' }}>
-            {t('dashboard.aiQuotaUnlimited')}
-          </span>
-        ) : (
-          <span style={{ fontFamily: "'Special Elite', monospace", fontSize: 'var(--text-xs)', color: isEmpty ? 'rgba(180,60,60,0.9)' : 'var(--text-muted)' }}>
-            {t('dashboard.aiQuotaFree', { used: quota.calls_used ?? 0, limit: quota.calls_limit ?? 5 })}
-          </span>
-        )}
+        <span style={{ fontFamily: "'Special Elite', monospace", fontSize: 'var(--text-xs)', color: isEmpty ? 'rgba(180,60,60,0.9)' : 'var(--text-muted)' }}>
+          {t(isDay ? 'dashboard.aiQuotaPro' : 'dashboard.aiQuotaFree', { used: quota.calls_used ?? 0, limit: quota.calls_limit ?? 5, type: isPro ? t('dashboard.aiQuotaTypeDaily') : t('dashboard.aiQuotaTypeMonthly') })}
+        </span>
       </div>
-      {!quota.unlimited && (
-        <div style={{ height: '3px', background: 'var(--border-subtle)', borderRadius: '2px', overflow: 'hidden' }}>
-          <div style={{ height: '100%', width: `${pct}%`, background: isEmpty ? 'rgba(180,60,60,0.7)' : 'var(--gilt)', borderRadius: '2px', transition: 'width 0.3s ease' }} />
-        </div>
-      )}
+      <div style={{ height: '3px', background: 'var(--border-subtle)', borderRadius: '2px', overflow: 'hidden' }}>
+        <div style={{ height: '100%', width: `${pct}%`, background: isEmpty ? 'rgba(180,60,60,0.7)' : 'var(--gilt)', borderRadius: '2px', transition: 'width 0.3s ease' }} />
+      </div>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', flexWrap: 'wrap' }}>
         <span style={{ fontSize: 'var(--text-xs)', color: 'var(--text-dim)' }}>
           {t('dashboard.aiQuotaIncludes')}
-          {resetDate && !quota.unlimited && <> · {t('dashboard.aiQuotaResetsOn', { date: resetDate })}</>}
+          {resetDate && <> · {t('dashboard.aiQuotaResetsOn', { date: resetDate })}</>}
         </span>
-        {!quota.unlimited && (
+        {!isPro && (
           <button className="btn btn-ghost" style={{ fontSize: 'var(--text-xs)', padding: '0.3rem 0.75rem' }} onClick={() => go('profile')}>
             {t('dashboard.aiQuotaUpgrade')}
           </button>

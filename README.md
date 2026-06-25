@@ -1,10 +1,10 @@
-# The Reader Oracle
+# The Wishlist Oracle
 
 A reading companion — wishlist, library, reading plans, book clubs, and an AI-powered "oracle"
 for book discovery. Built with React + Vite + SCSS, backed by Supabase for auth
 and cross-device sync, and Netlify Functions for API proxying.
 
-> Current version: **v0.36.4** — see [Releases](#releases) below for changelog.
+> Current version: **v0.37** — see [Releases](#releases) below for changelog.
 > Upgrading from an earlier version? Check the matching `MIGRATION_*.md` / `UPDATE_*.md`.
 
 ---
@@ -326,6 +326,64 @@ and forward requests. Locally you need `netlify dev` to make them work.
 ---
 
 ## Releases
+
+### v0.37 — Extended notifications, preferences & footer
+
+**Extended notifications.** The bell panel now handles eight event types: `friend_request`, `friend_accepted` (existing), plus `club_invite`, `poll_started`, `poll_finalized`, `discussion_question`, `discussion_reply`, and `announcement`. All new types are driven by DB triggers (schema_v23) — no app-layer code needed to fire them. Each notification in the bell panel is clickable and navigates directly to the relevant club, session, or profile. The `notificationLabel()` and `notificationRoute()` helpers in `useNotifications.js` keep the Nav component clean.
+
+**Announcements.** New `announcements` table with a `broadcast_announcement(title, body, admin_id)` RPC that fans out one `announcement` notification per user. When clicked in the bell panel, the notification opens an `AnnouncementModal` inline rather than navigating away. The body supports `\n` line breaks — each paragraph renders separately in the modal.
+
+**Sending an announcement** (run in Supabase SQL editor):
+```sql
+SELECT broadcast_announcement(
+  'Your title here',
+  E'First paragraph.\n\nSecond paragraph.',
+  '<your-admin-profile-uuid>'  -- find in Supabase → Authentication → Users
+);
+```
+
+**Finding your announcement UUID** (to retry or delete):
+```sql
+SELECT id, title, created_at FROM public.announcements ORDER BY created_at DESC LIMIT 5;
+```
+
+**Resetting notifications as unread** (re-show without re-broadcasting):
+```sql
+UPDATE public.notifications
+SET read = false
+WHERE type = 'announcement'
+AND data->>'announcement_id' = '<announcement-uuid>';
+```
+
+**Deleting and re-broadcasting** (full retry):
+```sql
+-- Delete notifications for this announcement
+DELETE FROM public.notifications
+WHERE type = 'announcement'
+AND data->>'announcement_id' = '<announcement-uuid>';
+
+-- Delete the announcement itself
+DELETE FROM public.announcements WHERE id = '<announcement-uuid>';
+
+-- Re-broadcast
+SELECT broadcast_announcement('Title', E'Body', '<admin-uuid>');
+```
+
+**Nuclear reset** (wipe all announcements and notifications):
+```sql
+DELETE FROM public.notifications WHERE type = 'announcement';
+DELETE FROM public.announcements;
+```
+
+**Notification preferences.** `notification_preferences` JSONB column on `profiles` replaces the old `email_notifications` boolean. Four toggles: Book Club activity, Friends, Announcements (locked on), Email master toggle. Preferences are saved live on toggle — no save button needed. The email function respects both the category toggle and the master email switch.
+
+**Email function expanded.** `send-notification-email.js` now handles all eight types with distinct subject lines, body copy, and CTA links per type. Respects the new `notification_preferences` JSONB, falling back to the legacy `email_notifications` boolean for users who haven't been migrated.
+
+**Footer.** `src/components/Footer.jsx` wired into `App.jsx` — appears on every page below page content. Shows © year, and links to Privacy, Terms, Refund, and About. Legal links removed from the About page section (now in Footer only).
+
+**Session reminders deferred.** Requires a scheduled Netlify function (cron) — tracked in backlog for v0.38+.
+
+**DB migration:** `schema_v23_migration.sql` — expands notification type constraint, adds `announcements` table, adds `notification_preferences` JSONB with migration of existing `email_notifications` values, adds DB triggers for all new notification types, adds `broadcast_announcement` RPC.
 
 ### v0.36.4 — Bug fix: friend library toolbar styling
 

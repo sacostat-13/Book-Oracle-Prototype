@@ -1,22 +1,16 @@
 // src/lib/OracleQuotaContext.jsx
 //
-// Provides app-wide Oracle quota state so every Oracle surface (OracleCategories,
-// OracleSimilar, ClubPolls, SessionDiscussion, PlanCreate) can:
-//   - Show how many calls remain without each component fetching independently
-//   - Receive live updates after each Oracle call succeeds or is quota-blocked
-//   - Display a consistent "out of calls" UI without prop drilling
+// Provides app-wide Oracle quota state.
 //
-// Usage:
-//   const { quota, loading, refresh, handleQuotaError } = useOracleQuota();
-//
-// quota shape:
+// Quota shape:
 //   {
-//     unlimited: bool,
-//     calls_used: int,
-//     calls_limit: int,
-//     calls_remaining: int|null,
-//     reset_at: Date|null,
-//     subscription_status: 'free'|'active'|'past_due'|'cancelled'
+//     subscription_status: 'free'|'active'|'past_due'|'cancelled',
+//     period:              'day'|'month',   // 'day' for Pro, 'month' for Free
+//     calls_used:          int,
+//     calls_limit:         int,             // 5 for both tiers, different period
+//     calls_remaining:     int,
+//     reset_at:            Date|null,
+//     unlimited:           false,           // always false now — Pro is 5/day not unlimited
 //   }
 
 import { createContext, useContext, useEffect, useState, useCallback } from 'react';
@@ -39,25 +33,24 @@ export function OracleQuotaProvider({ children }) {
       const { data, error } = await supabase.rpc('get_oracle_quota', { p_user_id: user.id });
       if (error) { console.error('get_oracle_quota error:', error); setLoading(false); return; }
       setQuota({
-        unlimited:           data.unlimited ?? false,
+        subscription_status: data.subscription_status ?? 'free',
+        period:              data.period ?? 'month',
         calls_used:          data.calls_used ?? 0,
         calls_limit:         data.calls_limit ?? FREE_LIMIT,
-        calls_remaining:     data.unlimited ? null : (data.calls_remaining ?? FREE_LIMIT),
+        calls_remaining:     data.calls_remaining ?? FREE_LIMIT,
         reset_at:            data.reset_at ? new Date(data.reset_at) : null,
-        subscription_status: data.subscription_status ?? 'free',
+        unlimited:           false,
       });
     } catch (e) {
       console.error('OracleQuotaContext refresh error:', e);
     } finally {
       setLoading(false);
     }
-  }, [user?.id]); // stable string dependency, not the full user object
+  }, [user?.id]);
 
-  // Fetch on mount and whenever the user changes
   useEffect(() => { refresh(); }, [refresh]);
 
-  // Re-fetch when the tab becomes visible again — catches DB changes
-  // made in Supabase Studio or by the Stripe webhook while the app was open
+  // Re-fetch when tab becomes visible — catches DB changes and webhook updates
   useEffect(() => {
     function onVisible() {
       if (document.visibilityState === 'visible') refresh();
@@ -66,12 +59,10 @@ export function OracleQuotaProvider({ children }) {
     return () => document.removeEventListener('visibilitychange', onVisible);
   }, [refresh]);
 
-  // Call this in catch blocks where QuotaExceededError is caught.
   const handleQuotaError = useCallback((err) => {
     if (err?.code !== 'quota_exceeded') return;
     setQuota((prev) => ({
       ...prev,
-      unlimited:       false,
       calls_used:      err.callsUsed  ?? FREE_LIMIT,
       calls_limit:     err.callsLimit ?? FREE_LIMIT,
       calls_remaining: 0,
@@ -79,10 +70,9 @@ export function OracleQuotaProvider({ children }) {
     }));
   }, []);
 
-  // After a successful Oracle call, decrement remaining optimistically.
   const onCallSucceeded = useCallback(() => {
     setQuota((prev) => {
-      if (!prev || prev.unlimited) return prev;
+      if (!prev) return prev;
       return {
         ...prev,
         calls_used:      (prev.calls_used ?? 0) + 1,

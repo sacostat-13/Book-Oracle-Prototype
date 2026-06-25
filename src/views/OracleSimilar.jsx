@@ -219,10 +219,10 @@ Return ONLY valid JSON in this exact format:
       </div>
 
       <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '2rem', flexDirection: 'column', alignItems: 'center', gap: '0.75rem' }}>
-        <button className="btn" onClick={findSimilar} disabled={selection.length === 0 || loading || (mode === 'ai' && quota && !quota.unlimited && quota.calls_remaining === 0)}>
+        <button className="btn" onClick={findSimilar} disabled={selection.length === 0 || loading || (mode === 'ai' && quota && quota.calls_remaining === 0)}>
           {loading ? t('oracle.similarDivining') : t('oracle.similarFind')}
         </button>
-        {mode === 'ai' && quota && !quota.unlimited && quota.calls_remaining === 0 && (
+        {mode === 'ai' && quota && quota.calls_remaining === 0 && (
           <OracleQuotaWall />
         )}
       </div>

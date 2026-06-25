@@ -1,4 +1,5 @@
-import { useRef, useMemo, useState, useEffect } from 'react';import { useData } from '../lib/DataContext';
+import { useRef, useMemo, useState, useEffect } from 'react';
+import { useData } from '../lib/DataContext';
 import { useAuth } from '../lib/AuthContext';
 import { useRouter } from '../lib/RouterContext';
 import { useT } from '../lib/I18nContext';
@@ -6,6 +7,7 @@ import { useOracleQuota } from '../lib/OracleQuotaContext';
 import { parseGoodreadsCSV } from '../lib/goodreadsImport';
 import { findBookByTitle, bookKey, openBookTab } from '../lib/bookHelpers';
 import { useFriends, checkUsernameAvailability, validateUsername } from '../lib/useFriends';
+import { supabase } from '../lib/supabase';
 
 const LEVEL_NAMES = {
   1: 'Casual companion', 2: 'Steady reader', 3: 'Devoted reader',
@@ -649,10 +651,49 @@ export default function Profile() {
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
       });
       const json = await res.json();
-      if (json.url) window.location.href = json.url;
-      else showToast(json.error || 'Checkout failed', true);
-    } catch (e) {
-      showToast('Could not open checkout. Try again.', true);
+      if (!json.url) { showToast(json.error || t('subscription.checkoutError'), true); return; }
+
+      const checkoutUrl = json.url;
+
+      // Listen for successful payment — LS fires a postMessage on completion
+      function onLSMessage(e) {
+        if (!e.origin.includes('lemonsqueezy.com')) return;
+        if (e.data?.event === 'Checkout.Success') {
+          window.removeEventListener('message', onLSMessage);
+          showToast(t('subscription.checkoutSuccess'));
+          refreshQuota();
+          setTimeout(() => refreshQuota(), 2000);
+          setTimeout(() => refreshQuota(), 5000);
+        }
+      }
+      window.addEventListener('message', onLSMessage);
+
+      // Use LS overlay JS if available, otherwise fall back to full redirect
+      if (window.LemonSqueezy?.Url?.Open) {
+        window.LemonSqueezy.Url.Open(checkoutUrl);
+      } else {
+        // Load LS overlay JS then open
+        const existing = document.getElementById('lemon-squeezy-js');
+        if (!existing) {
+          const script = document.createElement('script');
+          script.id = 'lemon-squeezy-js';
+          script.src = 'https://assets.lemonsqueezy.com/lemon.js';
+          script.defer = true;
+          script.onload = () => {
+            window.createLemonSqueezy?.();
+            window.LemonSqueezy?.Url?.Open
+              ? window.LemonSqueezy.Url.Open(checkoutUrl)
+              : (window.location.href = checkoutUrl);
+          };
+          script.onerror = () => { window.location.href = checkoutUrl; };
+          document.head.appendChild(script);
+        } else {
+          // Script tag exists but Url.Open not ready yet — just redirect
+          window.location.href = checkoutUrl;
+        }
+      }
+    } catch {
+      showToast(t('subscription.checkoutError'), true);
     } finally {
       setCheckoutLoading(false);
     }
@@ -1040,8 +1081,8 @@ export default function Profile() {
               );
             })()}
 
-            {/* Quota bar for free users */}
-            {quota && !quota.unlimited && (
+            {/* Quota bar — shown for all users */}
+            {quota && (
               <div style={{ marginBottom: '1.25rem' }}>
                 <div style={{ height: '3px', background: 'rgba(201,162,75,0.12)', borderRadius: '2px', overflow: 'hidden', marginBottom: '0.4rem' }}>
                   <div style={{
@@ -1083,6 +1124,11 @@ export default function Profile() {
           </div>
         )}
 
+        {/* ── Notification Preferences ──────────────────────────────────────── */}
+        {user && (
+          <NotificationPreferences t={t} user={user} showToast={showToast} />
+        )}
+
         {/* ── Danger zone ───────────────────────────────────────────────────── */}
         <div style={{ borderTop: '1px solid rgba(176, 140, 63, 0.2)', paddingTop: '1.5rem', marginTop: '2rem' }}>
           <button
@@ -1099,5 +1145,84 @@ export default function Profile() {
         </div>
       </div>
     </>
+  );
+}
+
+// ── NotificationPreferences ───────────────────────────────────────────────────
+
+const DEFAULT_PREFS = {
+  book_club:     true,
+  friends:       true,
+  announcements: true,
+  email:         true,
+};
+
+function NotificationPreferences({ t, user, showToast }) {
+  const [prefs, setPrefs] = useState(null);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (!user) return;
+    supabase
+      .from('profiles')
+      .select('notification_preferences')
+      .eq('id', user.id)
+      .maybeSingle()
+      .then(({ data }) => {
+        setPrefs({ ...DEFAULT_PREFS, ...(data?.notification_preferences || {}) });
+      });
+  }, [user]);
+
+  async function save(next) {
+    setPrefs(next);
+    setSaving(true);
+    await supabase.from('profiles').update({ notification_preferences: next }).eq('id', user.id);
+    setSaving(false);
+    showToast(t('notifications.prefSaved'));
+  }
+
+  if (!prefs) return null;
+
+  const rows = [
+    { key: 'book_club',     label: t('notifications.prefBookClub'),     desc: t('notifications.prefBookClubDesc'),     locked: false },
+    { key: 'friends',       label: t('notifications.prefFriends'),       desc: t('notifications.prefFriendsDesc'),      locked: false },
+    { key: 'announcements', label: t('notifications.prefAnnouncements'), desc: t('notifications.prefAnnouncementsDesc'),locked: true  },
+    { key: 'email',         label: t('notifications.prefEmail'),         desc: t('notifications.prefEmailDesc'),        locked: false },
+  ];
+
+  return (
+    <div style={{ borderTop: '1px solid rgba(176, 140, 63, 0.2)', paddingTop: '1.5rem', marginTop: '2rem' }}>
+      <h2 style={{ fontFamily: "'Cormorant Garamond', serif", fontStyle: 'italic', fontSize: '1.25rem', color: 'var(--paper)', marginBottom: '1rem' }}>
+        {t('notifications.prefTitle')}
+      </h2>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem', maxWidth: '480px' }}>
+        {rows.map(({ key, label, desc, locked }) => (
+          <div key={key} style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1rem' }}>
+            <div>
+              <div style={{ fontSize: '0.9rem', color: locked ? 'var(--paper-aged)' : 'var(--paper)', opacity: locked ? 0.6 : 1 }}>{label}</div>
+              <div style={{ fontSize: '0.78rem', color: 'var(--paper-aged)', opacity: 0.55, marginTop: '0.15rem' }}>{desc}</div>
+            </div>
+            <button
+              onClick={() => !locked && save({ ...prefs, [key]: !prefs[key] })}
+              disabled={locked || saving}
+              aria-pressed={prefs[key] || locked}
+              style={{
+                flexShrink: 0, width: '36px', height: '20px', borderRadius: '10px',
+                border: 'none', cursor: locked ? 'default' : 'pointer',
+                background: (prefs[key] || locked) ? 'var(--gilt)' : 'rgba(201,162,75,0.2)',
+                opacity: locked ? 0.5 : 1, transition: 'background 0.2s', position: 'relative',
+              }}
+            >
+              <span style={{
+                position: 'absolute', top: '3px',
+                left: (prefs[key] || locked) ? '19px' : '3px',
+                width: '14px', height: '14px', borderRadius: '50%',
+                background: 'var(--ink, #1a1410)', transition: 'left 0.2s',
+              }} />
+            </button>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }

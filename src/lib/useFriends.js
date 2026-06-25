@@ -47,29 +47,42 @@ export function useFriends() {
     if (!user) return;
     setLoading(true);
     try {
-      // All friendship rows involving this user
+      // Fetch friendship rows without profile joins — FK ambiguity between
+      // auth.users and profiles causes PostgREST to silently drop rows.
       const { data: rows } = await supabase
         .from('friendships')
-        .select(`
-          id, status, requester, addressee, created_at,
-          requester_profile:profiles!requester(id, username, display_name, avatar_url),
-          addressee_profile:profiles!addressee(id, username, display_name, avatar_url)
-        `)
+        .select('id, status, requester, addressee, created_at')
         .or(`requester.eq.${user.id},addressee.eq.${user.id}`)
         .order('created_at', { ascending: false });
 
-      const accepted  = [];
-      const outgoing  = [];
-      const recv      = [];
+      if (!rows || rows.length === 0) {
+        setFriends([]); setPending([]); setIncoming([]);
+        return;
+      }
 
-      for (const row of rows || []) {
+      // Collect all other-user IDs and fetch their profiles in one query
+      const otherIds = [...new Set(rows.map((r) =>
+        r.requester === user.id ? r.addressee : r.requester
+      ))];
+      const { data: profileRows } = await supabase
+        .from('profiles')
+        .select('id, username, display_name, avatar_url')
+        .in('id', otherIds);
+      const profileMap = Object.fromEntries((profileRows || []).map((p) => [p.id, p]));
+
+      const accepted = [];
+      const outgoing = [];
+      const recv     = [];
+
+      for (const row of rows) {
         const iAmRequester = row.requester === user.id;
-        const other = iAmRequester ? row.addressee_profile : row.requester_profile;
-        const entry = { id: row.id, status: row.status, createdAt: row.created_at, other };
+        const otherId = iAmRequester ? row.addressee : row.requester;
+        const other   = profileMap[otherId] || null;
+        const entry   = { id: row.id, status: row.status, createdAt: row.created_at, other };
 
-        if (row.status === 'accepted')                   accepted.push(entry);
-        else if (row.status === 'pending' && iAmRequester)  outgoing.push(entry);
-        else if (row.status === 'pending' && !iAmRequester) recv.push(entry);
+        if (row.status === 'accepted')                        accepted.push(entry);
+        else if (row.status === 'pending' && iAmRequester)   outgoing.push(entry);
+        else if (row.status === 'pending' && !iAmRequester)  recv.push(entry);
       }
 
       setFriends(accepted);
@@ -81,6 +94,21 @@ export function useFriends() {
   }, [user]);
 
   useEffect(() => { load(); }, [load]);
+
+  // Re-fetch when tab becomes visible or when another useFriends instance
+  // dispatches 'friendships-changed' (e.g. after accepting in Nav bell).
+  useEffect(() => {
+    function onVisible() {
+      if (document.visibilityState === 'visible') load();
+    }
+    function onChanged() { load(); }
+    document.addEventListener('visibilitychange', onVisible);
+    window.addEventListener('friendships-changed', onChanged);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener('friendships-changed', onChanged);
+    };
+  }, [load]);
 
   // ── Actions ──────────────────────────────────────────────────────────────────
 
@@ -121,8 +149,10 @@ export function useFriends() {
       .from('friendships')
       .update({ status: 'accepted', updated_at: new Date().toISOString() })
       .eq('id', friendshipId)
-      .eq('addressee', user.id);   // only the addressee can accept
+      .eq('addressee', user.id);
     await load();
+    // Notify all other useFriends instances (e.g. Profile's FriendsSection)
+    window.dispatchEvent(new CustomEvent('friendships-changed'));
   }, [user, load]);
 
   // Decline or cancel — just delete the row

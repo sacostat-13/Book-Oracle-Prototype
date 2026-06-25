@@ -1,8 +1,8 @@
-// netlify/functions/send-notification-email.js — v0.36
+// netlify/functions/send-notification-email.js — v0.37
 // Triggered by a Supabase Database Webhook on INSERT to public.notifications.
 //
 // Setup (one-time):
-//   1. Create a Resend account at resend.com → get API key
+//   1. Create a Resend account → get API key
 //   2. Add RESEND_API_KEY to Netlify env vars
 //   3. Add WEBHOOK_SECRET to Netlify env vars (any strong random string)
 //   4. In Supabase → Database → Webhooks:
@@ -10,12 +10,8 @@
 //      - URL: https://your-site.netlify.app/.netlify/functions/send-notification-email
 //      - HTTP header: x-webhook-secret: <same value as WEBHOOK_SECRET>
 //
-// Required env vars:
-//   RESEND_API_KEY
-//   WEBHOOK_SECRET
-//   SUPABASE_URL
-//   SUPABASE_SERVICE_ROLE_KEY
-//   URL  (set automatically by Netlify — used for app links in emails)
+// Required env vars: RESEND_API_KEY, WEBHOOK_SECRET, SUPABASE_URL,
+//                    SUPABASE_SERVICE_ROLE_KEY, URL
 
 const { createClient } = require('@supabase/supabase-js');
 
@@ -29,10 +25,87 @@ function respond(statusCode, body) {
   return { statusCode, headers: { ...CORS, 'Content-Type': 'application/json' }, body: JSON.stringify(body) };
 }
 
+// Map notification type → preference category key
+function prefCategory(type) {
+  switch (type) {
+    case 'friend_request':
+    case 'friend_accepted':
+      return 'friends';
+    case 'club_invite':
+    case 'poll_started':
+    case 'poll_finalized':
+    case 'discussion_question':
+    case 'discussion_reply':
+      return 'book_club';
+    case 'announcement':
+      return 'announcements';
+    default:
+      return null;
+  }
+}
+
+function buildEmail({ type, actor, data, appUrl }) {
+  const actorLabel  = actor?.display_name || (actor?.username ? `@${actor.username}` : 'Someone');
+  const clubLink    = data?.club_id ? `${appUrl}/#book-club-detail?clubId=${data.club_id}` : appUrl;
+  const sessionLink = data?.session_id ? `${appUrl}/#session-detail?sessionId=${data.session_id}` : clubLink;
+
+  switch (type) {
+    case 'friend_request':
+      return {
+        subject: `${actorLabel} wants to be your reading friend`,
+        body: `<strong>${actorLabel}</strong> sent you a friend request on Reading Oracle.`,
+        ctaUrl: appUrl, ctaLabel: 'View request →',
+      };
+    case 'friend_accepted':
+      return {
+        subject: `${actorLabel} accepted your friend request`,
+        body: `You and <strong>${actorLabel}</strong> are now reading friends.`,
+        ctaUrl: appUrl, ctaLabel: 'Open app →',
+      };
+    case 'club_invite':
+      return {
+        subject: `You've been added to ${data?.club_name || 'a book club'}`,
+        body: `<strong>${actorLabel}</strong> added you to <strong>${data?.club_name || 'a book club'}</strong>.`,
+        ctaUrl: clubLink, ctaLabel: 'View club →',
+      };
+    case 'poll_started':
+      return {
+        subject: `New poll in ${data?.club_name || 'your book club'}`,
+        body: `A new poll has started in <strong>${data?.club_name || 'your club'}</strong>: <em>${data?.question || ''}</em>`,
+        ctaUrl: clubLink, ctaLabel: 'Vote now →',
+      };
+    case 'poll_finalized':
+      return {
+        subject: `Poll closed in ${data?.club_name || 'your book club'}`,
+        body: `The poll in <strong>${data?.club_name || 'your club'}</strong> is closed. The group will read: <strong>${data?.winner || 'the chosen book'}</strong>.`,
+        ctaUrl: clubLink, ctaLabel: 'View result →',
+      };
+    case 'discussion_question':
+      return {
+        subject: `New discussion question in ${data?.club_name || 'your book club'}`,
+        body: `<strong>${actorLabel}</strong> posted a new question in <strong>${data?.club_name || 'your club'}</strong>: <em>${data?.question || ''}</em>`,
+        ctaUrl: sessionLink, ctaLabel: 'Join discussion →',
+      };
+    case 'discussion_reply':
+      return {
+        subject: `${actorLabel} replied to your comment`,
+        body: `<strong>${actorLabel}</strong> replied to your comment in <strong>${data?.club_name || 'your club'}</strong>: <em>${(data?.preview || '').slice(0, 100)}</em>`,
+        ctaUrl: sessionLink, ctaLabel: 'View reply →',
+      };
+    case 'announcement':
+      return {
+        subject: data?.title || 'Announcement from Reading Oracle',
+        body: data?.preview || 'There is a new announcement from the Reading Oracle team.',
+        ctaUrl: appUrl, ctaLabel: 'Open app →',
+      };
+    default:
+      return null;
+  }
+}
+
 exports.handler = async (event) => {
   if (event.httpMethod === 'OPTIONS') return { statusCode: 204, headers: CORS, body: '' };
 
-  // Verify the shared secret Supabase sends with every webhook call
   const secret = event.headers['x-webhook-secret'];
   if (!process.env.WEBHOOK_SECRET || secret !== process.env.WEBHOOK_SECRET) {
     console.error('send-notification-email: invalid webhook secret');
@@ -45,108 +118,77 @@ exports.handler = async (event) => {
   }
 
   const notification = payload?.record;
-  if (!notification || notification.type === undefined) {
-    return respond(400, { error: 'No notification record' });
-  }
+  if (!notification) return respond(400, { error: 'No notification record' });
 
-  // Only handle the two friend notification types
-  if (!['friend_request', 'friend_accepted'].includes(notification.type)) {
-    return respond(200, { skipped: true });
-  }
+  const category = prefCategory(notification.type);
+  if (!category) return respond(200, { skipped: 'unknown_type' });
 
-  const supabase = createClient(
+  const supabaseClient = createClient(
     process.env.SUPABASE_URL,
     process.env.SUPABASE_SERVICE_ROLE_KEY
   );
 
-  // Look up recipient email via service role (bypasses RLS)
-  const { data: recipientAuth } = await supabase.auth.admin.getUserById(notification.user_id);
+  // Look up recipient
+  const { data: recipientAuth } = await supabaseClient.auth.admin.getUserById(notification.user_id);
   const recipientEmail = recipientAuth?.user?.email;
-  if (!recipientEmail) {
-    console.log('send-notification-email: no email for user', notification.user_id);
-    return respond(200, { skipped: 'no_email' });
-  }
+  if (!recipientEmail) return respond(200, { skipped: 'no_email' });
 
-  // Check recipient's email_notifications preference
-  const { data: recipientProfile } = await supabase
+  // Check notification preferences
+  const { data: profile } = await supabaseClient
     .from('profiles')
-    .select('email_notifications')
+    .select('notification_preferences, email_notifications')
     .eq('id', notification.user_id)
     .maybeSingle();
 
-  if (recipientProfile?.email_notifications === false) {
-    return respond(200, { skipped: 'opted_out' });
-  }
+  const prefs = profile?.notification_preferences || {};
+  // Email master toggle (new JSONB prefs or legacy boolean)
+  const emailOn = prefs.email !== false && profile?.email_notifications !== false;
+  if (!emailOn) return respond(200, { skipped: 'email_off' });
+  // Category toggle
+  if (prefs[category] === false) return respond(200, { skipped: `category_${category}_off` });
 
-  // Look up actor's display name and username
-  const { data: actor } = await supabase
+  // Look up actor
+  const { data: actor } = await supabaseClient
     .from('profiles')
-    .select('username, display_name')
+    .select('username, display_name, avatar_url')
     .eq('id', notification.actor_id)
     .maybeSingle();
 
-  const actorLabel  = actor?.display_name || (actor?.username ? `@${actor.username}` : 'Someone');
-  const actorHandle = actor?.username ? `@${actor.username}` : actorLabel;
-  const appUrl      = process.env.URL || 'https://thebookoracle.netlify.app';
-  const profileUrl  = actor?.username ? `${appUrl}/u/${actor.username}` : appUrl;
+  const appUrl = process.env.URL || 'https://readingoracle.com';
+  const email  = buildEmail({ type: notification.type, actor, data: notification.data || {}, appUrl });
+  if (!email) return respond(200, { skipped: 'no_template' });
 
-  let subject, htmlBody;
-
-  if (notification.type === 'friend_request') {
-    subject  = `${actorHandle} wants to be your reading friend`;
-    htmlBody = `
-      <p style="font-family:Georgia,serif;font-size:16px;color:#2a1d0e;line-height:1.6">
-        <strong>${actorLabel}</strong> sent you a friend request on The Book Oracle.
-      </p>
-      <p style="margin-top:16px">
-        <a href="${appUrl}" style="font-family:Georgia,serif;font-size:15px;color:#9a7a2e;text-decoration:underline">
-          Open the app to accept or decline →
-        </a>
-      </p>
-    `;
-  } else if (notification.type === 'friend_accepted') {
-    subject  = `${actorHandle} accepted your friend request`;
-    htmlBody = `
-      <p style="font-family:Georgia,serif;font-size:16px;color:#2a1d0e;line-height:1.6">
-        You and <strong>${actorLabel}</strong> are now reading friends on The Book Oracle.
-      </p>
-      <p style="margin-top:16px">
-        <a href="${profileUrl}" style="font-family:Georgia,serif;font-size:15px;color:#9a7a2e;text-decoration:underline">
-          View their profile →
-        </a>
-      </p>
-    `;
-  }
-
-  // Send via Resend
-  // If RESEND_API_KEY is not set (local dev), just log and skip
   if (!process.env.RESEND_API_KEY) {
-    console.log('send-notification-email: RESEND_API_KEY not set, would have sent:', { to: recipientEmail, subject });
+    console.log('send-notification-email: dev mode, would send:', email.subject, 'to', recipientEmail);
     return respond(200, { dev_mode: true });
   }
 
   const emailRes = await fetch('https://api.resend.com/emails', {
     method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
-      'Content-Type': 'application/json',
-    },
+    headers: { 'Authorization': `Bearer ${process.env.RESEND_API_KEY}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      from: 'The Book Oracle <noreply@thebookoracle.app>',
-      to: [recipientEmail],
-      subject,
+      from: 'Reading Oracle <noreply@readingoracle.com>',
+      to:   [recipientEmail],
+      subject: email.subject,
       html: `
         <!DOCTYPE html>
         <html>
         <body style="background:#f5edd8;margin:0;padding:32px 16px;font-family:Georgia,serif">
           <div style="max-width:480px;margin:0 auto;background:#ede3c8;border:1px solid rgba(42,29,14,0.14);border-radius:4px;padding:32px">
             <div style="font-family:'Courier New',monospace;font-size:11px;letter-spacing:0.25em;text-transform:uppercase;color:#9a7a2e;margin-bottom:24px">
-              The Book Oracle
+              Reading Oracle
             </div>
-            ${htmlBody}
+            <p style="font-family:Georgia,serif;font-size:16px;color:#2a1d0e;line-height:1.6;margin:0 0 20px">
+              ${email.body}
+            </p>
+            <p style="margin:0">
+              <a href="${email.ctaUrl}" style="font-family:Georgia,serif;font-size:15px;color:#9a7a2e;text-decoration:underline">
+                ${email.ctaLabel}
+              </a>
+            </p>
             <div style="margin-top:32px;padding-top:16px;border-top:1px solid rgba(42,29,14,0.14);font-family:'Courier New',monospace;font-size:11px;color:#8c7060;letter-spacing:0.05em">
-              You're receiving this because you have email notifications enabled.
-              You can turn them off in your <a href="${appUrl}" style="color:#9a7a2e">profile settings</a>.
+              Manage your notification preferences in your
+              <a href="${appUrl}/#profile" style="color:#9a7a2e">profile settings</a>.
             </div>
           </div>
         </body>

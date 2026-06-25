@@ -232,7 +232,7 @@ export default function About() {
           <RoadmapTier
             heading={t('about.roadmapTierNearHeading')}
             items={[
-              // { title: t('about.roadmapTierNear1Title'), body: t('about.roadmapTierNear1Body') },
+              { title: t('about.roadmapTierNear1Title'), body: t('about.roadmapTierNear1Body') },
               { title: t('about.roadmapTierNear2Title'), body: t('about.roadmapTierNear2Body') },
               { title: t('about.roadmapTierNear3Title'), body: t('about.roadmapTierNear3Body') },
             ]}
@@ -259,6 +259,64 @@ export default function About() {
 
         <Section title={t('about.feedbackHeading')}>
           <Paragraph>{t('about.feedbackBody')}</Paragraph>
+        </Section>
+
+        {/* ── Pricing ────────────────────────────────────────────────────── */}
+        <div id="pricing" style={{ scrollMarginTop: '5rem' }}>
+          <Section title={t('about.pricingHeading')}>
+            <div style={{ fontFamily: "'Special Elite', monospace", fontSize: '0.7rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--gilt)', marginBottom: '1.5rem', opacity: 0.8 }}>
+              {t('about.pricingEyebrow')}
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.25rem', marginBottom: '1.5rem' }}>
+              {/* Free */}
+              <div style={{ border: '1px solid rgba(201,162,75,0.2)', borderRadius: '4px', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                <div style={{ fontFamily: "'Special Elite', monospace", fontSize: '0.75rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--paper-aged)' }}>{t('about.pricingFreeTitle')}</div>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.35rem' }}>
+                  <span style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '2.4rem', color: 'var(--paper)', lineHeight: 1 }}>{t('about.pricingFreePrice')}</span>
+                  <span style={{ color: 'var(--paper-aged)', fontSize: '0.85rem', opacity: 0.6 }}>{t('about.pricingFreePeriod')}</span>
+                </div>
+                <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                  {['pricingFreeFeature1','pricingFreeFeature2','pricingFreeFeature3','pricingFreeFeature4','pricingFreeFeature5'].map((k) => (
+                    <li key={k} style={{ fontSize: '0.88rem', color: 'var(--paper-aged)', display: 'flex', gap: '0.5rem' }}>
+                      <span style={{ color: 'var(--gilt)', flexShrink: 0 }}>·</span>{t(`about.${k}`)}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              {/* Pro */}
+              <div style={{ border: '1px solid rgba(201,162,75,0.5)', borderRadius: '4px', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '0.75rem', background: 'rgba(201,162,75,0.04)' }}>
+                <div style={{ fontFamily: "'Special Elite', monospace", fontSize: '0.75rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--gilt)' }}>✦ {t('about.pricingProTitle')}</div>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.35rem' }}>
+                  <span style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '2.4rem', color: 'var(--paper)', lineHeight: 1 }}>{t('about.pricingProPrice')}</span>
+                  <span style={{ color: 'var(--paper-aged)', fontSize: '0.85rem', opacity: 0.6 }}>{t('about.pricingProPeriod')}</span>
+                </div>
+                <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                  {['pricingProFeature1','pricingProFeature2','pricingProFeature3','pricingProFeature4','pricingProFeature5'].map((k) => (
+                    <li key={k} style={{ fontSize: '0.88rem', color: 'var(--paper-aged)', display: 'flex', gap: '0.5rem' }}>
+                      <span style={{ color: 'var(--gilt)', flexShrink: 0 }}>❦</span>{t(`about.${k}`)}
+                    </li>
+                  ))}
+                </ul>
+                <button className="btn" style={{ marginTop: '0.5rem' }} onClick={() => go('profile')}>
+                  {t('about.pricingProCta')}
+                </button>
+              </div>
+            </div>
+            <div style={{ fontSize: '0.78rem', color: 'var(--paper-aged)', opacity: 0.5, fontStyle: 'italic' }}>
+              {t('about.pricingNote')}
+            </div>
+          </Section>
+        </div>
+
+        {/* ── Legal ──────────────────────────────────────────────────────── */}
+        <Section title={t('about.legalHeading')}>
+          <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap' }}>
+            {[['privacy', t('about.privacyLink')], ['terms', t('about.termsLink')], ['refund', t('about.refundLink')]].map(([route, label]) => (
+              <a key={route} onClick={() => go(route)} style={{ color: 'var(--gilt)', cursor: 'pointer', fontSize: '0.9rem', textDecoration: 'none', borderBottom: '1px solid rgba(201,162,75,0.3)', paddingBottom: '1px' }}>
+                {label}
+              </a>
+            ))}
+          </div>
         </Section>
 
         {/* v0.13: current version + "what's new" entry point. The footer

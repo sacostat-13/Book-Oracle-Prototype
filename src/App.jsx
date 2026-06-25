@@ -17,6 +17,9 @@ import CurrentlyReading from './views/CurrentlyReading';
 import Profile from './views/Profile';
 import FriendProfile from './views/FriendProfile';
 import About from './views/About';
+import Privacy from './views/Privacy';
+import Terms from './views/Terms';
+import Refund from './views/Refund';
 import OracleFork from './views/OracleFork';
 import OracleCategories from './views/OracleCategories';
 import OracleSimilar from './views/OracleSimilar';
@@ -34,6 +37,7 @@ import BookClubDetail from './views/BookClubDetail';
 import SessionCreate from './views/SessionCreate';
 import SessionDetail from './views/SessionDetail';
 import JoinClub from './views/JoinClub';
+import Footer from './components/Footer';
 
 function SignInGate({ onGuest }) {
   const { signInWithGoogle } = useAuth();
@@ -185,6 +189,9 @@ export default function App() {
     case 'profile':       page = <Profile />; break;
     case 'friend-profile': page = <FriendProfile />; break;
     case 'about': page = <About />; break;
+    case 'privacy': page = <Privacy />; break;
+    case 'terms': page = <Terms />; break;
+    case 'refund': page = <Refund />; break;
     case 'oracle': page = <OracleFork />; break;
     case 'oracle-categories': page = <OracleCategories onOpenBook={openBook} />; break;
     case 'oracle-similar': page = <OracleSimilar onOpenBook={openBook} />; break;
@@ -210,7 +217,10 @@ export default function App() {
   return (
     <div className="app">
       <Nav onPreviewBook={setPreviewBook} />
-      <div className="container">{page}</div>
+      <div className="container">
+        {page}
+        <Footer />
+      </div>
       <Toast />
     </div>
   );

@@ -182,7 +182,7 @@ Return ONLY valid JSON in this format:
     ai: 'from anywhere (AI)',
   }[mode];
 
-  const quotaExhausted = quota && !quota.unlimited && quota.calls_remaining === 0;
+  const quotaExhausted = quota && quota.calls_remaining === 0;
 
   return (
     <>

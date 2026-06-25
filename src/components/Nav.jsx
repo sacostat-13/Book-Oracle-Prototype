@@ -9,7 +9,8 @@ import { useRouter } from '../lib/RouterContext';
 import { useAuth } from '../lib/AuthContext';
 import { useI18n } from '../lib/I18nContext';
 import { useTheme } from '../lib/ThemeContext';
-import { useNotifications } from '../lib/useNotifications';
+import { useNotifications, notificationLabel, notificationRoute } from '../lib/useNotifications';
+import AnnouncementModal from './AnnouncementModal';
 import { useFriends } from '../lib/useFriends';
 import NavSearch from './NavSearch';
 
@@ -21,10 +22,11 @@ export default function Nav({ onPreviewBook }) {
   const { theme, toggleTheme } = useTheme();
   const { notifications, unreadCount, markAllRead, markOneRead } = useNotifications();
   const { acceptRequest, declineRequest } = useFriends();
-  const [menuOpen, setMenuOpen]       = useState(false);
-  const [readingOpen, setReadingOpen] = useState(false);
-  const [moreOpen, setMoreOpen]       = useState(false);
-  const [bellOpen, setBellOpen]       = useState(false);
+  const [menuOpen, setMenuOpen]                     = useState(false);
+  const [readingOpen, setReadingOpen]               = useState(false);
+  const [moreOpen, setMoreOpen]                     = useState(false);
+  const [bellOpen, setBellOpen]                     = useState(false);
+  const [activeAnnouncement, setActiveAnnouncement] = useState(null);
   const readingRef = useRef(null);
   const moreRef    = useRef(null);
   const bellRef    = useRef(null);
@@ -190,53 +192,52 @@ export default function Nav({ onPreviewBook }) {
                   ) : (
                     <div className="nav-notif-list">
                       {notifications.map((n) => {
-                        const actor = n.actor;
-                        const actorLabel = actor?.display_name || (actor?.username ? `@${actor.username}` : t('nav.someone'));
+                        const actor      = n.actor;
+                        const actorLabel = actor?.display_name || (actor?.username ? `@${actor.username}` : t('notifications.someone'));
+                        const label      = notificationLabel(n, t);
+                        const route      = notificationRoute(n);
                         const friendshipId = n.data?.friendship_id;
 
                         return (
-                          <div key={n.id} className={`nav-notif-item${n.read ? '' : ' nav-notif-item--unread'}`}>
+                          <div
+                            key={n.id}
+                            className={`nav-notif-item${n.read ? '' : ' nav-notif-item--unread'}`}
+                            onClick={() => {
+                              markOneRead(n.id);
+                              if (n.type === 'announcement') {
+                                setActiveAnnouncement(n.data || {});
+                                setBellOpen(false);
+                              } else if (route) {
+                                go(route[0], route[1]);
+                                setBellOpen(false);
+                              }
+                            }}
+                            style={{ cursor: (n.type === 'announcement' || route) ? 'pointer' : 'default' }}
+                          >
                             {/* Avatar */}
                             {actor?.avatar_url ? (
                               <img src={actor.avatar_url} alt={actorLabel} className="nav-notif-avatar" />
                             ) : (
                               <div className="nav-notif-avatar nav-notif-avatar--fallback">
-                                {(actor?.display_name || actor?.username || '?')[0].toUpperCase()}
+                                {n.type === 'announcement' ? '✦' : (actor?.display_name || actor?.username || '?')[0].toUpperCase()}
                               </div>
                             )}
 
                             <div className="nav-notif-body">
-                              {n.type === 'friend_request' && (
-                                <>
-                                  <div className="nav-notif-text">
-                                    <strong>{actorLabel}</strong> {t('nav.notifFriendRequest')}
-                                  </div>
-                                  <div className="nav-notif-actions">
-                                    <button className="btn" style={{ fontSize: 'var(--text-xs)', padding: '0.25rem 0.65rem' }} onClick={() => handleAccept(friendshipId, n.id)}>
-                                      {t('nav.accept')}
-                                    </button>
-                                    <button className="btn btn-ghost" style={{ fontSize: 'var(--text-xs)', padding: '0.25rem 0.65rem' }} onClick={() => handleDecline(friendshipId, n.id)}>
-                                      {t('nav.decline')}
-                                    </button>
-                                  </div>
-                                </>
+                              <div className="nav-notif-text">{label}</div>
+
+                              {/* Friend request inline actions */}
+                              {n.type === 'friend_request' && !n.read && (
+                                <div className="nav-notif-actions" onClick={(e) => e.stopPropagation()}>
+                                  <button className="btn" style={{ fontSize: 'var(--text-xs)', padding: '0.25rem 0.65rem' }} onClick={() => handleAccept(friendshipId, n.id)}>
+                                    {t('nav.accept')}
+                                  </button>
+                                  <button className="btn btn-ghost" style={{ fontSize: 'var(--text-xs)', padding: '0.25rem 0.65rem' }} onClick={() => handleDecline(friendshipId, n.id)}>
+                                    {t('nav.decline')}
+                                  </button>
+                                </div>
                               )}
-                              {n.type === 'friend_accepted' && (
-                                <>
-                                  <div className="nav-notif-text">
-                                    <strong>{actorLabel}</strong> {t('nav.notifFriendAccepted')}
-                                  </div>
-                                  {actor?.username && (
-                                    <button
-                                      className="btn btn-ghost"
-                                      style={{ fontSize: 'var(--text-xs)', padding: '0.2rem 0.55rem', marginTop: '0.35rem' }}
-                                      onClick={() => navigate('friend-profile', { username: actor.username })}
-                                    >
-                                      {t('nav.viewProfile')} →
-                                    </button>
-                                  )}
-                                </>
-                              )}
+
                               <div className="nav-notif-time">
                                 {new Date(n.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
                               </div>
@@ -353,6 +354,13 @@ export default function Nav({ onPreviewBook }) {
             )}
           </nav>
         </div>
+      )}
+
+      {activeAnnouncement && (
+        <AnnouncementModal
+          announcement={activeAnnouncement}
+          onClose={() => setActiveAnnouncement(null)}
+        />
       )}
     </>
   );
