@@ -840,7 +840,7 @@ export default function Profile() {
       <div className="page-header">
         <div className="page-eyebrow">{t('profile.eyebrowTitle')}</div>
         <h1 className="page-title">
-          {t('profile.titlePrefix', { val: '' }).replace(/(Your |Tu perfil de )/, '') || 'Your '}
+          {t('profile.title')}
           <span className="accent">{t('profile.titleAccent')}</span>{' profile'}
         </h1>
         {hasStats && (
