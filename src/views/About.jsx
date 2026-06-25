@@ -232,7 +232,7 @@ export default function About() {
           <RoadmapTier
             heading={t('about.roadmapTierNearHeading')}
             items={[
-              { title: t('about.roadmapTierNear1Title'), body: t('about.roadmapTierNear1Body') },
+              // { title: t('about.roadmapTierNear1Title'), body: t('about.roadmapTierNear1Body') },
               { title: t('about.roadmapTierNear2Title'), body: t('about.roadmapTierNear2Body') },
               { title: t('about.roadmapTierNear3Title'), body: t('about.roadmapTierNear3Body') },
             ]}

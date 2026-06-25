@@ -1,4 +1,4 @@
-# The Wishlist Oracle
+# The Reader Oracle
 
 A reading companion — wishlist, library, reading plans, book clubs, and an AI-powered "oracle"
 for book discovery. Built with React + Vite + SCSS, backed by Supabase for auth
