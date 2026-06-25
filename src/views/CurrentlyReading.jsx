@@ -40,7 +40,7 @@ export default function CurrentlyReading({ onOpenBook }) {
   return (
     <>
       <div className="breadcrumb">
-        <a onClick={() => go('dashboard')}>{t('nav.dashboard')}</a> · {t('currentlyReading.title')}
+        <a onClick={() => go('dashboard')}>{t('currentlyReading.breadcrumb')}</a> · {t('currentlyReading.title')}
       </div>
       <div className="page-header">
         <div className="page-eyebrow">{t('currentlyReading.eyebrow')}</div>

@@ -152,7 +152,15 @@
     "streakWidgetNone": "Finish a book to start your streak",
     "goalWidgetPace": "On pace",
     "goalWidgetBehind": "{n} behind",
-    "goalWidgetAhead": "{n} ahead"
+    "goalWidgetAhead": "{n} ahead",
+    "widgetMyFeed": "My activity",
+    "widgetFriendsFeed": "Friends reading",
+    "friendsFeedEmpty": "No friend activity yet. Add reading friends to see what they're reading.",
+    "friendsFeedNoFriends": "Connect with reading friends to see their activity here.",
+    "friendsFeedFinished": "finished",
+    "friendsFeedStarted": "started reading",
+    "friendsFeedRefresh": "Refresh",
+    "friendsFeedUpdated": "Updated {time}"
   },
   "currentlyReading": {
     "breadcrumb": "Dashboard",
@@ -1177,6 +1185,19 @@
     "reqError_already_pending": "Request already sent.",
     "reqError_self": "That's you!",
     "shareProfile": "Your profile link",
-    "copyLink": "Copy link"
+    "copyLink": "Copy link",
+    "librarySearch": "Search title or author…",
+    "libraryAllGenres": "— All genres —",
+    "libraryAllYears": "— All years —",
+    "librarySortRecent": "Recently read",
+    "librarySortTitle": "Title A–Z",
+    "librarySortAuthor": "Author A–Z",
+    "librarySortRating": "Highest rated",
+    "libraryLoadMore": "Load more",
+    "libraryNoResults": "No books match those filters.",
+    "libraryPrivate": "This friend's library is private.",
+    "libraryCount": "{count} books",
+    "friendsEmpty": "No books in this library yet.",
+    "libraryEmpty": "No books in this library yet."
   }
 }

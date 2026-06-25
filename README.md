@@ -4,7 +4,7 @@ A reading companion — wishlist, library, reading plans, book clubs, and an AI-
 for book discovery. Built with React + Vite + SCSS, backed by Supabase for auth
 and cross-device sync, and Netlify Functions for API proxying.
 
-> Current version: **v0.36** — see [Releases](#releases) below for changelog.
+> Current version: **v0.36.3** — see [Releases](#releases) below for changelog.
 > Upgrading from an earlier version? Check the matching `MIGRATION_*.md` / `UPDATE_*.md`.
 
 ---
@@ -326,6 +326,46 @@ and forward requests. Locally you need `netlify dev` to make them work.
 ---
 
 ## Releases
+
+### v0.36.3 — Bug fix: friend library was empty
+
+**No DB migrations required.**
+
+Two bugs combined to produce the empty library:
+
+1. **Wrong i18n key.** The empty-library fallback rendered the raw key string `friends.friendsEmpty` because that key did not exist in the `friends` namespace — it was in `profile.friendsEmpty` ("No friends yet. Share your profile link..."), which is the wrong message for an empty book library anyway. Added `friends.friendsEmpty` and `friends.libraryEmpty` with the correct copy in both locales.
+
+2. **Broken Supabase join.** `getFriendLibrary` used a deeply nested PostgREST join: `book:books(..., book_genres(genre:genres(...)))`. Supabase silently drops nested joins it can't resolve in one pass, returning `null` for `book` on every row — making the library appear empty even when books exist. Fixed by matching DataContext's proven join shape: `book:books(*, position_in_series, series:series(*))`, then fetching genre data in a separate `book_genres` query keyed on the book IDs. Genre data is attached as `_genres` on each row before `normalizeBook` processes it.
+
+`normalizeBook` in `FriendProfile.jsx` updated to read `row._genres` and use the correct `books` table column names (`title`, `author`, `cover_url`, `page_count`) rather than the client-side aliases (`t`, `a`, `coverUrl`, `pp`) that DataContext applies after fetching.
+
+### v0.36.2 — Friend profile: full library with filters
+
+**No DB migrations required.**
+
+`FriendProfile.jsx` is rewritten around a `FriendLibrary` sub-component that handles all filtering and display. `getFriendLibrary` in `useFriends.js` now selects `book_genres(genre:genres(id,name,normalized_name))` alongside the book fields so Oracle genre tags are available without a second query.
+
+Each library row is normalized by a `normalizeBook()` helper that flattens the `read_books + books + book_genres` join into a consistent shape (`{ t, a, coverUrl, rating, dateRead, genres[], ... }`).
+
+`FriendLibrary` computes filter options client-side from the normalized data using `useMemo`: genre options from `book_genres` (falling back to `books.genre` for books without Oracle tags), year options from `read_at`. Filtering applies search (title + author substring), genre (`normalized_name` match), and year in sequence. Sort options: recently read (default, `read_at` desc), highest rated, title A–Z, author A–Z. All filters reset `page` to 1 via a `useEffect` dependency on the filter values.
+
+Pagination is client-side load-more: `visible = filtered.slice(0, page * 48)`. The "Load more" button shows the remaining count. This keeps the DOM small on first render for large libraries while avoiding a network round-trip per page.
+
+Each book card shows cover (90px wide, 2:3 aspect), star rating below, title and author in truncated single-line text. Hovering the card shows the full title + author + year via the `title` attribute (native browser tooltip — no custom tooltip component needed).
+
+### v0.36.1 — Friends feed + profile URL fix
+
+**No DB migrations required.**
+
+**Profile URL routing fix.** `RouterContext.jsx`'s `parseHash()` only read `window.location.hash`, so pathname-based URLs like `/u/mandalaxiii` were invisible to the router — it saw no hash and fell back to dashboard. `parseHash()` now first checks if `window.location.pathname` matches `/u/:username` (the regex `^\/u\/([a-z0-9_-]{3,24})$`), and if so synthesises a `friend-profile` route with the username as a param. `go('friend-profile', ...)` now also writes the clean pathname (`/u/:username`) via `history.pushState` instead of a hash, so the URL stays shareable after any in-app navigation to a friend profile.
+
+**Self-view on own profile link.** Visiting your own `/u/username` URL now renders `FriendProfile` correctly. The `isSelf` check (`state.profile?.username === username`) suppresses the "Add friend" button and surfaces the "Copy link" affordance instead, so you see exactly what friends see.
+
+**Friends feed widget.** New `friends-feed` widget in `Dashboard.jsx`. On mount it calls `getFriendsFeedEvents(userId)` (new export in `useFriends.js`) which queries `friend_pairs` for accepted friend IDs, fetches their `read_books` (respecting `preferences.friendsCanSeeLibrary`) and `currently_reading` rows with a 90-day window, joins profile data, merges and sorts chronologically, and returns up to 40 events. The widget renders each event as a friend avatar + book cover + prose sentence ("Simon finished The Haunting of Hill House") with a star rating if present and a relative date label. A manual Refresh button re-fetches; a "last updated HH:MM" label shows freshness. If the user has no friends yet, a prompt with a link to the profile friends section is shown instead of an empty state.
+
+**My activity rename.** The existing `feed` widget now passes `eyebrow={t('dashboard.widgetMyFeed')}` ("My activity" / "Mi actividad") to `WidgetShell` so the two feed widgets are clearly differentiated in the settings panel and on the dashboard.
+
+**`DEFAULT_DASHBOARD_LAYOUT`** updated to include `friends-feed` between `clubs` and `feed`.
 
 ### v0.36 — Friends, usernames & notifications
 

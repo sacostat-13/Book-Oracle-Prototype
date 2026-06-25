@@ -33,9 +33,16 @@ const KNOWN_ROUTES = new Set([
 
 function parseHash() {
   if (typeof window === 'undefined') return { name: 'dashboard', params: {} };
+
+  // Handle pathname-based friend profile URLs: /u/:username
+  // These are shared links that land directly on the path without a hash.
+  const pathMatch = window.location.pathname.match(/^\/u\/([a-z0-9_-]{3,24})$/i);
+  if (pathMatch) {
+    return { name: 'friend-profile', params: { username: pathMatch[1].toLowerCase() } };
+  }
+
   const raw = window.location.hash.replace(/^#/, '').trim();
   if (!raw) return { name: 'dashboard', params: {} };
-  // Support "#about" and "#about?foo=bar" if ever needed
   const [name, qs] = raw.split('?');
   const params = {};
   if (qs) {
@@ -79,10 +86,16 @@ export function RouterProvider({ children }) {
   const go = useCallback((name, params = {}) => {
     writingRef.current = true;
     setRouteState({ name, params });
-    // push=true so the browser back button can return to the previous page
-    writeHash(name, params, true);
+
+    // Friend profile gets a clean pathname URL (/u/:username) so the link
+    // is shareable and lands correctly when pasted into a new tab.
+    if (name === 'friend-profile' && params.username) {
+      history.pushState(null, '', `/u/${params.username}`);
+    } else {
+      writeHash(name, params, true);
+    }
+
     window.scrollTo({ top: 0, behavior: 'smooth' });
-    // Release the guard on the next tick
     setTimeout(() => { writingRef.current = false; }, 0);
   }, []);
 

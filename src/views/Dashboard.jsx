@@ -3,13 +3,15 @@
 // Widgets: currently-reading, plans, feed, quick-actions, clubs,
 //          reading-stats, oracle-spark, reading-goal, series-progress, streak
 
-import { useMemo, useState, useCallback } from 'react';
+import { useMemo, useState, useCallback, useEffect } from 'react';
 import { useData } from '../lib/DataContext';
 import { useRouter } from '../lib/RouterContext';
 import { useT } from '../lib/I18nContext';
+import { useAuth } from '../lib/AuthContext';
 import { useOracleQuota } from '../lib/OracleQuotaContext';
 import { callClaude, QuotaExceededError } from '../lib/claudeApi';
 import { bookKey, openBookTab } from '../lib/bookHelpers';
+import { getFriendsFeedEvents } from '../lib/useFriends';
 
 const FEED_PAGE_SIZE = 5;
 
@@ -25,7 +27,8 @@ export const DEFAULT_DASHBOARD_LAYOUT = [
   { id: 'streak',            visible: true  },
   { id: 'plans',             visible: true  },
   { id: 'clubs',             visible: true  },
-  { id: 'feed',              visible: true  },
+  { id: 'friends-feed',      visible: true  },  // v0.36.1 — hidden if no friends
+  { id: 'feed',              visible: true  },  // renamed to "My activity" in UI
 ];
 
 function resolveLayout(saved) {
@@ -673,14 +676,14 @@ function PlanEvent({ ev, go, t }) {
   );
 }
 
-function FeedWidget({ state, onOpenBook, go, t }) {
+function FeedWidget({ state, onOpenBook, go, t, eyebrow }) {
   const [visibleCount, setVisibleCount] = useState(FEED_PAGE_SIZE);
   const events  = useMemo(() => buildFeed(state), [state]);
   const visible = events.slice(0, visibleCount);
   const hasMore = visibleCount < events.length;
 
   return (
-    <WidgetShell eyebrow={t('dashboard.recentActivity')} ornament="◈">
+    <WidgetShell eyebrow={eyebrow || t('dashboard.recentActivity')} ornament="◈">
       {events.length === 0 ? (
         <div className="feed-empty">
           <div style={{ fontSize: '2rem', marginBottom: '0.75rem', opacity: 0.25 }}>{t('dashboard.emptyFeedOrnament')}</div>
@@ -757,6 +760,122 @@ function AIQuotaBar({ go, t }) {
 
 // ─── Widget settings panel ────────────────────────────────────────────────────
 
+// ─── Friends Feed ─────────────────────────────────────────────────────────────
+
+function FriendAvatar({ friend, size = 28 }) {
+  const label = friend?.display_name || friend?.username || '?';
+  if (friend?.avatar_url) {
+    return <img src={friend.avatar_url} alt={label} style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover', flexShrink: 0, border: '1px solid var(--border-subtle)' }} />;
+  }
+  return (
+    <div style={{ width: size, height: size, borderRadius: '50%', background: 'var(--surface-raised)', border: '1px solid var(--border-subtle)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Cormorant Garamond', serif", fontStyle: 'italic', fontSize: size * 0.45, color: 'var(--text-muted)', flexShrink: 0 }}>
+      {label[0].toUpperCase()}
+    </div>
+  );
+}
+
+function FriendsFeedWidget({ userId, hasFriends, go, t }) {
+  const [events,    setEvents]    = useState([]);
+  const [loading,   setLoading]   = useState(false);
+  const [updatedAt, setUpdatedAt] = useState(null);
+
+  const load = useCallback(async () => {
+    if (!userId || !hasFriends) return;
+    setLoading(true);
+    try {
+      const evs = await getFriendsFeedEvents(userId);
+      setEvents(evs);
+      setUpdatedAt(new Date());
+    } finally {
+      setLoading(false);
+    }
+  }, [userId, hasFriends]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const relTime = updatedAt
+    ? updatedAt.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })
+    : null;
+
+  if (!hasFriends) {
+    return (
+      <WidgetShell eyebrow={t('dashboard.widgetFriendsFeed')} ornament="◈">
+        <div style={{ border: '1px solid var(--border-subtle)', borderRadius: '3px', padding: '1.5rem 1.25rem', background: 'var(--surface-tint)', textAlign: 'center' }}>
+          <p style={{ fontFamily: "'EB Garamond', serif", fontStyle: 'italic', fontSize: '0.95rem', color: 'var(--text-muted)', marginBottom: '0.9rem' }}>
+            {t('dashboard.friendsFeedNoFriends')}
+          </p>
+          <button className="btn btn-ghost" style={{ fontSize: 'var(--text-xs)', padding: '0.3rem 0.75rem' }} onClick={() => go('profile')}>
+            {t('profile.labelFriends')} →
+          </button>
+        </div>
+      </WidgetShell>
+    );
+  }
+
+  return (
+    <WidgetShell eyebrow={t('dashboard.widgetFriendsFeed')} ornament="◈">
+      <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '0.75rem', marginBottom: '0.6rem' }}>
+        {relTime && !loading && (
+          <span style={{ fontFamily: "'Special Elite', monospace", fontSize: '10px', letterSpacing: '0.06em', color: 'var(--text-faint)', textTransform: 'uppercase' }}>
+            {t('dashboard.friendsFeedUpdated', { time: relTime })}
+          </span>
+        )}
+        <button
+          onClick={load} disabled={loading}
+          style={{ background: 'none', border: '1px solid var(--border-subtle)', borderRadius: '2px', cursor: loading ? 'default' : 'pointer', color: 'var(--text-dim)', fontFamily: "'Special Elite', monospace", fontSize: '10px', letterSpacing: '0.1em', textTransform: 'uppercase', padding: '0.2rem 0.55rem', opacity: loading ? 0.4 : 1 }}
+        >
+          {loading ? '···' : t('dashboard.friendsFeedRefresh')}
+        </button>
+      </div>
+
+      {loading && events.length === 0 ? (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '1rem 0' }}>
+          <div className="loading-spinner" style={{ width: 16, height: 16 }} />
+          <span style={{ fontFamily: "'Special Elite', monospace", fontSize: 'var(--text-xs)', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>{t('common.loading')}</span>
+        </div>
+      ) : events.length === 0 ? (
+        <p style={{ fontFamily: "'EB Garamond', serif", fontStyle: 'italic', fontSize: '0.95rem', color: 'var(--text-muted)', padding: '0.5rem 0' }}>
+          {t('dashboard.friendsFeedEmpty')}
+        </p>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+          {events.map((ev) => {
+            const friendLabel = ev.friend?.display_name || (ev.friend?.username ? `@${ev.friend.username}` : '?');
+            const verb = ev.type === 'finished' ? t('dashboard.friendsFeedFinished') : t('dashboard.friendsFeedStarted');
+            const daysAgo = Math.floor((Date.now() - new Date(ev.date)) / 86400000);
+            const timeLabel = daysAgo === 0 ? t('dashboard.today') : daysAgo === 1 ? t('dashboard.yesterday') : t('dashboard.daysAgo', { count: daysAgo });
+            return (
+              <div key={ev.key} style={{ display: 'flex', alignItems: 'flex-start', gap: '0.65rem', padding: '0.7rem 0', borderBottom: '1px solid var(--border-subtle)' }}>
+                <div style={{ cursor: ev.friend?.username ? 'pointer' : 'default', flexShrink: 0, marginTop: '2px' }} onClick={() => ev.friend?.username && go('friend-profile', { username: ev.friend.username })}>
+                  <FriendAvatar friend={ev.friend} size={30} />
+                </div>
+                {ev.book?.coverUrl && (
+                  <img src={ev.book.coverUrl} alt={ev.book.t} style={{ width: 32, height: 48, objectFit: 'cover', borderRadius: 1, flexShrink: 0, boxShadow: '0 1px 4px rgba(0,0,0,0.4)' }} />
+                )}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: '0.9rem', lineHeight: 1.4 }}>
+                    <span style={{ fontFamily: "'Cormorant Garamond', serif", fontStyle: 'italic', fontWeight: 600, color: 'var(--text-primary)', cursor: ev.friend?.username ? 'pointer' : 'default' }} onClick={() => ev.friend?.username && go('friend-profile', { username: ev.friend.username })}>
+                      {friendLabel}
+                    </span>{' '}
+                    <span style={{ fontFamily: "'EB Garamond', serif", fontStyle: 'italic', color: 'var(--text-muted)' }}>{verb}</span>{' '}
+                    <span style={{ fontFamily: "'Cormorant Garamond', serif", fontStyle: 'italic', fontWeight: 600, color: 'var(--text-primary)' }}>{ev.book?.t}</span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.2rem' }}>
+                    {ev.book?.rating > 0 && (
+                      <span style={{ color: 'var(--gilt)', fontSize: '0.65rem' }}>{'★'.repeat(ev.book.rating)}<span style={{ opacity: 0.2 }}>{'★'.repeat(5 - ev.book.rating)}</span></span>
+                    )}
+                    <span style={{ fontFamily: "'Special Elite', monospace", fontSize: '10px', letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-faint)' }}>{timeLabel}</span>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </WidgetShell>
+  );
+}
+
 const WIDGET_LABELS = {
   'currently-reading': 'widgetCurrentlyReading',
   'oracle-spark':      'widgetSpark',
@@ -767,7 +886,8 @@ const WIDGET_LABELS = {
   'streak':            'widgetStreak',
   'plans':             'widgetPlans',
   'clubs':             'widgetClubs',
-  'feed':              'widgetFeed',
+  'friends-feed':      'widgetFriendsFeed',
+  'feed':              'widgetMyFeed',
 };
 
 function WidgetSettings({ layout, onClose, onChange, t }) {
@@ -853,8 +973,22 @@ function WidgetSettings({ layout, onClose, onChange, t }) {
 export default function Dashboard({ onOpenBook }) {
   const { state, setDashboardLayout, setReadingGoalCount } = useData();
   const { go } = useRouter();
+  const { user } = useAuth();
   const t = useT();
   const [settingsOpen, setSettingsOpen] = useState(false);
+
+  // Friends list for the friends-feed widget — lightweight, just need the count
+  const [friendCount, setFriendCount] = useState(0);
+  useEffect(() => {
+    if (!user) return;
+    import('../lib/useFriends').then(({ getFriendsFeedEvents: _ }) => {
+      // Just check if they have any friends via the friend_pairs view
+      import('../lib/supabase').then(({ supabase }) => {
+        supabase.from('friend_pairs').select('user_b', { count: 'exact', head: true }).eq('user_a', user.id)
+          .then(({ count }) => setFriendCount(count || 0));
+      });
+    });
+  }, [user]);
 
   const layout = useMemo(() => resolveLayout(state.dashboardLayout), [state.dashboardLayout]);
 
@@ -885,8 +1019,10 @@ export default function Dashboard({ onOpenBook }) {
         return <PlansWidget key={id} plans={state.plans || []} go={go} t={t} />;
       case 'clubs':
         return <ClubsWidget key={id} clubs={state.clubs || []} go={go} t={t} />;
+      case 'friends-feed':
+        return <FriendsFeedWidget key={id} userId={user?.id} hasFriends={friendCount > 0} go={go} t={t} />;
       case 'feed':
-        return <FeedWidget key={id} state={state} onOpenBook={onOpenBook} go={go} t={t} />;
+        return <FeedWidget key={id} state={state} onOpenBook={onOpenBook} go={go} t={t} eyebrow={t('dashboard.widgetMyFeed')} />;
       default:
         return null;
     }

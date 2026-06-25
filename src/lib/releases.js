@@ -16,9 +16,59 @@
 
 // The version label shown as "current" — keep in sync with package.json and
 // the README version line.
-export const CURRENT_VERSION = 'v0.36';
+export const CURRENT_VERSION = 'v0.36.3';
 
 export const RELEASES = [
+  {
+    version: 'v0.36.3',
+    date: '2026-06-24',
+    titleEn: 'Bug fix — friend library was empty',
+    titleEs: 'Corrección — biblioteca de amigo aparecía vacía',
+    bodyEn: [
+      'Fixed two bugs that caused the friend library to show empty: the i18n key friends.friendsEmpty was missing (it lived in profile.friendsEmpty), and the library data query was using an incorrect deeply-nested join that Supabase PostgREST silently dropped.',
+      'getFriendLibrary now uses the same read_books + books join shape as DataContext, with a separate book_genres query to attach genre data — exactly matching how the rest of the app reads library data.',
+    ],
+    bodyEs: [
+      'Se corrigieron dos errores que hacían que la biblioteca de amigos apareciera vacía: la clave i18n friends.friendsEmpty no existía (estaba en profile.friendsEmpty), y la consulta de datos usaba una unión anidada incorrecta que Supabase PostgREST ignoraba silenciosamente.',
+      'getFriendLibrary ahora usa la misma forma de unión read_books + books que DataContext, con una consulta separada de book_genres para adjuntar datos de género, coincidiendo exactamente con cómo el resto de la app lee los datos de la biblioteca.',
+    ],
+  },
+  {
+    version: 'v0.36.2',
+    date: '2026-06-24',
+    titleEn: 'Friend profile — full library with filters',
+    titleEs: 'Perfil de amigo — biblioteca completa con filtros',
+    bodyEn: [
+      'The friend library now shows all books with full filtering. Search by title or author, filter by genre or year, sort by recently read, rating, title, or author.',
+      'Books load 48 at a time with a "Load more" button — so a 430-book library doesn\'t overwhelm the page on first load.',
+      'Each book shows its cover, title, author, and star rating. Genre tags come from Oracle-curated genres in the book_genres table, with a fallback to the raw genre field.',
+      'You can now also filter by year read — useful for seeing what a friend finished in a specific year.',
+    ],
+    bodyEs: [
+      'La biblioteca de amigos ahora muestra todos los libros con filtros completos. Buscá por título o autor, filtrá por género o año, ordená por leídos recientemente, calificación, título o autor.',
+      'Los libros cargan de a 48 con un botón "Cargar más" — así una biblioteca de 430 libros no satura la página al primer clic.',
+      'Cada libro muestra su portada, título, autor y calificación con estrellas. Las etiquetas de género vienen de los géneros curados por el Oráculo en la tabla book_genres, con respaldo en el campo de género directo.',
+      'También podés filtrar por año de lectura — útil para ver qué terminó un amigo en un año específico.',
+    ],
+  },
+  {
+    version: 'v0.36.1',
+    date: '2026-06-24',
+    titleEn: 'Friends feed + profile URL fix',
+    titleEs: 'Feed de amigos + corrección de URL de perfil',
+    bodyEn: [
+      'Sharing your profile link (e.g. thebookoracle.app/u/yourname) now correctly opens the friend profile view for anyone who clicks it. Previously the app ignored the pathname and always redirected to the dashboard.',
+      'When you open your own profile link, you now see exactly what your friends see — a great way to check what you\'re sharing before sending the link.',
+      'New "Friends reading" dashboard widget shows what your reading friends have recently finished or started, with their avatar, the book cover, and how long ago. A Refresh button fetches the latest. The widget shows a helpful prompt if you have no friends yet.',
+      'The existing activity feed widget is now labelled "My activity" in the widget settings to clearly distinguish it from the friends feed.',
+    ],
+    bodyEs: [
+      'Compartir tu link de perfil (ej. thebookoracle.app/u/tunombre) ahora abre correctamente el perfil para cualquiera que haga clic. Antes la app ignoraba la ruta y siempre redirigía al panel.',
+      'Cuando abrís tu propio link de perfil, ahora ves exactamente lo que ven tus amigos — ideal para revisar qué estás compartiendo antes de enviarlo.',
+      'Nuevo widget "Amigos leyendo" muestra qué terminaron o empezaron a leer tus amigos recientemente, con su avatar, la portada del libro y hace cuánto. Un botón Actualizar trae los datos más recientes.',
+      'El widget de actividad existente ahora se llama "Mi actividad" en la configuración de widgets para diferenciarlo claramente del feed de amigos.',
+    ],
+  },
   {
     version: 'v0.36',
     date: '2026-06-24',

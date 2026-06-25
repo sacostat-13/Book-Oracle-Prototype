@@ -166,14 +166,44 @@ export async function getProfileByUsername(username) {
   return data;
 }
 
-// Fetch public library for a friend (read_books RLS allows this for accepted friends)
+// Fetch public library for a friend.
+// RLS on read_books allows this for accepted friends (schema_v20).
+// Matches the same join shape DataContext uses for the current user's library.
 export async function getFriendLibrary(userId) {
   const { data } = await supabase
     .from('read_books')
-    .select('*, book:books(*)')
+    .select('id, rating, notes, read_at, source, book:books(*, position_in_series, series:series(*))')
     .eq('user_id', userId)
-    .order('read_at', { ascending: false });
-  return data || [];
+    .order('read_at', { ascending: false, nullsFirst: false });
+
+  if (!data) return [];
+
+  // Filter out rows where the book join is null (orphaned read_books rows)
+  // then attach genre data in a second query matching what DataContext does.
+  const validRows = data.filter((r) => r.book);
+  if (validRows.length === 0) return validRows;
+
+  // Fetch genres for all these books in one query
+  const bookIds = [...new Set(validRows.map((r) => r.book.id).filter(Boolean))];
+  let genresByBookId = {};
+  if (bookIds.length > 0) {
+    const { data: genreRows } = await supabase
+      .from('book_genres')
+      .select('book_id, genre:genres(id, name, normalized_name)')
+      .in('book_id', bookIds);
+
+    for (const row of genreRows || []) {
+      if (!row.genre) continue;
+      if (!genresByBookId[row.book_id]) genresByBookId[row.book_id] = [];
+      genresByBookId[row.book_id].push(row.genre);
+    }
+  }
+
+  // Attach genres to each row so normalizeBook can access them
+  return validRows.map((r) => ({
+    ...r,
+    _genres: genresByBookId[r.book?.id] || [],
+  }));
 }
 
 // Fetch currently_reading for a friend
@@ -184,4 +214,81 @@ export async function getFriendCurrentlyReading(userId) {
     .eq('user_id', userId)
     .order('started_at', { ascending: false });
   return data || [];
+}
+
+// ── Friends feed ──────────────────────────────────────────────────────────────
+// Fetches recent reading activity across all accepted friends.
+// Returns events sorted newest-first, respecting friend privacy prefs.
+
+export async function getFriendsFeedEvents(userId, limit = 40) {
+  // Get accepted friend IDs via the friend_pairs view
+  const { data: pairs } = await supabase
+    .from('friend_pairs')
+    .select('user_b')
+    .eq('user_a', userId);
+
+  if (!pairs || pairs.length === 0) return [];
+
+  const friendIds = pairs.map((p) => p.user_b);
+
+  // Fetch friend profiles for display name / avatar / privacy prefs
+  const { data: profiles } = await supabase
+    .from('profiles')
+    .select('id, username, display_name, avatar_url, preferences')
+    .in('id', friendIds);
+
+  const profileMap = Object.fromEntries((profiles || []).map((p) => [p.id, p]));
+
+  // Friends whose library is visible (default true unless explicitly opted out)
+  const visibleIds = friendIds.filter((id) => {
+    const prefs = profileMap[id]?.preferences || {};
+    return prefs.friendsCanSeeLibrary !== false;
+  });
+
+  const events = [];
+  const cutoff = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString(); // 90 days
+
+  // Finished books — only from friends who allow library visibility
+  if (visibleIds.length > 0) {
+    const { data: readRows } = await supabase
+      .from('read_books')
+      .select('user_id, read_at, rating, book:books(title, author, cover_url)')
+      .in('user_id', visibleIds)
+      .gte('read_at', cutoff)
+      .order('read_at', { ascending: false })
+      .limit(limit);
+
+    for (const row of readRows || []) {
+      events.push({
+        type: 'finished',
+        date: row.read_at,
+        friend: profileMap[row.user_id],
+        book: { t: row.book?.title, a: row.book?.author, coverUrl: row.book?.cover_url, rating: row.rating },
+        key: `fin-${row.user_id}-${row.read_at}`,
+      });
+    }
+  }
+
+  // Currently reading (started events) — visible to all friends
+  const { data: crRows } = await supabase
+    .from('currently_reading')
+    .select('user_id, started_at, book:books(title, author, cover_url)')
+    .in('user_id', friendIds)
+    .gte('started_at', cutoff)
+    .order('started_at', { ascending: false })
+    .limit(limit);
+
+  for (const row of crRows || []) {
+    events.push({
+      type: 'started',
+      date: row.started_at,
+      friend: profileMap[row.user_id],
+      book: { t: row.book?.title, a: row.book?.author, coverUrl: row.book?.cover_url },
+      key: `cr-${row.user_id}-${row.started_at}`,
+    });
+  }
+
+  // Sort all events newest-first and cap at limit
+  events.sort((a, b) => new Date(b.date) - new Date(a.date));
+  return events.slice(0, limit);
 }
