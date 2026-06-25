@@ -15,6 +15,7 @@ import Library from './views/Library';
 import ReadNext from './views/ReadNext';
 import CurrentlyReading from './views/CurrentlyReading';
 import Profile from './views/Profile';
+import FriendProfile from './views/FriendProfile';
 import About from './views/About';
 import OracleFork from './views/OracleFork';
 import OracleCategories from './views/OracleCategories';
@@ -181,7 +182,8 @@ export default function App() {
     case 'library': page = <Library onOpenBook={openBook} />; break;
     case 'read-next': page = <ReadNext onOpenBook={openBook} />; break;
     case 'currently-reading': page = <CurrentlyReading onOpenBook={openBook} />; break;
-    case 'profile': page = <Profile />; break;
+    case 'profile':       page = <Profile />; break;
+    case 'friend-profile': page = <FriendProfile />; break;
     case 'about': page = <About />; break;
     case 'oracle': page = <OracleFork />; break;
     case 'oracle-categories': page = <OracleCategories onOpenBook={openBook} />; break;

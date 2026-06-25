@@ -10,6 +10,7 @@ const KNOWN_ROUTES = new Set([
   'read-next',
   'currently-reading',
   'profile',
+  'friend-profile',
   'about',
   'oracle',
   'oracle-categories',

@@ -1,11 +1,11 @@
-import { useRef, useMemo, useState, useEffect } from 'react';
-import { useData } from '../lib/DataContext';
+import { useRef, useMemo, useState, useEffect } from 'react';import { useData } from '../lib/DataContext';
 import { useAuth } from '../lib/AuthContext';
 import { useRouter } from '../lib/RouterContext';
 import { useT } from '../lib/I18nContext';
 import { useOracleQuota } from '../lib/OracleQuotaContext';
 import { parseGoodreadsCSV } from '../lib/goodreadsImport';
 import { findBookByTitle, bookKey, openBookTab } from '../lib/bookHelpers';
+import { useFriends, checkUsernameAvailability, validateUsername } from '../lib/useFriends';
 
 const LEVEL_NAMES = {
   1: 'Casual companion', 2: 'Steady reader', 3: 'Devoted reader',
@@ -229,6 +229,233 @@ function PaceChart({ books, onOpenBook }) {
   );
 }
 
+// ── Username section ──────────────────────────────────────────────────────────
+function UsernameSection({ profile, user, updateUsername, t }) {
+  const [editing,      setEditing]      = useState(false);
+  const [input,        setInput]        = useState('');
+  const [availability, setAvailability] = useState(null); // 'available'|'taken'|'invalid'|null
+  const [saving,       setSaving]       = useState(false);
+  const [error,        setError]        = useState(null);
+  const debounceRef = useRef(null);
+
+  function onInputChange(val) {
+    setInput(val);
+    setAvailability(null);
+    clearTimeout(debounceRef.current);
+    if (!val) return;
+    const lower = val.toLowerCase().trim();
+    const valid = validateUsername(lower);
+    if (valid !== 'ok') { setAvailability('invalid'); return; }
+    if (lower === profile.username) { setAvailability('available'); return; }
+    debounceRef.current = setTimeout(async () => {
+      const result = await checkUsernameAvailability(lower, user.id);
+      setAvailability(result);
+    }, 400);
+  }
+
+  async function save() {
+    if (availability !== 'available') return;
+    setSaving(true);
+    setError(null);
+    const result = await updateUsername(input.toLowerCase().trim());
+    setSaving(false);
+    if (result?.ok) { setEditing(false); }
+    else { setError(result?.error || 'error'); }
+  }
+
+  const profileUrl = profile.username ? `${window.location.origin}/u/${profile.username}` : null;
+  const availColor = availability === 'available' ? 'var(--status-read-fg)' : availability === 'taken' ? 'var(--blood-bright)' : 'var(--text-dim)';
+  const availLabel = availability === 'available' ? t('profile.usernameAvailable') : availability === 'taken' ? t('profile.usernameTaken') : availability === 'invalid' ? t('profile.usernameInvalid') : null;
+
+  return (
+    <div style={{ marginBottom: '1.5rem' }}>
+      <h2 style={{ fontFamily: "'Cormorant Garamond', serif", fontStyle: 'italic', margin: '1.5rem 0 .35rem', color: 'var(--text-primary)' }}>
+        {t('profile.labelUsername')}
+      </h2>
+      <p style={{ fontStyle: 'italic', fontSize: 'var(--text-sm)', color: 'var(--text-muted)', marginBottom: '0.85rem' }}>
+        {t('profile.usernameClaimSub')}
+      </p>
+
+      {editing ? (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', maxWidth: '340px' }}>
+          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+            <span style={{ fontFamily: "'Special Elite', monospace", fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>@</span>
+            <input
+              type="text" maxLength={24}
+              placeholder="yourname"
+              value={input}
+              onChange={(e) => onInputChange(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && save()}
+              autoFocus
+              style={{ flex: 1, fontFamily: "'Cormorant Garamond', serif", fontStyle: 'italic', fontSize: '1.1rem', background: 'var(--input-bg)', border: '1px solid var(--input-border)', color: 'var(--text-primary)', padding: '0.45rem 0.7rem', borderRadius: '2px' }}
+            />
+          </div>
+          {availLabel && (
+            <div style={{ fontFamily: "'Special Elite', monospace", fontSize: 'var(--text-xs)', letterSpacing: '0.1em', color: availColor }}>{availLabel}</div>
+          )}
+          {input && (
+            <div style={{ fontFamily: "'Special Elite', monospace", fontSize: 'var(--text-xs)', color: 'var(--text-dim)', letterSpacing: '0.05em' }}>
+              {window.location.origin}/u/{input.toLowerCase()}
+            </div>
+          )}
+          <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.25rem' }}>
+            <button className="btn" onClick={save} disabled={availability !== 'available' || saving}>
+              {saving ? t('profile.usernameSaving') : t('common.save')}
+            </button>
+            <button className="btn btn-ghost" onClick={() => { setEditing(false); setError(null); }}>{t('common.cancel')}</button>
+          </div>
+          {error && <div style={{ fontSize: 'var(--text-xs)', color: 'var(--blood-bright)', fontStyle: 'italic' }}>{error}</div>}
+        </div>
+      ) : profile.username ? (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+          <span style={{ fontFamily: "'Cormorant Garamond', serif", fontStyle: 'italic', fontSize: '1.3rem', color: 'var(--gilt)' }}>@{profile.username}</span>
+          {profileUrl && (
+            <span style={{ fontFamily: "'Special Elite', monospace", fontSize: 'var(--text-xs)', letterSpacing: '0.06em', color: 'var(--text-dim)' }}>{profileUrl}</span>
+          )}
+          <button className="btn btn-ghost" style={{ fontSize: 'var(--text-xs)', padding: '0.25rem 0.65rem' }} onClick={() => { setInput(profile.username || ''); setAvailability(null); setEditing(true); }}>
+            {t('profile.usernameEdit')}
+          </button>
+          {profileUrl && (
+            <button className="btn btn-ghost" style={{ fontSize: 'var(--text-xs)', padding: '0.25rem 0.65rem' }} onClick={() => navigator.clipboard?.writeText(profileUrl)}>
+              {t('friends.copyLink')}
+            </button>
+          )}
+        </div>
+      ) : (
+        <button className="btn btn-ghost" onClick={() => { setInput(''); setAvailability(null); setEditing(true); }}>
+          {t('profile.usernameClaim')}
+        </button>
+      )}
+    </div>
+  );
+}
+
+// ── Display name section ──────────────────────────────────────────────────────
+function DisplayNameSection({ profile, updateDisplayName, t }) {
+  const [editing, setEditing] = useState(false);
+  const [input,   setInput]   = useState('');
+  const [saving,  setSaving]  = useState(false);
+
+  async function save() {
+    setSaving(true);
+    await updateDisplayName(input);
+    setSaving(false);
+    setEditing(false);
+  }
+
+  return (
+    <div style={{ marginBottom: '1.5rem' }}>
+      <h2 style={{ fontFamily: "'Cormorant Garamond', serif", fontStyle: 'italic', margin: '1.5rem 0 .35rem', color: 'var(--text-primary)' }}>
+        {t('profile.labelDisplayName')}
+      </h2>
+      <p style={{ fontStyle: 'italic', fontSize: 'var(--text-sm)', color: 'var(--text-muted)', marginBottom: '0.85rem' }}>
+        {t('profile.displayNameSub')}
+      </p>
+      {editing ? (
+        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', maxWidth: '340px' }}>
+          <input
+            type="text" maxLength={50}
+            placeholder={t('profile.displayNamePlaceholder')}
+            defaultValue={profile.displayName || ''}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && save()}
+            autoFocus
+            style={{ flex: 1, fontFamily: "'Cormorant Garamond', serif", fontStyle: 'italic', fontSize: '1.1rem', background: 'var(--input-bg)', border: '1px solid var(--input-border)', color: 'var(--text-primary)', padding: '0.45rem 0.7rem', borderRadius: '2px' }}
+          />
+          <button className="btn" onClick={save} disabled={saving}>{saving ? t('profile.usernameSaving') : t('common.save')}</button>
+          <button className="btn btn-ghost" onClick={() => setEditing(false)}>{t('common.cancel')}</button>
+        </div>
+      ) : (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          <span style={{ fontFamily: "'Cormorant Garamond', serif", fontStyle: 'italic', fontSize: '1.2rem', color: 'var(--text-primary)' }}>
+            {profile.displayName || <span style={{ color: 'var(--text-dim)' }}>{t('profile.notSet')}</span>}
+          </span>
+          <button className="btn btn-ghost" style={{ fontSize: 'var(--text-xs)', padding: '0.25rem 0.65rem' }} onClick={() => { setInput(profile.displayName || ''); setEditing(true); }}>
+            {t('profile.usernameEdit')}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Privacy section ───────────────────────────────────────────────────────────
+function PrivacySection({ profile, updatePrivacyPrefs, t }) {
+  function toggle(field, current) {
+    updatePrivacyPrefs({ [field]: !current });
+  }
+
+  const Toggle = ({ label, value, onToggle }) => (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.65rem 0', borderBottom: '1px solid var(--border-subtle)' }}>
+      <span style={{ fontFamily: "'EB Garamond', serif", fontStyle: 'italic', fontSize: '0.95rem', color: 'var(--text-secondary)' }}>{label}</span>
+      <button
+        onClick={onToggle}
+        style={{ background: value ? 'var(--status-read-bg)' : 'var(--surface-tint)', border: `1px solid ${value ? 'var(--status-read-border)' : 'var(--border-subtle)'}`, borderRadius: '3px', width: 32, height: 20, cursor: 'pointer', position: 'relative', transition: 'all 0.2s', flexShrink: 0 }}
+      >
+        <span style={{ position: 'absolute', top: 2, left: value ? 14 : 2, width: 14, height: 14, borderRadius: '2px', background: value ? 'var(--status-read-fg)' : 'var(--text-dim)', transition: 'left 0.2s' }} />
+      </button>
+    </div>
+  );
+
+  return (
+    <div style={{ marginBottom: '1.5rem' }}>
+      <h2 style={{ fontFamily: "'Cormorant Garamond', serif", fontStyle: 'italic', margin: '1.5rem 0 .75rem', color: 'var(--text-primary)' }}>
+        {t('profile.labelPrivacy')}
+      </h2>
+      <Toggle label={t('profile.privacyDiscoverable')} value={profile.isDiscoverable} onToggle={() => toggle('isDiscoverable', profile.isDiscoverable)} />
+      <Toggle label={t('profile.privacyEmailNotifs')} value={profile.emailNotifications} onToggle={() => toggle('emailNotifications', profile.emailNotifications)} />
+    </div>
+  );
+}
+
+// ── Friends section ───────────────────────────────────────────────────────────
+function FriendsSection({ go, t }) {
+  const { friends, loading, removeFriend } = useFriends();
+
+  return (
+    <div style={{ marginBottom: '1.5rem' }}>
+      <h2 style={{ fontFamily: "'Cormorant Garamond', serif", fontStyle: 'italic', margin: '1.5rem 0 .75rem', color: 'var(--text-primary)' }}>
+        {t('profile.labelFriends')}
+      </h2>
+      {loading ? (
+        <div style={{ color: 'var(--text-dim)', fontStyle: 'italic', fontSize: 'var(--text-sm)' }}>{t('common.loading')}</div>
+      ) : friends.length === 0 ? (
+        <p style={{ fontStyle: 'italic', fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>{t('profile.friendsEmpty')}</p>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+          {friends.map((f) => {
+            const other = f.other;
+            const label = other?.display_name || (other?.username ? `@${other.username}` : '?');
+            return (
+              <div key={f.id} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.6rem 0.9rem', background: 'var(--surface-tint)', border: '1px solid var(--border-subtle)', borderRadius: '3px' }}>
+                {other?.avatar_url ? (
+                  <img src={other.avatar_url} alt={label} style={{ width: 32, height: 32, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
+                ) : (
+                  <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'var(--surface-raised)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Cormorant Garamond', serif", fontStyle: 'italic', color: 'var(--text-muted)', flexShrink: 0 }}>
+                    {label[0].toUpperCase()}
+                  </div>
+                )}
+                <span
+                  style={{ flex: 1, fontFamily: "'Cormorant Garamond', serif", fontStyle: 'italic', fontSize: '1rem', color: 'var(--text-primary)', cursor: other?.username ? 'pointer' : 'default' }}
+                  onClick={() => other?.username && go('friend-profile', { username: other.username })}
+                >
+                  {label}
+                </span>
+                {other?.username && (
+                  <span style={{ fontFamily: "'Special Elite', monospace", fontSize: 'var(--text-xs)', letterSpacing: '0.08em', color: 'var(--text-dim)' }}>@{other.username}</span>
+                )}
+                <button className="btn btn-ghost" style={{ fontSize: 'var(--text-xs)', padding: '0.2rem 0.55rem', opacity: 0.6 }} onClick={() => removeFriend(f.id)}>
+                  {t('profile.friendsRemove')}
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Reading Challenge ─────────────────────────────────────────────────────────
 // Full-featured annual reading goal: set target, track progress, show pace.
 function ReadingChallenge({ library, readingGoalCount, setReadingGoalCount, t }) {
@@ -385,7 +612,7 @@ function ReadingChallenge({ library, readingGoalCount, setReadingGoalCount, t })
 }
 
 export default function Profile() {
-  const { state, resetAll, importGoodreads, showToast, setReadingGoalCount } = useData();
+  const { state, resetAll, importGoodreads, showToast, setReadingGoalCount, updateUsername, updateDisplayName, updatePrivacyPrefs } = useData();
   const { user } = useAuth();
   const { go, route } = useRouter();
   const t = useT();
@@ -722,6 +949,11 @@ export default function Profile() {
             </p>
           </>
         )}
+
+        <UsernameSection profile={state.profile} user={user} updateUsername={updateUsername} t={t} />
+        <DisplayNameSection profile={state.profile} updateDisplayName={updateDisplayName} t={t} />
+        <PrivacySection profile={state.profile} updatePrivacyPrefs={updatePrivacyPrefs} t={t} />
+        <FriendsSection go={go} t={t} />
 
         <h2 style={{ fontFamily: "'Cormorant Garamond', serif", fontStyle: 'italic', margin: user ? '1.5rem 0 1rem' : '0 0 1rem', color: 'var(--paper)' }}>
           {t('profile.labelReadingLevel')}

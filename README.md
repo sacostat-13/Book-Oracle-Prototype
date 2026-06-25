@@ -4,7 +4,7 @@ A reading companion — wishlist, library, reading plans, book clubs, and an AI-
 for book discovery. Built with React + Vite + SCSS, backed by Supabase for auth
 and cross-device sync, and Netlify Functions for API proxying.
 
-> Current version: **v0.35.1** — see [Releases](#releases) below for changelog.
+> Current version: **v0.36** — see [Releases](#releases) below for changelog.
 > Upgrading from an earlier version? Check the matching `MIGRATION_*.md` / `UPDATE_*.md`.
 
 ---
@@ -326,6 +326,34 @@ and forward requests. Locally you need `netlify dev` to make them work.
 ---
 
 ## Releases
+
+### v0.36 — Friends, usernames & notifications
+
+**DB migration required: run `supabase/schema_v20_migration.sql` before deploying.**
+
+**New env vars required in Netlify:**
+- `RESEND_API_KEY` — from resend.com, for transactional email
+- `WEBHOOK_SECRET` — any strong random string, must match the value set in the Supabase Database Webhook config
+
+**Supabase setup required (one-time):** In Supabase → Database → Webhooks, create a webhook on the `notifications` table for `INSERT` events pointing to `/.netlify/functions/send-notification-email`, with header `x-webhook-secret: <WEBHOOK_SECRET>`.
+
+**Usernames.** `profiles.username` is a new unique, lowercase, 3–24 character column (`[a-z0-9_-]`). The Profile page now has a dedicated Username section with real-time availability checking (debounced 400ms Supabase query), a live profile URL preview, and inline save/cancel. A separate Display Name section lets users set how they're greeted — fully independent from their username. Both write directly to `profiles.username` / `profiles.display_name` via new `updateUsername` and `updateDisplayName` DataContext actions rather than going through the preferences jsonb.
+
+**Friendships.** New `friendships` table with `requester`, `addressee`, `status` (pending/accepted/blocked). A `friend_pairs` bidirectional view makes "who are my friends" queries clean without union logic in the app. New `useFriends` hook exposes `friends`, `pending`, `incoming`, `sendRequest`, `acceptRequest`, `declineRequest`, `removeFriend`. Duplicate request prevention checks both directions before inserting. RLS restricts each user to only their own rows.
+
+**Friend profiles.** New `FriendProfile.jsx` view, reached at `/u/:username` via the new `friend-profile` route in RouterContext and App.jsx. Shows avatar, display name, `@username`, stats pills (books this year, total, currently reading count), currently reading strip, and the full library cover grid. Privacy: `preferences.friendsCanSeeLibrary` (default true) gates library visibility; DB-level RLS on `read_books` enforces it server-side for accepted friends.
+
+**Notification bell.** `useNotifications` hook fetches the last 30 notifications with actor profile joins and subscribes to `postgres_changes` on the `notifications` table filtered to the current user — new requests appear in real time. The bell in `Nav.jsx` shows a red unread count badge and opens a dropdown panel. All notifications are marked read on panel open. Each `friend_request` notification renders inline Accept/Decline buttons; `friend_accepted` renders a "View profile →" link. On mobile the panel becomes a bottom sheet.
+
+**Email notifications.** `netlify/functions/send-notification-email.js` is triggered by a Supabase Database Webhook on `notifications` INSERT. It verifies a shared secret header, looks up the recipient email via `supabase.auth.admin.getUserById` (service role), checks `profiles.email_notifications`, looks up the actor's display name and username, and sends a styled HTML email via the Resend API. Email opt-out is a toggle in the new Privacy section of the Profile page. Falls back gracefully to a console log in local dev when `RESEND_API_KEY` is absent.
+
+**DB trigger.** `handle_friendship_notification()` PL/pgSQL function fires after INSERT or UPDATE on `friendships`. On INSERT with `status = 'pending'` it inserts a `friend_request` notification for the addressee. On UPDATE from `pending` → `accepted` it inserts a `friend_accepted` notification for the requester.
+
+**Privacy toggles.** Two new boolean columns on `profiles`: `is_discoverable` (default true, reserved for future friend search) and `email_notifications` (default true, read by the email function). Both are surfaced as toggle switches in the Profile privacy section and written by the new `updatePrivacyPrefs` DataContext action.
+
+**New files:** `schema_v20_migration.sql`, `netlify/functions/send-notification-email.js`, `src/lib/useFriends.js`, `src/lib/useNotifications.js`, `src/views/FriendProfile.jsx`, `src/styles/pages/_friends.scss`.
+
+**Modified files:** `DataContext.jsx`, `Nav.jsx`, `Profile.jsx`, `App.jsx`, `RouterContext.jsx`, `main.scss`, `en.json`, `es.json`, `releases.js`, `README.md`.
 
 ### v0.35.1 — Bug fix: book not removed from Reading Next when started
 

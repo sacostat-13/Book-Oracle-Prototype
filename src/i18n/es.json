@@ -36,7 +36,15 @@
     "currentlyReadingLabel": "Leyendo ahora",
     "listsLabel": "Mis listas",
     "bookClubsLabel": "Clubs",
-    "oracleLabel": "Oráculo"
+    "oracleLabel": "Oráculo",
+    "notifications": "Notificaciones",
+    "noNotifications": "Sin notificaciones todavía",
+    "notifFriendRequest": "quiere ser tu amigo/a de lectura",
+    "notifFriendAccepted": "aceptó tu solicitud de amistad",
+    "accept": "Aceptar",
+    "decline": "Rechazar",
+    "viewProfile": "Ver perfil",
+    "someone": "Alguien"
   },
   "signIn": {
     "eyebrow": "Bienvenida",
@@ -516,7 +524,28 @@
     "challengeAhead": "{ahead} por delante del ritmo",
     "challengeComplete": "¡Meta alcanzada! Leíste {done} libros.",
     "challengeYear": "Desafío de lectura {year}",
-    "challengeNone": "Sin meta establecida"
+    "challengeNone": "Sin meta establecida",
+    "labelUsername": "Nombre de usuario",
+    "labelDisplayName": "Nombre visible",
+    "usernameClaim": "Elegí tu nombre de usuario",
+    "usernameClaimSub": "Tu identificador único — se usa para tu URL de perfil y solicitudes de amistad",
+    "usernamePreview": "Tu perfil: {url}",
+    "usernameAvailable": "Disponible",
+    "usernameTaken": "Ya está en uso",
+    "usernameInvalid": "3–24 caracteres, solo letras/números/guiones bajos/guiones",
+    "usernameSaving": "Guardando…",
+    "usernameSaved": "Guardado",
+    "usernameEdit": "Editar",
+    "displayNameSub": "Cómo aparecés en los saludos y en tu panel. Lo que quieras — Simón, Si o Sim.",
+    "displayNamePlaceholder": "ej. Simón",
+    "labelPrivacy": "Privacidad",
+    "privacyDiscoverable": "Mostrarme en búsqueda de amigos",
+    "privacyEmailNotifs": "Enviarme emails sobre solicitudes de amistad",
+    "labelFriends": "Amigos lectores",
+    "friendsEmpty": "Sin amigos todavía. Compartí tu link de perfil para conectarte.",
+    "friendsRemove": "Eliminar",
+    "shareProfile": "Tu link de perfil",
+    "copyLink": "Copiar"
   },
   "onboarding": {
     "step1Eyebrow": "Paso 1 de 3 · Perfil lector",
@@ -1130,5 +1159,24 @@
     "redirecting": "Abriendo pago…",
     "checkoutSuccess": "¡Pago exitoso! Activando tu plan Pro…",
     "checkoutCancelled": "Pago cancelado — no se realizó ningún cobro."
+  },
+  "friends": {
+    "profileNotFound": "Perfil no encontrado",
+    "profileNotFoundSub": "Este nombre de usuario no existe o el perfil es privado.",
+    "sectionReading": "Leyendo ahora",
+    "sectionLibrary": "Biblioteca",
+    "alreadyFriends": "Amigos lectores ✓",
+    "requestSent": "Solicitud enviada",
+    "sendRequest": "Agregar amigo lector",
+    "booksThisYear": "{count} libros en {year}",
+    "totalBooks": "{count} en total",
+    "currentlyReading": "Leyendo {count} ahora",
+    "moreBooks": "libros más",
+    "reqErrorGeneric": "No se pudo enviar la solicitud. Intentá de nuevo.",
+    "reqError_already_friends": "Ya son amigos.",
+    "reqError_already_pending": "Solicitud ya enviada.",
+    "reqError_self": "¡Ese sos vos!",
+    "shareProfile": "Tu link de perfil",
+    "copyLink": "Copiar link"
   }
 }

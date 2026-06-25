@@ -16,9 +16,29 @@
 
 // The version label shown as "current" — keep in sync with package.json and
 // the README version line.
-export const CURRENT_VERSION = 'v0.35.1';
+export const CURRENT_VERSION = 'v0.36';
 
 export const RELEASES = [
+  {
+    version: 'v0.36',
+    date: '2026-06-24',
+    titleEn: 'Friends, usernames & notifications',
+    titleEs: 'Amigos, nombres de usuario y notificaciones',
+    bodyEn: [
+      'You can now claim a unique username (e.g. @simon) and set a separate display name (Simon, Si, Sim — whatever you like). Username is your permanent handle used in profile URLs and friend requests; display name is how you appear in greetings.',
+      'Send friend requests by sharing your profile link. Accept or decline directly from the new notification bell in the nav.',
+      'The notification bell shows a live unread count badge and opens a panel with accept/decline buttons inline. New requests appear in real time via Supabase Realtime — no refresh needed.',
+      'Friend requests and acceptances now trigger an email notification via Resend. You can turn emails off in your profile privacy settings.',
+      'Friend profiles show currently reading, full library, reading stats, and a mini progress bar for series in progress.',
+    ],
+    bodyEs: [
+      'Ahora podés elegir un nombre de usuario único (ej. @simon) y configurar un nombre visible por separado (Simón, Si, Sim — lo que quieras). El nombre de usuario es tu identificador permanente para URLs de perfil y solicitudes de amistad; el nombre visible es cómo aparecés en los saludos.',
+      'Enviá solicitudes de amistad compartiendo tu link de perfil. Aceptá o rechazá directamente desde la nueva campana de notificaciones en la barra de navegación.',
+      'La campana muestra el conteo de no leídos en tiempo real y abre un panel con botones de aceptar/rechazar integrados. Las solicitudes nuevas aparecen al instante vía Supabase Realtime.',
+      'Las solicitudes de amistad y aceptaciones ahora disparan un email de notificación vía Resend. Podés desactivar los emails en tu configuración de privacidad.',
+      'Los perfiles de amigos muestran qué están leyendo, su biblioteca completa, estadísticas de lectura y barras de progreso de series en curso.',
+    ],
+  },
   {
     version: 'v0.35.1',
     date: '2026-06-24',

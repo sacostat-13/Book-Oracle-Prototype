@@ -36,7 +36,15 @@
     "currentlyReadingLabel": "Currently Reading",
     "listsLabel": "Lists",
     "bookClubsLabel": "Book Clubs",
-    "oracleLabel": "Oracle"
+    "oracleLabel": "Oracle",
+    "notifications": "Notifications",
+    "noNotifications": "No notifications yet",
+    "notifFriendRequest": "wants to be your reading friend",
+    "notifFriendAccepted": "accepted your friend request",
+    "accept": "Accept",
+    "decline": "Decline",
+    "viewProfile": "View profile",
+    "someone": "Someone"
   },
   "signIn": {
     "eyebrow": "Welcome",
@@ -516,7 +524,28 @@
     "challengeAhead": "{ahead} ahead of pace",
     "challengeComplete": "Goal reached! You've read {done} books.",
     "challengeYear": "{year} reading challenge",
-    "challengeNone": "No goal set"
+    "challengeNone": "No goal set",
+    "labelUsername": "Username",
+    "labelDisplayName": "Display name",
+    "usernameClaim": "Claim your username",
+    "usernameClaimSub": "Your unique handle — used for your profile URL and friend requests",
+    "usernamePreview": "Your profile: {url}",
+    "usernameAvailable": "Available",
+    "usernameTaken": "Already taken",
+    "usernameInvalid": "3–24 chars, letters/numbers/underscores/hyphens only",
+    "usernameSaving": "Saving…",
+    "usernameSaved": "Saved",
+    "usernameEdit": "Edit",
+    "displayNameSub": "How you appear in greetings and on your dashboard. Anything you like — Simon, Si, or Sim.",
+    "displayNamePlaceholder": "e.g. Simon",
+    "labelPrivacy": "Privacy",
+    "privacyDiscoverable": "Show me in friend search",
+    "privacyEmailNotifs": "Email me about friend requests",
+    "labelFriends": "Reading friends",
+    "friendsEmpty": "No friends yet. Share your profile link to connect.",
+    "friendsRemove": "Remove",
+    "shareProfile": "Your profile link",
+    "copyLink": "Copy"
   },
   "onboarding": {
     "step1Eyebrow": "Step 1 of 3 · Reader profile",
@@ -1130,5 +1159,24 @@
     "redirecting": "Opening checkout…",
     "checkoutSuccess": "Payment successful! Activating your Pro plan…",
     "checkoutCancelled": "Checkout cancelled — no charge was made."
+  },
+  "friends": {
+    "profileNotFound": "Profile not found",
+    "profileNotFoundSub": "This username doesn't exist or the profile is private.",
+    "sectionReading": "Currently reading",
+    "sectionLibrary": "Library",
+    "alreadyFriends": "Reading friends ✓",
+    "requestSent": "Request sent",
+    "sendRequest": "Add reading friend",
+    "booksThisYear": "{count} books in {year}",
+    "totalBooks": "{count} total",
+    "currentlyReading": "Reading {count} now",
+    "moreBooks": "more books",
+    "reqErrorGeneric": "Couldn't send request. Try again.",
+    "reqError_already_friends": "You're already friends.",
+    "reqError_already_pending": "Request already sent.",
+    "reqError_self": "That's you!",
+    "shareProfile": "Your profile link",
+    "copyLink": "Copy link"
   }
 }

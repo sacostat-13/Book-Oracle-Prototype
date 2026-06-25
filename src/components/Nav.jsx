@@ -1,6 +1,7 @@
-// src/components/Nav.jsx — v0.27
+// src/components/Nav.jsx — v0.36
 // Primary nav: Dashboard · Wishlist · Library · Reading (dropdown) · Lists · Oracle
 // Overflow "···": Profile · About · Language · Sign out
+// v0.36: notification bell with unread badge + slide-in panel
 
 import { useState, useEffect, useRef } from 'react';
 import { useData } from '../lib/DataContext';
@@ -8,6 +9,8 @@ import { useRouter } from '../lib/RouterContext';
 import { useAuth } from '../lib/AuthContext';
 import { useI18n } from '../lib/I18nContext';
 import { useTheme } from '../lib/ThemeContext';
+import { useNotifications } from '../lib/useNotifications';
+import { useFriends } from '../lib/useFriends';
 import NavSearch from './NavSearch';
 
 export default function Nav({ onPreviewBook }) {
@@ -16,22 +19,27 @@ export default function Nav({ onPreviewBook }) {
   const { user, signInWithGoogle, signOut } = useAuth();
   const { lang, toggleLang, t } = useI18n();
   const { theme, toggleTheme } = useTheme();
+  const { notifications, unreadCount, markAllRead, markOneRead } = useNotifications();
+  const { acceptRequest, declineRequest } = useFriends();
   const [menuOpen, setMenuOpen]       = useState(false);
   const [readingOpen, setReadingOpen] = useState(false);
   const [moreOpen, setMoreOpen]       = useState(false);
+  const [bellOpen, setBellOpen]       = useState(false);
   const readingRef = useRef(null);
   const moreRef    = useRef(null);
+  const bellRef    = useRef(null);
 
   const toggleLabel = lang === 'en' ? t('nav.switchToSpanish') : t('nav.switchToEnglish');
 
   // Close dropdowns on route change
-  useEffect(() => { setMenuOpen(false); setReadingOpen(false); setMoreOpen(false); }, [route.name]);
+  useEffect(() => { setMenuOpen(false); setReadingOpen(false); setMoreOpen(false); setBellOpen(false); }, [route.name]);
 
   // Close dropdowns on outside click
   useEffect(() => {
     function onDown(e) {
       if (readingRef.current && !readingRef.current.contains(e.target)) setReadingOpen(false);
       if (moreRef.current    && !moreRef.current.contains(e.target))    setMoreOpen(false);
+      if (bellRef.current    && !bellRef.current.contains(e.target))    setBellOpen(false);
     }
     document.addEventListener('mousedown', onDown);
     return () => document.removeEventListener('mousedown', onDown);
@@ -44,8 +52,27 @@ export default function Nav({ onPreviewBook }) {
   }, [menuOpen]);
 
   function navigate(name, params) {
-    setMenuOpen(false); setReadingOpen(false); setMoreOpen(false);
+    setMenuOpen(false); setReadingOpen(false); setMoreOpen(false); setBellOpen(false);
     go(name, params);
+  }
+
+  function openBell() {
+    setBellOpen((v) => {
+      if (!v) markAllRead(); // mark all read when opening
+      return !v;
+    });
+    setMoreOpen(false);
+    setReadingOpen(false);
+  }
+
+  async function handleAccept(friendshipId, notifId) {
+    await acceptRequest(friendshipId);
+    markOneRead(notifId);
+  }
+
+  async function handleDecline(friendshipId, notifId) {
+    await declineRequest(friendshipId);
+    markOneRead(notifId);
   }
 
   const readingCount = (state.currentlyReading?.length || 0) + (state.readNext?.length || 0);
@@ -132,6 +159,97 @@ export default function Nav({ onPreviewBook }) {
           <button className={`nav-btn${route.name==='oracle'?' active':''}`} onClick={() => go('oracle')}>
             {t('about.titleAccent')}
           </button>
+
+          {/* Notification bell */}
+          {user && (
+            <div className="nav-dropdown-wrap nav-dropdown-wrap--right" ref={bellRef}>
+              <button
+                className={`nav-btn nav-bell${bellOpen ? ' active' : ''}`}
+                onClick={openBell}
+                aria-label={t('nav.notifications')}
+                title={t('nav.notifications')}
+              >
+                🔔
+                {unreadCount > 0 && (
+                  <span className="nav-notif-badge">{unreadCount > 9 ? '9+' : unreadCount}</span>
+                )}
+              </button>
+
+              {bellOpen && (
+                <div className="nav-dropdown nav-dropdown--right nav-notif-panel">
+                  <div className="nav-notif-header">
+                    <span style={{ fontFamily: "'Special Elite', monospace", fontSize: 'var(--text-xs)', letterSpacing: '0.18em', textTransform: 'uppercase', color: 'var(--gilt)' }}>
+                      {t('nav.notifications')}
+                    </span>
+                  </div>
+
+                  {notifications.length === 0 ? (
+                    <div className="nav-notif-empty">
+                      {t('nav.noNotifications')}
+                    </div>
+                  ) : (
+                    <div className="nav-notif-list">
+                      {notifications.map((n) => {
+                        const actor = n.actor;
+                        const actorLabel = actor?.display_name || (actor?.username ? `@${actor.username}` : t('nav.someone'));
+                        const friendshipId = n.data?.friendship_id;
+
+                        return (
+                          <div key={n.id} className={`nav-notif-item${n.read ? '' : ' nav-notif-item--unread'}`}>
+                            {/* Avatar */}
+                            {actor?.avatar_url ? (
+                              <img src={actor.avatar_url} alt={actorLabel} className="nav-notif-avatar" />
+                            ) : (
+                              <div className="nav-notif-avatar nav-notif-avatar--fallback">
+                                {(actor?.display_name || actor?.username || '?')[0].toUpperCase()}
+                              </div>
+                            )}
+
+                            <div className="nav-notif-body">
+                              {n.type === 'friend_request' && (
+                                <>
+                                  <div className="nav-notif-text">
+                                    <strong>{actorLabel}</strong> {t('nav.notifFriendRequest')}
+                                  </div>
+                                  <div className="nav-notif-actions">
+                                    <button className="btn" style={{ fontSize: 'var(--text-xs)', padding: '0.25rem 0.65rem' }} onClick={() => handleAccept(friendshipId, n.id)}>
+                                      {t('nav.accept')}
+                                    </button>
+                                    <button className="btn btn-ghost" style={{ fontSize: 'var(--text-xs)', padding: '0.25rem 0.65rem' }} onClick={() => handleDecline(friendshipId, n.id)}>
+                                      {t('nav.decline')}
+                                    </button>
+                                  </div>
+                                </>
+                              )}
+                              {n.type === 'friend_accepted' && (
+                                <>
+                                  <div className="nav-notif-text">
+                                    <strong>{actorLabel}</strong> {t('nav.notifFriendAccepted')}
+                                  </div>
+                                  {actor?.username && (
+                                    <button
+                                      className="btn btn-ghost"
+                                      style={{ fontSize: 'var(--text-xs)', padding: '0.2rem 0.55rem', marginTop: '0.35rem' }}
+                                      onClick={() => navigate('friend-profile', { username: actor.username })}
+                                    >
+                                      {t('nav.viewProfile')} →
+                                    </button>
+                                  )}
+                                </>
+                              )}
+                              <div className="nav-notif-time">
+                                {new Date(n.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* ··· overflow dropdown */}
           <div className="nav-dropdown-wrap nav-dropdown-wrap--right" ref={moreRef}>

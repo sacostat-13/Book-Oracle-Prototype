@@ -17,7 +17,10 @@ const defaultState = {
     goal: null,
     goodreadsImported: false,
     displayName: null,
+    username: null,
     avatarUrl: null,
+    isDiscoverable: true,
+    emailNotifications: true,
   },
   library: [],
   readNext: [],
@@ -511,7 +514,10 @@ async function loadFromSupabase(userId) {
       ...defaultState.profile,
       ...(profile.preferences || {}),
       displayName: profile.display_name,
+      username: profile.username || null,
       avatarUrl: profile.avatar_url,
+      isDiscoverable: profile.is_discoverable ?? true,
+      emailNotifications: profile.email_notifications ?? true,
     },
     wishlist: dedupeBooks(wishlist),
     library: dedupeBooks(library),
@@ -1491,6 +1497,49 @@ export function DataProvider({ children }) {
     setState((s) => ({ ...s, readingGoalCount: count }));
   }, []);
 
+  // v0.36: update username — writes directly to profiles.username
+  const updateUsername = useCallback(async (username) => {
+    if (!user) return { error: 'not_authed' };
+    const { error } = await supabase
+      .from('profiles')
+      .update({ username: username.toLowerCase().trim(), updated_at: new Date().toISOString() })
+      .eq('id', user.id);
+    if (error) return { error: error.message };
+    setState((s) => ({ ...s, profile: { ...s.profile, username: username.toLowerCase().trim() } }));
+    return { ok: true };
+  }, [user]);
+
+  // v0.36: update display name — writes to profiles.display_name
+  const updateDisplayName = useCallback(async (displayName) => {
+    if (!user) return { error: 'not_authed' };
+    const trimmed = displayName.trim() || null;
+    const { error } = await supabase
+      .from('profiles')
+      .update({ display_name: trimmed, updated_at: new Date().toISOString() })
+      .eq('id', user.id);
+    if (error) return { error: error.message };
+    setState((s) => ({ ...s, profile: { ...s.profile, displayName: trimmed } }));
+    return { ok: true };
+  }, [user]);
+
+  // v0.36: update privacy preferences
+  const updatePrivacyPrefs = useCallback(async ({ isDiscoverable, emailNotifications }) => {
+    if (!user) return;
+    const patch = {};
+    if (isDiscoverable  !== undefined) patch.is_discoverable     = isDiscoverable;
+    if (emailNotifications !== undefined) patch.email_notifications = emailNotifications;
+    patch.updated_at = new Date().toISOString();
+    await supabase.from('profiles').update(patch).eq('id', user.id);
+    setState((s) => ({
+      ...s,
+      profile: {
+        ...s.profile,
+        ...(isDiscoverable    !== undefined ? { isDiscoverable }    : {}),
+        ...(emailNotifications !== undefined ? { emailNotifications } : {}),
+      },
+    }));
+  }, [user]);
+
   const setCurrentPlan = useCallback(
     async (plan) => {
       if (!plan) return null;
@@ -1853,6 +1902,9 @@ export function DataProvider({ children }) {
     setOracleMode,
     setDashboardLayout,
     setReadingGoalCount,
+    updateUsername,
+    updateDisplayName,
+    updatePrivacyPrefs,
     plans: state.plans || [],
     lists: state.lists || [],
     clubs: state.clubs || [],
