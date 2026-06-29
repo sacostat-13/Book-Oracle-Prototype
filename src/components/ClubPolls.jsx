@@ -111,7 +111,7 @@ function PollOptionCard({ option, selected, myVote, totalVotes, closed, onVote }
 
       {/* Label + author */}
       <div style={{ flex: 1, minWidth: 0, zIndex: 1 }}>
-        <div style={{ fontFamily: "'Cormorant Garamond', serif", fontStyle: 'italic', fontSize: '1rem', color: 'var(--paper)', lineHeight: 1.2 }}>
+        <div style={{ fontFamily: 'var(--ro-font-display)', fontStyle: 'italic', fontSize: '1rem', color: 'var(--paper)', lineHeight: 1.2 }}>
           {option.label}
         </div>
         {option.book_author && (
@@ -123,14 +123,14 @@ function PollOptionCard({ option, selected, myVote, totalVotes, closed, onVote }
 
       {/* Vote count / % */}
       {(myVote || closed) && totalVotes > 0 && (
-        <div style={{ fontFamily: "'Special Elite', monospace", fontSize: '0.72rem', letterSpacing: '0.06em', color: isMyVote ? 'var(--gilt)' : 'var(--paper-aged)', opacity: isMyVote ? 1 : 0.5, flexShrink: 0, zIndex: 1 }}>
+        <div style={{ fontFamily: 'var(--ro-font-mono)', fontSize: '0.72rem', letterSpacing: '0.06em', color: isMyVote ? 'var(--gilt)' : 'var(--paper-aged)', opacity: isMyVote ? 1 : 0.5, flexShrink: 0, zIndex: 1 }}>
           {option.vote_count} · {pct}%
         </div>
       )}
 
       {/* My vote indicator */}
       {isMyVote && (
-        <div style={{ fontFamily: "'Special Elite', monospace", fontSize: '0.65rem', color: 'var(--gilt)', flexShrink: 0, zIndex: 1 }}>
+        <div style={{ fontFamily: 'var(--ro-font-mono)', fontSize: '0.65rem', color: 'var(--gilt)', flexShrink: 0, zIndex: 1 }}>
           ✦
         </div>
       )}
@@ -155,14 +155,14 @@ function PollCard({ poll, isAdmin, onVote, onClose, onDelete, onCreateSession })
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '0.75rem', marginBottom: '0.85rem' }}>
         <div style={{ flex: 1 }}>
           {poll.is_oracle_pick && (
-            <div style={{ fontFamily: "'Special Elite', monospace", fontSize: '0.6rem', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--gilt)', opacity: 0.8, marginBottom: '0.25rem' }}>
+            <div style={{ fontFamily: 'var(--ro-font-mono)', fontSize: '0.6rem', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--gilt)', opacity: 0.8, marginBottom: '0.25rem' }}>
               {t('polls.oracleLabel')}
             </div>
           )}
-          <div style={{ fontFamily: "'Cormorant Garamond', serif", fontStyle: 'italic', fontSize: '1.1rem', color: 'var(--paper)', lineHeight: 1.3 }}>
+          <div style={{ fontFamily: 'var(--ro-font-display)', fontStyle: 'italic', fontSize: '1.1rem', color: 'var(--paper)', lineHeight: 1.3 }}>
             {poll.question}
           </div>
-          <div style={{ fontSize: '0.75rem', color: 'var(--paper-aged)', opacity: 0.4, marginTop: '0.25rem', fontFamily: "'Special Elite', monospace", letterSpacing: '0.04em' }}>
+          <div style={{ fontSize: '0.75rem', color: 'var(--paper-aged)', opacity: 0.4, marginTop: '0.25rem', fontFamily: 'var(--ro-font-mono)', letterSpacing: '0.04em' }}>
             {totalVotes} vote{totalVotes !== 1 ? 's' : ''}
             {poll.closes_at && !poll.closed && ` · ${t('polls.closesOn', { date: fmtDate(poll.closes_at) })}`}
             {poll.closed && t('polls.closed')}
@@ -199,7 +199,7 @@ function PollCard({ poll, isAdmin, onVote, onClose, onDelete, onCreateSession })
       {/* Winner + create session CTA */}
       {winner && isAdmin && !poll.result_session_id && (
         <div style={{ marginTop: '0.85rem', padding: '0.65rem 0.85rem', background: 'rgba(176,140,63,0.07)', borderRadius: 2 }}>
-          <div style={{ fontFamily: "'Special Elite', monospace", fontSize: '0.68rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--gilt)', marginBottom: '0.4rem' }}>
+          <div style={{ fontFamily: 'var(--ro-font-mono)', fontSize: '0.68rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--gilt)', marginBottom: '0.4rem' }}>
             Winner: {winner.label}
           </div>
           <button className="li-action" onClick={() => onCreateSession(winner)}>
@@ -240,7 +240,7 @@ function CreatePollForm({ onAdd, onCancel }) {
 
   return (
     <div style={{ padding: '1rem', border: '1px solid rgba(176,140,63,0.2)', borderRadius: 2, marginBottom: '1rem', background: 'rgba(176,140,63,0.03)' }}>
-      <div style={{ fontFamily: "'Special Elite', monospace", fontSize: '0.7rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--gilt)', marginBottom: '0.75rem' }}>
+      <div style={{ fontFamily: 'var(--ro-font-mono)', fontSize: '0.7rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--gilt)', marginBottom: '0.75rem' }}>
         {t('polls.newPollLabel')}
       </div>
       <div style={{ marginBottom: '0.75rem' }}>
@@ -249,7 +249,7 @@ function CreatePollForm({ onAdd, onCancel }) {
           value={question}
           onChange={(e) => setQuestion(e.target.value)}
           autoFocus
-          style={{ width: '100%', boxSizing: 'border-box', background: 'rgba(176,140,63,0.04)', border: '1px solid rgba(176,140,63,0.25)', borderRadius: 2, padding: '0.5rem 0.75rem', color: 'var(--paper)', fontFamily: "'Cormorant Garamond', serif", fontSize: '1rem', colorScheme: 'dark' }}
+          style={{ width: '100%', boxSizing: 'border-box', background: 'rgba(176,140,63,0.04)', border: '1px solid rgba(176,140,63,0.25)', borderRadius: 2, padding: '0.5rem 0.75rem', color: 'var(--paper)', fontFamily: 'var(--ro-font-display)', fontSize: '1rem', colorScheme: 'dark' }}
         />
       </div>
       {options.map((opt, i) => (
@@ -258,7 +258,7 @@ function CreatePollForm({ onAdd, onCancel }) {
             {...{placeholder: t('polls.optionPlaceholder', { n: i + 1 })}}
             value={opt.label}
             onChange={(e) => setOptionLabel(i, e.target.value)}
-            style={{ flex: 1, background: 'rgba(176,140,63,0.04)', border: '1px solid rgba(176,140,63,0.2)', borderRadius: 2, padding: '0.45rem 0.7rem', color: 'var(--paper)', fontFamily: "'Cormorant Garamond', serif", fontSize: '0.95rem', colorScheme: 'dark' }}
+            style={{ flex: 1, background: 'rgba(176,140,63,0.04)', border: '1px solid rgba(176,140,63,0.2)', borderRadius: 2, padding: '0.45rem 0.7rem', color: 'var(--paper)', fontFamily: 'var(--ro-font-display)', fontSize: '0.95rem', colorScheme: 'dark' }}
           />
           {options.length > 2 && (
             <button className="li-action danger" style={{ fontSize: '0.7rem' }} onClick={() => setOptions((o) => o.filter((_, idx) => idx !== i))}>✕</button>
@@ -368,7 +368,7 @@ export default function ClubPolls({ clubId, clubName, clubGenres = [], isAdmin, 
     <section style={{ marginBottom: '2.5rem' }}>
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.85rem', flexWrap: 'wrap', gap: '0.5rem' }}>
-        <div style={{ fontFamily: "'Special Elite', monospace", fontSize: '0.7rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--gilt)' }}>
+        <div style={{ fontFamily: 'var(--ro-font-mono)', fontSize: '0.7rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--gilt)' }}>
           Polls
         </div>
         {isAdmin && (
@@ -401,7 +401,7 @@ export default function ClubPolls({ clubId, clubName, clubGenres = [], isAdmin, 
       )}
 
       {polls.length === 0 && !showCreate && (
-        <div style={{ color: 'var(--text-dim)', fontStyle: 'italic', fontSize: '0.88rem' }}>
+        <div style={{ color: 'var(--ro-text-dim)', fontStyle: 'italic', fontSize: '0.88rem' }}>
           {isAdmin ? t('polls.noPollsAdmin') : t('polls.noPolls')}
         </div>
       )}
@@ -422,7 +422,7 @@ export default function ClubPolls({ clubId, clubName, clubGenres = [], isAdmin, 
       {/* Closed polls */}
       {closedPolls.length > 0 && (
         <>
-          <div style={{ fontFamily: "'Special Elite', monospace", fontSize: '0.65rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--paper-aged)', opacity: 0.35, margin: '1rem 0 0.75rem' }}>
+          <div style={{ fontFamily: 'var(--ro-font-mono)', fontSize: '0.65rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--paper-aged)', opacity: 0.35, margin: '1rem 0 0.75rem' }}>
             {t('polls.pastPolls')}
           </div>
           {closedPolls.map((poll) => (

@@ -46,8 +46,8 @@ function Cover({ book, size = 80, onClick }) {
   };
   if (book.coverUrl) return <img src={book.coverUrl} alt={book.t} style={style} onClick={onClick} />;
   return (
-    <div style={{ ...style, background: 'linear-gradient(155deg,#3a2a1c,#1a100a)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--border-subtle)' }} onClick={onClick}>
-      <span style={{ fontFamily: "'Cormorant Garamond',serif", fontStyle: 'italic', fontSize: Math.max(7, size / 9), color: 'rgba(233,217,182,0.45)', textAlign: 'center', padding: '4px', lineHeight: 1.2 }}>
+    <div style={{ ...style, background: 'linear-gradient(155deg,#3a2a1c,#1a100a)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--ro-border-subtle)' }} onClick={onClick}>
+      <span style={{ fontFamily: 'var(--ro-font-display)', fontStyle: 'italic', fontSize: Math.max(7, size / 9), color: 'rgba(233,217,182,0.45)', textAlign: 'center', padding: '4px', lineHeight: 1.2 }}>
         {book.t?.slice(0, 14)}
       </span>
     </div>
@@ -57,8 +57,8 @@ function Cover({ book, size = 80, onClick }) {
 function Stars({ rating }) {
   if (!rating) return null;
   return (
-    <div style={{ color: 'var(--gilt)', fontSize: '0.65rem', marginTop: '0.25rem', lineHeight: 1 }}>
-      {'★'.repeat(rating)}<span style={{ opacity: 0.2 }}>{'★'.repeat(5 - rating)}</span>
+    <div className="fp-mini-stars">
+      {'★'.repeat(rating)}<span>{'★'.repeat(5 - rating)}</span>
     </div>
   );
 }
@@ -149,9 +149,9 @@ function FriendLibrary({ library, go, t }) {
     background: 'var(--shadow)',
     color: 'var(--paper)',
     border: '1px solid var(--input-border)',
-    borderRadius: '2px',
+    borderRadius: 'var(--ro-radius-sm)',
     padding: '0.9rem 1rem',
-    fontFamily: "'EB Garamond', serif",
+    fontFamily: 'var(--ro-font-body)',
     fontSize: '1.05rem',
     fontStyle: 'italic',
     cursor: 'pointer',
@@ -176,7 +176,7 @@ function FriendLibrary({ library, go, t }) {
             placeholder={t('friends.librarySearch')}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            style={{ maxWidth: '280px' }}
+            
           />
 
           {/* Genre filter */}
@@ -201,14 +201,14 @@ function FriendLibrary({ library, go, t }) {
         </div>
 
         {/* Sort + count — right side */}
-        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexShrink: 0 }}>
+        <div className="fp-hero__actions">
           <select value={sort} onChange={(e) => setSort(e.target.value)} style={selectStyle}>
             <option value="recent">{t('friends.librarySortRecent')}</option>
             <option value="rating">{t('friends.librarySortRating')}</option>
             <option value="title">{t('friends.librarySortTitle')}</option>
             <option value="author">{t('friends.librarySortAuthor')}</option>
           </select>
-          <span style={{ fontFamily: "'Special Elite', monospace", fontSize: 'var(--text-xs)', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-dim)', whiteSpace: 'nowrap' }}>
+          <span className="pf-overline">
             {t('friends.libraryCount', { count: filtered.length })}
           </span>
         </div>
@@ -216,16 +216,16 @@ function FriendLibrary({ library, go, t }) {
 
       {/* Grid */}
       {visible.length === 0 ? (
-        <p style={{ fontFamily: "'EB Garamond', serif", fontStyle: 'italic', color: 'var(--text-muted)', padding: '1rem 0' }}>
+        <p className="fp-empty">
           {t('friends.libraryNoResults')}
         </p>
       ) : (
         <>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(90px, 1fr))', gap: '1rem' }}>
+          <div className="fp-book-grid">
             {visible.map((b) => (
               <div
                 key={b.id}
-                style={{ cursor: 'pointer', transition: 'transform 0.15s' }}
+                className="fp-book-item"
                 onClick={() => openBookTab(b, 'friend-profile')}
                 onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
                 onMouseLeave={(e) => e.currentTarget.style.transform = ''}
@@ -234,11 +234,11 @@ function FriendLibrary({ library, go, t }) {
                 <Cover book={b} size={90} onClick={() => openBookTab(b, 'friend-profile')} />
                 <Stars rating={b.rating} />
                 {/* Show title + author on hover via title attr; on mobile show abbreviated */}
-                <div style={{ marginTop: '0.3rem', overflow: 'hidden' }}>
-                  <div style={{ fontFamily: "'Cormorant Garamond', serif", fontStyle: 'italic', fontSize: '0.78rem', color: 'var(--text-primary)', lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                <div >
+                  <div className="fp-book-title">
                     {b.t}
                   </div>
-                  <div style={{ fontFamily: "'EB Garamond', serif", fontStyle: 'italic', fontSize: '0.65rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginTop: '1px' }}>
+                  <div className="fp-book-title" style={{ fontSize: "0.65rem", marginTop: "1px" }}>
                     {b.a}
                   </div>
                 </div>
@@ -250,9 +250,7 @@ function FriendLibrary({ library, go, t }) {
           {hasMore && (
             <button
               onClick={() => setPage((p) => p + 1)}
-              style={{ display: 'block', width: '100%', marginTop: '1.5rem', padding: '0.75rem', background: 'transparent', border: '1px solid var(--border-subtle)', borderRadius: '2px', cursor: 'pointer', fontFamily: "'Cormorant Garamond', serif", fontStyle: 'italic', fontSize: '1rem', color: 'var(--text-muted)', transition: 'background 0.15s, border-color 0.15s' }}
-              onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--surface-hover)'; e.currentTarget.style.borderColor = 'var(--border-mid)'; }}
-              onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = 'var(--border-subtle)'; }}
+              className="btn-tertiary btn--block" style={{ marginTop: '1.5rem' }}
             >
               {t('friends.libraryLoadMore')} ({filtered.length - visible.length} {t('friends.moreBooks')})
             </button>
@@ -319,21 +317,21 @@ export default function FriendProfile() {
   }
 
   if (loading) return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '4rem', gap: '0.75rem' }}>
+    <div className="loading">
       <div className="loading-spinner" />
-      <span style={{ fontFamily: "'Special Elite', monospace", fontSize: 'var(--text-xs)', letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>
+      <span className="loading-text">
         {t('common.loading')}
       </span>
     </div>
   );
 
   if (notFound) return (
-    <div style={{ padding: '4rem 2rem', textAlign: 'center' }}>
-      <div style={{ fontFamily: "'Cormorant Garamond', serif", fontStyle: 'italic', fontSize: '2rem', color: 'var(--text-primary)', marginBottom: '0.75rem' }}>
+    <div className="lv-empty">
+      <div className="lv-empty-title">
         {t('friends.profileNotFound')}
       </div>
-      <p style={{ color: 'var(--text-muted)', fontStyle: 'italic' }}>{t('friends.profileNotFoundSub')}</p>
-      <button className="btn btn-ghost" style={{ marginTop: '1.5rem' }} onClick={() => go('dashboard')}>{t('common.goHome')}</button>
+      <p className="lv-empty-text">{t('friends.profileNotFoundSub')}</p>
+      <button className="btn-secondary" onClick={() => go('dashboard')}>{t('common.goHome')}</button>
     </div>
   );
 
@@ -371,29 +369,29 @@ export default function FriendProfile() {
         )}
 
         <div className="friend-profile__identity">
-          <h1 className="page-title" style={{ fontSize: 'clamp(1.6rem, 4vw, 2.4rem)', marginBottom: '0.2rem' }}>
+          <h1 className="fp-hero__name">
             {displayName}
           </h1>
           {profile.username && (
-            <div style={{ fontFamily: "'Special Elite', monospace", fontSize: 'var(--text-xs)', letterSpacing: '0.15em', color: 'var(--text-muted)', marginBottom: '0.75rem' }}>
+            <div className="fp-hero__handle">
               @{profile.username}
             </div>
           )}
-          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+          <div className="bp-meta">
             {booksThisYear > 0 && <span className="level-pill">▤ {t('friends.booksThisYear', { count: booksThisYear, year: thisYear })}</span>}
             {library.length > 0 && <span className="level-pill">◈ {t('friends.totalBooks', { count: library.length })}</span>}
             {reading.length > 0 && (
-              <span className="level-pill" style={{ background: 'var(--status-reading-bg)', borderColor: 'var(--status-reading-border)', color: 'var(--status-reading-fg)' }}>
+              <span className="level-pill" className="bp-pill">
                 ❧ {t('friends.currentlyReading', { count: reading.length })}
               </span>
             )}
           </div>
         </div>
 
-        <div style={{ marginLeft: 'auto', flexShrink: 0 }}>
+        <div className="fp-hero__actions">
           {friendBtn}
           {reqError && (
-            <div style={{ fontSize: 'var(--text-xs)', color: 'var(--blood-bright)', marginTop: '0.4rem', fontStyle: 'italic' }}>
+            <div className="pf-error">
               {t(`friends.reqError_${reqError}`) || t('friends.reqErrorGeneric')}
             </div>
           )}
@@ -423,15 +421,15 @@ export default function FriendProfile() {
 
       {/* Full library with filters */}
       <section className="friend-profile__section">
-        <div className="page-eyebrow" style={{ marginBottom: 'var(--space-2)' }}>
+        <div className="page-eyebrow">
           {t('friends.sectionLibrary')}
         </div>
         {!showLibrary ? (
-          <p style={{ fontFamily: "'EB Garamond', serif", fontStyle: 'italic', color: 'var(--text-muted)' }}>
+          <p className="fp-empty">
             {t('friends.libraryPrivate')}
           </p>
         ) : library.length === 0 ? (
-          <p style={{ fontFamily: "'EB Garamond', serif", fontStyle: 'italic', color: 'var(--text-muted)' }}>
+          <p className="fp-empty">
             {t('friends.libraryEmpty')}
           </p>
         ) : (
@@ -443,13 +441,12 @@ export default function FriendProfile() {
       {isSelf && profile.username && (
         <section className="friend-profile__section">
           <div className="page-eyebrow">{t('friends.shareProfile')}</div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.85rem 1rem', background: 'var(--surface-tint)', border: '1px solid var(--border-subtle)', borderRadius: '3px', flexWrap: 'wrap' }}>
-            <code style={{ flex: 1, fontSize: 'var(--text-sm)', color: 'var(--text-muted)', wordBreak: 'break-all' }}>
+          <div className="panel" style={{ display: "flex", gap: "0.75rem", padding: "0.85rem 1rem", alignItems: "center", flexWrap: "wrap" }}>
+            <code className="pf-username-url" style={{ flex: 1, wordBreak: "break-all" }}>
               {window.location.origin}/u/{profile.username}
             </code>
             <button
-              className="btn btn-ghost"
-              style={{ fontSize: 'var(--text-xs)', padding: '0.3rem 0.75rem', flexShrink: 0 }}
+              className="btn-tertiary btn--sm"
               onClick={() => navigator.clipboard?.writeText(`${window.location.origin}/u/${profile.username}`)}
             >
               {t('friends.copyLink')}

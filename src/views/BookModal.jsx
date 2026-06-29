@@ -524,7 +524,7 @@ export default function BookModal({ book, onClose, onOpenBook }) {
                     color: 'var(--paper-aged)',
                     lineHeight: 1.55,
                     fontStyle: 'italic',
-                    fontFamily: "'Cormorant Garamond', serif",
+                    fontFamily: 'var(--ro-font-display)',
                     fontSize: '1rem',
                     borderLeft: '2px solid rgba(176, 140, 63, 0.25)',
                     paddingLeft: '0.9rem',

@@ -1,112 +1,85 @@
-// components/_badges.scss
-// Reading level badge + all genre/status pill variants used across the app.
+// components/_badges.scss — The Books Oracle
+// Match badges, status tags, and genre filter chips — exact to the DS.
+//   .match        brass fill, mono — recommendation match score (one canonical badge)
+//   .match-pct    bare percentage variants (gold-text / muted)
+//   .status       pill tag — success / warn / neutral states (Book Page status)
+//   .chip         single-select genre filter pill — outline default, brass when active
 
-// ── Reading level / meta pill ─────────────────────────────────────────────────
-.level-pill {
+// ── Match badge ───────────────────────────────────────────────────────────────
+.match {
   display: inline-flex;
   align-items: center;
-  gap: 0.4rem;
-  background: rgba(176,140,63,0.1);
-  border: 1px solid rgba(176,140,63,0.4);
-  padding: 0.3rem 0.7rem;
-  border-radius: 20px;
-  font-family: 'Special Elite', monospace;
-  font-size: var(--text-xs);
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--gilt);
+  background: var(--ro-gold);
+  color: var(--ro-gold-on);
+  font-family: var(--ro-font-mono);
+  font-weight: 700;
+  font-size: 11px;
+  line-height: 1;
+  letter-spacing: .04em;
+  padding: 7px 10px;
+  border-radius: var(--ro-radius-sm);
+}
+.match-pct {
+  font-family: var(--ro-font-body);
+  font-weight: 700;
+  font-size: 15px;
+  line-height: 1;
+  &--high { color: var(--ro-gold-text); }
+  &--mid  { color: var(--ro-muted); }
 }
 
-// ── Semantic status pills ─────────────────────────────────────────────────────
-// Use these everywhere for read/reading/queued/wishlist states.
-// Replaces ad-hoc rgba() values throughout the codebase.
-.status-pill {
+// ── Status tag ────────────────────────────────────────────────────────────────
+.status {
   display: inline-flex;
   align-items: center;
-  gap: 0.3rem;
-  padding: 0.25rem 0.65rem;
-  border-radius: 20px;
-  border: 1px solid;
-  font-family: 'Special Elite', monospace;
-  font-size: var(--text-xs);
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  white-space: nowrap;
+  gap: 6px;
+  font-family: var(--ro-font-body);
+  font-weight: 600;
+  font-size: 12px;
+  line-height: 1;
+  padding: 7px 12px;
+  border-radius: var(--ro-radius-pill);
+  border: 1px solid var(--ro-border-strong);
+  background: var(--ro-surface-2);
+  color: var(--ro-muted);
+
+  &--success {
+    background: color-mix(in srgb, var(--ro-success) 18%, transparent);
+    color: var(--ro-success);
+    border-color: color-mix(in srgb, var(--ro-success) 40%, transparent);
+  }
+  &--warn,
+  &--reading {
+    background: color-mix(in srgb, var(--ro-gold) 16%, transparent);
+    color: var(--ro-gold-text);
+    border-color: color-mix(in srgb, var(--ro-gold) 40%, transparent);
+  }
+  // Reading-state semantics reused on shelves
+  &--read {
+    background: color-mix(in srgb, var(--ro-success) 18%, transparent);
+    color: var(--ro-success);
+    border-color: color-mix(in srgb, var(--ro-success) 40%, transparent);
+  }
 }
 
-.status-pill--read {
-  background: var(--status-read-bg);
-  color: var(--status-read-fg);
-  border-color: var(--status-read-border);
-}
+// ── Genre filter chip ─────────────────────────────────────────────────────────
+.chip {
+  border: 1px solid var(--ro-border-strong);
+  cursor: pointer;
+  font-family: var(--ro-font-body);
+  font-weight: 600;
+  font-size: 13px;
+  padding: 10px 18px;
+  border-radius: var(--ro-radius-pill);
+  background: transparent;
+  color: var(--ro-text-2);
+  transition: all .15s;
 
-.status-pill--reading {
-  background: var(--status-reading-bg);
-  color: var(--status-reading-fg);
-  border-color: var(--status-reading-border);
-}
+  &:hover { border-color: var(--ro-gold); color: var(--ro-gold-text); }
 
-.status-pill--queued {
-  background: var(--status-queued-bg);
-  color: var(--status-queued-fg);
-  border-color: var(--status-queued-border);
-}
-
-.status-pill--wishlist {
-  background: var(--status-wishlist-bg);
-  color: var(--status-wishlist-fg);
-  border-color: var(--status-wishlist-border);
-}
-
-// ── Card genre tag ────────────────────────────────────────────────────────────
-.card-tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.25rem;
-  margin-bottom: 0.8rem;
-
-  .card-tag { margin-bottom: 0; }
-}
-
-// ── BookModal genre pills ─────────────────────────────────────────────────────
-.book-modal-genres {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.35rem;
-  margin-bottom: 0.5rem;
-}
-
-.book-modal-genres .book-modal-genre,
-.book-modal-genre {
-  display: inline-block;
-  font-family: 'Special Elite', monospace;
-  font-size: var(--text-xs);
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--gilt);
-  border: 1px solid rgba(176,140,63,0.35);
-  padding: 0.2rem 0.5rem;
-  border-radius: 2px;
-  cursor: default;
-}
-
-// ── List view genre pills ─────────────────────────────────────────────────────
-.li-genres {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.25rem;
-  margin-top: 0.3rem;
-}
-
-.li-genre-pill {
-  font-family: 'Special Elite', monospace;
-  font-size: var(--text-xs);
-  letter-spacing: 0.10em;
-  text-transform: uppercase;
-  color: var(--gilt);
-  border: 1px solid rgba(176,140,63,0.3);
-  padding: 0.15rem 0.4rem;
-  border-radius: 2px;
-  opacity: 0.85;
-  cursor: default;
+  &--active {
+    background: var(--ro-gold);
+    color: var(--ro-gold-on);
+    border-color: var(--ro-gold);
+  }
 }

@@ -21,7 +21,7 @@ function Avatar({ displayName, avatarUrl, size = 26 }) {
     return <img src={avatarUrl} alt={displayName} onError={() => setFailed(true)} style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />;
   }
   return (
-    <div style={{ width: size, height: size, borderRadius: '50%', background: 'rgba(176,140,63,0.15)', border: '1px solid rgba(176,140,63,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Special Elite', monospace", fontSize: size * 0.36, color: 'var(--gilt)', flexShrink: 0 }}>
+    <div style={{ width: size, height: size, borderRadius: '50%', background: 'rgba(176,140,63,0.15)', border: '1px solid rgba(176,140,63,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--ro-font-mono)', fontSize: size * 0.36, color: 'var(--gilt)', flexShrink: 0 }}>
       {initials}
     </div>
   );
@@ -65,10 +65,10 @@ function CommentInput({ onPost, placeholder = 'Add a comment…', autoFocus = fa
           flex: 1,
           background: 'rgba(176,140,63,0.04)',
           border: '1px solid rgba(176,140,63,0.2)',
-          borderRadius: '2px',
+          borderRadius: 'var(--ro-radius-sm)',
           padding: '0.45rem 0.7rem',
           color: 'var(--paper)',
-          fontFamily: "'Cormorant Garamond', serif",
+          fontFamily: 'var(--ro-font-display)',
           fontSize: '0.95rem',
           resize: 'none',
           lineHeight: 1.5,
@@ -109,10 +109,10 @@ function EditInput({ initialBody, onSave, onCancel }) {
           flex: 1,
           background: 'rgba(176,140,63,0.04)',
           border: '1px solid rgba(176,140,63,0.3)',
-          borderRadius: '2px',
+          borderRadius: 'var(--ro-radius-sm)',
           padding: '0.45rem 0.7rem',
           color: 'var(--paper)',
-          fontFamily: "'Cormorant Garamond', serif",
+          fontFamily: 'var(--ro-font-display)',
           fontSize: '0.95rem',
           resize: 'none',
           colorScheme: 'dark',
@@ -162,7 +162,7 @@ function SingleComment({ comment, onPost, onDelete, onEdit, isReply = false }) {
           <EditInput initialBody={comment.body} onSave={handleEdit} onCancel={() => setEditing(false)} />
         ) : (
           <p style={{
-            fontFamily: "'Cormorant Garamond', serif",
+            fontFamily: 'var(--ro-font-display)',
             fontSize: '1rem',
             color: 'var(--paper-aged)',
             lineHeight: 1.55,
@@ -178,7 +178,7 @@ function SingleComment({ comment, onPost, onDelete, onEdit, isReply = false }) {
             {!isReply && (
               <button
                 onClick={() => setReplying(!replying)}
-                style={{ fontSize: '0.72rem', color: 'var(--paper-aged)', opacity: 0.5, background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontFamily: "'Special Elite', monospace", letterSpacing: '0.05em' }}
+                style={{ fontSize: '0.72rem', color: 'var(--paper-aged)', opacity: 0.5, background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontFamily: 'var(--ro-font-mono)', letterSpacing: '0.05em' }}
               >
                 {replying ? t('discussion.cancelReply') : t('discussion.reply')}
               </button>
@@ -187,13 +187,13 @@ function SingleComment({ comment, onPost, onDelete, onEdit, isReply = false }) {
               <>
                 <button
                   onClick={() => setEditing(true)}
-                  style={{ fontSize: '0.72rem', color: 'var(--paper-aged)', opacity: 0.5, background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontFamily: "'Special Elite', monospace", letterSpacing: '0.05em' }}
+                  style={{ fontSize: '0.72rem', color: 'var(--paper-aged)', opacity: 0.5, background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontFamily: 'var(--ro-font-mono)', letterSpacing: '0.05em' }}
                 >
                   {t('discussion.edit')}
                 </button>
                 <button
                   onClick={() => onDelete(comment.id)}
-                  style={{ fontSize: '0.72rem', color: 'rgba(180,60,60,0.6)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontFamily: "'Special Elite', monospace", letterSpacing: '0.05em' }}
+                  style={{ fontSize: '0.72rem', color: 'rgba(180,60,60,0.6)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontFamily: 'var(--ro-font-mono)', letterSpacing: '0.05em' }}
                 >{t('discussion.delete')}</button>
               </>
             )}

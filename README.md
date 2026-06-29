@@ -389,7 +389,7 @@ DELETE FROM public.announcements;
 
 **No DB migrations required.**
 
-The `FriendLibrary` toolbar in `FriendProfile.jsx` was using inline `style` objects with `var(--input-bg)`, `var(--text-primary)`, Special Elite monospace font, and no custom caret — matching neither dark nor light mode appearance of the rest of the app's filter controls.
+The `FriendLibrary` toolbar in `FriendProfile.jsx` was using inline `style` objects with `var(--input-bg)`, `var(--ro-text-primary)`, Special Elite monospace font, and no custom caret — matching neither dark nor light mode appearance of the rest of the app's filter controls.
 
 Fixed by switching to the established CSS classes: `.wishlist-toolbar` (flex row with space-between, wraps on mobile), `.wishlist-filters` (left group with gap), `.search-input` (dark background, gilt border, EB Garamond italic). The `select` elements now use inline styles that replicate the global `select` rule from `_oracle.scss` — `var(--shadow)` background, gilt SVG caret via `background-image`, `appearance: none`, EB Garamond italic. This matches the Library and Wishlist toolbar appearance exactly.
 
@@ -495,11 +495,11 @@ For users already affected (book stuck in `readNext` in saved preferences), a se
 
 **No DB migrations required.**
 
-**Token system extended.** `_tokens.scss` now defines three new groups: a semantic status palette (`--status-read-*`, `--status-reading-*`, `--status-queued-*`, `--status-wishlist-*`), a spacing scale (`--space-1` through `--space-5` at 8/16/24/40/64px), and a font-size floor (`--text-xs: 0.75rem`, `--text-sm`, `--text-base`). All hard-coded `rgba()` values throughout the codebase that express status or spacing now reference these tokens.
+**Token system extended.** `_tokens.scss` now defines three new groups: a semantic status palette (`--status-read-*`, `--status-reading-*`, `--status-queued-*`, `--status-wishlist-*`), a spacing scale (`--space-1` through `--space-5` at 8/16/24/40/64px), and a font-size floor (`--ro-text-xs: 0.75rem`, `--ro-text-sm`, `--ro-text-base`). All hard-coded `rgba()` values throughout the codebase that express status or spacing now reference these tokens.
 
-**Light mode rethought as parchment.** The previous light mode was a mechanical inversion of the dark palette — warm ink, beige text, gold that desaturated to ochre. It now uses a layered parchment approach: `--ink: #f5edd8` (warm cream base), `--paper: #2a1d0e` (rich sepia), `--gilt: #9a7a2e` (4.7:1 contrast on cream, up from 3.1:1), and explicit hex text tokens (`--text-muted: #6b5340` etc.) that replace the opacity-chain pattern that compounded contrast failures. `--border-subtle` and `--border-mid` are now ink-based in light mode rather than gilt-based, which gives borders more presence on warm surfaces.
+**Light mode rethought as parchment.** The previous light mode was a mechanical inversion of the dark palette — warm ink, beige text, gold that desaturated to ochre. It now uses a layered parchment approach: `--ink: #f5edd8` (warm cream base), `--paper: #2a1d0e` (rich sepia), `--gilt: #9a7a2e` (4.7:1 contrast on cream, up from 3.1:1), and explicit hex text tokens (`--ro-text-muted: #6b5340` etc.) that replace the opacity-chain pattern that compounded contrast failures. `--ro-border-subtle` and `--ro-border-mid` are now ink-based in light mode rather than gilt-based, which gives borders more presence on warm surfaces.
 
-**Opacity dimming eliminated from text.** The pattern `color: var(--paper-aged); opacity: 0.5–0.6` has been replaced throughout with explicit `--text-muted`, `--text-dim`, and `--text-faint` token references. Opacity chains on text are unsafe because each step compounds the contrast reduction — a 0.6 opacity on an already-reduced-contrast colour fails WCAG AA in light mode.
+**Opacity dimming eliminated from text.** The pattern `color: var(--paper-aged); opacity: 0.5–0.6` has been replaced throughout with explicit `--ro-text-muted`, `--ro-text-dim`, and `--ro-text-faint` token references. Opacity chains on text are unsafe because each step compounds the contrast reduction — a 0.6 opacity on an already-reduced-contrast colour fails WCAG AA in light mode.
 
 **Semantic status palette.** Reading status (read, currently reading, queued, wishlisted) previously borrowed brand colours — moss green for read, gilt for queued. Status now has its own token set with distinct hues: moss green (read), gilt (actively reading), slate blue (queued), plum (wishlisted). This frees the gold accent to remain purely decorative/premium. A `.status-pill--*` CSS class set in `_badges.scss` replaces the scattered inline `rgba()` badge definitions.
 
@@ -507,9 +507,9 @@ For users already affected (book stuck in `readNext` in saved preferences), a se
 
 **Series dots → progress track for long series.** Series with more than 6 books now render a 4px horizontal progress track with a filled read-count bar and a gilt position marker instead of crowded numbered dots. Series with ≤ 6 books keep the improved dots, which now use status tokens (`--status-read-*`, `--status-queued-*`) and have a subtle `box-shadow` ring on the current book. Dots also wrap gracefully on narrow screens via `flex-wrap: wrap`.
 
-**Eyebrow hierarchy.** Three tiers are now enforced: Tier 1 (page section labels — `Special Elite`, `0.35em` tracking, gilt) stays as-is. Tier 2 (component headers like modal section titles, series label, breadcrumbs) reduces tracking to `0.18em` and uses `--text-muted` instead of gilt. Tier 3 (inline metadata — author, date, feed verb) switches to `EB Garamond italic` at `0.875rem` with no uppercase. `.book-modal-section-title` was the main Tier 1 overuse; it now renders at Tier 2.
+**Eyebrow hierarchy.** Three tiers are now enforced: Tier 1 (page section labels — `Special Elite`, `0.35em` tracking, gilt) stays as-is. Tier 2 (component headers like modal section titles, series label, breadcrumbs) reduces tracking to `0.18em` and uses `--ro-text-muted` instead of gilt. Tier 3 (inline metadata — author, date, feed verb) switches to `EB Garamond italic` at `0.875rem` with no uppercase. `.book-modal-section-title` was the main Tier 1 overuse; it now renders at Tier 2.
 
-**Font-size floor enforced.** All UI text now respects `--text-xs: 0.75rem` (12px). Previous violations: pace chart month letters (8.8px), similar-card author (9.3px), feed verb/tag/date-label (9.3–9.9px). The similar-card author switched from `Special Elite uppercase 0.58rem` to `EB Garamond italic 0.75rem`. Pace chart month labels are tooltip-only (the letter labels remain, bumped to 0.75rem minimum).
+**Font-size floor enforced.** All UI text now respects `--ro-text-xs: 0.75rem` (12px). Previous violations: pace chart month letters (8.8px), similar-card author (9.3px), feed verb/tag/date-label (9.3–9.9px). The similar-card author switched from `Special Elite uppercase 0.58rem` to `EB Garamond italic 0.75rem`. Pace chart month labels are tooltip-only (the letter labels remain, bumped to 0.75rem minimum).
 
 **Similar books grid mobile cap.** At ≤ 500px, the auto-fill grid was squeezing up to 5 columns at 50px each, making covers unreadable. Now capped at 3 columns with `grid-template-columns: repeat(3, 1fr)`.
 
@@ -533,7 +533,7 @@ Patch release addressing regressions and missing features reported after v0.33.
 
 **Profile pace chart is now interactive.** Bars show a floating tooltip on hover (book count + full month name). Clicking a bar with books toggles a drill-down panel beneath the chart listing every book read that month with cover thumbnail, title, author, and star rating. `openBookTab` is passed as `onOpenBook` so covers are tappable.
 
-**Oracle toggle group visible in light mode.** `.toggle-group` had a hardcoded `rgba(13,9,7,0.6)` background — near-black in both modes. In light mode this made the button text invisible. Changed to `var(--surface-raised)` which correctly tracks the theme.
+**Oracle toggle group visible in light mode.** `.toggle-group` had a hardcoded `rgba(13,9,7,0.6)` background — near-black in both modes. In light mode this made the button text invisible. Changed to `var(--ro-surface-raised)` which correctly tracks the theme.
 
 **Series name validation prevents mismatched Hardcover results.** When Hardcover's series search returns a series with a different name than expected (e.g. searching "Bride" returns "Scared Sexy"), the fetched books are now discarded rather than merged. Both `BookPage` and `SeriesPage` normalize and compare the fetched series name against `display.s.name` before merging.
 

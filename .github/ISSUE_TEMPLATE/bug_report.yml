@@ -1,5 +1,5 @@
 name: 🐛 Bug Report
-description: Report something that isn't working as expected in Book Oracle.
+description: Report something that isn't working as expected in The Books Oracle.
 title: "[Bug]: "
 labels: ["bug", "needs-triage"]
 body:

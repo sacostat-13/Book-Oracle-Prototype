@@ -1,15 +1,13 @@
 // src/lib/ThemeContext.jsx
-// Theme switching — dark (default) and light modes.
-// Mirrors the I18nContext pattern exactly: localStorage persistence,
-// context + hook, toggler exposed for Nav to wire up.
-//
-// Applies [data-theme="light"] on <html>. All light-mode token overrides
-// live in tokens.scss under that selector — no inline styles needed anywhere.
+// Theme switching — dark (default) and parchment (light).
+// Design system v1: applies `theme-dark` | `theme-parchment` class on <body>
+// so the --ro-* CSS custom properties resolve from themes.css.
+// Also sets data-theme on <html> for any remaining legacy selectors.
 
 import { createContext, useContext, useEffect, useState, useCallback } from 'react';
 
 const STORAGE_KEY = 'oracle.theme';
-const SUPPORTED   = ['dark', 'light'];
+const SUPPORTED   = ['dark', 'parchment'];
 
 const ThemeContext = createContext(null);
 
@@ -19,8 +17,7 @@ function detectInitialTheme() {
     const stored = window.localStorage.getItem(STORAGE_KEY);
     if (stored && SUPPORTED.includes(stored)) return stored;
   } catch {}
-  // Respect OS preference on first visit
-  if (window.matchMedia?.('(prefers-color-scheme: light)').matches) return 'light';
+  if (window.matchMedia?.('(prefers-color-scheme: light)').matches) return 'parchment';
   return 'dark';
 }
 
@@ -29,8 +26,10 @@ export function ThemeProvider({ children }) {
 
   useEffect(() => {
     try { window.localStorage.setItem(STORAGE_KEY, theme); } catch {}
-    // data-theme on <html> is the single source of truth for CSS
-    document.documentElement.setAttribute('data-theme', theme);
+    // Apply new design system class to body
+    document.body.className = `theme-${theme}`;
+    // Legacy data-theme for any remaining old selectors
+    document.documentElement.setAttribute('data-theme', theme === 'parchment' ? 'light' : 'dark');
   }, [theme]);
 
   const setTheme = useCallback((next) => {
@@ -38,11 +37,14 @@ export function ThemeProvider({ children }) {
   }, []);
 
   const toggleTheme = useCallback(() => {
-    setThemeState((cur) => (cur === 'dark' ? 'light' : 'dark'));
+    setThemeState((cur) => (cur === 'dark' ? 'parchment' : 'dark'));
   }, []);
 
+  // Expose 'light' alias for legacy Nav.jsx checks (theme === 'light')
+  const themeAlias = theme === 'parchment' ? 'light' : 'dark';
+
   return (
-    <ThemeContext.Provider value={{ theme, setTheme, toggleTheme }}>
+    <ThemeContext.Provider value={{ theme: themeAlias, rawTheme: theme, setTheme, toggleTheme }}>
       {children}
     </ThemeContext.Provider>
   );

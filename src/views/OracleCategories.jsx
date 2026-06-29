@@ -229,7 +229,7 @@ Return ONLY valid JSON in this format:
           {loading ? t('oracle.categoriesDrawing') : t('oracle.categoriesDraw')}
         </button>
         {mode === 'ai' && quotaExhausted && (
-          <div style={{ marginTop: '0.75rem' }}>
+          <div className="lv-load-more">
             <OracleQuotaWall />
           </div>
         )}
@@ -237,7 +237,7 @@ Return ONLY valid JSON in this format:
 
       <section className="cards">
         {loading ? (
-          <div className="loading" style={{ gridColumn: '1 / -1' }}>
+          <div className="loading">
             <div className="loading-spinner"></div>
             <div className="loading-text">The oracle is divining…</div>
           </div>

@@ -5,8 +5,8 @@
   },
   "app": {
     "loading": "Opening the library…",
-    "brand": "The {wishlist} Oracle",
-    "brandAccent": "Wishlist"
+    "brand": "The Books Oracle",
+    "brandAccent": "The Books Oracle"
   },
   "nav": {
     "wishlist": "Wishlist",
@@ -37,6 +37,7 @@
     "listsLabel": "Lists",
     "bookClubsLabel": "Book Clubs",
     "oracleLabel": "Oracle",
+    "friends": "Friends",
     "notifications": "Notifications",
     "noNotifications": "No notifications yet",
     "notifFriendRequest": "wants to be your reading friend",
@@ -44,20 +45,22 @@
     "accept": "Accept",
     "decline": "Decline",
     "viewProfile": "View profile",
-    "someone": "Someone"
+    "someone": "Someone",
+    "myBooks": "My Books",
+    "social": "Social",
+    "parchmentMode": "Parchment"
   },
   "signIn": {
     "eyebrow": "Welcome",
     "desc": "Sign in to keep your library, wishlist, and reading plans synced across all your devices.",
     "continueGoogle": "Continue with Google ❦",
-    "guestPrompt": "Prefer to try it offline first? You can also {link} (your data will live in this browser only).",
+    "guestPrompt": "Prefer to try it offline first? You can also <em class=\"accent\">{link}</em> (your data will live in this browser only).",
     "guestLink": "continue as guest"
   },
   "dashboard": {
     "eyebrow": "Your Library",
     "greeting": "Good to see you, ",
-    "greetingBack": "Welcome ",
-    "greetingAccent": "back",
+    "greetingBack": "Welcome <em class=\"accent\">back</em>",
     "levelPill": "{level} reader",
     "booksRead": "{count} read",
     "inWishlist": "{count} in wishlist",
@@ -75,17 +78,13 @@
     "emptyFeedText": "Your reading story starts here.",
     "emptyFeedSub": "Mark a book as read or add one to your wishlist.",
     "showMore": "Show {count} more updates",
-    "ctaOracle": "The ",
-    "ctaOracleAccent": "Book Oracle",
+    "ctaOracle": "The <em class=\"accent\">Oracle</em>",
     "ctaOracleSub": "Draw from the vault by mood or genre",
-    "ctaPlan": "Create a ",
-    "ctaPlanAccent": "Reading Plan",
+    "ctaPlan": "Create a <em class=\"accent\">Reading Plan</em>",
     "ctaPlanSub": "A curated path to your next obsession",
-    "ctaWishlist": "Browse ",
-    "ctaWishlistAccent": "Wishlist",
+    "ctaWishlist": "Browse <em class=\"accent\">Wishlist</em>",
     "ctaWishlistSub": "Your queue of books to read",
-    "ctaLibrary": "View ",
-    "ctaLibraryAccent": "Library",
+    "ctaLibrary": "View <em class=\"accent\">Library</em>",
     "ctaLibrarySub": "Everything you've read",
     "feedFinished": "Finished",
     "feedStarted": "Started reading",
@@ -168,8 +167,6 @@
   "currentlyReading": {
     "breadcrumb": "Dashboard",
     "eyebrow": "In Progress",
-    "title": "Currently ",
-    "titleAccent": "Reading",
     "subtitleOne": "1 book in progress.",
     "subtitleMany": "{count} books in progress.",
     "subtitleEmpty": "No books in progress.",
@@ -188,13 +185,12 @@
     "updateProgress": "↑ Progress",
     "markFinished": "✓ Finished",
     "remove": "Remove",
-    "confirmRemove": "Remove \"{title}\" from currently reading?"
+    "confirmRemove": "Remove \"{title}\" from currently reading?",
+    "pageTitle": "Currently <em class=\"accent\">Reading</em>"
   },
   "readNext": {
     "breadcrumb": "Dashboard",
     "eyebrow": "Queue",
-    "title": "To Read ",
-    "titleAccent": "Next",
     "subtitle": "{count} books waiting.",
     "subtitleOne": "1 book waiting.",
     "subtitleEmpty": "Nothing queued yet.",
@@ -203,12 +199,11 @@
     "openOracle": "Open the Oracle",
     "start": "▶ Start",
     "markRead": "✓ Read",
-    "remove": "Remove"
+    "remove": "Remove",
+    "pageTitle": "To Read <em class=\"accent\">Next</em>"
   },
   "wishlist": {
     "eyebrow": "Wishlist",
-    "title": "My ",
-    "titleAccent": "Wishlist",
     "subtitle": "{count} books.",
     "subtitleOne": "1 book.",
     "subtitleEmpty": "Your wishlist is empty.",
@@ -237,12 +232,11 @@
     "startReading": "▶ Start reading",
     "markRead": "✓ Mark as read",
     "addToNext": "→ Read next",
-    "remove": "Remove"
+    "remove": "Remove",
+    "pageTitle": "My <em class=\"accent\">Wishlist</em>"
   },
   "library": {
     "eyebrow": "Library",
-    "title": "Books I've ",
-    "titleAccent": "Read",
     "subtitle": "{count} books across {genres} genre.",
     "subtitlePlural": "{count} books across {genres} genres.",
     "subtitleEmpty": "Your library is empty.",
@@ -260,23 +254,18 @@
     "editRating": "✎ Rating",
     "remove": "Remove",
     "finishedOn": "Finished {date}",
-    "stars": "{count} ★"
+    "stars": "{count} ★",
+    "pageTitle": "Books I've <em class=\"accent\">Read</em>"
   },
   "oracle": {
     "breadcrumbDashboard": "Dashboard",
     "forkEyebrow": "Wishlist Oracle",
-    "forkTitle": "How shall we ?",
-    "forkTitleAccent": "divine",
     "forkSubtitle": "Two ways to draw books from the vault.",
-    "forkByGenres": "By ",
-    "forkByGenresAccent": "genres",
+    "forkByGenres": "<em class=\"accent\">By genres</em>",
     "forkByGenresDesc": "Pick a temperament — folk horror, gothic, sapphic, Latin American — and draw three books to choose from.",
-    "forkBySimilar": "Based on ",
-    "forkBySimilarAccent": "other books",
+    "forkBySimilar": "<em class=\"accent\">Based on other books</em>",
     "forkBySimilarDesc": "Tell us 1–3 books you've loved. We'll find others with the same blood in them.",
     "categoriesEyebrow": "By genres",
-    "categoriesTitle": "Choose a ",
-    "categoriesTitleAccent": "temperament",
     "categoriesSubtitle": "Three books drawn fresh, {source}.",
     "sourceWishlist": "from your wishlist",
     "sourceVault": "from the Vault",
@@ -289,8 +278,6 @@
     "drawButton": "Draw from the vault ❦",
     "drawingButton": "The Oracle is reading…",
     "similarEyebrow": "Based on other books",
-    "similarTitle": "Pick  you've loved",
-    "similarTitleAccent": "1–3 books",
     "similarSubtitle": "Select seeds below, then let the Oracle find kindred titles.",
     "selectUp3": "Select up to 3 books below…",
     "findSimilar": "Find similar books ❦",
@@ -316,13 +303,14 @@
     "quotaBadgeMonth": "{remaining} of {limit} left this month",
     "quotaEmptyMonth": "Monthly limit reached",
     "quotaWallEyebrowMonth": "Monthly limit reached",
-    "quotaWallBodyMonth": "Free accounts include {limit} AI calls per month."
+    "quotaWallBodyMonth": "Free accounts include {limit} AI calls per month.",
+    "forkPageTitle": "How shall we <em class=\"accent\">divine</em>?",
+    "categoriesPageTitle": "Choose a <em class=\"accent\">temperament</em>",
+    "similarPageTitle": "Pick <em class=\"accent\">1–3 books</em> you've loved"
   },
   "plans": {
     "breadcrumb": "Dashboard",
     "createEyebrow": "Reading Plan",
-    "createTitle": "Chart a ",
-    "createTitleAccent": "path",
     "createSubtitle": "Tell the Oracle where you want to go. It'll build a paced reading plan for you.",
     "viewEyebrow": "Reading Plan",
     "noActivePlan": "No active plan",
@@ -348,12 +336,11 @@
     "noActivePlanDeleteError": "Could not delete plan — try again",
     "createOwnPlan": "Create my own plan",
     "yourPlanBreadcrumb": "Your Reading Plan",
-    "createPlanBreadcrumb": "Create Reading Plan"
+    "createPlanBreadcrumb": "Create Reading Plan",
+    "createPageTitle": "Chart a <em class=\"accent\">path</em>"
   },
   "lists": {
     "eyebrow": "My Lists",
-    "title": "Curated ",
-    "titleAccent": "Lists",
     "emptyTitle": "No lists yet",
     "emptyText": "Create a list to curate and share your favourite reads.",
     "newList": "+ New list",
@@ -388,7 +375,8 @@
     "copyLink": "Copy link",
     "emptyList": "Empty list — click to add books",
     "selectMode": "Select",
-    "descPlaceholder2": "What's this list about?"
+    "descPlaceholder2": "What's this list about?",
+    "pageTitle": "Curated <em class=\"accent\">Lists</em>"
   },
   "bookPage": {
     "loading": "Loading…",
@@ -458,8 +446,6 @@
   },
   "profile": {
     "eyebrow": "Profile",
-    "title": "Your ",
-    "titleAccent": "reading profile",
     "booksRead": "books read",
     "pagesRead": "pages read",
     "thisYear": "this year",
@@ -494,7 +480,6 @@
     "csvReadError": "Couldn't read that file.",
     "importBtn": "Import Goodreads CSV",
     "resetBtn": "Reset all data",
-    "titlePrefix": "Your ",
     "sectionStats": "Reading stats",
     "statBooksRead": "books read",
     "statThisYear": "{count} this year",
@@ -560,7 +545,8 @@
     "friendsEmpty": "No friends yet. Share your profile link to connect.",
     "friendsRemove": "Remove",
     "shareProfile": "Your profile link",
-    "copyLink": "Copy"
+    "copyLink": "Copy",
+    "pageTitle": "Your <em class=\"accent\">reading profile</em>"
   },
   "onboarding": {
     "step1Eyebrow": "Step 1 of 3 · Reader profile",
@@ -742,8 +728,6 @@
   },
   "clubs": {
     "eyebrow": "Community",
-    "title": "Book ",
-    "titleAccent": "Clubs",
     "subtitle": "Read together. Track progress. Discuss in sessions.",
     "newClub": "+ New book club",
     "emptyTitle": "No clubs yet",
@@ -751,8 +735,6 @@
     "roleAdmin": "✦ Admin",
     "roleMember": "Member",
     "createEyebrow": "Community",
-    "createTitle": "New ",
-    "createTitleAccent": "Book Club",
     "createSubtitle": "Once created, you'll get a join link to share with members.",
     "fieldName": "Club name *",
     "fieldNamePlaceholder": "e.g. Gothic Lit Society",
@@ -797,13 +779,13 @@
     "createBreadcrumb": "Book Clubs",
     "createNewBreadcrumb": "New Club",
     "confirmLeaveText": "Leave this club?",
-    "memberBadge": "Member"
+    "memberBadge": "Member",
+    "pageTitle": "Book <em class=\"accent\">Clubs</em>",
+    "createPageTitle": "New <em class=\"accent\">Book Club</em>"
   },
   "sessions": {
     "breadcrumbNew": "New Session",
     "createEyebrow": "{clubName}",
-    "createTitle": "New ",
-    "createTitleAccent": "Session",
     "fieldBook": "Book *",
     "fieldBookPlaceholder": "Search by title or author…",
     "fieldStarts": "Starts *",
@@ -852,7 +834,8 @@
     "sessionNotFoundText": "This session may have been removed, or you are not a member of the club.",
     "backToClubs": "Back to clubs",
     "loadingSession": "Loading session…",
-    "saveBookError": "Could not save book — try again"
+    "saveBookError": "Could not save book — try again",
+    "createPageTitle": "New <em class=\"accent\">Session</em>"
   },
   "discussion": {
     "questionsLabel": "Discussion questions",
@@ -927,19 +910,18 @@
     "loadingText": "Checking invitation…",
     "joiningText": "Joining …",
     "invalidEyebrow": "Oops",
-    "invalidTitle": "Invalid ",
-    "invalidTitleAccent": "invitation",
     "invalidText": "This join link is invalid or has expired. Ask the club admin for a fresh link.",
     "myClubs": "My clubs",
     "joinedEyebrow": "Welcome",
-    "joinedTitle": "You've joined ",
     "joinedText": "Taking you to the club…",
     "invitedEyebrow": "You've been invited",
-    "previewTitle": "Join ",
     "joinBtn": "Join club ❦",
     "signInToJoin": "Sign in with Google to join",
     "needAccount": "You need an account to join a book club.",
-    "joinError": "Could not join — the link may have expired."
+    "joinError": "Could not join — the link may have expired.",
+    "invalidPageTitle": "Invalid <em class=\"accent\">invitation</em>",
+    "joinedPageTitle": "You've joined <em class=\"accent\">{name}</em>",
+    "previewPageTitle": "Join <em class=\"accent\">{name}</em>"
   },
   "search": {
     "placeholder": "Search books…",
@@ -979,8 +961,6 @@
   "about": {
     "breadcrumb": "Dashboard",
     "eyebrow": "About",
-    "title": "About the ",
-    "titleAccent": "Oracle",
     "subtitle": "Why this exists, what it does, and where it's going.",
     "originHeading": "Why the Oracle exists",
     "originBody1": "Most readers I know have an Amazon wishlist, a Goodreads pile, a Notes app full of titles, a stack on the nightstand. Hundreds of books in queue — and somehow, every Friday night, we still spend twenty minutes deciding what to read next.",
@@ -1068,7 +1048,8 @@
     "legalHeading": "Legal",
     "privacyLink": "Privacy Policy",
     "termsLink": "Terms of Service",
-    "refundLink": "Refund Policy"
+    "refundLink": "Refund Policy",
+    "pageTitle": "About the <em class=\"accent\">Oracle</em>"
   },
   "shelfScene": {
     "empty": "Your shelves are empty. Read a book or add one to fill them.",
@@ -1237,7 +1218,12 @@
     "privacy": "Privacy",
     "terms": "Terms",
     "refund": "Refund",
-    "about": "About"
+    "about": "About",
+    "tagline": "Your reading companion — wishlist, library, plans and an Oracle that knows what you'll love next.",
+    "copyright": "© {year} The Books Oracle",
+    "madeIn": "Made in Costa Rica",
+    "product": "Product",
+    "legal": "Legal"
   },
   "notifications": {
     "someone": "Someone",

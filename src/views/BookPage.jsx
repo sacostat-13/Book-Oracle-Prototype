@@ -73,7 +73,7 @@ function SimilarBooks({ similar }) {
 
   return (
     <div className="book-page-similar">
-      <div className="book-modal-section-title" style={{ marginBottom: '1.25rem' }}>
+      <div className="book-modal-section-title">
         {t('bookPage.youMightAlsoLike')}
       </div>
       <div className="similar-grid">
@@ -118,13 +118,13 @@ function CategoryPill({ category, removing, canRemove, onRemove }) {
   return (
     <span
       className="level-pill"
-      style={{ ...baseStyle, opacity: removing ? 0.4 : baseStyle.opacity || 1, display: 'inline-flex', alignItems: 'center', gap: showRemove ? '0.35rem' : 0 }}
+      className="bp-cat" style={{ ...baseStyle, opacity: removing ? 0.4 : 1 }}
       title={verified ? 'Verified by our editors' : 'Your private category'}
     >
-      {verified && <span style={{ flexShrink: 0 }}>☩</span>}
+      {verified && <span>☩</span>}
       <span>{name}</span>
       {showRemove && (
-        <button onClick={onRemove} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'inherit', opacity: 0.6, fontSize: '1rem', padding: '0 0.1rem', lineHeight: 1 }}>×</button>
+        <button onClick={onRemove} className="bp-cat__remove">×</button>
       )}
     </span>
   );
@@ -322,7 +322,7 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
 
   if (notFound) {
     return (
-      <div className="empty-state" style={{ paddingTop: '4rem' }}>
+      <div className="empty-state lv-empty">
         <div className="ornament">❦</div>
         <div className="empty-state-title">
           {t('bookPage.notFound')}
@@ -330,7 +330,7 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
         <div className="empty-state-text">
           {t('bookPage.notInCollection')}
         </div>
-        <button className="btn" style={{ marginTop: '1.5rem' }} onClick={() => go(from)}>
+        <button className="btn-primary" onClick={() => go(from)}>
           {t('onboarding.back')}
         </button>
       </div>
@@ -353,13 +353,13 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
             )}
             <h2 className="book-modal-title">{snapshotBook.t}</h2>
             <div className="book-modal-author">{snapshotBook.a}</div>
-            <div className="book-page-actions" style={{ marginTop: '1.5rem' }}>
+            <div className="book-page-actions bp-actions">
               {authPending || (isAuthed && !dataReady) ? (
-                <span style={{ fontSize: '0.8rem', color: 'var(--text-dim)', fontStyle: 'italic' }}>
+                <span className="bp-loading-note">
                   {t('bookPage.loadingLibrary')}
                 </span>
               ) : !isAuthed ? (
-                <a href={window.location.pathname} className="btn btn-ghost" style={{ textDecoration: 'none' }}>
+                <a href={window.location.pathname} className="btn-secondary">
                   {t('bookPage.signInToAdd')}
                 </a>
               ) : null}
@@ -478,7 +478,7 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
             className={`series-dot ${cls}`}
             title={`${entry.t}${read ? ' — read' : queued ? ' — queued' : ''}`}
             onClick={() => !isCurrent && go('book-page', buildBookPageParams(entry, 'book-page', display.t))}
-            style={{ cursor: isCurrent ? 'default' : 'pointer' }}
+            
           >
             {i}
           </div>
@@ -500,7 +500,7 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
       <div className="breadcrumb">
         <a onClick={() => go(from)}>{fromLabel}</a>
         {' · '}
-        <span style={{ opacity: 0.6 }}>{display.t}</span>
+        <span className="lv-hl-muted">{display.t}</span>
       </div>
 
       {/* Hero */}
@@ -511,7 +511,7 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
 
         <div className="book-page-info">
           {genres.length > 0 && (
-            <div className="book-modal-genres" style={{ marginBottom: '0.75rem' }}>
+            <div className="book-modal-genres">
               {genres.map((g) => (
                 <span key={g.name} className="book-modal-genre" title={g.description || undefined}>
                   {g.name}
@@ -524,18 +524,18 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
           <div className="book-page-author">{display.a}</div>
 
           {/* Meta pills */}
-          <div className="book-modal-meta" style={{ marginTop: '0.75rem' }}>
+          <div className="book-modal-meta bp-meta">
             {display.pp && <span className="level-pill">📄 {display.pp} {t('profile.statPages')}</span>}
             {display.c && <span className="level-pill">prose {'●'.repeat(display.c)}{'○'.repeat(5 - display.c)}</span>}
             {display.p && <span className="level-pill">depth {'●'.repeat(display.p)}{'○'.repeat(5 - display.p)}</span>}
             {(display.status === 'verified' || display.status === 'oracle_categorized') && (
-              <span className="level-pill" style={{ background: 'rgba(176, 140, 63, 0.18)', borderColor: 'var(--gilt)', color: 'var(--gilt-bright)' }}
+              <span className="level-pill" className="bp-pill bp-pill--ro-gold"
                 title="Curated · verified by our editors">
                 {t('bookPage.verified')}
               </span>
             )}
             {inLib && (
-              <span className="level-pill" style={{ background: 'var(--moss)', borderColor: 'var(--moss)' }}>
+              <span className="level-pill" className="bp-pill bp-pill--moss">
                 ✓ {t('navSearch.statusRead')}
               </span>
             )}
@@ -553,9 +553,9 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
 
           {/* Series */}
           {seriesLoading && display.s?.name && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 0', opacity: 0.4 }}>
-              <div className="loading-spinner" style={{ width: 16, height: 16 }} />
-              <span style={{ fontFamily: "'Special Elite',monospace", fontSize: '0.65rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--paper-aged)' }}>
+            <div className="bp-loading-note">
+              <div className="loading-spinner" />
+              <span className="t-overline">
                 {t('bookPage.loadingSeries')}
               </span>
             </div>
@@ -571,8 +571,8 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
             return (
               <div className="book-page-series">
                 {/* Label row — eyebrow left, open-series pill right */}
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.4rem' }}>
-                  <div className="book-page-series-label" style={{ marginBottom: 0 }}>
+                <div className="bp-series__head">
+                  <div className="book-page-series-label">
                     {t('bookPage.partOfSeries')}
                   </div>
                   <button
@@ -588,14 +588,14 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
                 <div
                   className="series-name"
                   onClick={goToSeries}
-                  style={{ cursor: 'pointer' }}
+                  
                 >
                   {name}
                 </div>
 
                 {useTrack ? (
                   <div className="series-track">
-                    <div className="series-track__fill" style={{ width: `${trackReadPct}%` }} />
+                    <div className="series-track__fill" style={{ '--sp-pct': `${trackReadPct}%` }} />
                     <div className="series-track__cursor" style={{ left: `${Math.max(0, Math.min(100, trackCursorPct))}%` }} />
                   </div>
                 ) : (
@@ -617,7 +617,7 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
           <div className="book-page-actions">
             {authPending ? (
               // Auth check in progress — don't flash sign-in prompt
-              <span style={{ fontSize: '0.8rem', color: 'var(--text-dim)', fontStyle: 'italic' }}>
+              <span className="bp-loading-note">
                 {t('common.loading')}
               </span>
             ) : !isAuthed ? (
@@ -625,13 +625,13 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
               <a
                 href={window.location.pathname}
                 className="btn btn-ghost"
-                style={{ textDecoration: 'none' }}
+                className="bp-link"
               >
                 {t('bookPage.signInToAdd')}
               </a>
             ) : !dataReady ? (
               // Signed in but data still loading
-              <span style={{ fontSize: '0.8rem', color: 'var(--text-dim)', fontStyle: 'italic' }}>
+              <span className="bp-loading-note">
                 {t('bookPage.loadingLibrary')}
               </span>
             ) : inLib ? (
@@ -653,7 +653,7 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
                   {t('bookPage.addToNext')}
                 </button>
                 {!inWish && (
-                  <button className="btn btn-gilt" onClick={() => addToWishlist(display)}>
+                  <button className="btn-tertiary" onClick={() => addToWishlist(display)}>
                     {t('bookPage.addToWishlist')}
                   </button>
                 )}
@@ -675,7 +675,7 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
                   target="_blank"
                   rel="noopener noreferrer"
                   className="btn btn-ghost"
-                  style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', fontSize: '0.8rem' }}
+                  className="bp-link"
                 >
                   ↗ {link.label}
                 </a>
@@ -697,7 +697,7 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
                   href={display.wikipediaUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  style={{ color: 'var(--paper-aged)', opacity: 0.7, fontSize: '0.65rem', textDecoration: 'none', borderBottom: '1px dotted rgba(176,140,63,0.3)' }}
+                  className="bp-wiki-link"
                 >
                   from wikipedia ↗
                 </a>
@@ -710,7 +710,7 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
 
       {/* Series plan CTA — open series now lives in the series block above */}
       {/* {seriesBlock && (
-        <div style={{ marginTop: '1rem', display: 'flex', gap: '0.6rem', flexWrap: 'wrap', paddingLeft: '1.25rem' }}>
+        <div className="bp-actions">
           <button
             className="li-action success"
             onClick={() => go('plan-create', { seriesName: seriesBlock.name })}
@@ -722,34 +722,34 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
 
       {/* Rating & notes — only shown for books in library */}
       {inLib && (
-        <div className="book-page-body" style={{ marginTop: '2rem' }}>
+        <div className="book-page-body bp-section">
           <div
             className="book-modal-section-title"
-            style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.6rem' }}
+            className="bp-section__head"
           >
             <span>{t('rating.eyebrowEdit')}</span>
             <button
               className="li-action"
               onClick={() => setRatingEditorOpen(true)}
-              style={{ fontSize: '0.7rem', padding: '0.3rem 0.7rem' }}
+
             >
               {liveRating > 0 || liveNotes ? t('common.edit') : t('bookModal.addRating')}
             </button>
           </div>
           {liveRating > 0 ? (
-            <div style={{ color: 'var(--gilt-bright)', fontSize: '1.4rem', letterSpacing: '0.1em', marginBottom: liveNotes ? '0.8rem' : 0 }}>
+            <div className="bp-stars">
               {'★'.repeat(liveRating)}
-              <span style={{ color: 'rgba(176,140,63,0.25)' }}>{'★'.repeat(5 - liveRating)}</span>
+              <span className="bp-stars__empty">{'★'.repeat(5 - liveRating)}</span>
             </div>
           ) : (
             !liveNotes && (
-              <div style={{ color: 'var(--paper-aged)', opacity: 0.6, fontSize: '0.9rem', fontStyle: 'italic' }}>
+              <div className="bp-no-rating">
                 {t('bookModal.notRatedYet')}
               </div>
             )
           )}
           {liveNotes && (
-            <div style={{ color: 'var(--paper-aged)', lineHeight: 1.55, fontStyle: 'italic', fontSize: '1rem', fontFamily: "'EB Garamond', serif", maxWidth: '680px' }}>
+            <div className="bp-notes">
               {liveNotes}
             </div>
           )}
@@ -757,22 +757,22 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
       )}
 
       {/* Categories */}
-      <div className="book-page-body" style={{ marginTop: '2rem' }}>
+      <div className="book-page-body bp-section">
         <div
           className="book-modal-section-title"
-          style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.6rem' }}
+          className="bp-section__head"
         >
           <span>
             {t('bookModal.categories')}
             {categories.length > 0 && (
-              <span style={{ opacity: 0.5, marginLeft: '0.4rem', fontSize: '0.7rem' }}>· {categories.length}/10</span>
+              <span className="bp-section__count">· {categories.length}/10</span>
             )}
           </span>
           {canAddCategories && !atCategoryCap && (
             <button
               className="li-action"
               onClick={() => setAdderOpen((v) => !v)}
-              style={{ fontSize: '0.7rem', padding: '0.3rem 0.7rem' }}
+
             >
               {adderOpen ? t('bookModal.done') : t('bookModal.addCategory')}
             </button>
@@ -780,11 +780,11 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
         </div>
 
         {categories.length === 0 && !adderOpen ? (
-          <div style={{ color: 'var(--paper-aged)', opacity: 0.6, fontSize: '0.9rem', fontStyle: 'italic' }}>
+          <div className="bp-no-rating">
             {t('categories.noCategories')}
           </div>
         ) : (
-          <div style={{ display: 'flex', gap: '0.45rem', flexWrap: 'wrap', alignItems: 'center' }}>
+          <div className="bp-cats">
             {categories.map((c) => (
               <CategoryPill
                 key={c.categoryId}
@@ -797,13 +797,13 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
           </div>
         )}
         {adderOpen && canAddCategories && (
-          <div style={{ marginTop: categories.length > 0 ? '0.85rem' : '0.6rem' }}>
+          <div >
             <CategoryAutocomplete
               book={display}
               existingIds={existingCategoryIds}
               onCapHit={() => setAdderOpen(false)}
             />
-            <div style={{ marginTop: '0.5rem', fontSize: '0.75rem', color: 'var(--paper-aged)', opacity: 0.55, fontStyle: 'italic' }}>
+            <div className="bp-cat-help">
               {t('categories.removeHelp')}
             </div>
           </div>

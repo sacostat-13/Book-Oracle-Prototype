@@ -43,7 +43,7 @@ export default function CurrentReleaseFooter() {
         >
           <span
             style={{
-              fontFamily: "'Special Elite', monospace",
+              fontFamily: 'var(--ro-font-mono)',
               fontSize: '0.75rem',
               letterSpacing: '0.18em',
               textTransform: 'uppercase',
@@ -58,7 +58,7 @@ export default function CurrentReleaseFooter() {
         <div
           style={{
             color: 'var(--paper)',
-            fontFamily: "'Cormorant Garamond', serif",
+            fontFamily: 'var(--ro-font-display)',
             fontStyle: 'italic',
             fontSize: '1.15rem',
             marginBottom: '0.8rem',

@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useData } from '../lib/DataContext';
 import { useRouter } from '../lib/RouterContext';
-import { useT } from '../lib/I18nContext';
+import { useT, useTNode } from '../lib/I18nContext';
 import { supabase } from '../lib/supabase';
 import { lookupByTitle } from '../lib/bookLookup';
 import BookCover from '../components/BookCover';
@@ -11,11 +11,11 @@ import BookCover from '../components/BookCover';
 const inputStyle = {
   width: '100%', boxSizing: 'border-box',
   background: 'rgba(176, 140, 63, 0.04)', border: '1px solid rgba(176, 140, 63, 0.25)',
-  borderRadius: '2px', padding: '0.6rem 0.85rem', color: 'var(--paper)',
-  fontFamily: "'Cormorant Garamond', serif", fontSize: '1.05rem',
+  borderRadius: 'var(--ro-radius-sm)', padding: '0.6rem 0.85rem', color: 'var(--paper)',
+  fontFamily: 'var(--ro-font-display)', fontSize: '1.05rem',
 };
 const labelStyle = {
-  display: 'block', fontFamily: "'Special Elite', monospace", fontSize: '0.72rem',
+  display: 'block', fontFamily: 'var(--ro-font-mono)', fontSize: '0.72rem',
   letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--gilt)', marginBottom: '0.4rem',
 };
 
@@ -31,6 +31,7 @@ export default function SessionCreate() {
   const { state, showToast, upsertBookOnServer } = useData();
   const { go, route } = useRouter();
   const t = useT();
+  const tNode = useTNode();
 
   const clubId = route.params?.clubId;
   const club = (state.clubs || []).find((c) => c.id === clubId);
@@ -87,7 +88,7 @@ export default function SessionCreate() {
       </div>
       <div className="page-header">
         <div className="page-eyebrow">{club?.name || t('clubs.titleAccent')}</div>
-        <h1 className="page-title">{t('sessions.createTitle', { accent: <span className="accent">{t('sessions.createTitleAccent')}</span> })}</h1>
+        <h1 className="page-title">{tNode('sessions.createPageTitle')}</h1>
       </div>
 
       <div style={{ maxWidth: 560, display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
@@ -97,7 +98,7 @@ export default function SessionCreate() {
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.6rem 0.85rem', border: '1px solid rgba(176,140,63,0.35)', borderRadius: 2, background: 'rgba(176,140,63,0.04)' }}>
               <BookThumb book={selectedBook} size={32} />
               <div style={{ flex: 1 }}>
-                <div style={{ fontFamily: "'Cormorant Garamond', serif", fontStyle: 'italic', color: 'var(--paper)', fontSize: '1rem' }}>{selectedBook.t}</div>
+                <div style={{ fontFamily: 'var(--ro-font-display)', fontStyle: 'italic', color: 'var(--paper)', fontSize: '1rem' }}>{selectedBook.t}</div>
                 {selectedBook.a && <div style={{ fontSize: '0.8rem', color: 'var(--paper-aged)', opacity: 0.65 }}>{selectedBook.a}</div>}
               </div>
               <button className="li-action" onClick={() => { setSelectedBook(null); setBookQuery(''); setBookResults([]); }}>{t('sessions.changeBook')}</button>
@@ -116,7 +117,7 @@ export default function SessionCreate() {
                     >
                       <BookThumb book={b} size={28} />
                       <div>
-                        <div style={{ fontSize: '0.9rem', color: 'var(--paper)', fontFamily: "'Cormorant Garamond', serif", fontStyle: 'italic' }}>{b.t}</div>
+                        <div style={{ fontSize: '0.9rem', color: 'var(--paper)', fontFamily: 'var(--ro-font-display)', fontStyle: 'italic' }}>{b.t}</div>
                         {b.a && <div style={{ fontSize: '0.75rem', color: 'var(--paper-aged)', opacity: 0.6 }}>{b.a}</div>}
                       </div>
                     </div>

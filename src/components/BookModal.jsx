@@ -239,7 +239,7 @@ export default function BookModal({ book, onClose, onOpenBook }) {
             className={`series-dot ${cls}`}
             title={`${entry.t}${read ? ' — read' : queued ? ' — queued' : ''}`}
             onClick={() => isCurrent ? null : onOpenBook?.(entry)}
-            style={{ cursor: isCurrent ? 'default' : 'pointer' }}
+            
           >
             {i}
           </div>
@@ -344,14 +344,14 @@ export default function BookModal({ book, onClose, onOpenBook }) {
               {(display.status === 'verified' || display.status === 'oracle_categorized') && (
                 <span
                   className="level-pill"
-                  style={{ background: 'rgba(176, 140, 63, 0.18)', borderColor: 'var(--gilt)', color: 'var(--gilt-bright)' }}
+                  className="bp-pill bp-pill--ro-gold"
                   title="Curated · verified by our editors"
                 >
                   ☩ Verified
                 </span>
               )}
               {inLib && (
-                <span className="level-pill" style={{ background: 'var(--moss)', color: 'var(--paper)', borderColor: 'var(--moss)' }}>
+                <span className="level-pill" className="bp-pill bp-pill--moss">
                   ✓ Read
                 </span>
               )}
@@ -372,14 +372,7 @@ export default function BookModal({ book, onClose, onOpenBook }) {
                       href={display.wikipediaUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      style={{
-                        color: 'var(--paper-aged)',
-                        opacity: 0.7,
-                        fontSize: '0.65rem',
-                        letterSpacing: '0.08em',
-                        textDecoration: 'none',
-                        borderBottom: '1px dotted rgba(176, 140, 63, 0.3)',
-                      }}
+                      className="bp-wiki-link"
                       title="Description sourced from Wikipedia"
                     >
                       from wikipedia ↗
@@ -394,13 +387,12 @@ export default function BookModal({ book, onClose, onOpenBook }) {
           {/* v0.12: Categories — live pills with add/remove */}
           <div className="book-modal-section">
             <div
-              className="book-modal-section-title"
-              style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.6rem' }}
+              className="bp-section__head"
             >
               <span>
                 {t('bookModal.categories')}
                 {categories.length > 0 && (
-                  <span style={{ opacity: 0.5, marginLeft: '0.4rem', fontSize: '0.7rem' }}>
+                  <span className="bp-section__count">
                     · {categories.length}/10
                   </span>
                 )}
@@ -409,7 +401,7 @@ export default function BookModal({ book, onClose, onOpenBook }) {
                 <button
                   className="li-action"
                   onClick={() => setAdderOpen((v) => !v)}
-                  style={{ fontSize: '0.7rem', padding: '0.3rem 0.7rem' }}
+                  
                 >
                   {adderOpen
                     ? t('bookModal.done')
@@ -420,17 +412,12 @@ export default function BookModal({ book, onClose, onOpenBook }) {
 
             {categories.length === 0 && !adderOpen ? (
               <div
-                style={{
-                  color: 'var(--paper-aged)',
-                  opacity: 0.6,
-                  fontSize: '0.9rem',
-                  fontStyle: 'italic',
-                }}
+                className="bp-no-rating"
               >
                 {t('categories.noCategories')}
               </div>
             ) : (
-              <div style={{ display: 'flex', gap: '0.45rem', flexWrap: 'wrap', alignItems: 'center' }}>
+              <div className="bp-cats">
                 {categories.map((c) => (
                   <CategoryPill
                     key={c.categoryId}
@@ -444,20 +431,14 @@ export default function BookModal({ book, onClose, onOpenBook }) {
             )}
 
             {adderOpen && canAddCategories && (
-              <div style={{ marginTop: categories.length > 0 ? '0.85rem' : '0.6rem' }}>
+              <div >
                 <CategoryAutocomplete
                   book={display}
                   existingIds={existingCategoryIds}
                   onCapHit={() => setAdderOpen(false)}
                 />
                 <div
-                  style={{
-                    marginTop: '0.5rem',
-                    fontSize: '0.75rem',
-                    color: 'var(--paper-aged)',
-                    opacity: 0.55,
-                    fontStyle: 'italic',
-                  }}
+                  className="bp-cat-help"
                 >
                   {t('categories.removeHelp')}
                 </div>
@@ -469,13 +450,13 @@ export default function BookModal({ book, onClose, onOpenBook }) {
             <div className="book-modal-section">
               <div
                 className="book-modal-section-title"
-                style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.6rem' }}
+                className="bp-section__head"
               >
                 <span>{t('rating.eyebrowEdit')}</span>
                 <button
                   className="li-action"
                   onClick={() => setRatingEditorOpen(true)}
-                  style={{ fontSize: '0.7rem', padding: '0.3rem 0.7rem' }}
+                  
                 >
                   {liveRating > 0 || liveNotes
                     ? (t('common.edit'))
@@ -484,25 +465,15 @@ export default function BookModal({ book, onClose, onOpenBook }) {
               </div>
               {liveRating > 0 ? (
                 <div
-                  style={{
-                    color: 'var(--gilt-bright)',
-                    fontSize: '1.4rem',
-                    letterSpacing: '0.1em',
-                    marginBottom: liveNotes ? '0.8rem' : 0,
-                  }}
+                  className="bp-stars"
                 >
                   {'★'.repeat(liveRating)}
-                  <span style={{ color: 'rgba(176, 140, 63, 0.25)' }}>{'★'.repeat(5 - liveRating)}</span>
+                  <span className="bp-stars__empty">{'★'.repeat(5 - liveRating)}</span>
                 </div>
               ) : (
                 !liveNotes && (
                   <div
-                    style={{
-                      color: 'var(--paper-aged)',
-                      opacity: 0.6,
-                      fontSize: '0.9rem',
-                      fontStyle: 'italic',
-                    }}
+                    className="bp-no-rating"
                   >
                     {t('bookModal.notRatedYet')}
                   </div>
@@ -510,18 +481,7 @@ export default function BookModal({ book, onClose, onOpenBook }) {
               )}
               {liveNotes && (
                 <div
-                  style={{
-                    color: 'var(--paper-aged)',
-                    lineHeight: 1.55,
-                    fontStyle: 'italic',
-                    fontFamily: "'Cormorant Garamond', serif",
-                    fontSize: '1rem',
-                    borderLeft: '2px solid rgba(176, 140, 63, 0.25)',
-                    paddingLeft: '0.9rem',
-                    marginTop: '0.4rem',
-                    whiteSpace: 'pre-wrap',
-                    wordBreak: 'break-word',
-                  }}
+                  className="bp-notes bp-notes--quote"
                 >
                   {liveNotes}
                 </div>
@@ -534,33 +494,25 @@ export default function BookModal({ book, onClose, onOpenBook }) {
               <div className="book-modal-section-title">
                 {t('bookModal.partOfSeries')} ·{' '}
                 {seriesBlock.verified ? (
-                  <span style={{ color: 'var(--gilt-bright)', fontSize: '0.65rem', letterSpacing: '0.08em' }}>
+                  <span className="bp-pill bp-pill--ro-gold" style={{ fontSize: "0.65rem" }}>
                     {t('bookModal.seriesVerifiedBadge')}
                   </span>
                 ) : seriesBlock.needsReview ? (
                   <span
-                    style={{ color: 'var(--blood-bright)', fontSize: '0.65rem', letterSpacing: '0.08em', opacity: 0.85 }}
+                    className="t-accent" style={{ fontSize: "0.65rem" }}
                     title="This series is in our catalog but hasn't been editor-verified yet."
                   >
                     {t('bookModal.seriesNeedsReviewBadge')}
                   </span>
                 ) : (
-                  <span style={{ opacity: 0.6, fontSize: '0.65rem' }}>{seriesBlock.sourceLabel}</span>
+                  <span className="lv-hl-muted" style={{ fontSize: "0.65rem" }}>{seriesBlock.sourceLabel}</span>
                 )}
               </div>
               <div className="series-name">{seriesBlock.name}</div>
               {/* v0.12: Wikipedia-sourced series description, when available */}
               {seriesDescription && (
                 <div
-                  style={{
-                    color: 'var(--paper-aged)',
-                    lineHeight: 1.55,
-                    fontSize: '0.9rem',
-                    marginTop: '0.6rem',
-                    marginBottom: '0.8rem',
-                    paddingLeft: '0.9rem',
-                    borderLeft: '2px solid rgba(176, 140, 63, 0.18)',
-                  }}
+                  className="bp-notes bp-notes--quote"
                 >
                   {seriesDescription.description}
                   {seriesDescription.wikipediaUrl && (
@@ -570,14 +522,7 @@ export default function BookModal({ book, onClose, onOpenBook }) {
                         href={seriesDescription.wikipediaUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        style={{
-                          color: 'var(--paper-aged)',
-                          opacity: 0.6,
-                          fontSize: '0.7rem',
-                          letterSpacing: '0.06em',
-                          textDecoration: 'none',
-                          borderBottom: '1px dotted rgba(176, 140, 63, 0.3)',
-                          marginLeft: '0.3rem',
+                        className="bp-wiki-link" style={{ marginLeft: "0.3rem",
                         }}
                         title="From Wikipedia"
                       >
@@ -591,7 +536,7 @@ export default function BookModal({ book, onClose, onOpenBook }) {
                 {seriesBlock.dots}
                 <span className="series-progress-text">{seriesBlock.readCount}/{seriesBlock.totalBooks} read</span>
               </div>
-              <div style={{ marginTop: '0.8rem' }}>
+              <div >
                 <button className="li-action success" onClick={() => { onClose(); go('plan-create', { seriesName: seriesBlock.name }); }}>
                   {t('bookModal.createSeriesPlan')}
                 </button>
@@ -608,17 +553,17 @@ export default function BookModal({ book, onClose, onOpenBook }) {
                   const sRead = state.library.some((l) => bookKey(l) === sk);
                   const sQueued = state.readNext.some((l) => bookKey(l) === sk);
                   return (
-                    <div className="similar-mini-item" key={`${sk}-${i}`} onClick={() => onOpenBook?.(s)} style={{ cursor: 'pointer' }}>
+                    <div className="similar-mini-item" key={`${sk}-${i}`} onClick={() => onOpenBook?.(s)}>
                       <div>
                         <div className="similar-mini-title">{s.t}</div>
                         <div className="similar-mini-author">{s.a}{s.g ? ` · ${s.g}` : ''}</div>
                       </div>
                       {sRead ? (
-                        <span style={{ color: 'var(--moss)', fontSize: '0.8rem', fontFamily: 'monospace' }}>✓ READ</span>
+                        <span className="sp-read-label" style={{ fontSize: "0.8rem" }}>✓ READ</span>
                       ) : sQueued ? (
-                        <span style={{ color: 'var(--gilt)', fontSize: '0.8rem', fontFamily: 'monospace' }}>✓ QUEUED</span>
+                        <span className="lv-hl" style={{ fontSize: "0.8rem" }}>✓ QUEUED</span>
                       ) : (
-                        <span style={{ color: 'var(--paper-aged)', opacity: 0.5, fontSize: '0.8rem', fontFamily: 'monospace' }}>→</span>
+                        <span className="lv-hl-muted" style={{ fontSize: "0.8rem" }}>→</span>
                       )}
                     </div>
                   );
@@ -638,7 +583,7 @@ export default function BookModal({ book, onClose, onOpenBook }) {
                 target="_blank"
                 rel="noopener noreferrer"
                 className="btn btn-ghost"
-                style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}
+                className="bp-link"
                 title={link.kind === 'search' ? 'Opens a search — no direct product link available' : null}
               >
                 ↗ {link.label}
@@ -718,36 +663,19 @@ function CategoryPill({ category, removing, canRemove, onRemove }) {
   return (
     <span
       className="level-pill"
-      style={{
-        ...baseStyle,
-        opacity: removing ? 0.4 : baseStyle.opacity || 1,
-        display: 'inline-flex',
-        alignItems: 'center',
-        gap: showRemove ? '0.35rem' : 0,
-        paddingRight: showRemove ? '0.5rem' : undefined,
-      }}
+      className="bp-cat" style={{ ...baseStyle, opacity: removing ? 0.4 : 1 }}
       title={verified
         ? 'Verified by our editors — global to all readers'
         : 'Your private category — only you see this'}
     >
-      {verified && <span style={{ flexShrink: 0 }}>☩</span>}
+      {verified && <span>☩</span>}
       <span>{name}</span>
       {showRemove && (
         <button
           onClick={onRemove}
           disabled={removing}
           aria-label={`Remove ${name}`}
-          style={{
-            background: 'none',
-            border: 'none',
-            color: 'inherit',
-            opacity: 0.5,
-            cursor: removing ? 'wait' : 'pointer',
-            fontSize: '1rem',
-            lineHeight: 1,
-            padding: 0,
-            marginLeft: '0.1rem',
-          }}
+          className="bp-cat__remove"
         >
           ×
         </button>

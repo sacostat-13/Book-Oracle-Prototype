@@ -29,11 +29,11 @@ export default function ProgressUpdateModal({ book, onSave, onClose }) {
 
   const fieldStyle = {
     background: 'rgba(176, 140, 63, 0.04)', border: '1px solid rgba(176, 140, 63, 0.25)',
-    borderRadius: '2px', padding: '0.55rem 0.8rem', color: 'var(--paper)',
-    fontFamily: "'Cormorant Garamond', serif", fontSize: '1.1rem', width: '120px', colorScheme: 'dark',
+    borderRadius: 'var(--ro-radius-sm)', padding: '0.55rem 0.8rem', color: 'var(--paper)',
+    fontFamily: 'var(--ro-font-display)', fontSize: '1.1rem', width: '120px', colorScheme: 'dark',
   };
   const labelStyle = {
-    display: 'block', fontFamily: "'Special Elite', monospace", fontSize: '0.7rem',
+    display: 'block', fontFamily: 'var(--ro-font-mono)', fontSize: '0.7rem',
     letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--gilt)', marginBottom: '0.4rem',
   };
 
@@ -42,11 +42,11 @@ export default function ProgressUpdateModal({ book, onSave, onClose }) {
       onClick={(e) => { if (e.target === e.currentTarget && !saving) onClose?.(); }}
       style={{ position: 'fixed', inset: 0, background: 'rgba(10, 8, 6, 0.78)', backdropFilter: 'blur(4px)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}
     >
-      <div style={{ background: 'var(--ink, #1a1410)', border: '1px solid rgba(176, 140, 63, 0.35)', borderRadius: '4px', maxWidth: '420px', width: '100%', padding: '2rem 2.2rem', boxShadow: '0 20px 60px rgba(0, 0, 0, 0.6)' }}>
-        <div style={{ fontFamily: "'Special Elite', monospace", fontSize: '0.75rem', letterSpacing: '0.18em', textTransform: 'uppercase', color: 'var(--gilt)', marginBottom: '0.5rem' }}>
+      <div style={{ background: 'var(--ink, #1a1410)', border: '1px solid rgba(176, 140, 63, 0.35)', borderRadius: 'var(--ro-radius-sm)', maxWidth: '420px', width: '100%', padding: '2rem 2.2rem', boxShadow: '0 20px 60px rgba(0, 0, 0, 0.6)' }}>
+        <div style={{ fontFamily: 'var(--ro-font-mono)', fontSize: '0.75rem', letterSpacing: '0.18em', textTransform: 'uppercase', color: 'var(--gilt)', marginBottom: '0.5rem' }}>
           {t('progress.eyebrow')}
         </div>
-        <h2 style={{ fontFamily: "'Cormorant Garamond', serif", fontStyle: 'italic', fontSize: '1.6rem', color: 'var(--paper)', margin: 0, marginBottom: '0.35rem' }}>
+        <h2 style={{ fontFamily: 'var(--ro-font-display)', fontStyle: 'italic', fontSize: '1.6rem', color: 'var(--paper)', margin: 0, marginBottom: '0.35rem' }}>
           {t('progress.title')}
         </h2>
         <p style={{ color: 'var(--paper-aged)', fontSize: '0.9rem', marginBottom: '1.5rem', lineHeight: 1.5 }}>
@@ -71,7 +71,7 @@ export default function ProgressUpdateModal({ book, onSave, onClose }) {
               placeholder="0" autoFocus style={fieldStyle}
             />
             {totalPages && validPages ? (
-              <span style={{ fontFamily: "'Special Elite', monospace", fontSize: '0.85rem', color: pct === 100 ? 'var(--gilt-bright, #e8c560)' : 'var(--paper-aged)', letterSpacing: '0.05em' }}>
+              <span style={{ fontFamily: 'var(--ro-font-mono)', fontSize: '0.85rem', color: pct === 100 ? 'var(--gilt-bright, #e8c560)' : 'var(--paper-aged)', letterSpacing: '0.05em' }}>
                 {pct}%
               </span>
             ) : null}
@@ -80,10 +80,10 @@ export default function ProgressUpdateModal({ book, onSave, onClose }) {
 
         {totalPages ? (
           <div style={{ marginBottom: '1.5rem' }}>
-            <div style={{ height: '4px', background: 'rgba(176, 140, 63, 0.15)', borderRadius: '2px', overflow: 'hidden' }}>
-              <div style={{ height: '100%', width: `${validPages ? Math.min(100, (cappedPages / totalPages) * 100) : 0}%`, background: 'var(--gilt, #b08c3f)', borderRadius: '2px', transition: 'width 0.2s ease' }} />
+            <div style={{ height: '4px', background: 'rgba(176, 140, 63, 0.15)', borderRadius: 'var(--ro-radius-sm)', overflow: 'hidden' }}>
+              <div style={{ height: '100%', width: `${validPages ? Math.min(100, (cappedPages / totalPages) * 100) : 0}%`, background: 'var(--gilt, #b08c3f)', borderRadius: 'var(--ro-radius-sm)', transition: 'width 0.2s ease' }} />
             </div>
-            <div style={{ fontSize: '0.75rem', color: 'var(--paper-aged)', opacity: 0.55, marginTop: '0.3rem', fontFamily: "'Special Elite', monospace", letterSpacing: '0.05em' }}>
+            <div style={{ fontSize: '0.75rem', color: 'var(--paper-aged)', opacity: 0.55, marginTop: '0.3rem', fontFamily: 'var(--ro-font-mono)', letterSpacing: '0.05em' }}>
               {t('progress.editionNote')}
             </div>
           </div>

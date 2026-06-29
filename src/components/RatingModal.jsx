@@ -42,73 +42,73 @@ export default function RatingModal({ book, initialRating, initialNotes, initial
     <div
       className="rating-modal-backdrop"
       onClick={(e) => { if (e.target === e.currentTarget && !saving) onSkip?.(); }}
-      style={{ position: 'fixed', inset: 0, background: 'rgba(10, 8, 6, 0.78)', backdropFilter: 'blur(4px)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}
+      className="rating-modal-overlay"
     >
-      <div className="rating-modal" style={{ background: 'var(--ink, #1a1410)', border: '1px solid rgba(176, 140, 63, 0.35)', borderRadius: '4px', maxWidth: '480px', width: '100%', padding: '2rem 2.2rem', boxShadow: '0 20px 60px rgba(0, 0, 0, 0.6)' }}>
-        <div style={{ fontFamily: "'Special Elite', monospace", fontSize: '0.75rem', letterSpacing: '0.18em', textTransform: 'uppercase', color: 'var(--gilt)', marginBottom: '0.5rem' }}>
+      <div className="rating-modal">
+        <div className="rating-modal__eyebrow">
           {eyebrowText}
         </div>
-        <h2 style={{ fontFamily: "'Cormorant Garamond', serif", fontStyle: 'italic', fontSize: '1.7rem', color: 'var(--paper)', margin: 0, marginBottom: subText ? '0.6rem' : '1.2rem' }}>
+        <h2 className="rating-modal__title">
           {titleText}
         </h2>
         {subText && (
-          <p style={{ color: 'var(--paper-aged)', lineHeight: 1.55, marginBottom: '1.2rem', fontSize: '0.95rem' }}>
+          <p className="rating-modal__sub">
             {subText}
           </p>
         )}
 
-        <div style={{ display: 'flex', gap: '0.3rem', justifyContent: 'center', marginBottom: '0.6rem' }} onMouseLeave={() => setHover(0)}>
+        <div className="rating-modal__stars" onMouseLeave={() => setHover(0)}>
           {STARS.map((n) => (
             <button
               key={n} type="button"
               onClick={() => setRating(rating === n ? 0 : n)}
               onMouseEnter={() => setHover(n)}
               aria-label={rating === 5 ? t('rating.starFavorite', { n }) : t('rating.starOf5', { n })}
-              style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '2.2rem', lineHeight: 1, padding: '0.2rem 0.35rem', color: n <= displayedStars ? 'var(--gilt-bright, #e8c560)' : 'rgba(176, 140, 63, 0.25)', transition: 'color 0.12s ease, transform 0.12s ease', transform: n === hover ? 'scale(1.08)' : 'scale(1)' }}
+              className={`rating-modal__star${n <= displayedStars ? ' rating-modal__star--active' : ' rating-modal__star--ro-dim'}${n === hover ? ' rating-modal__star--hover' : ''}`}
             >
               ★
             </button>
           ))}
         </div>
-        <div style={{ textAlign: 'center', fontFamily: "'Special Elite', monospace", fontSize: '0.7rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--paper-aged)', opacity: 0.7, marginBottom: '1.5rem', minHeight: '1em' }}>
+        <div className="rating-modal__hint">
           {rating > 0
             ? (rating === 5 ? t('rating.starFavorite', { n: rating }) : t('rating.starOf5', { n: rating }))
             : t('rating.tapStar')}
         </div>
 
-        <div className="field field-full" style={{ marginBottom: '1.2rem' }}>
-          <label style={{ display: 'block', fontFamily: "'Special Elite', monospace", fontSize: '0.7rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--gilt)', marginBottom: '0.4rem' }}>
-            {t('rating.notesLabel')} <span style={{ opacity: 0.5, textTransform: 'none', letterSpacing: 0 }}>{t('rating.notesPrivate')}</span>
+        <div className="field field-full">
+          <label className="rating-modal__notes-label">
+            {t('rating.notesLabel')} <span className="rating-modal__notes-private">{t('rating.notesPrivate')}</span>
           </label>
           <textarea
             placeholder={t('rating.notesPlaceholder')}
             value={notes} onChange={(e) => setNotes(e.target.value.slice(0, NOTES_MAX))}
             rows={4}
-            style={{ width: '100%', boxSizing: 'border-box', background: 'rgba(176, 140, 63, 0.04)', border: '1px solid rgba(176, 140, 63, 0.25)', borderRadius: '2px', padding: '0.7rem 0.85rem', color: 'var(--paper)', fontFamily: "'Cormorant Garamond', serif", fontSize: '1rem', lineHeight: 1.55, resize: 'vertical', minHeight: '90px' }}
+            className="textarea"
           />
           {notes.length > NOTES_MAX * 0.85 && (
-            <div style={{ fontSize: '0.75rem', color: notes.length >= NOTES_MAX ? 'var(--blood-bright)' : 'var(--paper-aged)', opacity: 0.7, textAlign: 'right', marginTop: '0.25rem' }}>
+            <div className={`lv-item-note t-right${notes.length >= NOTES_MAX ? " t-error" : ""}`}>
               {notes.length} / {NOTES_MAX}
             </div>
           )}
         </div>
 
-        <div className="field field-full" style={{ marginBottom: '1.2rem' }}>
-          <label style={{ display: 'block', fontFamily: "'Special Elite', monospace", fontSize: '0.7rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--gilt)', marginBottom: '0.4rem' }}>
+        <div className="field field-full">
+          <label className="rating-modal__notes-label">
             {t('rating.finishedOn')}
           </label>
           <input
             type="date" value={readAt} max={todayStr}
             onChange={(e) => setReadAt(e.target.value)}
-            style={{ background: 'rgba(176, 140, 63, 0.04)', border: '1px solid rgba(176, 140, 63, 0.25)', borderRadius: '2px', padding: '0.5rem 0.75rem', color: 'var(--paper)', fontFamily: "'EB Garamond', serif", fontSize: '0.95rem', colorScheme: 'dark' }}
+            className="input"
           />
         </div>
 
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', flexWrap: 'wrap' }}>
-          <button type="button" className="btn btn-ghost" onClick={onSkip} disabled={saving}>
+        <div className="modal__actions">
+          <button type="button" className="btn-tertiary" onClick={onSkip} disabled={saving}>
             {cancelLabel}
           </button>
-          <button type="button" className="btn" onClick={handleSave} disabled={saving}>
+          <button type="button" className="btn-primary" onClick={handleSave} disabled={saving}>
             {saving ? t('rating.saving') : saveLabel}
           </button>
         </div>

@@ -21,7 +21,7 @@
     X-Content-Type-Options = "nosniff"
     Referrer-Policy = "strict-origin-when-cross-origin"
     Permissions-Policy = "camera=(), microphone=(), geolocation=()"
-    Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://assets.lemonsqueezy.com https://app.lemonsqueezy.com; style-src 'self' 'unsafe-inline' https://assets.lemonsqueezy.com https://fonts.googleapis.com; img-src 'self' data: blob: https: http:; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.anthropic.com https://*.lemonsqueezy.com https://thereadingoracle.lemonsqueezy.com https://api.lemonsqueezy.com; frame-src https://*.lemonsqueezy.com https://thereadingoracle.lemonsqueezy.com; font-src 'self' https://fonts.gstatic.com data:; worker-src 'self' blob:;"
+    Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://assets.lemonsqueezy.com https://app.lemonsqueezy.com; style-src 'self' 'unsafe-inline' https://assets.lemonsqueezy.com https://fonts.googleapis.com; img-src 'self' data: blob: https: http:; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.anthropic.com https://*.lemonsqueezy.com https://thebooksoracle.lemonsqueezy.com https://api.lemonsqueezy.com; frame-src https://*.lemonsqueezy.com https://thebooksoracle.lemonsqueezy.com; font-src 'self' https://fonts.gstatic.com data:; worker-src 'self' blob:;"
 
 # SPA fallback: any unknown route returns index.html so client-side
 # routing (and the OAuth redirect after Google sign-in) works.

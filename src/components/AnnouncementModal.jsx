@@ -42,7 +42,7 @@ export default function AnnouncementModal({ announcement, onClose }) {
       <div style={{
         background: 'var(--ink, #1a1410)',
         border: '1px solid rgba(176, 140, 63, 0.35)',
-        borderRadius: '4px',
+        borderRadius: 'var(--ro-radius-sm)',
         maxWidth: '560px', width: '100%',
         maxHeight: '80vh',
         display: 'flex', flexDirection: 'column',
@@ -56,14 +56,14 @@ export default function AnnouncementModal({ announcement, onClose }) {
         }}>
           <div>
             <div style={{
-              fontFamily: "'Special Elite', monospace", fontSize: '0.7rem',
+              fontFamily: 'var(--ro-font-mono)', fontSize: '0.7rem',
               letterSpacing: '0.18em', textTransform: 'uppercase',
               color: 'var(--gilt)', marginBottom: '0.4rem',
             }}>
               {t('notifications.announcement')}
             </div>
             <h2 style={{
-              fontFamily: "'Cormorant Garamond', serif", fontStyle: 'italic',
+              fontFamily: 'var(--ro-font-display)', fontStyle: 'italic',
               fontSize: '1.7rem', color: 'var(--paper)', margin: 0, lineHeight: 1.2,
             }}>
               {title}

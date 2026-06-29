@@ -135,10 +135,10 @@ export default function SeriesPage() {
   // ── Guard ────────────────────────────────────────────────────────────────────
   if (!seriesName) {
     return (
-      <div className="empty-state" style={{ paddingTop: '4rem' }}>
+      <div className="empty-state lv-empty">
         <div className="ornament">❦</div>
         <div className="empty-state-title">{t('seriesPage.notFound')}</div>
-        <button className="btn" style={{ marginTop: '1.5rem' }} onClick={() => go(from)}>{t('onboarding.back')}</button>
+        <button className="btn-primary" onClick={() => go(from)}>{t('onboarding.back')}</button>
       </div>
     );
   }
@@ -149,7 +149,7 @@ export default function SeriesPage() {
       <div className="breadcrumb">
         <a onClick={() => go(from)}>{fromLabel}</a>
         {' · '}
-        <span style={{ opacity: 0.6 }}>{seriesName}</span>
+        <span className="lv-hl-muted">{seriesName}</span>
       </div>
 
       {/* Hero */}
@@ -177,18 +177,18 @@ export default function SeriesPage() {
             <div className="series-page-progress-bar">
               <div
                 className="series-page-progress-fill"
-                style={{ width: `${progressPct}%` }}
+                style={{ '--sp-pct': `${progressPct}%` }}
               />
             </div>
             <div className="series-page-progress-label">
               {t('seriesPage.readCount', { read: readCount, total })}
               {queuedCount > 0 && (
-                <span style={{ opacity: 0.6, marginLeft: '0.6rem' }}>
+                <span className="lv-hl-muted">
                   · {t('seriesPage.queued', { count: queuedCount })}
                 </span>
               )}
               {readCount === total && (
-                <span style={{ color: 'var(--moss)', marginLeft: '0.6rem' }}>
+                <span className="sp-read-label">
                   {t('seriesPage.finished')}
                 </span>
               )}
@@ -228,14 +228,14 @@ export default function SeriesPage() {
                   href={description.wikipediaUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  style={{ color: 'var(--paper-aged)', opacity: 0.6, fontSize: '0.65rem', textDecoration: 'none', borderBottom: '1px dotted rgba(176,140,63,0.3)' }}
+                  className="sp-purchase-link"
                 >
                   wikipedia ↗
                 </a>
               </>
             )}
           </div>
-          <p style={{ color: 'var(--paper-aged)', lineHeight: 1.75, fontSize: '1.05rem', fontFamily: "'EB Garamond', serif", maxWidth: '680px' }}>
+          <p >
             {description.description}
           </p>
         </div>
@@ -245,18 +245,18 @@ export default function SeriesPage() {
       <div className="series-page-books">
         <div className="book-modal-section-title">
           {t('seriesPage.booksInSeries')}
-          {total && <span style={{ opacity: 0.5, marginLeft: '0.4rem' }}>· {total}</span>}
+          {total && <span className="lv-hl-muted">· {total}</span>}
         </div>
 
         {loading && (
-          <div className="loading" style={{ padding: '2rem' }}>
+          <div className="loading">
             <div className="loading-spinner" />
             <div className="loading-text">{t('common.loading')}</div>
           </div>
         )}
 
         {!loading && entries.length === 0 && (
-          <p style={{ color: 'var(--paper-aged)', opacity: 0.6, fontStyle: 'italic' }}>
+          <p >
             {t('seriesPage.noBooks')}
           </p>
         )}
@@ -274,7 +274,7 @@ export default function SeriesPage() {
                 <div
                   className="series-page-book-cover"
                   onClick={() => openBookTab(b, 'series-page')}
-                  style={{ cursor: 'pointer' }}
+                  
                 >
                   <BookCover title={b.t} author={b.a} coverUrl={b.coverUrl} />
                   {status === 'read' && (
@@ -290,7 +290,7 @@ export default function SeriesPage() {
                   <div
                     className="series-page-book-title"
                     onClick={() => go('book-page', buildBookPageParams(b, 'series-page', seriesName))}
-                    style={{ cursor: 'pointer' }}
+                    
                   >
                     {b.t}
                   </div>

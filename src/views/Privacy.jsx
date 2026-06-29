@@ -5,7 +5,7 @@ import { useT } from '../lib/I18nContext';
 function S({ title, children }) {
   return (
     <div style={{ marginBottom: '2rem' }}>
-      <h2 style={{ fontFamily: "'Cormorant Garamond', serif", fontStyle: 'italic', fontSize: '1.35rem', color: 'var(--paper)', marginBottom: '0.75rem' }}>{title}</h2>
+      <h2 style={{ fontFamily: 'var(--ro-font-display)', fontStyle: 'italic', fontSize: '1.35rem', color: 'var(--paper)', marginBottom: '0.75rem' }}>{title}</h2>
       <div style={{ color: 'var(--paper-aged)', lineHeight: 1.75, fontSize: '0.95rem' }}>{children}</div>
     </div>
   );
@@ -25,8 +25,8 @@ export default function Privacy() {
       </div>
       <div style={{ maxWidth: '680px' }}>
         <S title="Who we are">
-          <P>Book Oracle (also known as Reading Oracle, accessible at readingoracle.com) is a personal reading companion application operated by an individual developer based in Costa Rica.</P>
-          <P>For privacy-related questions: support@readingoracle.com</P>
+          <P>The The Books Oracle (accessible at thebooksoracle.com) is a personal reading companion application operated by an individual developer based in Costa Rica.</P>
+          <P>For privacy-related questions: support@thebooksoracle.com</P>
         </S>
         <S title="What data we collect">
           <P><strong style={{ color: 'var(--paper)' }}>Account data.</strong> When you sign in with Google, we receive your name, email address, and profile photo. We store these to identify your account.</P>
@@ -49,13 +49,13 @@ export default function Privacy() {
           <P>We use: Google OAuth (sign-in only), Supabase (database), Anthropic Claude (AI features), Paddle (payments — Merchant of Record), Netlify (hosting), Hardcover / OpenLibrary (book metadata).</P>
         </S>
         <S title="Your rights">
-          <P>You can delete your account and all data at any time from Profile → Reset profile. You can request a copy of your data or ask us to delete specific records by emailing support@readingoracle.com. We respond within 30 days. EEA users have GDPR rights including access, rectification, erasure, and portability.</P>
+          <P>You can delete your account and all data at any time from Profile → Reset profile. You can request a copy of your data or ask us to delete specific records by emailing support@thebooksoracle.com. We respond within 30 days. EEA users have GDPR rights including access, rectification, erasure, and portability.</P>
         </S>
         <S title="Cookies">
           <P>The app uses browser localStorage and sessionStorage to cache reading data locally for performance. These are not advertising cookies and do not track you across other sites. No third-party tracking cookies are set.</P>
         </S>
         <S title="Children">
-          <P>Book Oracle is not directed at children under 13. If you believe a child has provided personal data, contact us and we will delete it promptly.</P>
+          <P>The Books Oracle is not directed at children under 13. If you believe a child has provided personal data, contact us and we will delete it promptly.</P>
         </S>
         <S title="Changes">
           <P>We may update this policy from time to time. Significant changes will be noted in the in-app release notes.</P>

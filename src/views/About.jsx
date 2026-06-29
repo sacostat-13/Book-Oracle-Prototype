@@ -1,5 +1,5 @@
 import { useRouter } from '../lib/RouterContext';
-import { useT } from '../lib/I18nContext';
+import { useT, useTNode } from '../lib/I18nContext';
 import CurrentReleaseFooter from '../components/CurrentReleaseFooter';
 
 // Reusable section heading + body block, styled to match Profile.jsx voice
@@ -8,7 +8,7 @@ function Section({ title, children }) {
     <section style={{ marginTop: '2rem' }}>
       <h2
         style={{
-          fontFamily: "'Cormorant Garamond', serif",
+          fontFamily: 'var(--ro-font-display)',
           fontStyle: 'italic',
           fontSize: '1.6rem',
           color: 'var(--paper)',
@@ -42,7 +42,7 @@ function VersionEntry({ title, body }) {
       <div
         style={{
           color: 'var(--gilt)',
-          fontFamily: "'Cormorant Garamond', serif",
+          fontFamily: 'var(--ro-font-display)',
           fontStyle: 'italic',
           fontSize: '1.05rem',
           marginBottom: '0.35rem',
@@ -68,7 +68,7 @@ function Feature({ title, children }) {
     >
       <div
         style={{
-          fontFamily: "'Cormorant Garamond', serif",
+          fontFamily: 'var(--ro-font-display)',
           fontStyle: 'italic',
           fontSize: '1.15rem',
           color: 'var(--paper)',
@@ -87,7 +87,7 @@ function RoadmapTier({ heading, items }) {
     <div style={{ marginBottom: '1.75rem' }}>
       <div
         style={{
-          fontFamily: "'Special Elite', monospace",
+          fontFamily: 'var(--ro-font-mono)',
           fontSize: '0.65rem',
           letterSpacing: '0.25em',
           textTransform: 'uppercase',
@@ -110,7 +110,7 @@ function RoadmapTier({ heading, items }) {
           <div
             style={{
               color: 'var(--paper)',
-              fontFamily: "'Cormorant Garamond', serif",
+              fontFamily: 'var(--ro-font-display)',
               fontStyle: 'italic',
               fontSize: '1.05rem',
               marginBottom: '0.2rem',
@@ -130,6 +130,7 @@ function RoadmapTier({ heading, items }) {
 export default function About() {
   const { go } = useRouter();
   const t = useT();
+  const tNode = useTNode();
 
   return (
     <>
@@ -264,15 +265,15 @@ export default function About() {
         {/* ── Pricing ────────────────────────────────────────────────────── */}
         <div id="pricing" style={{ scrollMarginTop: '5rem' }}>
           <Section title={t('about.pricingHeading')}>
-            <div style={{ fontFamily: "'Special Elite', monospace", fontSize: '0.7rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--gilt)', marginBottom: '1.5rem', opacity: 0.8 }}>
+            <div style={{ fontFamily: 'var(--ro-font-mono)', fontSize: '0.7rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--gilt)', marginBottom: '1.5rem', opacity: 0.8 }}>
               {t('about.pricingEyebrow')}
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.25rem', marginBottom: '1.5rem' }}>
               {/* Free */}
-              <div style={{ border: '1px solid rgba(201,162,75,0.2)', borderRadius: '4px', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                <div style={{ fontFamily: "'Special Elite', monospace", fontSize: '0.75rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--paper-aged)' }}>{t('about.pricingFreeTitle')}</div>
+              <div style={{ border: '1px solid rgba(201,162,75,0.2)', borderRadius: 'var(--ro-radius-sm)', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                <div style={{ fontFamily: 'var(--ro-font-mono)', fontSize: '0.75rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--paper-aged)' }}>{t('about.pricingFreeTitle')}</div>
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.35rem' }}>
-                  <span style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '2.4rem', color: 'var(--paper)', lineHeight: 1 }}>{t('about.pricingFreePrice')}</span>
+                  <span style={{ fontFamily: 'var(--ro-font-display)', fontSize: '2.4rem', color: 'var(--paper)', lineHeight: 1 }}>{t('about.pricingFreePrice')}</span>
                   <span style={{ color: 'var(--paper-aged)', fontSize: '0.85rem', opacity: 0.6 }}>{t('about.pricingFreePeriod')}</span>
                 </div>
                 <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
@@ -284,10 +285,10 @@ export default function About() {
                 </ul>
               </div>
               {/* Pro */}
-              <div style={{ border: '1px solid rgba(201,162,75,0.5)', borderRadius: '4px', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '0.75rem', background: 'rgba(201,162,75,0.04)' }}>
-                <div style={{ fontFamily: "'Special Elite', monospace", fontSize: '0.75rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--gilt)' }}>✦ {t('about.pricingProTitle')}</div>
+              <div style={{ border: '1px solid rgba(201,162,75,0.5)', borderRadius: 'var(--ro-radius-sm)', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '0.75rem', background: 'rgba(201,162,75,0.04)' }}>
+                <div style={{ fontFamily: 'var(--ro-font-mono)', fontSize: '0.75rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--gilt)' }}>✦ {t('about.pricingProTitle')}</div>
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.35rem' }}>
-                  <span style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '2.4rem', color: 'var(--paper)', lineHeight: 1 }}>{t('about.pricingProPrice')}</span>
+                  <span style={{ fontFamily: 'var(--ro-font-display)', fontSize: '2.4rem', color: 'var(--paper)', lineHeight: 1 }}>{t('about.pricingProPrice')}</span>
                   <span style={{ color: 'var(--paper-aged)', fontSize: '0.85rem', opacity: 0.6 }}>{t('about.pricingProPeriod')}</span>
                 </div>
                 <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>

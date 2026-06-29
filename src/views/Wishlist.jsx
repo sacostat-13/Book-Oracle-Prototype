@@ -5,7 +5,7 @@ import { GENRES, bookKey } from '../lib/bookHelpers';
 import BulkImport from '../components/BulkImport';
 import OracleCategorizationButton from '../components/OracleCategorizationButton';
 import LibraryCoverGrid from '../components/LibraryCoverGrid';
-import { useT } from '../lib/I18nContext';
+import { useT, useTNode } from '../lib/I18nContext';
 import { useSelection } from '../lib/useSelection';
 import SelectionBar from '../components/SelectionBar';
 
@@ -27,6 +27,7 @@ export default function Wishlist({ onOpenBook }) {
   } = useData();
   const { go } = useRouter();
   const t = useT();
+  const tNode = useTNode();
   const [search, setSearch] = useState('');
   const [genreFilter, setGenreFilter] = useState('all');
   const [categoryFilter, setCategoryFilter] = useState('all');
@@ -37,7 +38,7 @@ export default function Wishlist({ onOpenBook }) {
 
   function switchViewMode(mode) {
     setViewMode(mode);
-    try { localStorage.setItem('wishlist_view_mode', mode); } catch {}
+    try { localStorage.setItem('wishlist_view_mode', mode); } catch { }
   }
 
   const wl = state.wishlist;
@@ -132,201 +133,203 @@ export default function Wishlist({ onOpenBook }) {
       <div className="breadcrumb">
         <a onClick={() => go('dashboard')}>Dashboard</a> · Wishlist
       </div>
-      <div className="page-header">
-        <div className="page-eyebrow">Wishlist</div>
-        <h1 className="page-title">
-          Books I <span className="accent">want to read</span>
-        </h1>
-        <p className="page-subtitle">{wl.length} books on the shelf.</p>
-      </div>
+      <div className='db-page'>
+        <div className="page-header">
+          <div className="page-eyebrow">Wishlist</div>
+          <h1 className="page-title">
+            {tNode('wishlist.pageTitle')}
+          </h1>
+          <p className="page-subtitle">{wl.length} books on the shelf.</p>
+        </div>
 
-      <div className="wishlist-toolbar">
-        <div className="wishlist-filters">
-          <input
-            type="text"
-            className="search-input"
-            placeholder="Search title or author…"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            style={{ maxWidth: '280px' }}
-          />
-          <select
-            value={genreFilter}
-            onChange={(e) => setGenreFilter(e.target.value)}
-            style={{ maxWidth: '220px' }}
-          >
-            <option value="all">— All genres —</option>
-            {genreOptions.map((o) => (
-              <option key={o.normalizedName} value={o.normalizedName}>
-                ☩ {o.name}
-              </option>
-            ))}
-          </select>
-          {hasCategoryFilter && (
+        <div className="wishlist-toolbar">
+          <div className="wishlist-filters">
+            <input
+              type="text"
+              className="search-input"
+              placeholder="Search title or author…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+
+            />
             <select
-              value={categoryFilter}
-              onChange={(e) => setCategoryFilter(e.target.value)}
-              style={{ maxWidth: '220px' }}
+              value={genreFilter}
+              onChange={(e) => setGenreFilter(e.target.value)}
+
             >
-              <option value="all">— All categories —</option>
-              {categoryOptions.map((o) => (
-                <option key={o.name} value={o.name}>
-                  {o.verified ? `☩ ${o.name}` : o.name}
+              <option value="all">— All genres —</option>
+              {genreOptions.map((o) => (
+                <option key={o.normalizedName} value={o.normalizedName}>
+                  ☩ {o.name}
                 </option>
               ))}
             </select>
-          )}
-        </div>
-        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-          <div className="view-toggle">
-            <button
-              className={`view-toggle-btn${viewMode === 'list' ? ' active' : ''}`}
-              onClick={() => switchViewMode('list')}
-              title="List view"
-            >
-              ☰ List
+            {hasCategoryFilter && (
+              <select
+                value={categoryFilter}
+                onChange={(e) => setCategoryFilter(e.target.value)}
+
+              >
+                <option value="all">— All categories —</option>
+                {categoryOptions.map((o) => (
+                  <option key={o.name} value={o.name}>
+                    {o.verified ? `☩ ${o.name}` : o.name}
+                  </option>
+                ))}
+              </select>
+            )}
+          </div>
+          <div className="lv-chips">
+            <div className="view-toggle">
+              <button
+                className={`view-toggle-btn${viewMode === 'list' ? ' active' : ''}`}
+                onClick={() => switchViewMode('list')}
+                title="List view"
+              >
+                ☰ List
+              </button>
+              <button
+                className={`view-toggle-btn${viewMode === 'covers' ? ' active' : ''}`}
+                onClick={() => switchViewMode('covers')}
+                title="Cover grid view"
+              >
+                ⊞ Covers
+              </button>
+            </div>
+            <button className="btn btn-ghost" onClick={() => setBulkOpen((v) => !v)}>
+              ⇪ Bulk import
             </button>
             <button
-              className={`view-toggle-btn${viewMode === 'covers' ? ' active' : ''}`}
-              onClick={() => switchViewMode('covers')}
-              title="Cover grid view"
+              className={`btn btn-ghost${sel.active ? ' active' : ''}`}
+              onClick={() => sel.active ? sel.exit() : sel.enter()}
             >
-              ⊞ Covers
-            </button>
-          </div>
-          <button className="btn btn-ghost" onClick={() => setBulkOpen((v) => !v)}>
-            ⇪ Bulk import
-          </button>
-          <button
-            className={`btn btn-ghost${sel.active ? ' active' : ''}`}
-            onClick={() => sel.active ? sel.exit() : sel.enter()}
-          >
-            {sel.active ? (t('common.cancel')) : (t('lists.selectMode'))}
-          </button>
-        </div>
-      </div>
-
-      {bulkOpen && <BulkImport target="wishlist" onClose={() => setBulkOpen(false)} />}
-
-      <OracleCategorizationButton books={wl} />
-      <SelectionBar
-        count={sel.count}
-        selectedBooks={sel.selectedBooks}
-        onExit={sel.exit}
-        onSelectAll={sel.selectAll}
-        onClearAll={sel.clearAll}
-        context="wishlist"
-      />
-
-
-
-      {wl.length === 0 ? (
-        <div className="empty-state">
-          <div className="ornament">❦</div>
-          <div className="empty-state-title">Your wishlist is empty</div>
-          <div className="empty-state-text">
-            Start building it your way. You can add books one at a time, import in bulk from Goodreads or Amazon, or browse our curated library of horror, gothic, and literary fiction.
-          </div>
-          <div style={{ marginTop: '1.5rem', display: 'flex', gap: '0.5rem', flexWrap: 'wrap', justifyContent: 'center' }}>
-            <button className="btn" onClick={() => setBulkOpen(true)}>⇪ Bulk import</button>
-            <button
-              className="btn btn-ghost"
-              onClick={() => {
-                if (confirm('Add ~280 curated books to your wishlist? You can remove any you don\'t want afterwards.')) {
-                  seedWishlistIfNeeded();
-                  showToast('Curated catalog added to your wishlist');
-                }
-              }}
-            >
-              Browse curated catalog
+              {sel.active ? (t('common.cancel')) : (t('lists.selectMode'))}
             </button>
           </div>
         </div>
-      ) : filtered.length === 0 ? (
-        <div className="empty-state">
-          <div className="ornament">❦</div>
-          <div className="empty-state-title">No books match</div>
-          <div className="empty-state-text">Try clearing your filters.</div>
-        </div>
-      ) : viewMode === 'covers' ? (
-        <LibraryCoverGrid
-          grouped={grouped}
-          genreKeys={genreKeys}
-          genresByBookId={genresByBookId}
-          onOpenBook={onOpenBook}
-          selectionMode={sel.active}
-          selected={sel.selected}
-          onToggle={sel.toggle}
+
+        {bulkOpen && <BulkImport target="wishlist" onClose={() => setBulkOpen(false)} />}
+
+        <OracleCategorizationButton books={wl} />
+        <SelectionBar
+          count={sel.count}
+          selectedBooks={sel.selectedBooks}
+          onExit={sel.exit}
+          onSelectAll={sel.selectAll}
+          onClearAll={sel.clearAll}
+          context="wishlist"
         />
-      ) : (
-        genreKeys.map((g) => (
-          <div className="list-section" key={g}>
-            <h2>{g} <span className="count">· {grouped[g].length}</span></h2>
-            {grouped[g].map((b, i) => {
-              const k = bookKey(b);
-              const inNext = state.readNext.some((r) => bookKey(r) === k);
-              const inReading = (state.currentlyReading || []).some((r) => bookKey(r) === k);
-              const isSelected = sel.active && b.bookId && sel.selected.has(b.bookId);
-              return (
-                <div
-                  className={`list-item${isSelected ? ' list-item--selected' : ''}`}
-                  key={`${k}-${i}`}
-                  onClick={() => sel.active ? sel.toggle(b.bookId) : null}
-                  style={sel.active ? { cursor: 'pointer' } : {}}
-                >
+
+
+
+        {wl.length === 0 ? (
+          <div className="empty-state">
+            <div className="ornament">❦</div>
+            <div className="empty-state-title">Your wishlist is empty</div>
+            <div className="empty-state-text">
+              Start building it your way. You can add books one at a time, import in bulk from Goodreads or Amazon, or browse our curated library of horror, gothic, and literary fiction.
+            </div>
+            <div className="lv-load-more">
+              <button className="btn" onClick={() => setBulkOpen(true)}>⇪ Bulk import</button>
+              <button
+                className="btn btn-ghost"
+                onClick={() => {
+                  if (confirm('Add ~280 curated books to your wishlist? You can remove any you don\'t want afterwards.')) {
+                    seedWishlistIfNeeded();
+                    showToast('Curated catalog added to your wishlist');
+                  }
+                }}
+              >
+                Browse curated catalog
+              </button>
+            </div>
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="empty-state">
+            <div className="ornament">❦</div>
+            <div className="empty-state-title">No books match</div>
+            <div className="empty-state-text">Try clearing your filters.</div>
+          </div>
+        ) : viewMode === 'covers' ? (
+          <LibraryCoverGrid
+            grouped={grouped}
+            genreKeys={genreKeys}
+            genresByBookId={genresByBookId}
+            onOpenBook={onOpenBook}
+            selectionMode={sel.active}
+            selected={sel.selected}
+            onToggle={sel.toggle}
+          />
+        ) : (
+          genreKeys.map((g) => (
+            <div className="list-section" key={g}>
+              <h2>{g} <span className="count">· {grouped[g].length}</span></h2>
+              {grouped[g].map((b, i) => {
+                const k = bookKey(b);
+                const inNext = state.readNext.some((r) => bookKey(r) === k);
+                const inReading = (state.currentlyReading || []).some((r) => bookKey(r) === k);
+                const isSelected = sel.active && b.bookId && sel.selected.has(b.bookId);
+                return (
                   <div
-                    className="li-num"
+                    className={`list-item${isSelected ? ' list-item--selected' : ''}`}
+                    key={`${k}-${i}`}
+                    onClick={() => sel.active ? sel.toggle(b.bookId) : null}
                     style={sel.active ? { cursor: 'pointer' } : {}}
                   >
-                    {sel.active
-                      ? <span className="li-checkbox">{isSelected ? '✓' : ''}</span>
-                      : (b.manuallyAdded ? '✎' : '❦')}
-                  </div>
-                  <div className="li-content" onClick={() => !sel.active && onOpenBook?.(b)} style={{ cursor: sel.active ? 'default' : 'pointer' }}>
-                    <div className="li-title">{b.t}</div>
-                    <div className="li-author">
-                      {b.a}
-                      {b.manuallyAdded && <> · <span style={{ color: 'var(--gilt)', opacity: 0.7 }}>added by you</span></>}
-                      {inReading && <> · <span style={{ color: 'var(--gilt)' }}>reading</span></>}
-                      {!inReading && inNext && <> · <span style={{ color: 'var(--gilt-bright)' }}>in Read Next</span></>}
+                    <div
+                      className="li-num"
+                      style={sel.active ? { cursor: 'pointer' } : {}}
+                    >
+                      {sel.active
+                        ? <span className="li-checkbox">{isSelected ? '✓' : ''}</span>
+                        : (b.manuallyAdded ? '✎' : '❦')}
                     </div>
-                    {(() => {
-                      const genres = genresByBookId[b.bookId];
-                      return genres && genres.length > 0 ? (
-                        <div className="li-genres">
-                          {genres.map((g) => <span key={g.genreId} className="li-genre-pill" title={g.description || undefined}>{g.name}</span>)}
-                        </div>
-                      ) : null;
-                    })()}
-                  </div>
-                  {!sel.active && (
-                    <div className="li-actions">
-                      {inReading ? (
-                        <span className="li-action" style={{ opacity: 0.5, cursor: 'default' }}>▶ Reading</span>
-                      ) : inNext ? (
-                        <span className="li-action" style={{ opacity: 0.5, cursor: 'default' }}>✓ Queued</span>
-                      ) : (
-                        <button className="li-action success" onClick={() => addToReadNext(b)}>+ Read Next</button>
-                      )}
-                      {!inReading && (
-                        <button className="li-action" onClick={() => startReading(b)}>▶ Start</button>
-                      )}
-                      <button
-                        className="li-action danger"
-                        onClick={() => {
-                          if (confirm(`Remove "${b.t}" from your wishlist?`)) removeFromWishlist(b);
-                        }}
-                      >
-                        Remove
-                      </button>
+                    <div className="li-content" onClick={() => !sel.active && onOpenBook?.(b)}>
+                      <div className="li-title">{b.t}</div>
+                      <div className="li-author">
+                        {b.a}
+                        {b.manuallyAdded && <> · <span className="lv-hl-dim">added by you</span></>}
+                        {inReading && <> · <span className="lv-hl">reading</span></>}
+                        {!inReading && inNext && <> · <span className="lv-hl">in Read Next</span></>}
+                      </div>
+                      {(() => {
+                        const genres = genresByBookId[b.bookId];
+                        return genres && genres.length > 0 ? (
+                          <div className="li-genres">
+                            {genres.map((g) => <span key={g.genreId} className="li-genre-pill" title={g.description || undefined}>{g.name}</span>)}
+                          </div>
+                        ) : null;
+                      })()}
                     </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        ))
-      )}
+                    {!sel.active && (
+                      <div className="li-actions">
+                        {inReading ? (
+                          <span className="li-action li-action--disabled">▶ Reading</span>
+                        ) : inNext ? (
+                          <span className="li-action li-action--disabled">✓ Queued</span>
+                        ) : (
+                          <button className="li-action success" onClick={() => addToReadNext(b)}>+ Read Next</button>
+                        )}
+                        {!inReading && (
+                          <button className="li-action" onClick={() => startReading(b)}>▶ Start</button>
+                        )}
+                        <button
+                          className="li-action danger"
+                          onClick={() => {
+                            if (confirm(`Remove "${b.t}" from your wishlist?`)) removeFromWishlist(b);
+                          }}
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          ))
+        )}
+      </div>
     </>
   );
 }

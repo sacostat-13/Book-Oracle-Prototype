@@ -5,8 +5,8 @@
   },
   "app": {
     "loading": "Abriendo la biblioteca…",
-    "brand": "El Oráculo de la {wishlist}",
-    "brandAccent": "Lista"
+    "brand": "El Oráculo de los Libros",
+    "brandAccent": "El Oráculo de los Libros"
   },
   "nav": {
     "wishlist": "Lista",
@@ -37,6 +37,7 @@
     "listsLabel": "Mis listas",
     "bookClubsLabel": "Clubs",
     "oracleLabel": "Oráculo",
+    "friends": "Amigos",
     "notifications": "Notificaciones",
     "noNotifications": "Sin notificaciones todavía",
     "notifFriendRequest": "quiere ser tu amigo/a de lectura",
@@ -44,20 +45,22 @@
     "accept": "Aceptar",
     "decline": "Rechazar",
     "viewProfile": "Ver perfil",
-    "someone": "Alguien"
+    "someone": "Alguien",
+    "myBooks": "Mis Libros",
+    "social": "Social",
+    "parchmentMode": "Pergamino"
   },
   "signIn": {
     "eyebrow": "Bienvenida",
     "desc": "Entrá para mantener tu biblioteca, tu lista y tus planes de lectura sincronizados en todos tus dispositivos.",
     "continueGoogle": "Continuar con Google ❦",
-    "guestPrompt": "¿Preferís probarlo sin cuenta primero? También podés {link} (tus datos quedarán solo en este navegador).",
+    "guestPrompt": "¿Preferís probarlo sin conexión primero? También podés <em class=\"accent\">{link}</em> (tus datos solo vivirán en este navegador).",
     "guestLink": "continuar como invitada"
   },
   "dashboard": {
     "eyebrow": "Tu Biblioteca",
     "greeting": "Qué bueno verte, ",
-    "greetingBack": "Bienvenida de ",
-    "greetingAccent": "vuelta",
+    "greetingBack": "Bienvenido/a de <em class=\"accent\">vuelta</em>",
     "levelPill": "Lector Nivel {level}",
     "booksRead": "{count} leídos",
     "inWishlist": "{count} en lista",
@@ -75,17 +78,13 @@
     "emptyFeedText": "Tu historia lectora empieza acá.",
     "emptyFeedSub": "Marcá un libro como leído o agregá uno a tu lista.",
     "showMore": "Mostrar {count} actualizaciones más",
-    "ctaOracle": "El ",
-    "ctaOracleAccent": "Oráculo",
+    "ctaOracle": "El <em class=\"accent\">Oráculo</em>",
     "ctaOracleSub": "Invocá libros por estado de ánimo o género",
-    "ctaPlan": "Crear un ",
-    "ctaPlanAccent": "Plan de Lectura",
+    "ctaPlan": "Crear un <em class=\"accent\">Plan de lectura</em>",
     "ctaPlanSub": "Un camino curado hacia tu próxima obsesión",
-    "ctaWishlist": "Ver tu ",
-    "ctaWishlistAccent": "Lista",
+    "ctaWishlist": "Ver <em class=\"accent\">Lista de deseos</em>",
     "ctaWishlistSub": "Tu cola de libros por leer",
-    "ctaLibrary": "Ver tu ",
-    "ctaLibraryAccent": "Biblioteca",
+    "ctaLibrary": "Ver <em class=\"accent\">Biblioteca</em>",
     "ctaLibrarySub": "Todo lo que ya leíste",
     "feedFinished": "Terminó",
     "feedStarted": "Empezó a leer",
@@ -168,8 +167,6 @@
   "currentlyReading": {
     "breadcrumb": "Inicio",
     "eyebrow": "En Curso",
-    "title": "Leyendo ",
-    "titleAccent": "ahora",
     "subtitleOne": "1 libro en curso.",
     "subtitleMany": "{count} libros en curso.",
     "subtitleEmpty": "Ningún libro en curso.",
@@ -188,13 +185,12 @@
     "updateProgress": "↑ Progreso",
     "markFinished": "✓ Terminado",
     "remove": "Quitar",
-    "confirmRemove": "¿Quitás \"{title}\" de leyendo ahora?"
+    "confirmRemove": "¿Quitás \"{title}\" de leyendo ahora?",
+    "pageTitle": "Leyendo <em class=\"accent\">ahora</em>"
   },
   "readNext": {
     "breadcrumb": "Inicio",
     "eyebrow": "Cola",
-    "title": "Por ",
-    "titleAccent": "leer",
     "subtitle": "{count} libros esperando.",
     "subtitleOne": "1 libro esperando.",
     "subtitleEmpty": "La cola está vacía.",
@@ -203,12 +199,11 @@
     "openOracle": "Abrir el Oráculo",
     "start": "▶ Empezar",
     "markRead": "✓ Leído",
-    "remove": "Quitar"
+    "remove": "Quitar",
+    "pageTitle": "Leer <em class=\"accent\">después</em>"
   },
   "wishlist": {
     "eyebrow": "Lista de deseos",
-    "title": "Mi ",
-    "titleAccent": "Lista",
     "subtitle": "{count} libros.",
     "subtitleOne": "1 libro.",
     "subtitleEmpty": "Tu lista está vacía.",
@@ -237,12 +232,11 @@
     "startReading": "▶ Empezar a leer",
     "markRead": "✓ Marcar como leído",
     "addToNext": "→ Por leer",
-    "remove": "Quitar"
+    "remove": "Quitar",
+    "pageTitle": "Mi <em class=\"accent\">lista de deseos</em>"
   },
   "library": {
     "eyebrow": "Biblioteca",
-    "title": "Libros que ",
-    "titleAccent": "leí",
     "subtitle": "{count} libros en {genres} género.",
     "subtitlePlural": "{count} libros en {genres} géneros.",
     "subtitleEmpty": "Tu biblioteca está vacía.",
@@ -260,23 +254,18 @@
     "editRating": "✎ Calificación",
     "remove": "Quitar",
     "finishedOn": "Terminado el {date}",
-    "stars": "{count} ★"
+    "stars": "{count} ★",
+    "pageTitle": "Libros que he <em class=\"accent\">leído</em>"
   },
   "oracle": {
     "breadcrumbDashboard": "Inicio",
     "forkEyebrow": "Oráculo",
-    "forkTitle": "¿Cómo ?",
-    "forkTitleAccent": "invocamos",
     "forkSubtitle": "Dos formas de invocar libros de la bóveda.",
-    "forkByGenres": "Por ",
-    "forkByGenresAccent": "géneros",
+    "forkByGenres": "<em class=\"accent\">Por géneros</em>",
     "forkByGenresDesc": "Elegí un temperamento — folk horror, gótico, sáfico, latinoamericano — y te traemos tres libros para escoger.",
-    "forkBySimilar": "A partir de ",
-    "forkBySimilarAccent": "otros libros",
+    "forkBySimilar": "<em class=\"accent\">Basado en otros libros</em>",
     "forkBySimilarDesc": "Decinos 1–3 libros que hayás amado. Encontramos otros con la misma sangre.",
     "categoriesEyebrow": "Por géneros",
-    "categoriesTitle": "Elegí un ",
-    "categoriesTitleAccent": "temperamento",
     "categoriesSubtitle": "Tres libros frescos, {source}.",
     "sourceWishlist": "de tu lista",
     "sourceVault": "de la bóveda",
@@ -289,8 +278,6 @@
     "drawButton": "Invocar de la bóveda ❦",
     "drawingButton": "El Oráculo está leyendo…",
     "similarEyebrow": "A partir de otros libros",
-    "similarTitle": "Elegí  que hayás amado",
-    "similarTitleAccent": "1–3 libros",
     "similarSubtitle": "Seleccioná semillas abajo y dejá que el Oráculo encuentre títulos afines.",
     "selectUp3": "Seleccioná hasta 3 libros abajo…",
     "findSimilar": "Encontrar libros similares ❦",
@@ -316,13 +303,14 @@
     "quotaBadgeMonth": "{remaining} de {limit} restantes este mes",
     "quotaEmptyMonth": "Límite mensual alcanzado",
     "quotaWallEyebrowMonth": "Límite mensual alcanzado",
-    "quotaWallBodyMonth": "Las cuentas gratuitas incluyen {limit} consultas de IA por mes."
+    "quotaWallBodyMonth": "Las cuentas gratuitas incluyen {limit} consultas de IA por mes.",
+    "forkPageTitle": "¿Cómo vamos a <em class=\"accent\">adivinar</em>?",
+    "categoriesPageTitle": "Elige un <em class=\"accent\">temperamento</em>",
+    "similarPageTitle": "Elige <em class=\"accent\">1–3 libros</em> que hayas amado"
   },
   "plans": {
     "breadcrumb": "Inicio",
     "createEyebrow": "Plan de lectura",
-    "createTitle": "Trazá un ",
-    "createTitleAccent": "camino",
     "createSubtitle": "Decile al Oráculo hacia dónde querés ir. Te construye un plan de lectura paseado.",
     "viewEyebrow": "Plan de lectura",
     "noActivePlan": "Sin plan activo",
@@ -348,12 +336,11 @@
     "noActivePlanDeleteError": "No se pudo eliminar el plan — intentá de nuevo",
     "createOwnPlan": "Crear mi propio plan",
     "yourPlanBreadcrumb": "Tu plan de lectura",
-    "createPlanBreadcrumb": "Crear plan de lectura"
+    "createPlanBreadcrumb": "Crear plan de lectura",
+    "createPageTitle": "Trazar un <em class=\"accent\">camino</em>"
   },
   "lists": {
     "eyebrow": "Mis Listas",
-    "title": "Listas ",
-    "titleAccent": "curadas",
     "emptyTitle": "Todavía no hay listas",
     "emptyText": "Creá una lista para curar y compartir tus lecturas favoritas.",
     "newList": "+ Nueva lista",
@@ -388,7 +375,8 @@
     "copyLink": "Copiar enlace",
     "emptyList": "Lista vacía — hacer clic para agregar libros",
     "selectMode": "Seleccionar",
-    "descPlaceholder2": "¿De qué trata esta lista?"
+    "descPlaceholder2": "¿De qué trata esta lista?",
+    "pageTitle": "Listas <em class=\"accent\">curadas</em>"
   },
   "bookPage": {
     "loading": "Cargando…",
@@ -458,8 +446,6 @@
   },
   "profile": {
     "eyebrow": "Perfil",
-    "title": "Tu",
-    "titleAccent": "perfil de lectura",
     "booksRead": "libros leídos",
     "pagesRead": "páginas leídas",
     "thisYear": "este año",
@@ -494,7 +480,6 @@
     "csvReadError": "No se pudo leer ese archivo.",
     "importBtn": "Importar CSV de Goodreads",
     "resetBtn": "Borrar todos los datos",
-    "titlePrefix": "Tu perfil de ",
     "sectionStats": "Estadísticas",
     "statBooksRead": "libros leídos",
     "statThisYear": "{count} este año",
@@ -560,7 +545,8 @@
     "friendsEmpty": "Sin amigos todavía. Compartí tu link de perfil para conectarte.",
     "friendsRemove": "Eliminar",
     "shareProfile": "Tu link de perfil",
-    "copyLink": "Copiar"
+    "copyLink": "Copiar",
+    "pageTitle": "Tu <em class=\"accent\">perfil lector</em>"
   },
   "onboarding": {
     "step1Eyebrow": "Paso 1 de 3 · Perfil lector",
@@ -742,8 +728,6 @@
   },
   "clubs": {
     "eyebrow": "Comunidad",
-    "title": "Clubs de ",
-    "titleAccent": "Lectura",
     "subtitle": "Leé en grupo. Seguí el progreso. Debatí en sesiones.",
     "newClub": "+ Nuevo club de lectura",
     "emptyTitle": "Todavía no hay clubs",
@@ -751,8 +735,6 @@
     "roleAdmin": "✦ Admin",
     "roleMember": "Miembro",
     "createEyebrow": "Comunidad",
-    "createTitle": "Nuevo ",
-    "createTitleAccent": "Club de Lectura",
     "createSubtitle": "Una vez creado, obtenés un enlace de unión para compartir con los miembros.",
     "fieldName": "Nombre del club *",
     "fieldNamePlaceholder": "Ej. Sociedad de literatura gótica",
@@ -797,13 +779,13 @@
     "createBreadcrumb": "Grupos de lectura",
     "createNewBreadcrumb": "Nuevo grupo",
     "confirmLeaveText": "¿Salir de este grupo?",
-    "memberBadge": "Miembro"
+    "memberBadge": "Miembro",
+    "pageTitle": "Clubes de <em class=\"accent\">lectura</em>",
+    "createPageTitle": "Nuevo <em class=\"accent\">club de lectura</em>"
   },
   "sessions": {
     "breadcrumbNew": "Nueva Sesión",
     "createEyebrow": "{clubName}",
-    "createTitle": "Nueva ",
-    "createTitleAccent": "Sesión",
     "fieldBook": "Libro *",
     "fieldBookPlaceholder": "Buscar por título o autora…",
     "fieldStarts": "Inicio *",
@@ -852,7 +834,8 @@
     "sessionNotFoundText": "Es posible que esta sesión haya sido eliminada o que no seas miembro del club.",
     "backToClubs": "Volver a clubs",
     "loadingSession": "Cargando sesión…",
-    "saveBookError": "No se pudo guardar el libro — intentá de nuevo"
+    "saveBookError": "No se pudo guardar el libro — intentá de nuevo",
+    "createPageTitle": "Nueva <em class=\"accent\">sesión</em>"
   },
   "discussion": {
     "questionsLabel": "Preguntas de debate",
@@ -927,19 +910,18 @@
     "loadingText": "Verificando invitación…",
     "joiningText": "Uniéndose a …",
     "invalidEyebrow": "Oops",
-    "invalidTitle": "Invitación ",
-    "invalidTitleAccent": "inválida",
     "invalidText": "Este enlace de unión es inválido o expiró. Pedile al admin del club un enlace nuevo.",
     "myClubs": "Mis clubs",
     "joinedEyebrow": "Bienvenida",
-    "joinedTitle": "Te uniste a ",
     "joinedText": "Llevándote al club…",
     "invitedEyebrow": "Tenés una invitación",
-    "previewTitle": "Unirse a ",
     "joinBtn": "Unirse al club ❦",
     "signInToJoin": "Entrá con Google para unirte",
     "needAccount": "Necesitás una cuenta para unirte a un club de lectura.",
-    "joinError": "No se pudo unir — el enlace puede haber expirado."
+    "joinError": "No se pudo unir — el enlace puede haber expirado.",
+    "invalidPageTitle": "Invitación <em class=\"accent\">inválida</em>",
+    "joinedPageTitle": "Te has unido a <em class=\"accent\">{name}</em>",
+    "previewPageTitle": "Únete a <em class=\"accent\">{name}</em>"
   },
   "search": {
     "placeholder": "Buscar libros…",
@@ -979,8 +961,6 @@
   "about": {
     "breadcrumb": "Inicio",
     "eyebrow": "Acerca",
-    "title": "Acerca del ",
-    "titleAccent": "Oráculo",
     "subtitle": "Por qué existe, qué hace y hacia dónde va.",
     "originHeading": "Por qué existe el Oráculo",
     "originBody1": "Casi todo lector que conozco tiene una lista en Amazon, una pila en Goodreads, una nota llena de títulos, una torre en la mesita de noche. Cientos de libros en cola — y aun así, cada viernes en la noche, seguimos pasando veinte minutos decidiendo qué leer.",
@@ -1068,7 +1048,8 @@
     "legalHeading": "Legal",
     "privacyLink": "Política de Privacidad",
     "termsLink": "Términos de Servicio",
-    "refundLink": "Política de Reembolso"
+    "refundLink": "Política de Reembolso",
+    "pageTitle": "Sobre el <em class=\"accent\">Oráculo</em>"
   },
   "shelfScene": {
     "empty": "Tus estantes están vacíos. Leé un libro o agregá uno para llenarlos.",
@@ -1237,7 +1218,12 @@
     "privacy": "Privacidad",
     "terms": "Términos",
     "refund": "Reembolso",
-    "about": "Acerca de"
+    "about": "Acerca de",
+    "tagline": "Tu compañero lector — lista de deseos, biblioteca, planes y un Oráculo que sabe lo que vas a amar.",
+    "copyright": "© {year} The Books Oracle",
+    "madeIn": "Hecho en Costa Rica",
+    "product": "Producto",
+    "legal": "Legal"
   },
   "notifications": {
     "someone": "Alguien",

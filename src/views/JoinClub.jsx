@@ -3,13 +3,14 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../lib/AuthContext';
 import { useRouter } from '../lib/RouterContext';
-import { useT } from '../lib/I18nContext';
+import { useT, useTNode } from '../lib/I18nContext';
 import { supabase } from '../lib/supabase';
 
 export default function JoinClub() {
   const { user, signInWithGoogle } = useAuth();
   const { go, route } = useRouter();
   const t = useT();
+  const tNode = useTNode();
 
   const token = route.params?.token;
   const [status, setStatus] = useState('loading');

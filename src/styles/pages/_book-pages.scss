@@ -1,0 +1,927 @@
+// pages/_book-pages.scss — The Books Oracle R4
+// Book page, list views (Library/Wishlist), Oracle flows, Currently Reading,
+// Read Next, Series Page, BookModal, Recommendations.
+// All inline styles from R4 views migrate here.
+
+// ── Shared section skeleton used on Library / Wishlist / Currently Reading ────
+.lv-page { display: flex; flex-direction: column; gap: var(--ro-space-8); }
+
+.lv-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  align-items: center;
+}
+
+.lv-search {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--field);
+  border: 1px solid var(--ro-border-strong);
+  border-radius: var(--ro-radius-md);
+  padding: 13px 16px;
+  flex: 1;
+  min-width: 240px;
+  max-width: 340px;
+
+  svg { color: var(--ro-gold-text); flex-shrink: 0; }
+  input {
+    flex: 1;
+    border: 0;
+    background: transparent;
+    outline: none;
+    color: var(--ro-text);
+    font-family: var(--ro-font-body);
+    font-size: 15px;
+    &::placeholder { color: var(--ro-muted); }
+  }
+}
+
+.lv-filter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  min-width: 190px;
+  background: var(--field);
+  border: 1px solid var(--ro-border-strong);
+  border-radius: var(--ro-radius-md);
+  padding: 13px 16px;
+  font-family: var(--ro-font-display);
+  font-style: italic;
+  font-size: 17px;
+  color: var(--ro-text-2);
+  cursor: pointer;
+  transition: border-color .15s;
+  &:hover { border-color: var(--ro-gold); }
+}
+
+.lv-chips {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.lv-empty {
+  padding: 4rem 1rem;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+.lv-empty-icon { font-size: 2rem; opacity: .35; }
+
+.lv-empty-title {
+  font-family: var(--ro-font-display);
+  font-style: italic;
+  font-size: 24px;
+  color: var(--ro-text);
+}
+
+.lv-empty-text {
+  font-family: var(--ro-font-body);
+  font-size: 15px;
+  color: var(--ro-muted);
+  max-width: 400px;
+  line-height: 1.6;
+}
+
+.lv-load-more {
+  display: flex;
+  justify-content: center;
+  margin-top: 1.5rem;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+// Inline text highlights (reading status, added-by tags in list)
+.lv-hl     { color: var(--ro-gold-text); }
+.lv-hl-dim { color: var(--ro-gold-text); opacity: .7; }
+.lv-hl-muted { opacity: .55; }
+
+// ── Currently Reading — progress update ───────────────────────────────────────
+.cr-card {
+  background: var(--ro-surface);
+  border: 1px solid var(--ro-border);
+  border-radius: var(--ro-radius-lg);
+  padding: 22px;
+  display: grid;
+  grid-template-columns: 100px 1fr;
+  gap: 24px;
+  align-items: start;
+  transition: border-color .15s;
+  cursor: pointer;
+  &:hover { border-color: var(--ro-gold); }
+}
+
+.cr-cover {
+  aspect-ratio: 2/3;
+  border-radius: 9px;
+  object-fit: cover;
+  border: 1px solid var(--ro-border-strong);
+  box-shadow: 0 10px 22px rgba(0,0,0,.4);
+  width: 100%;
+}
+
+.cr-body { min-width: 0; }
+
+.cr-title {
+  font-family: var(--ro-font-display);
+  font-style: italic;
+  font-size: 24px;
+  line-height: 1.1;
+  color: var(--ro-text);
+}
+
+.cr-author {
+  font-family: var(--ro-font-body);
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--ro-gold-text);
+  margin-top: 6px;
+}
+
+.cr-genres {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.cr-meta {
+  font-family: var(--ro-font-body);
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--ro-text-2);
+  margin-top: 14px;
+}
+
+.cr-meta-dim {
+  font-family: var(--ro-font-body);
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--ro-muted);
+}
+
+.cr-days { color: var(--ro-gold-text); }
+
+.cr-progress-wrap { margin: 14px 0 4px; }
+
+.cr-progress-bar {
+  height: 6px;
+  border-radius: var(--ro-radius-pill);
+  background: var(--ro-ring-track);
+  overflow: hidden;
+}
+
+.cr-progress-fill {
+  height: 100%;
+  border-radius: var(--ro-radius-pill);
+  background: var(--ro-gold);
+  width: var(--cr-pct, 0%);
+  transition: width .4s ease;
+}
+
+.cr-progress-label {
+  font-family: var(--ro-font-mono);
+  font-weight: 600;
+  font-size: 11px;
+  letter-spacing: .04em;
+  color: var(--ro-muted);
+  margin-top: 9px;
+}
+
+.cr-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 18px;
+  flex-wrap: wrap;
+}
+
+// ── Book Page — hero layout ───────────────────────────────────────────────────
+.bp-page { display: flex; flex-direction: column; gap: 32px; }
+
+.bp-hero {
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  gap: 44px;
+  align-items: start;
+
+  @include ro-down(tablet) {
+    grid-template-columns: 160px 1fr;
+    gap: 28px;
+  }
+
+  @include ro-down(mobile) {
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+}
+
+.bp-cover-col { position: sticky; top: 80px; }
+
+.bp-cover {
+  aspect-ratio: 2/3;
+  border-radius: var(--ro-radius-lg);
+  overflow: hidden;
+  box-shadow: 0 18px 38px rgba(0,0,0,.5);
+  border: 1px solid var(--ro-gold);
+}
+
+.bp-info { min-width: 0; }
+
+.bp-title {
+  font-family: var(--ro-font-display);
+  font-style: italic;
+  font-size: clamp(36px, 5vw, 52px);
+  line-height: 1;
+  color: var(--ro-text);
+}
+
+.bp-author {
+  font-family: var(--ro-font-display);
+  font-size: 24px;
+  color: var(--ro-text-2);
+  margin-top: 10px;
+}
+
+// ── Book Page — meta pills row ────────────────────────────────────────────────
+.bp-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 22px;
+}
+
+.bp-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 14px;
+  border-radius: var(--ro-radius-pill);
+  border: 1px solid var(--ro-border-strong);
+  font-family: var(--ro-font-mono);
+  font-weight: 600;
+  font-size: 11px;
+  letter-spacing: .08em;
+  color: var(--ro-text-2);
+  background: transparent;
+
+  &--read {
+    background: var(--forest);
+    border-color: var(--forest);
+    color: #fff;
+  }
+  &--ro-gold {
+    background: color-mix(in srgb, var(--ro-gold) 18%, transparent);
+    border-color: var(--ro-gold);
+    color: var(--ro-gold-text);
+  }
+  &--moss {
+    background: var(--forest);
+    border-color: var(--forest);
+    color: #fff;
+  }
+}
+
+// ── Purchase links ────────────────────────────────────────────────────────────
+.bp-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-top: 22px;
+}
+
+.bp-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  padding: 12px 20px;
+  border-radius: var(--ro-radius-md);
+  border: 1px solid var(--ro-border-strong);
+  background: transparent;
+  color: var(--ro-text);
+  font-family: var(--ro-font-display);
+  font-style: italic;
+  font-size: 16px;
+  cursor: pointer;
+  text-decoration: none;
+  transition: border-color .15s;
+  &:hover { border-color: var(--ro-gold); color: var(--ro-gold-text); }
+  svg { color: var(--ro-gold-text); }
+}
+
+// ── Series block inside book page ─────────────────────────────────────────────
+.bp-series { margin-top: 20px; }
+
+.bp-series__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.bp-series__name {
+  font-family: var(--ro-font-display);
+  font-style: italic;
+  font-size: 18px;
+  color: var(--ro-text);
+  cursor: pointer;
+  &:hover { color: var(--ro-gold-text); }
+}
+
+.bp-series__open {
+  font-family: var(--ro-font-mono);
+  font-weight: 600;
+  font-size: 10px;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--ro-gold-text);
+  background: none;
+  border: 0;
+  cursor: pointer;
+  padding: 0;
+  &:hover { opacity: .8; }
+}
+
+// ── Book page actions ─────────────────────────────────────────────────────────
+.bp-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 22px;
+}
+
+.bp-loading-note {
+  font-family: var(--ro-font-body);
+  font-style: italic;
+  font-size: 14px;
+  color: var(--ro-dim);
+}
+
+// ── Book page body sections ───────────────────────────────────────────────────
+.bp-section {
+  border-top: 1px solid var(--ro-border);
+  padding-top: 24px;
+}
+
+.bp-section__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.bp-section__label {
+  font-family: var(--ro-font-mono);
+  font-weight: 600;
+  font-size: 10px;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+  color: var(--ro-muted);
+}
+
+.bp-section__count {
+  opacity: .5;
+  font-size: 0.7em;
+  margin-left: 6px;
+}
+
+.bp-description {
+  font-family: var(--ro-font-body);
+  font-size: 17px;
+  line-height: 1.7;
+  color: var(--ro-text-2);
+  max-width: 760px;
+}
+
+.bp-wiki-link {
+  color: var(--ro-muted);
+  opacity: .7;
+  font-size: 0.65rem;
+  text-decoration: none;
+  border-bottom: 1px dotted color-mix(in srgb, var(--ro-gold) 30%, transparent);
+  transition: opacity .15s;
+  &:hover { opacity: 1; }
+}
+
+// ── Rating display ────────────────────────────────────────────────────────────
+.bp-stars {
+  color: var(--ro-gold-text);
+  font-size: 1.4rem;
+  letter-spacing: .1em;
+  span { color: color-mix(in srgb, var(--ro-gold) 25%, transparent); }
+}
+
+.bp-no-rating {
+  font-family: var(--ro-font-body);
+  font-style: italic;
+  font-size: 14px;
+  color: var(--ro-muted);
+}
+
+.bp-notes {
+  font-family: var(--ro-font-body);
+  font-style: italic;
+  font-size: 16px;
+  line-height: 1.55;
+  color: var(--ro-text-2);
+  max-width: 680px;
+  margin-top: 10px;
+}
+
+// ── Category pills ────────────────────────────────────────────────────────────
+.bp-cats {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.bp-cat {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  padding: 9px 12px 9px 15px;
+  border-radius: var(--ro-radius-pill);
+  border: 1px solid var(--ro-gold);
+  background: color-mix(in srgb, var(--ro-gold) 12%, transparent);
+  color: var(--ro-gold-text);
+  font-family: var(--ro-font-body);
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.bp-cat__remove {
+  background: none;
+  border: 0;
+  cursor: pointer;
+  color: var(--ro-muted);
+  font-size: 13px;
+  line-height: 0;
+  padding: 0;
+  &:hover { color: var(--ro-text); }
+}
+
+.bp-cat-add {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 15px;
+  border-radius: var(--ro-radius-pill);
+  border: 1px dashed var(--ro-border-strong);
+  background: transparent;
+  color: var(--ro-muted);
+  font-family: var(--ro-font-body);
+  font-size: 13px;
+  cursor: pointer;
+  &:hover { border-color: var(--ro-gold); color: var(--ro-gold-text); }
+}
+
+.bp-cat-help {
+  font-family: var(--ro-font-body);
+  font-style: italic;
+  font-size: 12px;
+  color: var(--ro-muted);
+  margin-top: 8px;
+}
+
+// ── Similar / "You might also like" grid ─────────────────────────────────────
+.bp-similar-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(168px, 1fr));
+  gap: 18px;
+}
+
+.bp-similar-item {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  cursor: pointer;
+  &:hover .bp-similar-cover { border-color: var(--ro-gold); }
+}
+
+.bp-similar-cover {
+  aspect-ratio: 2/3;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid var(--ro-border-strong);
+  box-shadow: 0 10px 22px rgba(0,0,0,.38);
+  position: relative;
+  transition: border-color .15s;
+  img { width: 100%; height: 100%; object-fit: cover; }
+}
+
+.bp-similar-cover--placeholder {
+  padding: 14px;
+  display: flex;
+  align-items: flex-start;
+}
+
+.bp-similar-cover__title {
+  font-family: var(--ro-font-display);
+  font-size: 17px;
+  line-height: 1.1;
+  color: #F4EBD8;
+}
+
+.bp-similar-title {
+  font-family: var(--ro-font-display);
+  font-style: italic;
+  font-size: 16px;
+  line-height: 1.15;
+  color: var(--ro-text);
+}
+
+.bp-similar-author {
+  font-family: var(--ro-font-body);
+  font-size: 12px;
+  line-height: 1.3;
+  color: var(--ro-muted);
+  margin-top: 3px;
+}
+
+// ── Oracle recommendation cards ───────────────────────────────────────────────
+.rec-page { display: flex; flex-direction: column; gap: 28px; }
+
+.rec-header {}
+
+.rec-title {
+  font-family: var(--ro-font-display);
+  font-size: 34px;
+  line-height: 1.05;
+  color: var(--ro-text);
+}
+
+.rec-because {
+  font-family: var(--ro-font-mono);
+  font-weight: 600;
+  font-size: 11px;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  color: var(--ro-muted);
+  margin-top: 10px;
+  span { color: var(--ro-gold-text); }
+}
+
+.rec-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 22px;
+}
+
+.rec-card {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.rec-cover {
+  position: relative;
+  aspect-ratio: 3/4;
+  border-radius: 14px;
+  overflow: hidden;
+  border: 1px solid var(--ro-gold);
+  box-shadow: 0 14px 30px rgba(0,0,0,.4);
+  img { width: 100%; height: 100%; object-fit: cover; }
+}
+
+.rec-cover--placeholder {
+  padding: 16px;
+  display: flex;
+  align-items: flex-start;
+}
+
+.rec-cover__title {
+  font-family: var(--ro-font-display);
+  font-size: 18px;
+  line-height: 1.1;
+  color: #F4EBD8;
+}
+
+.rec-match {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  background: var(--ro-gold);
+  color: var(--ro-gold-on);
+  font-family: var(--ro-font-mono);
+  font-weight: 700;
+  font-size: 11px;
+  letter-spacing: .02em;
+  padding: 7px 9px;
+  border-radius: var(--ro-radius-sm);
+}
+
+.rec-add {
+  position: absolute;
+  bottom: 14px;
+  right: 14px;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  border: 1.5px solid var(--ro-gold);
+  background: var(--ro-bg-deep);
+  color: var(--ro-gold);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background .15s;
+  &:hover { background: color-mix(in srgb, var(--ro-gold) 20%, var(--ro-bg-deep)); }
+}
+
+.rec-card-title {
+  font-family: var(--ro-font-display);
+  font-size: 21px;
+  line-height: 1.15;
+  color: var(--ro-text);
+}
+
+.rec-card-author {
+  font-family: var(--ro-font-body);
+  font-weight: 500;
+  font-size: 13px;
+  line-height: 1.3;
+  color: var(--ro-muted);
+  margin-top: 4px;
+}
+
+.rec-card-blurb {
+  font-family: var(--ro-font-display);
+  font-style: italic;
+  font-size: 15px;
+  line-height: 1.45;
+  color: var(--ro-gold-text);
+  margin-top: 9px;
+}
+
+.rec-regen {
+  display: flex;
+  justify-content: center;
+}
+
+// ── Oracle prophecy panel (parchment card at bottom of results) ───────────────
+.rec-prophecy {
+  background: #F4EBD8;
+  border: 1px solid var(--ro-gold);
+  border-radius: 20px;
+  padding: 30px 34px;
+  box-shadow: inset 0 2px 4px rgba(0,0,0,.12);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+
+.rec-prophecy__text {
+  font-family: var(--ro-font-display);
+  font-style: italic;
+  font-size: 24px;
+  line-height: 1.35;
+  text-align: center;
+  color: #241519;
+  max-width: 760px;
+}
+
+// ── Oracle flows (Fork, Categories, Similar) ──────────────────────────────────
+.oracle-page { display: flex; flex-direction: column; gap: 28px; }
+
+.oracle-title {
+  font-family: var(--ro-font-display);
+  font-size: 34px;
+  line-height: 1.05;
+  color: var(--ro-text);
+}
+
+.oracle-title__accent { color: var(--ro-burgundy); }
+
+.oracle-fork-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  @include ro-down(mobile) { grid-template-columns: 1fr; }
+}
+
+.oracle-fork-card {
+  border: 1.5px solid var(--ro-border-strong);
+  border-radius: var(--ro-radius-lg);
+  padding: 28px 24px;
+  cursor: pointer;
+  text-align: left;
+  background: transparent;
+  transition: border-color .15s, background .15s;
+  &:hover { border-color: var(--ro-gold); background: color-mix(in srgb, var(--ro-gold) 5%, transparent); }
+  &.is-active { border-color: var(--ro-gold); background: color-mix(in srgb, var(--ro-gold) 10%, transparent); }
+}
+
+.oracle-fork-card__label {
+  font-family: var(--ro-font-display);
+  font-style: italic;
+  font-weight: 600;
+  font-size: 24px;
+  color: var(--ro-text);
+  em { color: var(--ro-burgundy); }
+}
+
+.oracle-fork-card__sub {
+  font-family: var(--ro-font-body);
+  font-size: 14px;
+  color: var(--ro-muted);
+  margin-top: 8px;
+  line-height: 1.5;
+}
+
+.oracle-quota { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+
+.oracle-quota-note {
+  font-family: var(--ro-font-body);
+  font-style: italic;
+  font-size: 14px;
+  color: var(--ro-muted);
+}
+
+.oracle-cats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 14px;
+}
+
+.oracle-cat-card {
+  border: 1.5px solid var(--ro-border-strong);
+  border-radius: var(--ro-radius-lg);
+  padding: 20px;
+  cursor: pointer;
+  text-align: left;
+  background: transparent;
+  transition: all .15s;
+
+  &:hover { border-color: var(--ro-gold); }
+  &.is-selected { border-color: var(--ro-gold); background: color-mix(in srgb, var(--ro-gold) 10%, transparent); }
+}
+
+.oracle-cat-card__name {
+  font-family: var(--ro-font-display);
+  font-style: italic;
+  font-size: 18px;
+  color: var(--ro-text);
+  margin-bottom: 8px;
+}
+
+.oracle-cat-card__desc {
+  font-family: var(--ro-font-body);
+  font-size: 13px;
+  color: var(--ro-muted);
+  line-height: 1.5;
+}
+
+// Similar book picker
+.oracle-similar-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 16px;
+}
+
+.oracle-similar-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  cursor: pointer;
+}
+
+.oracle-similar-cover {
+  aspect-ratio: 2/3;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 2px solid transparent;
+  transition: border-color .15s;
+  position: relative;
+  img { width: 100%; height: 100%; object-fit: cover; }
+  &.is-selected { border-color: var(--ro-gold); }
+}
+
+.oracle-similar-title {
+  font-family: var(--ro-font-display);
+  font-style: italic;
+  font-size: 15px;
+  line-height: 1.2;
+  color: var(--ro-text);
+}
+
+.oracle-results-head {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 2rem;
+  text-align: center;
+}
+
+.oracle-results-title {
+  font-family: var(--ro-font-display);
+  font-style: italic;
+  font-size: 28px;
+  color: var(--ro-text);
+  em { color: var(--ro-gold-text); }
+}
+
+.oracle-results-sub {
+  font-family: var(--ro-font-mono);
+  font-size: 11px;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--ro-muted);
+}
+
+// ── Series Page ───────────────────────────────────────────────────────────────
+.sp-page { display: flex; flex-direction: column; gap: 28px; }
+
+.sp-progress {
+  background: var(--ro-surface);
+  border: 1px solid var(--ro-border);
+  border-radius: var(--ro-radius-lg);
+  padding: 24px;
+}
+
+.sp-progress__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.sp-progress__label {
+  font-family: var(--ro-font-mono);
+  font-weight: 600;
+  font-size: 10px;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  color: var(--ro-muted);
+}
+
+.sp-progress__count {
+  font-family: var(--ro-font-body);
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--ro-gold-text);
+  span { opacity: .6; }
+}
+
+.sp-bar { height: 6px; border-radius: var(--ro-radius-pill); background: var(--ro-ring-track); overflow: hidden; margin-bottom: 10px; }
+.sp-bar__fill { height: 100%; border-radius: var(--ro-radius-pill); background: var(--ro-gold); width: var(--sp-pct, 0%); transition: width .4s; }
+
+.sp-read-label { color: var(--forest); }
+
+.sp-description {
+  font-family: var(--ro-font-body);
+  font-size: 16px;
+  line-height: 1.75;
+  color: var(--ro-text-2);
+  max-width: 680px;
+}
+
+.sp-books-label {
+  font-family: var(--ro-font-mono);
+  font-weight: 600;
+  font-size: 10px;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  color: var(--ro-muted);
+  margin-bottom: 14px;
+  span { opacity: .5; margin-left: 6px; }
+}
+
+.sp-no-books {
+  font-family: var(--ro-font-body);
+  font-style: italic;
+  font-size: 14px;
+  color: var(--ro-muted);
+}
+
+.sp-purchase-link {
+  color: var(--ro-muted);
+  opacity: .7;
+  font-size: 12px;
+  text-decoration: none;
+  border-bottom: 1px dotted color-mix(in srgb, var(--ro-gold) 30%, transparent);
+  &:hover { opacity: 1; color: var(--ro-gold-text); }
+}
+
+// Disabled action state (already-reading / already-queued indicators)
+.li-action--disabled { opacity: .5; cursor: default; }
+
+// Notes quote variant (left-rule treatment for personal reading notes)
+.bp-notes--quote {
+  border-left: 2px solid color-mix(in srgb, var(--ro-gold) 25%, transparent);
+  padding-left: 0.9rem;
+  margin-top: 0.4rem;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+// Star empty/filled split
+.bp-stars__empty { color: color-mix(in srgb, var(--ro-gold) 25%, transparent); }

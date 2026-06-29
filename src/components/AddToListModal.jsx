@@ -75,10 +75,10 @@ export default function AddToListModal({ books = [], onClose }) {
                 style={{ width: 36, height: 54, objectFit: 'cover', borderRadius: 2, flexShrink: 0 }} />
             )}
             <div>
-              <div style={{ fontFamily: "'Cormorant Garamond',serif", fontStyle: 'italic', fontWeight: 600, fontSize: '1.05rem', color: 'var(--paper)' }}>
+              <div style={{ fontFamily: 'var(--ro-font-display)', fontStyle: 'italic', fontWeight: 600, fontSize: '1.05rem', color: 'var(--paper)' }}>
                 {singleBook.t}
               </div>
-              <div style={{ fontFamily: "'Special Elite',monospace", fontSize: '0.65rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--paper-aged)', opacity: 0.7, marginTop: 3 }}>
+              <div style={{ fontFamily: 'var(--ro-font-mono)', fontSize: '0.65rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--paper-aged)', opacity: 0.7, marginTop: 3 }}>
                 {singleBook.a}
               </div>
             </div>
@@ -89,7 +89,7 @@ export default function AddToListModal({ books = [], onClose }) {
           <div style={{
             padding: '0.6rem 1rem', marginBottom: '1.25rem',
             background: 'var(--shadow)', border: '1px solid rgba(176,140,63,0.15)', borderRadius: 2,
-            fontFamily: "'Cormorant Garamond',serif", fontStyle: 'italic', color: 'var(--paper-aged)',
+            fontFamily: 'var(--ro-font-display)', fontStyle: 'italic', color: 'var(--paper-aged)',
           }}>
             {bookList.slice(0, 3).map(b => b.t).join(', ')}
             {bookList.length > 3 && ` ${t('common.and')} ${bookList.length - 3} ${t('common.more')}…`}
@@ -120,10 +120,10 @@ export default function AddToListModal({ books = [], onClose }) {
                     borderColor: done ? 'rgba(176,140,63,0.45)' : undefined,
                   }}
                 >
-                  <span style={{ fontFamily: "'Cormorant Garamond',serif", fontStyle: 'italic', fontSize: '1rem' }}>
+                  <span style={{ fontFamily: 'var(--ro-font-display)', fontStyle: 'italic', fontSize: '1rem' }}>
                     {list.title}
                   </span>
-                  <span style={{ fontFamily: "'Special Elite',monospace", fontSize: '0.6rem', letterSpacing: '0.1em', textTransform: 'uppercase', opacity: 0.5, marginLeft: '0.75rem', flexShrink: 0 }}>
+                  <span style={{ fontFamily: 'var(--ro-font-mono)', fontSize: '0.6rem', letterSpacing: '0.1em', textTransform: 'uppercase', opacity: 0.5, marginLeft: '0.75rem', flexShrink: 0 }}>
                     {adding ? '…' : done ? t('addToList.addedDone') : t('addToList.bookCount', { count: list.books?.length || 0 })}
                   </span>
                 </button>

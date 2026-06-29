@@ -3,13 +3,14 @@
 import { useData } from '../lib/DataContext';
 import { useRouter } from '../lib/RouterContext';
 import { useAuth } from '../lib/AuthContext';
-import { useT } from '../lib/I18nContext';
+import { useT, useTNode } from '../lib/I18nContext';
 
 export default function BookClubs() {
   const { state } = useData();
   const { go } = useRouter();
   const { user } = useAuth();
   const t = useT();
+  const tNode = useTNode();
 
   const clubs = state.clubs || [];
 
@@ -17,8 +18,8 @@ export default function BookClubs() {
     <>
       <div className="page-header">
         <div className="page-eyebrow">{t('clubs.eyebrow')}</div>
-        <h1 className="page-title">{t('clubs.title', { accent: <span className="accent">{t('clubs.titleAccent')}</span> })}</h1>
-        <p style={{ color: 'var(--text-muted)', fontSize: '0.95rem', marginTop: '0.5rem' }}>
+        <h1 className="page-title">{tNode('clubs.pageTitle')}</h1>
+        <p style={{ color: 'var(--ro-text-muted)', fontSize: '0.95rem', marginTop: '0.5rem' }}>
           {t('clubs.subtitle')}
         </p>
       </div>
@@ -47,11 +48,11 @@ export default function BookClubs() {
               onClick={() => go('book-club-detail', { clubId: club.id })}
             >
               <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: '1rem' }}>
-                <div style={{ fontFamily: "'Cormorant Garamond', serif", fontStyle: 'italic', fontSize: '1.2rem', color: 'var(--paper)' }}>
+                <div style={{ fontFamily: 'var(--ro-font-display)', fontStyle: 'italic', fontSize: '1.2rem', color: 'var(--paper)' }}>
                   {club.name}
                 </div>
                 <span style={{
-                  fontFamily: "'Special Elite', monospace",
+                  fontFamily: 'var(--ro-font-mono)',
                   fontSize: '0.65rem',
                   letterSpacing: '0.12em',
                   textTransform: 'uppercase',

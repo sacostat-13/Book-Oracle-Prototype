@@ -41,7 +41,7 @@ export default function BookCard({ book, reason, onClick }) {
             right: '0.5rem',
             background: 'rgba(176, 140, 63, 0.9)',
             color: 'var(--ink)',
-            fontFamily: "'Special Elite', monospace",
+            fontFamily: 'var(--ro-font-mono)',
             fontSize: '0.6rem',
             letterSpacing: '0.1em',
             padding: '0.2rem 0.4rem',

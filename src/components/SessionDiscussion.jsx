@@ -20,7 +20,7 @@ import { useOracleQuota } from '../lib/OracleQuotaContext';
 
 const labelStyle = {
   display: 'block',
-  fontFamily: "'Special Elite', monospace",
+  fontFamily: 'var(--ro-font-mono)',
   fontSize: '0.7rem',
   letterSpacing: '0.15em',
   textTransform: 'uppercase',
@@ -33,10 +33,10 @@ const inputStyle = {
   boxSizing: 'border-box',
   background: 'rgba(176,140,63,0.04)',
   border: '1px solid rgba(176,140,63,0.25)',
-  borderRadius: '2px',
+  borderRadius: 'var(--ro-radius-sm)',
   padding: '0.55rem 0.8rem',
   color: 'var(--paper)',
-  fontFamily: "'Cormorant Garamond', serif",
+  fontFamily: 'var(--ro-font-display)',
   fontSize: '1rem',
   resize: 'vertical',
   colorScheme: 'dark',
@@ -99,12 +99,12 @@ function OracleSuggestions({ suggestions, onPick, onDismiss }) {
       background: 'rgba(176,140,63,0.04)',
     }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
-        <div style={{ fontFamily: "'Special Elite', monospace", fontSize: '0.65rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--gilt)', opacity: 0.9 }}>
+        <div style={{ fontFamily: 'var(--ro-font-mono)', fontSize: '0.65rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--gilt)', opacity: 0.9 }}>
           {t('discussion.oracleSuggestionsTitle')}
         </div>
         <button
           onClick={onDismiss}
-          style={{ fontSize: '0.7rem', color: 'var(--paper-aged)', opacity: 0.4, background: 'none', border: 'none', cursor: 'pointer', fontFamily: "'Special Elite', monospace", letterSpacing: '0.05em' }}
+          style={{ fontSize: '0.7rem', color: 'var(--paper-aged)', opacity: 0.4, background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'var(--ro-font-mono)', letterSpacing: '0.05em' }}
         >
           {t('discussion.oracleDismiss')}
         </button>
@@ -131,10 +131,10 @@ function OracleSuggestions({ suggestions, onPick, onDismiss }) {
               onMouseEnter={(e) => { if (!done) e.currentTarget.style.background = 'rgba(176,140,63,0.06)'; }}
               onMouseLeave={(e) => { if (!done) e.currentTarget.style.background = done ? 'rgba(176,140,63,0.08)' : 'transparent'; }}
             >
-              <span style={{ fontFamily: "'Special Elite', monospace", fontSize: '0.7rem', color: done ? 'var(--gilt)' : 'rgba(176,140,63,0.4)', flexShrink: 0, marginTop: 2 }}>
+              <span style={{ fontFamily: 'var(--ro-font-mono)', fontSize: '0.7rem', color: done ? 'var(--gilt)' : 'rgba(176,140,63,0.4)', flexShrink: 0, marginTop: 2 }}>
                 {done ? '✦' : '+'}
               </span>
-              <span style={{ fontFamily: "'Cormorant Garamond', serif", fontStyle: 'italic', fontSize: '0.98rem', color: 'var(--paper-aged)', lineHeight: 1.4 }}>
+              <span style={{ fontFamily: 'var(--ro-font-display)', fontStyle: 'italic', fontSize: '0.98rem', color: 'var(--paper-aged)', lineHeight: 1.4 }}>
                 {s}
               </span>
             </div>
@@ -195,26 +195,26 @@ function QuestionBlock({ question, isAdmin, onPostAnswer, onDelete, onEditCommen
           width: 24, height: 24, borderRadius: '50%',
           background: 'rgba(176,140,63,0.15)', border: '1px solid rgba(176,140,63,0.3)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontFamily: "'Special Elite', monospace", fontSize: '0.65rem', color: 'var(--gilt)',
+          fontFamily: 'var(--ro-font-mono)', fontSize: '0.65rem', color: 'var(--gilt)',
           flexShrink: 0, marginTop: 2,
         }}>
           Q
         </div>
         <div style={{ flex: 1 }}>
-          <p style={{ fontFamily: "'Cormorant Garamond', serif", fontStyle: 'italic', fontSize: '1.1rem', color: 'var(--paper)', margin: 0, lineHeight: 1.4 }}>
+          <p style={{ fontFamily: 'var(--ro-font-display)', fontStyle: 'italic', fontSize: '1.1rem', color: 'var(--paper)', margin: 0, lineHeight: 1.4 }}>
             {question.body}
           </p>
           <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.3rem' }}>
             <button
               onClick={() => setCollapsed(!collapsed)}
-              style={{ fontSize: '0.72rem', color: 'var(--paper-aged)', opacity: 0.45, background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontFamily: "'Special Elite', monospace", letterSpacing: '0.05em' }}
+              style={{ fontSize: '0.72rem', color: 'var(--paper-aged)', opacity: 0.45, background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontFamily: 'var(--ro-font-mono)', letterSpacing: '0.05em' }}
             >
               {(collapsed ? (question.answers?.length === 1 ? t('discussion.showAnswers', { count: 1 }) : t('discussion.showAnswersPlural', { count: question.answers?.length || 0 })) : t('discussion.collapseAnswers'))}
             </button>
             {isAdmin && (
               <button
                 onClick={() => onDelete(question.id)}
-                style={{ fontSize: '0.72rem', color: 'rgba(180,60,60,0.55)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontFamily: "'Special Elite', monospace", letterSpacing: '0.05em' }}
+                style={{ fontSize: '0.72rem', color: 'rgba(180,60,60,0.55)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontFamily: 'var(--ro-font-mono)', letterSpacing: '0.05em' }}
               >
                 {t('discussion.removeQuestion')}
               </button>
@@ -322,7 +322,7 @@ export default function SessionDiscussion({ sessionId, clubId, isAdmin, book = {
 
   if (loading) {
     return (
-      <div style={{ color: 'var(--text-dim)', fontSize: '0.9rem', fontStyle: 'italic', padding: '1rem 0' }}>
+      <div style={{ color: 'var(--ro-text-dim)', fontSize: '0.9rem', fontStyle: 'italic', padding: '1rem 0' }}>
         Loading discussion…
       </div>
     );
@@ -380,7 +380,7 @@ export default function SessionDiscussion({ sessionId, clubId, isAdmin, book = {
           )}
 
           {questions.length === 0 && !showAddQuestion && !oracleSuggestions && (
-            <div style={{ color: 'var(--text-dim)', fontStyle: 'italic', fontSize: '0.88rem', marginBottom: '1rem' }}>
+            <div style={{ color: 'var(--ro-text-dim)', fontStyle: 'italic', fontSize: '0.88rem', marginBottom: '1rem' }}>
               {isAdmin ? t('discussion.noQuestionsAdmin') : t('discussion.noQuestions')}
             </div>
           )}
@@ -410,7 +410,7 @@ export default function SessionDiscussion({ sessionId, clubId, isAdmin, book = {
           )}
         </div>
         {comments.length === 0 && (
-          <div style={{ color: 'var(--text-dim)', fontStyle: 'italic', fontSize: '0.88rem', marginBottom: '0.75rem' }}>
+          <div style={{ color: 'var(--ro-text-dim)', fontStyle: 'italic', fontSize: '0.88rem', marginBottom: '0.75rem' }}>
             No comments yet. Be the first.
           </div>
         )}

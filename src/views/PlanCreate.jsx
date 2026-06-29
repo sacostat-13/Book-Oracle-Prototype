@@ -441,8 +441,8 @@ Return ONLY valid JSON in this exact format:
                 </div>
               )}
               {seriesSearchResult?.found && (
-                <div style={{ padding: '1rem', background: 'rgba(176, 140, 63, 0.08)', border: '1px solid rgba(176, 140, 63, 0.3)', borderRadius: '2px' }}>
-                  <div style={{ fontFamily: "'Cormorant Garamond', serif", fontStyle: 'italic', fontSize: '1.1rem', color: 'var(--paper)', marginBottom: '0.4rem' }}>
+                <div style={{ padding: '1rem', background: 'rgba(176, 140, 63, 0.08)', border: '1px solid rgba(176, 140, 63, 0.3)', borderRadius: 'var(--ro-radius-sm)' }}>
+                  <div style={{ fontFamily: 'var(--ro-font-display)', fontStyle: 'italic', fontSize: '1.1rem', color: 'var(--paper)', marginBottom: '0.4rem' }}>
                     Found <strong>{seriesSearchResult.books.length}</strong> books in <em>{seriesSearchResult.name}</em>
                   </div>
                   <div style={{ fontSize: '0.85rem', color: 'var(--paper-aged)', opacity: 0.7 }}>

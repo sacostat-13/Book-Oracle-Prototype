@@ -1,82 +1,123 @@
-// components/_buttons.scss
-// Base button variants: .btn, .btn-ghost, .btn-gilt
-[data-theme="light"] {
-  .btn {
-    color: white;
+// components/_buttons.scss — The Books Oracle
+// Button system, exact to the Design System. SIX variants + sizes.
+//   .btn-primary   filled brass, dark ink — one per view
+//   .btn-accent    wine fill + inset cream frame — the Oracle's voice (rituals, sign-in)
+//   .btn-secondary transparent, 1.5px text border — pairs with primary
+//   .btn-tertiary  transparent, soft border-strong — list actions
+//   .btn-text      inline link, gold-text, no border — "see all"
+//   .btn-danger    error outline, fills on hover
+// Sizes: .btn--sm (36), default (46), .btn--lg
 
-    &::before {
-      border: 1px solid var(--gilt);
-    }
-  }
-  .btn-ghost{
-    color: var(--paper);
-  }
-}
-
-
-.btn {
-  background: var(--blood);
-  color: var(--paper);
-  border: none;
-  padding: 0.9rem 1.8rem;
-  font-family: 'Cormorant Garamond', serif;
-  font-size: 1.1rem;
-  font-style: italic;
-  font-weight: 500;
+// Shared base
+%btn-base {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--ro-space-2);
+  font-family: var(--ro-font-body);
+  font-weight: 600;
+  font-size: 14px;
+  line-height: 1;
+  padding: 13px 22px;
+  border-radius: var(--ro-radius-md);
+  border: 0;
   cursor: pointer;
-  letter-spacing: 0.03em;
-  border-radius: 2px;
-  position: relative;
-  transition: all 0.3s;
   white-space: nowrap;
+  transition: filter .15s, background .15s, color .15s, border-color .15s, opacity .15s;
+  text-decoration: none;
 
-  &::before {
-    content: "";
-    position: absolute;
-    inset: 4px;
-    border: 1px solid var(--paper-dim);
-    pointer-events: none;
-    border-radius: 1px;
-  }
-
-  &:hover {
-    background: var(--blood-bright);
-    transform: translateY(-1px);
-    box-shadow: 0 6px 20px rgba(107,26,26,0.4);
-  }
-
-  &:disabled {
-    opacity: 0.4;
-    cursor: not-allowed;
-    transform: none;
-  }
+  &:disabled { opacity: .5; cursor: not-allowed; }
 }
 
-.btn-ghost {
-  background: transparent;
-  color: var(--paper-dim);
-  border: 1px solid var(--border-subtle);
-
-  &::before { display: none; }
-
-  &:hover {
-    background: var(--surface-hover);
-    color: var(--paper);
-    border-color: var(--paper);
-    box-shadow: none;
-  }
+// Primary — filled brass
+.btn-primary {
+  @extend %btn-base;
+  background: var(--ro-gold);
+  color: var(--ro-gold-on);
+  &:hover:not(:disabled) { filter: brightness(1.07); }
 }
 
-.btn-gilt {
+// Accent — wine fill with inset cream frame (the signature CTA)
+.btn-accent {
+  @extend %btn-base;
+  position: relative;
+  padding: 13px 24px;
+  font-style: italic;
+  background: var(--ro-accent);
+  color: var(--ro-accent-on);
+  box-shadow:
+    inset 0 0 0 4px var(--ro-accent),
+    inset 0 0 0 5px var(--ro-accent-line);
+  &:hover:not(:disabled) { filter: brightness(1.08); }
+}
+
+// Secondary — outline (1.5px text)
+.btn-secondary {
+  @extend %btn-base;
   background: transparent;
-  color: var(--gilt);
-  border: 1px solid var(--gilt);
+  border: 1.5px solid var(--ro-text);
+  color: var(--ro-text);
+  &:hover:not(:disabled) { border-color: var(--ro-gold); color: var(--ro-gold-text); }
+}
 
-  &::before { display: none; }
+// Tertiary — soft outline for list actions
+.btn-tertiary {
+  @extend %btn-base;
+  padding: 13px 14px;
+  background: transparent;
+  border: 1px solid var(--ro-border-strong);
+  color: var(--ro-text-2);
+  gap: var(--ro-space-2);
+  &:hover:not(:disabled) { border-color: var(--ro-gold); }
+  // optional leading "+" glyph
+  .btn__plus { font-size: 17px; line-height: 0; color: var(--ro-gold-text); }
+}
 
-  &:hover {
-    background: var(--gilt);
-    color: var(--ink);
-    box-shadow: 0 6px 20px rgba(176,140,63,0.3);
-  }
+// Text — inline link
+.btn-text {
+  @extend %btn-base;
+  padding: 13px 6px;
+  border-radius: var(--ro-radius-sm);
+  background: transparent;
+  color: var(--ro-gold-text);
+  &:hover:not(:disabled) { opacity: .8; }
+}
+
+// Danger — destructive outline, fills on hover
+.btn-danger {
+  @extend %btn-base;
+  background: transparent;
+  border: 1.5px solid var(--ro-error);
+  color: var(--ro-error);
+  &:hover:not(:disabled) { background: var(--ro-error); color: #fff; }
+}
+
+// ── Sizes ─────────────────────────────────────────────────────────────────────
+.btn--sm {
+  padding: 9px 16px;
+  font-size: 12px;
+  border-radius: 10px;
+  &.btn-tertiary { padding: 9px 12px; }
+  &.btn-accent   { padding: 9px 18px; }
+}
+.btn--lg {
+  padding: 16px 28px;
+  font-size: 16px;
+  border-radius: var(--ro-radius-lg);
+}
+
+// Full-width modifier
+.btn--block { width: 100%; }
+
+// Icon-only square (used in toolbars)
+.btn-icon {
+  @extend %btn-base;
+  padding: 0;
+  width: var(--ro-touch-min);
+  height: var(--ro-touch-min);
+  border-radius: var(--ro-radius-md);
+  background: transparent;
+  border: 1px solid var(--ro-border-strong);
+  color: var(--ro-text-2);
+  &:hover:not(:disabled) { border-color: var(--ro-gold); color: var(--ro-gold-text); }
 }

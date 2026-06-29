@@ -13,7 +13,7 @@ function Avatar({ displayName, avatarUrl, size = 32 }) {
   const [imgFailed, setImgFailed] = useState(false);
   const initials = (displayName || '?').split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase();
   const initialsEl = (
-    <div style={{ width: size, height: size, borderRadius: '50%', background: 'rgba(176,140,63,0.15)', border: '1px solid rgba(176,140,63,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Special Elite', monospace", fontSize: size * 0.35, color: 'var(--gilt)', flexShrink: 0 }}>
+    <div style={{ width: size, height: size, borderRadius: '50%', background: 'rgba(176,140,63,0.15)', border: '1px solid rgba(176,140,63,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--ro-font-mono)', fontSize: size * 0.35, color: 'var(--gilt)', flexShrink: 0 }}>
       {initials}
     </div>
   );
@@ -40,13 +40,13 @@ function SessionCard({ session, onClick, t }) {
           </div>
         )}
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontFamily: "'Cormorant Garamond', serif", fontStyle: 'italic', fontSize: '1.05rem', color: 'var(--paper)', lineHeight: 1.2 }}>{session.title}</div>
+          <div style={{ fontFamily: 'var(--ro-font-display)', fontStyle: 'italic', fontSize: '1.05rem', color: 'var(--paper)', lineHeight: 1.2 }}>{session.title}</div>
           {session.book?.author && <div style={{ fontSize: '0.8rem', color: 'var(--paper-aged)', opacity: 0.65 }}>{session.book.author}</div>}
         </div>
-        {isActive && <span style={{ fontFamily: "'Special Elite', monospace", fontSize: '0.6rem', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--gilt)', flexShrink: 0 }}>{t('clubs.sessionActive')}</span>}
-        {isPast && <span style={{ fontFamily: "'Special Elite', monospace", fontSize: '0.6rem', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--paper-aged)', opacity: 0.4, flexShrink: 0 }}>{t('clubs.sessionPast')}</span>}
+        {isActive && <span style={{ fontFamily: 'var(--ro-font-mono)', fontSize: '0.6rem', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--gilt)', flexShrink: 0 }}>{t('clubs.sessionActive')}</span>}
+        {isPast && <span style={{ fontFamily: 'var(--ro-font-mono)', fontSize: '0.6rem', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--paper-aged)', opacity: 0.4, flexShrink: 0 }}>{t('clubs.sessionPast')}</span>}
       </div>
-      <div style={{ fontSize: '0.78rem', color: 'var(--paper-aged)', opacity: 0.55, fontFamily: "'Special Elite', monospace", letterSpacing: '0.04em' }}>
+      <div style={{ fontSize: '0.78rem', color: 'var(--paper-aged)', opacity: 0.55, fontFamily: 'var(--ro-font-mono)', letterSpacing: '0.04em' }}>
         {fmtDate(session.starts_at)} — {fmtDate(session.ends_at)}
       </div>
     </div>
@@ -155,7 +155,7 @@ export default function BookClubDetail() {
       <div className="page-header">
         <div className="page-eyebrow">{isAdmin ? t('clubs.detailAdminBadge') : t('clubs.memberBadge')}</div>
         <h1 className="page-title">{club.name}</h1>
-        {club.description && <p style={{ color: 'var(--text-muted)', fontSize: '0.95rem', marginTop: '0.4rem', lineHeight: 1.6 }}>{club.description}</p>}
+        {club.description && <p style={{ color: 'var(--ro-text-muted)', fontSize: '0.95rem', marginTop: '0.4rem', lineHeight: 1.6 }}>{club.description}</p>}
         {genres?.length > 0 && (
           <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', marginTop: '0.75rem' }}>
             {genres.map((g) => <span key={g.id} className="li-genre-pill">{g.name}</span>)}
@@ -176,7 +176,7 @@ export default function BookClubDetail() {
 
       {activeSession && (
         <div style={{ marginBottom: '2rem' }}>
-          <div style={{ fontFamily: "'Special Elite', monospace", fontSize: '0.7rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--gilt)', marginBottom: '0.6rem' }}>
+          <div style={{ fontFamily: 'var(--ro-font-mono)', fontSize: '0.7rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--gilt)', marginBottom: '0.6rem' }}>
             {t('clubs.currentSession')}
           </div>
           <SessionCard session={activeSession} onClick={() => go('session-detail', { sessionId: activeSession.id })} t={t} />
@@ -185,13 +185,13 @@ export default function BookClubDetail() {
 
       <section style={{ marginBottom: '2.5rem' }}>
         <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: '0.75rem', gap: '1rem' }}>
-          <div style={{ fontFamily: "'Special Elite', monospace", fontSize: '0.7rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--gilt)' }}>
+          <div style={{ fontFamily: 'var(--ro-font-mono)', fontSize: '0.7rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--gilt)' }}>
             {activeSession ? t('clubs.pastSessions') : t('clubs.sessions')}
           </div>
           {isAdmin && <button className="li-action" onClick={() => go('session-create', { clubId })}>{t('clubs.newSessionBtn')}</button>}
         </div>
         {(activeSession ? otherSessions : sessions).length === 0 ? (
-          <div style={{ color: 'var(--text-dim)', fontStyle: 'italic', fontSize: '0.9rem' }}>
+          <div style={{ color: 'var(--ro-text-dim)', fontStyle: 'italic', fontSize: '0.9rem' }}>
             {isAdmin ? t('clubs.noSessionsAdmin') : t('clubs.noSessions')}
           </div>
         ) : (
@@ -212,7 +212,7 @@ export default function BookClubDetail() {
       />
 
       <section style={{ marginBottom: '2.5rem' }}>
-        <div style={{ fontFamily: "'Special Elite', monospace", fontSize: '0.7rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--gilt)', marginBottom: '0.75rem' }}>
+        <div style={{ fontFamily: 'var(--ro-font-mono)', fontSize: '0.7rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--gilt)', marginBottom: '0.75rem' }}>
           {t('clubs.membersSection', { count: members?.length ?? 0 })}
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
@@ -225,7 +225,7 @@ export default function BookClubDetail() {
                   <span style={{ fontSize: '0.9rem', color: 'var(--paper)' }}>{m.display_name || t('clubs.anonymousReader')}</span>
                   {isSelf && <span style={{ opacity: 0.4, fontSize: '0.8rem', marginLeft: '0.4rem' }}>{t('clubs.you')}</span>}
                 </div>
-                <span style={{ fontFamily: "'Special Elite', monospace", fontSize: '0.62rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: m.role === 'admin' ? 'var(--gilt)' : 'var(--paper-aged)', opacity: m.role === 'admin' ? 1 : 0.4 }}>
+                <span style={{ fontFamily: 'var(--ro-font-mono)', fontSize: '0.62rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: m.role === 'admin' ? 'var(--gilt)' : 'var(--paper-aged)', opacity: m.role === 'admin' ? 1 : 0.4 }}>
                   {m.role === 'admin' ? t('clubs.roleAdmin') : t('clubs.roleMember')}
                 </span>
                 {isAdmin && !isSelf && (
@@ -242,7 +242,7 @@ export default function BookClubDetail() {
 
       {isCreator && (
         <section style={{ borderTop: '1px solid rgba(176,140,63,0.1)', paddingTop: '1.5rem', marginTop: '1rem' }}>
-          <div style={{ fontFamily: "'Special Elite', monospace", fontSize: '0.7rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: 'rgba(180,60,60,0.7)', marginBottom: '0.75rem' }}>
+          <div style={{ fontFamily: 'var(--ro-font-mono)', fontSize: '0.7rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: 'rgba(180,60,60,0.7)', marginBottom: '0.75rem' }}>
             {t('clubs.dangerZone')}
           </div>
           {!confirmDelete ? (

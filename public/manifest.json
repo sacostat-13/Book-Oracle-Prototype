@@ -1,7 +1,7 @@
 {
-  "name": "The Reading Oracle",
+  "name": "The Books Oracle",
   "short_name": "Oracle",
-  "description": "A curated reader's library — divination, wishlist, and library for gothic and literary fiction lovers.",
+  "description": "A curated reader's library — divination, wishlist, and library book lovers.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#1a1410",

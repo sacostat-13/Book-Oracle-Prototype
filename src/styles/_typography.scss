@@ -1,15 +1,27 @@
-// _typography.scss
-// Text utility classes and surface utilities.
-// These map directly to the token system in _tokens.scss.
+// _typography.scss — The Books Oracle
+// Type utility classes generated from the $ro-type ramp.
+// Use these instead of inline font declarations:
+//   <h1 class="t-display">  <span class="t-overline">  <p class="t-body">
+// Display = Instrument Serif · Body = EB Garamond · Labels = IBM Plex Mono.
 
-.text-primary   { color: var(--text-primary); }
-.text-secondary { color: var(--text-secondary); }
-.text-muted     { color: var(--text-muted); }
-.text-dim       { color: var(--text-dim); }
-.text-faint     { color: var(--text-faint); }
-.text-ghost     { color: var(--text-ghost); }
-.text-gilt      { color: var(--gilt); }
-.text-blood     { color: var(--blood-bright); }
+@each $name, $spec in $ro-type {
+  .t-#{$name} {
+    @include ro-type($name);
+  }
+}
 
-.surface-tint  { background: var(--surface-tint); }
-.surface-hover { background: var(--surface-hover); }
+// Italic emphasis helper (EB Garamond italic — the Oracle's softer voice)
+.t-italic { font-style: italic; }
+
+// Color helpers tied to the token system
+.t-accent  { color: var(--ro-burgundy); }
+.t-gold    { color: var(--ro-gold-text); }
+.t-muted   { color: var(--ro-muted); }
+.t-dim     { color: var(--ro-dim); }
+
+// The recurring "eyebrow" overline used above section titles
+.eyebrow {
+  @include ro-type(overline);
+  color: var(--ro-gold);
+  letter-spacing: .18em;
+}

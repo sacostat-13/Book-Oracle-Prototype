@@ -3,19 +3,19 @@
 import { useState } from 'react';
 import { useData } from '../lib/DataContext';
 import { useRouter } from '../lib/RouterContext';
-import { useT } from '../lib/I18nContext';
+import { useT, useTNode } from '../lib/I18nContext';
 
 const inputStyle = {
   width: '100%', boxSizing: 'border-box',
   background: 'rgba(176, 140, 63, 0.04)',
   border: '1px solid rgba(176, 140, 63, 0.25)',
-  borderRadius: '2px', padding: '0.6rem 0.85rem',
-  color: 'var(--paper)', fontFamily: "'Cormorant Garamond', serif",
+  borderRadius: 'var(--ro-radius-sm)', padding: '0.6rem 0.85rem',
+  color: 'var(--paper)', fontFamily: 'var(--ro-font-display)',
   fontSize: '1.05rem', lineHeight: 1.5,
 };
 
 const labelStyle = {
-  display: 'block', fontFamily: "'Special Elite', monospace",
+  display: 'block', fontFamily: 'var(--ro-font-mono)',
   fontSize: '0.72rem', letterSpacing: '0.15em',
   textTransform: 'uppercase', color: 'var(--gilt)', marginBottom: '0.4rem',
 };
@@ -24,6 +24,7 @@ export default function BookClubCreate() {
   const { createClub, state } = useData();
   const { go } = useRouter();
   const t = useT();
+  const tNode = useTNode();
 
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -51,8 +52,8 @@ export default function BookClubCreate() {
       </div>
       <div className="page-header">
         <div className="page-eyebrow">{t('clubs.createEyebrow')}</div>
-        <h1 className="page-title">{t('clubs.createTitle', { accent: <span className="accent">{t('clubs.createTitleAccent')}</span> })}</h1>
-        <p style={{ color: 'var(--text-muted)', fontSize: '0.95rem', marginTop: '0.5rem' }}>
+        <h1 className="page-title">{tNode('clubs.createPageTitle')}</h1>
+        <p style={{ color: 'var(--ro-text-muted)', fontSize: '0.95rem', marginTop: '0.5rem' }}>
           {t('clubs.createSubtitle')}
         </p>
       </div>
@@ -101,7 +102,7 @@ export default function BookClubCreate() {
                       border: `1px solid ${selected ? 'rgba(176,140,63,0.7)' : 'rgba(176,140,63,0.2)'}`,
                       background: selected ? 'rgba(176,140,63,0.12)' : 'transparent',
                       color: selected ? 'var(--gilt-bright, #e8c560)' : 'var(--paper-aged)',
-                      fontFamily: "'Special Elite', monospace", fontSize: '0.7rem',
+                      fontFamily: 'var(--ro-font-mono)', fontSize: '0.7rem',
                       letterSpacing: '0.08em', cursor: 'pointer', transition: 'all 0.15s',
                     }}
                   >

@@ -87,7 +87,7 @@ function buildPrompt(books, existingGenres) {
     })
     .join('\n\n');
 
-  const systemPrompt = `You are the Book Oracle, a literary curator with deep expertise in Gothic fiction, horror, literary fiction, and speculative literature. You enrich book records for a curated reading app.
+  const systemPrompt = `You are the The Books Oracle, a literary curator with deep expertise in Gothic fiction, horror, literary fiction, and speculative literature. You enrich book records for a curated reading app.
 
 For each book you will return:
 1. GENRES — 1-3 canonical genre labels from or inspired by the existing catalog

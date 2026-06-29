@@ -1,40 +1,30 @@
-// main.scss — Book Oracle v0.26
-// Single entry point. Using @import (not @use) for reliable Vite HMR
-// and [data-theme] attribute selector cascade across all partials.
+// main.scss — The Books Oracle
+// Single entry point. @import for reliable Vite HMR across all partials.
+// Order: tokens → themes → reset/type/global → layout → components → pages.
 
-// ── Tokens & reset ────────────────────────────────────────────────────────────
+// ── Foundation ────────────────────────────────────────────────────────────────
 @import 'tokens';
+@import 'themes';
 @import 'reset';
 @import 'typography';
 @import 'global';
 
 // ── Layout ────────────────────────────────────────────────────────────────────
-@import 'layout/layout';
+@import 'layout/shell';
 @import 'layout/nav';
-@import 'layout/mobile-nav';
-@import 'layout/shelf';
+@import 'layout/footer';
 
 // ── Components ────────────────────────────────────────────────────────────────
 @import 'components/buttons';
+@import 'components/cards';
 @import 'components/badges';
-@import 'components/loading';
-@import 'components/toast';
-@import 'components/upload';
-@import 'components/card';
+@import 'components/forms';
+@import 'components/rating';
+@import 'components/progress';
+@import 'components/avatars';
 @import 'components/modal';
 
 // ── Pages ─────────────────────────────────────────────────────────────────────
-@import 'pages/onboarding';
 @import 'pages/dashboard';
-@import 'pages/dashboard-feed';
-@import 'pages/dashboard-widgets';
-@import 'pages/friends';
-@import 'pages/oracle';
-@import 'pages/oracle-btn';
-@import 'pages/wishlist';
-@import 'pages/lists';
-@import 'pages/book-page';
-@import 'pages/similar';
-@import 'pages/cover-grid';
-@import 'pages/series-page';
-@import 'pages/plans';
+@import 'pages/book-pages';
+@import 'pages/social';

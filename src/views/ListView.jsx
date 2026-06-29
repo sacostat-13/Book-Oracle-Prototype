@@ -13,7 +13,7 @@ function CoverImg({ book, size = 60 }) {
     return <img src={book.cover_url || book.coverUrl} alt={book.title || book.t} style={s} />;
   return (
     <div style={{ ...s, background: 'linear-gradient(155deg,#3a2a1c,#1a100a)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <span style={{ fontFamily: "'Cormorant Garamond',serif", fontStyle: 'italic', fontSize: 9, color: 'rgba(233,217,182,.5)', textAlign: 'center', padding: 4 }}>
+      <span style={{ fontFamily: 'var(--ro-font-display)', fontStyle: 'italic', fontSize: 9, color: 'rgba(233,217,182,.5)', textAlign: 'center', padding: 4 }}>
         {(book.title || book.t || '').slice(0, 14)}
       </span>
     </div>
@@ -56,7 +56,7 @@ export default function ListView() {
   }, [listId, planId]);
 
   if (loading) return (
-    <div className="loading" style={{ paddingTop: '6rem' }}>
+    <div className="loading">
       <div className="loading-spinner" />
       <div className="loading-text">{t('lists.loading')}</div>
     </div>
@@ -67,7 +67,7 @@ export default function ListView() {
       <div className="ornament">❦</div>
       <div className="empty-state-title">{error || t('lists.notFound')}</div>
       <div className="empty-state-text">{t('lists.notFoundText')}</div>
-      {user && <button className="btn" style={{ marginTop: '1.5rem' }} onClick={() => go('dashboard')}>{t('lists.toDashboard')}</button>}
+      {user && <button className="btn-primary" onClick={() => go('dashboard')}>{t('lists.toDashboard')}</button>}
     </div>
   );
 
@@ -77,35 +77,35 @@ export default function ListView() {
     return (
       <>
         <div className="page-header">
-          <div className="page-eyebrow" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            {t('lists.curatedBy', { name: <strong style={{ color: '#d8b66a' }}>{owner.display_name}</strong> })}
+          <div className="page-eyebrow lv-curated-by">
+            {t('lists.curatedBy', { name: <strong className="lv-curator-name">{owner.display_name}</strong> })}
           </div>
           <h1 className="page-title">{list.title}</h1>
           {list.description && (
-            <p style={{ color: 'var(--text-muted)', marginTop: '0.5rem' }}>{list.description}</p>
+            <p className="lv-description">{list.description}</p>
           )}
-          <div style={{ marginTop: '0.75rem' }}>
+          <div className="lv-action-row">
             <span className="level-pill">▤ {t('lists.bookCount', { count: books.length })}</span>
           </div>
         </div>
 
         {user && (
-          <div style={{ marginBottom: '1.5rem' }}>
+          <div className="lv-list-entries">
             <button className="btn btn-ghost" onClick={() => go('lists')}>{t('lists.saveToMyLists')}</button>
           </div>
         )}
 
         <div>
           {books.map((entry, i) => (
-            <div key={i} className="list-item" style={{ borderLeftColor: 'rgba(201,162,75,.18)' }}>
-              <div className="li-num" style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: '0.7rem', color: 'var(--text-faint)' }}>
+            <div key={i} className="list-item lv-list-item">
+              <div className="li-num lv-item-num">
                 {i + 1}
               </div>
               <CoverImg book={entry.book} size={52} />
               <div className="li-content">
                 <div className="li-title">{entry.book.title || entry.book.t}</div>
                 <div className="li-author">{entry.book.author || entry.book.a}</div>
-                {entry.note && <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)', fontStyle: 'italic', marginTop: '0.2rem' }}>{entry.note}</div>}
+                {entry.note && <div className="lv-item-note">{entry.note}</div>}
               </div>
               {user && (
                 <div className="li-actions">
@@ -131,21 +131,21 @@ export default function ListView() {
   return (
     <>
       <div className="page-header">
-        <div className="page-eyebrow" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          {t('plans.planBy', { name: <strong style={{ color: '#d8b66a' }}>{owner.display_name}</strong> })}
+        <div className="page-eyebrow lv-curated-by">
+          {t('plans.planBy', { name: <strong className="lv-curator-name">{owner.display_name}</strong> })}
         </div>
         <h1 className="page-title">{plan.title || content.title}</h1>
         {content.intro && (
-          <p style={{ color: 'var(--text-muted)', marginTop: '0.5rem' }}>{content.intro}</p>
+          <p className="lv-description">{content.intro}</p>
         )}
-        <div style={{ marginTop: '0.75rem' }}>
+        <div className="lv-action-row">
           <span className="level-pill">▤ {t('plans.viewBooks', { count: books.length })}</span>
-          {content.timeline && <span className="level-pill" style={{ marginLeft: '0.5rem' }}>◷ {t('plans.timeline', { count: content.timeline })}</span>}
+          {content.timeline && <span className="level-pill">◷ {t('plans.timeline', { count: content.timeline })}</span>}
         </div>
       </div>
 
       {user && (
-        <div style={{ marginBottom: '1.5rem' }}>
+        <div className="lv-list-entries">
           <button className="btn btn-gilt" onClick={() => go('plan-view', { planId: plan.id })}>
             {t('plans.savePlan')}
           </button>

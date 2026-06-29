@@ -34,9 +34,9 @@ function AddBookPicker({ list, onClose }) {
 
   return (
     <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal" style={{ maxWidth: 560 }} onClick={e => e.stopPropagation()}>
-        <button className="book-modal-close" onClick={onClose} style={{ position: 'absolute', top: '1rem', right: '1rem' }}>✕</button>
-        <div className="book-modal-section-title" style={{ marginBottom: '1rem' }}>
+      <div className="modal" onClick={e => e.stopPropagation()}>
+        <button className="modal__close" onClick={onClose}>✕</button>
+        <div className="bp-section__label">
           {t('listDetail.addBook')}
         </div>
         <input
@@ -45,29 +45,29 @@ function AddBookPicker({ list, onClose }) {
           value={query}
           onChange={e => setQuery(e.target.value)}
           autoFocus
-          style={{ marginBottom: '1rem' }}
+          
         />
-        <div style={{ maxHeight: 400, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+        <div className="ldetail-scroll">
           {candidates.length === 0 && (
-            <div style={{ padding: '1rem 0', color: 'var(--text-dim)', fontStyle: 'italic' }}>
+            <div className="ldetail-empty">
               {t('listDetail.noResults')}
             </div>
           )}
           {candidates.map((b, i) => (
             <div key={bookKey(b) + i}
-              style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.55rem 0.5rem', borderRadius: 2, cursor: 'pointer', transition: 'background 0.12s' }}
+              className="ldetail-pick-row"
               onMouseEnter={e => e.currentTarget.style.background = 'rgba(176,140,63,0.06)'}
               onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
               onClick={() => add(b)}
             >
-              <div style={{ width: 32, height: 48, flexShrink: 0 }}>
+              <div className="ldetail-pick-cover--placeholder">
                 <BookCover title={b.t} author={b.a} coverUrl={b.coverUrl} />
               </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontFamily: "'Cormorant Garamond',serif", fontStyle: 'italic', fontSize: '0.95rem', color: 'var(--text-primary)' }}>{b.t}</div>
-                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{b.a}</div>
+              <div className="ldetail-pick-body">
+                <div className="ldetail-pick-title">{b.t}</div>
+                <div className="ldetail-pick-author">{b.a}</div>
               </div>
-              <span className="li-action" style={{ flexShrink: 0, opacity: adding === b.bookId ? 0.5 : 1 }}>
+              <span className="li-action">
                 {adding === b.bookId ? '…' : '+ Add'}
               </span>
             </div>
@@ -92,7 +92,7 @@ export default function ListDetail() {
     <div className="empty-state">
       <div className="ornament">❦</div>
       <div className="empty-state-title">{t('listDetail.notFound')}</div>
-      <button className="btn" onClick={() => go('lists')} style={{ marginTop: '1.5rem' }}>
+      <button className="btn-primary">
         {t('listDetail.backToLists')}
       </button>
     </div>
@@ -124,19 +124,19 @@ export default function ListDetail() {
         <div className="page-eyebrow">{t('listDetail.eyebrow')}</div>
         <h1 className="page-title">{list.title}</h1>
         {list.description && (
-          <p style={{ color: 'var(--text-muted)', marginTop: '0.5rem' }}>{list.description}</p>
+          <p className="lv-description">{list.description}</p>
         )}
-        <div style={{ marginTop: '0.75rem', display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+        <div className="lv-action-row">
           <span className="level-pill">▤ {books.length} {t('common.books')}</span>
           {list.is_public && (
-            <span className="level-pill" style={{ borderColor: 'rgba(201,162,75,.5)', color: '#d8b66a' }}>
+            <span className="level-pill bp-pill--ro-gold">
               ✦ {t('lists.publicBadge')}
             </span>
           )}
         </div>
       </div>
 
-      <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '2rem' }}>
+      <div className="lv-chips">
         <button className="btn" onClick={() => setAddingBook(true)}>
           {t('listDetail.addBook')}
         </button>
@@ -192,7 +192,7 @@ export default function ListDetail() {
                     <div className="cover-grid-hover-author">{b.a}</div>
                     <button
                       className="li-action"
-                      style={{ marginTop: '0.5rem', color: 'var(--blood-bright)' }}
+                      className="pf-error"
                       onClick={e => { e.stopPropagation(); removeBookFromList(list.id, b.bookId); }}
                     >
                       {t('common.remove')}

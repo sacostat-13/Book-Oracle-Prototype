@@ -1,138 +1,100 @@
-// _tokens.scss
-// Design tokens only: CSS custom properties + base box-sizing reset.
-// Body, app shell, ambient textures → _reset.scss
-// Text utility classes → _typography.scss
+// ============================================================
+//  The Books Oracle — Design Tokens
+//  Drop into src/styles/ and @use it from main.scss:
+//    @use 'tokens' as *;
+//  Themes are applied by toggling a class on <html> or <body>:
+//    <body class="theme-dark">       (default — Dark Academia)
+//    <body class="theme-parchment">  (warm cream)
+//  Components should consume the CSS custom properties (var(--ro-*)),
+//  NOT the SCSS $ vars directly, so theme switching works at runtime.
+// ============================================================
 
-// ── Dark mode (default) ───────────────────────────────────────────────────────
-:root {
-  --ink:          #1a1410;
-  --ink-deep:     #0d0907;
-  --paper:        #f4ead5;
-  --paper-aged:   #e8dcc0;
-  --paper-dim:    rgba(244,234,213,0.7);
-  --blood:        #6b1a1a;
-  --blood-bright: #8b2222;
-  --moss:         #3d4a36;
-  --gilt:         #b08c3f;
-  --gilt-bright:  #d4a574;
-  --shadow:       #0d0907;
-  --wood-dark:    #2a1810;
-  --wood-mid:     #3d2418;
-  --wood-light:   #5a3a2a;
-  --wood-grain:   #1f1109;
+// ---- Brand constants (same hue across both themes) ---------
+$ro-gold:        #C9A84C;  // primary brass accent
+$ro-gold-text:   #D8B85E;  // links, headings, bright accent
+$ro-accent:      #6E1A22;  // wine — primary CTA fill (the Oracle's voice)
+$ro-burgundy:    #A8434C;  // secondary emphasis
+$ro-forest:      #5C8264;  // the READ pill, some covers
 
-  // Text hierarchy — use these instead of ad-hoc opacity values
-  --text-primary:   var(--paper);
-  --text-secondary: var(--paper-aged);
-  --text-muted:     rgba(244,234,213,0.65);
-  --text-dim:       rgba(244,234,213,0.40);
-  --text-faint:     rgba(244,234,213,0.28);
-  --text-ghost:     rgba(244,234,213,0.15);
+// ---- Typography (serif voice + serif body + mono labels) ---
+$ro-font-display: 'Instrument Serif', Georgia, 'Times New Roman', serif; // display / the Oracle's voice
+$ro-font-body:    'Inter', 'EB Garamond', Georgia, 'Times New Roman', serif;      // body, headings, buttons (italic for emphasis)
+$ro-font-mono:    'IBM Plex Mono', ui-monospace, 'SFMono-Regular', monospace; // labels, overlines, metadata
 
-  // Font-size floor — never go below --text-xs in any UI element
-  --text-xs:   0.75rem;   // 12px absolute minimum
-  --text-sm:   0.875rem;  // 14px
-  --text-base: 1rem;      // 16px
+// Type ramp  (name: (size, line-height, weight, family))
+$ro-type: (
+  display:   (46px, 1.05, 400, $ro-font-display),
+  h1:        (36px, 1.06, 400, $ro-font-display),
+  h2:        (28px, 1.10, 400, $ro-font-display),
+  section:   (24px, 1.15, 400, $ro-font-display),
+  quote:     (20px, 1.40, 400, $ro-font-body),    // use font-style: italic
+  title:     (18px, 1.25, 600, $ro-font-body),
+  body-lg:   (16px, 1.60, 400, $ro-font-body),
+  body:      (14px, 1.55, 400, $ro-font-body),
+  button:    (15px, 1.00, 600, $ro-font-body),    // often font-style: italic
+  label:     (13px, 1.20, 600, $ro-font-mono),    // mono, UPPERCASE
+  caption:   (12px, 1.30, 500, $ro-font-body),
+  overline:  (10px, 1.00, 600, $ro-font-mono),    // letter-spacing: .18em; text-transform: uppercase
+);
 
-  // Surface tokens
-  --surface:        var(--ink);
-  --surface-raised: var(--wood-mid);
-  --surface-tint:   rgba(244,234,213,0.04);
-  --surface-hover:  rgba(244,234,213,0.06);
-  --border-subtle:  rgba(176,140,63,0.18);
-  --border-mid:     rgba(176,140,63,0.30);
-  --input-bg:       rgba(176,140,63,0.04);
-  --input-border:   rgba(176,140,63,0.25);
-  --overlay-bg:     rgba(10,8,6,0.78);
+// ---- 8-point spacing scale ---------------------------------
+$ro-space: (
+  0: 0,    1: 4px,  2: 8px,  3: 12px, 4: 16px,
+  6: 24px, 8: 32px, 12: 48px, 16: 64px,
+);
 
-  // Spacing scale — use these instead of ad-hoc rem values
-  --space-1:  8px;
-  --space-2: 16px;
-  --space-3: 24px;
-  --space-4: 40px;
-  --space-5: 64px;
+// ---- Radius scale ------------------------------------------
+$ro-radius: (
+  sm:   8px,    // inputs, small badges
+  md:   12px,   // buttons
+  lg:   16px,   // cards
+  xl:   20px,   // feature cards, modals
+  pill: 999px,  // chips, tabs, toggles
+);
 
-  // ── Semantic status tokens ──────────────────────────────────────────────────
-  // Use these for read/reading/queued/wishlist states everywhere.
-  // Keeps brand gold (--gilt) reserved for decorative/premium use only.
+// ---- Responsive breakpoints --------------------------------
+//  Mobile-first: author the phone layout, then layer wider rules
+//  with @include ro-up(desktop) { … }.
+$ro-bp: (
+  mobile:  640px,   // < 640: single column, bottom tab bar
+  tablet:  768px,   // >= 768: 2-up grids return
+  desktop: 1024px,  // >= 1024: persistent left sidebar
+  wide:    1280px,  // >= 1280: full 1080px content rail
+);
 
-  --status-read-bg:         rgba(61,74,54,0.25);
-  --status-read-fg:         #7aab6a;
-  --status-read-border:     rgba(61,74,54,0.55);
+$ro-rail-max:       1080px;  // centered content column
+$ro-sidebar-w:      268px;   // desktop left nav width
+$ro-tabbar-h:       64px;    // mobile bottom tab bar height
+$ro-touch-min:      44px;    // minimum tap target
 
-  --status-reading-bg:      rgba(176,140,63,0.12);
-  --status-reading-fg:      var(--gilt-bright);
-  --status-reading-border:  rgba(176,140,63,0.45);
+// ---- Elevation ---------------------------------------------
+$ro-shadow-dark:  0 18px 44px rgba(0, 0, 0, 0.55);
+$ro-shadow-light: 0 16px 36px rgba(90, 70, 30, 0.18);
 
-  --status-queued-bg:       rgba(80,110,160,0.12);
-  --status-queued-fg:       #8aade0;
-  --status-queued-border:   rgba(80,110,160,0.40);
-
-  --status-wishlist-bg:     rgba(120,80,160,0.12);
-  --status-wishlist-fg:     #b08ad4;
-  --status-wishlist-border: rgba(120,80,160,0.38);
+// ---- Helper: emit a type style -----------------------------
+@mixin ro-type($name) {
+  $t: map-get($ro-type, $name);
+  font-family: nth($t, 4);
+  font-size:   nth($t, 1);
+  line-height: nth($t, 2);
+  font-weight: nth($t, 3);
+  @if $name == overline or $name == label {
+    letter-spacing: .16em;
+    text-transform: uppercase;
+  }
+  @if $name == quote or $name == button {
+    font-style: italic;
+  }
 }
 
-// ── Light mode — parchment, not inversion ─────────────────────────────────────
-// Backgrounds are warm cream grades. Text is sepia, not near-black.
-// Gold stays warm — doesn't grey out. Borders are ink-based, not gilt-based.
-[data-theme="light"] {
-  --ink:          #f5edd8;
-  --ink-deep:     #ede3c8;
-  --paper:        #2a1d0e;
-  --paper-aged:   #4a3828;
-  --paper-dim:    rgba(42,29,14,0.65);
-  --blood:        #7a1f1f;
-  --blood-bright: #9b2828;
-  --moss:         #3a4a34;
-  --gilt:         #9a7a2e;
-  --gilt-bright:  #c4982a;
-  --shadow:       rgba(42,29,14,0.15);
-  --wood-dark:    #e8dab8;
-  --wood-mid:     #e8dab8;
-  --wood-light:   #f2ead4;
-  --wood-grain:   #ddd0b0;
-
-  --surface:        var(--ink);
-  --surface-raised: var(--wood-mid);
-  --surface-tint:   rgba(42,29,14,0.04);
-  --surface-hover:  rgba(42,29,14,0.06);
-  --border-subtle:  rgba(42,29,14,0.14);
-  --border-mid:     rgba(42,29,14,0.26);
-
-  // Explicit hex text tokens — no rgba chains that compound contrast loss
-  --text-primary:   #2a1d0e;
-  --text-secondary: #4a3828;
-  --text-muted:     #6b5340;
-  --text-dim:       #8c7060;
-  --text-faint:     #b09880;
-  --text-ghost:     rgba(42,29,14,0.16);
-
-  --input-bg:       rgba(42,29,14,0.04);
-  --input-border:   rgba(42,29,14,0.18);
-  --overlay-bg:     rgba(237,227,200,0.92);
-
-  // Status tokens — light-mode overrides for legibility on warm cream
-  --status-read-bg:         rgba(61,74,54,0.12);
-  --status-read-fg:         #3a5c32;
-  --status-read-border:     rgba(61,74,54,0.38);
-
-  --status-reading-bg:      rgba(154,122,46,0.12);
-  --status-reading-fg:      #7a5a18;
-  --status-reading-border:  rgba(154,122,46,0.38);
-
-  --status-queued-bg:       rgba(40,80,140,0.10);
-  --status-queued-fg:       #2c5496;
-  --status-queued-border:   rgba(40,80,140,0.32);
-
-  --status-wishlist-bg:     rgba(90,50,130,0.10);
-  --status-wishlist-fg:     #6b3aa0;
-  --status-wishlist-border: rgba(90,50,130,0.30);
+// ---- Helper: min-width media query at a named breakpoint ---
+//    .sidebar { display: none; @include ro-up(desktop) { display: flex; } }
+@mixin ro-up($name) {
+  @media (min-width: map-get($ro-bp, $name)) { @content; }
 }
 
-// ── Base reset ────────────────────────────────────────────────────────────────
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
+// ---- Helper: max-width media query (mobile-down) -----------
+//    .desktop-only { @include ro-down(desktop) { display: none; } }
+@mixin ro-down($name) {
+  @media (max-width: (map-get($ro-bp, $name) - 1px)) { @content; }
 }

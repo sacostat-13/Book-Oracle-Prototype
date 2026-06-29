@@ -138,9 +138,9 @@ function Dropdown({ loading, results, showCreateNew, createNewLabel, highlightId
   if (!loading && results.length === 0 && !showCreateNew) return null;
 
   return (
-    <div style={{ position: 'absolute', top: 'calc(100% + 2px)', left: 0, right: 0, background: 'var(--ink, #1a1410)', border: '1px solid rgba(176, 140, 63, 0.4)', borderRadius: '3px', boxShadow: '0 8px 24px rgba(0, 0, 0, 0.5)', maxHeight: '280px', overflowY: 'auto', zIndex: 100, opacity: committing ? 0.6 : 1, pointerEvents: committing ? 'none' : 'auto' }}>
+    <div style={{ position: 'absolute', top: 'calc(100% + 2px)', left: 0, right: 0, background: 'var(--ink, #1a1410)', border: '1px solid rgba(176, 140, 63, 0.4)', borderRadius: 'var(--ro-radius-sm)', boxShadow: '0 8px 24px rgba(0, 0, 0, 0.5)', maxHeight: '280px', overflowY: 'auto', zIndex: 100, opacity: committing ? 0.6 : 1, pointerEvents: committing ? 'none' : 'auto' }}>
       {loading && results.length === 0 && (
-        <div style={{ padding: '0.6rem 0.85rem', color: 'var(--paper-aged)', opacity: 0.6, fontSize: '0.85rem', fontStyle: 'italic', fontFamily: "'Cormorant Garamond', serif" }}>
+        <div style={{ padding: '0.6rem 0.85rem', color: 'var(--paper-aged)', opacity: 0.6, fontSize: '0.85rem', fontStyle: 'italic', fontFamily: 'var(--ro-font-display)' }}>
           {t('navSearch.loadingText')}
         </div>
       )}
@@ -152,10 +152,10 @@ function Dropdown({ loading, results, showCreateNew, createNewLabel, highlightId
       {showCreateNew && (
         <DropdownRow highlighted={highlightIdx === results.length} onClick={() => onPick(createNewLabel)} isCreateNew>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <span style={{ fontFamily: "'Special Elite', monospace", fontSize: '0.65rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--gilt)' }}>
+            <span style={{ fontFamily: 'var(--ro-font-mono)', fontSize: '0.65rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--gilt)' }}>
               {t('categories.createBtn')}
             </span>
-            <span style={{ fontFamily: "'Cormorant Garamond', serif", fontStyle: 'italic', fontSize: '1.05rem', color: 'var(--paper)' }}>
+            <span style={{ fontFamily: 'var(--ro-font-display)', fontStyle: 'italic', fontSize: '1.05rem', color: 'var(--paper)' }}>
               "{createNewLabel}"
             </span>
           </div>
@@ -181,7 +181,7 @@ function RowContent({ name, verified, usageCount, t }) {
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', minWidth: 0 }}>
         {verified && (
-          <span style={{ fontFamily: "'Special Elite', monospace", fontSize: '0.65rem', color: 'var(--gilt-bright)', flexShrink: 0 }} title={t('categories.editorVerified')}>
+          <span style={{ fontFamily: 'var(--ro-font-mono)', fontSize: '0.65rem', color: 'var(--gilt-bright)', flexShrink: 0 }} title={t('categories.editorVerified')}>
             ☩
           </span>
         )}
@@ -190,7 +190,7 @@ function RowContent({ name, verified, usageCount, t }) {
         </span>
       </div>
       {usageCount > 0 && (
-        <span style={{ fontFamily: "'Special Elite', monospace", fontSize: '0.7rem', color: 'var(--paper-aged)', opacity: 0.55, flexShrink: 0 }} title={t('categories.usedByReaders', { count: usageCount })}>
+        <span style={{ fontFamily: 'var(--ro-font-mono)', fontSize: '0.7rem', color: 'var(--paper-aged)', opacity: 0.55, flexShrink: 0 }} title={t('categories.usedByReaders', { count: usageCount })}>
           {usageCount}
         </span>
       )}

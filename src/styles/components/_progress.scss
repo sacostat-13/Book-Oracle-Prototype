@@ -1,0 +1,54 @@
+// components/_progress.scss — The Books Oracle
+// Linear progress bars + the circular reading-goal ring.
+//   .progress        track + fill (fill width via --val, e.g. style="--val:72%")
+//   .ring            circular goal ring wrapper (SVG inside)
+
+.progress {
+  height: 8px;
+  background: var(--ro-ring-track);
+  border-radius: var(--ro-radius-pill);
+  overflow: hidden;
+}
+.progress__fill {
+  height: 100%;
+  width: var(--val, 0%);
+  background: var(--ro-gold);
+  border-radius: var(--ro-radius-pill);
+  transition: width .4s ease;
+  &--success { background: var(--ro-success); }
+}
+.progress--thin { height: 3px; }
+.progress--thick { height: 12px; }
+
+// Circular ring (SVG strokes use the tokens directly)
+.ring {
+  position: relative;
+  width: 200px;
+  height: 200px;
+  &__track { stroke: var(--ro-ring-track); }
+  &__fill  { stroke: var(--ro-gold); }
+  &__center {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  }
+  &__value {
+    font-family: var(--ro-font-body);
+    font-weight: 700;
+    font-size: 38px;
+    line-height: 1;
+    color: var(--ro-gold-text);
+  }
+  &__label {
+    font-family: var(--ro-font-mono);
+    font-weight: 600;
+    font-size: 10px;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--ro-muted);
+    margin-top: 8px;
+  }
+}

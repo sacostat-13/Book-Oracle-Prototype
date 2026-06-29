@@ -270,7 +270,7 @@ export default function BulkImport({ onClose, target = 'wishlist' }) {
             </span>
           </div>
 
-          <div style={{ maxHeight: '50vh', overflowY: 'auto', border: '1px solid rgba(176, 140, 63, 0.2)', borderRadius: '2px' }}>
+          <div style={{ maxHeight: '50vh', overflowY: 'auto', border: '1px solid rgba(176, 140, 63, 0.2)', borderRadius: 'var(--ro-radius-sm)' }}>
             {results.map((r, i) => (
               <ResultRow key={i} row={r} t={t} onRemove={() => setResults(results.filter((_, idx) => idx !== i))} />
             ))}
@@ -306,7 +306,7 @@ function ResultRow({ row, onRemove, t }) {
       <div style={{ flex: 1, minWidth: 0 }}>
         {row.book ? (
           <>
-            <div style={{ color: 'var(--paper)', fontFamily: "'Cormorant Garamond', serif", fontStyle: 'italic', fontSize: '1.05rem' }}>{row.book.t}</div>
+            <div style={{ color: 'var(--paper)', fontFamily: 'var(--ro-font-display)', fontStyle: 'italic', fontSize: '1.05rem' }}>{row.book.t}</div>
             <div style={{ color: 'var(--paper-aged)', fontSize: '0.85rem' }}>
               {row.book.a}
               {row.book.g && <> · {row.book.g}</>}
@@ -318,7 +318,7 @@ function ResultRow({ row, onRemove, t }) {
         )}
         {row.error && <div style={{ color: 'var(--blood-bright)', fontSize: '0.8rem', marginTop: '0.2rem' }}>{row.error}</div>}
       </div>
-      <span style={{ fontFamily: "'Special Elite', monospace", fontSize: '0.7rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: statusBadge.color, whiteSpace: 'nowrap' }}>
+      <span style={{ fontFamily: 'var(--ro-font-mono)', fontSize: '0.7rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: statusBadge.color, whiteSpace: 'nowrap' }}>
         {statusBadge.label}
       </span>
       <button onClick={onRemove} style={{ background: 'none', border: 'none', color: 'var(--paper-aged)', opacity: 0.5, cursor: 'pointer', fontSize: '1.2rem', padding: '0 0.3rem' }} title={t('bulkImport.removeRow')}>

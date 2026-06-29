@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useData } from '../lib/DataContext';
 import { useRouter } from '../lib/RouterContext';
-import { useT } from '../lib/I18nContext';
+import { useT, useTNode } from '../lib/I18nContext';
 import { bookKey } from '../lib/bookHelpers';
 import BookCover from '../components/BookCover';
 import RatingModal from '../components/RatingModal';
@@ -11,6 +11,7 @@ export default function CurrentlyReading({ onOpenBook }) {
   const { state, removeFromCurrentlyReading, finishReading, updateReadingProgress } = useData();
   const { go } = useRouter();
   const t = useT();
+  const tNode = useTNode();
   const [finishing, setFinishing] = useState(null);
   const [updatingProgress, setUpdatingProgress] = useState(null);
   const { currentlyReading } = state;
@@ -40,11 +41,10 @@ export default function CurrentlyReading({ onOpenBook }) {
   return (
     <>
       <div className="breadcrumb">
-        <a onClick={() => go('dashboard')}>{t('currentlyReading.breadcrumb')}</a> · {t('currentlyReading.title')}
+        <a onClick={() => go('dashboard')}>{t('currentlyReading.breadcrumb')}</a> · {t('currentlyReading.eyebrow')}
       </div>
       <div className="page-header">
-        <div className="page-eyebrow">{t('currentlyReading.eyebrow')}</div>
-        <h1 className="page-title">{t('currentlyReading.title')} <span className="accent">{t('currentlyReading.titleAccent')}</span></h1>
+        <h1 className="page-title">{tNode('currentlyReading.pageTitle')}</h1>
         <p className="page-subtitle">
           {currentlyReading.length === 0
             ? t('currentlyReading.subtitleEmpty')
@@ -61,7 +61,7 @@ export default function CurrentlyReading({ onOpenBook }) {
           <div className="empty-state-text">
             {t('currentlyReading.emptyText')}
           </div>
-          <div style={{ marginTop: '1.5rem', display: 'flex', gap: '0.75rem', justifyContent: 'center', flexWrap: 'wrap' }}>
+          <div className="lv-load-more">
             <button className="btn btn-ghost" onClick={() => go('read-next')}>{t('nav.readNext')}</button>
             <button className="btn btn-ghost" onClick={() => go('wishlist')}>{t('nav.wishlist')}</button>
           </div>
@@ -78,7 +78,7 @@ export default function CurrentlyReading({ onOpenBook }) {
                 <div
                   className="cr-cover"
                   onClick={() => onOpenBook?.(b)}
-                  style={{ cursor: 'pointer' }}
+                  
                 >
                   <BookCover title={b.t} author={b.a} coverUrl={b.coverUrl} />
                 </div>
@@ -86,13 +86,13 @@ export default function CurrentlyReading({ onOpenBook }) {
                   <div
                     className="cr-title"
                     onClick={() => onOpenBook?.(b)}
-                    style={{ cursor: 'pointer' }}
+                    
                   >
                     {b.t}
                   </div>
                   <div className="cr-author">{b.a}</div>
                   {genres && genres.length > 0 && (
-                    <div className="li-genres" style={{ marginTop: '0.4rem' }}>
+                    <div className="li-genres cr-genres">
                       {genres.map((g) => (
                         <span key={g.genreId} className="li-genre-pill" title={g.description || undefined}>
                           {g.name}
@@ -104,7 +104,7 @@ export default function CurrentlyReading({ onOpenBook }) {
                     {b.startedAt && (
                       <span className="cr-started">
                         Started {new Date(b.startedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
-                        {days && <> · <span style={{ color: 'var(--gilt)' }}>{days}</span></>}
+                        {days && <> · <span className="cr-days">{days}</span></>}
                       </span>
                     )}
                     {b.pp && <span className="cr-pages">{b.pp} pages</span>}
@@ -112,11 +112,11 @@ export default function CurrentlyReading({ onOpenBook }) {
 
                   {/* Progress bar */}
                   {b.pp ? (
-                    <div className="cr-progress" style={{ margin: '0.6rem 0 0.4rem' }}>
+                    <div className="cr-progress-wrap">
                       <div className="cr-progress-bar-track">
                         <div
                           className="cr-progress-bar-fill"
-                          style={{ width: `${pct ?? 0}%` }}
+                          style={{ '--cr-pct': `${pct ?? 0}%` }}
                         />
                       </div>
                       <div className="cr-progress-label">
@@ -126,7 +126,7 @@ export default function CurrentlyReading({ onOpenBook }) {
                       </div>
                     </div>
                   ) : pagesRead > 0 ? (
-                    <div className="cr-progress-label" style={{ marginTop: '0.5rem' }}>
+                    <div className="cr-progress-label">
                       {t('currentlyReading.pagesReadOnly', { count: pagesRead })}
                     </div>
                   ) : null}
@@ -135,7 +135,7 @@ export default function CurrentlyReading({ onOpenBook }) {
                     <button
                       className="li-action"
                       onClick={() => setUpdatingProgress(b)}
-                      style={{ color: 'var(--gilt)' }}
+                      className="cr-days"
                     >
                       {t('currentlyReading.updateProgress')}
                     </button>

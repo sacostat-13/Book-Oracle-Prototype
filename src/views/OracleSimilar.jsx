@@ -32,11 +32,11 @@ function SelectableCard({ book, selected, onClick }) {
   return (
     <div className={`card selectable ${selected ? 'selected' : ''}`} onClick={onClick}>
       <div className="cover">
-        <div className="placeholder" style={{ background: palette.bg }}>
-          <div className="ph-ornament" style={{ color: palette.accent }}>{orn}</div>
+        <div className="placeholder" style={{ '--ph-bg': palette.bg, background: 'var(--ph-bg)' }}>
+          <div className="ph-ornament">{orn}</div>
           <div className="ph-title">{book.t}</div>
-          <div className="ph-author" style={{ color: palette.accent }}>{book.a || ''}</div>
-          <div className="ph-ornament" style={{ color: palette.accent }}>{orn}</div>
+          <div className="ph-author">{book.a || ''}</div>
+          <div className="ph-ornament">{orn}</div>
         </div>
       </div>
       <div className="card-title">{book.t}</div>
@@ -218,7 +218,7 @@ Return ONLY valid JSON in this exact format:
         />
       </div>
 
-      <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '2rem', flexDirection: 'column', alignItems: 'center', gap: '0.75rem' }}>
+      <div className="oracle-results-head">
         <button className="btn" onClick={findSimilar} disabled={selection.length === 0 || loading || (mode === 'ai' && quota && quota.calls_remaining === 0)}>
           {loading ? t('oracle.similarDivining') : t('oracle.similarFind')}
         </button>
@@ -235,9 +235,9 @@ Return ONLY valid JSON in this exact format:
           </div>
         ) : results ? (
           <>
-            <h2 style={{ fontFamily: "'Cormorant Garamond', serif", fontStyle: 'italic', marginBottom: '1.5rem', color: 'var(--paper)' }}>
-              Found <span style={{ color: 'var(--gilt)' }}>{results.books.length}</span> kindred books
-              <span style={{ fontSize: '0.85rem', color: 'var(--paper-aged)', opacity: 0.6, fontStyle: 'normal', fontFamily: "'Special Elite', monospace", letterSpacing: '0.1em', marginLeft: '0.7rem' }}>
+            <h2 >
+              Found <span className="t-gold">{results.books.length}</span> kindred books
+              <span className="oracle-results-sub">
                 {results.source === 'ai' ? '· AI-divined' : '· tag-matched from wishlist'}
               </span>
             </h2>
@@ -255,7 +255,7 @@ Return ONLY valid JSON in this exact format:
         ) : null}
       </div>
 
-      <h2 style={{ fontFamily: "'Cormorant Garamond', serif", fontStyle: 'italic', margin: '2rem 0 1rem', color: 'var(--paper)' }}>
+      <h2 className="oracle-title" style={{ margin: '2rem 0 1rem' }}>
         {state.library.length > 0 ? 'From your library and wishlist' : 'From your wishlist'}
       </h2>
       <div className="cards">

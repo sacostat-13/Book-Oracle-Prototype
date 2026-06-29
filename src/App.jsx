@@ -16,6 +16,7 @@ import ReadNext from './views/ReadNext';
 import CurrentlyReading from './views/CurrentlyReading';
 import Profile from './views/Profile';
 import FriendProfile from './views/FriendProfile';
+import Friends from './views/Friends';
 import About from './views/About';
 import Privacy from './views/Privacy';
 import Terms from './views/Terms';
@@ -188,6 +189,7 @@ export default function App() {
     case 'currently-reading': page = <CurrentlyReading onOpenBook={openBook} />; break;
     case 'profile':       page = <Profile />; break;
     case 'friend-profile': page = <FriendProfile />; break;
+    case 'friends': page = <Friends />; break;
     case 'about': page = <About />; break;
     case 'privacy': page = <Privacy />; break;
     case 'terms': page = <Terms />; break;

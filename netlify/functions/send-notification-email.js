@@ -53,7 +53,7 @@ function buildEmail({ type, actor, data, appUrl }) {
     case 'friend_request':
       return {
         subject: `${actorLabel} wants to be your reading friend`,
-        body: `<strong>${actorLabel}</strong> sent you a friend request on Reading Oracle.`,
+        body: `<strong>${actorLabel}</strong> sent you a friend request on The Books Oracle.`,
         ctaUrl: appUrl, ctaLabel: 'View request →',
       };
     case 'friend_accepted':
@@ -94,8 +94,8 @@ function buildEmail({ type, actor, data, appUrl }) {
       };
     case 'announcement':
       return {
-        subject: data?.title || 'Announcement from Reading Oracle',
-        body: data?.preview || 'There is a new announcement from the Reading Oracle team.',
+        subject: data?.title || 'Announcement from The Books Oracle',
+        body: data?.preview || 'There is a new announcement from the The Books Oracle team.',
         ctaUrl: appUrl, ctaLabel: 'Open app →',
       };
     default:
@@ -154,7 +154,7 @@ exports.handler = async (event) => {
     .eq('id', notification.actor_id)
     .maybeSingle();
 
-  const appUrl = process.env.URL || 'https://readingoracle.com';
+  const appUrl = process.env.URL || 'https://thebooksoracle.com';
   const email  = buildEmail({ type: notification.type, actor, data: notification.data || {}, appUrl });
   if (!email) return respond(200, { skipped: 'no_template' });
 
@@ -167,7 +167,7 @@ exports.handler = async (event) => {
     method: 'POST',
     headers: { 'Authorization': `Bearer ${process.env.RESEND_API_KEY}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      from: 'Reading Oracle <noreply@readingoracle.com>',
+      from: 'The Books Oracle <noreply@thebooksoracle.com>',
       to:   [recipientEmail],
       subject: email.subject,
       html: `
@@ -176,7 +176,7 @@ exports.handler = async (event) => {
         <body style="background:#f5edd8;margin:0;padding:32px 16px;font-family:Georgia,serif">
           <div style="max-width:480px;margin:0 auto;background:#ede3c8;border:1px solid rgba(42,29,14,0.14);border-radius:4px;padding:32px">
             <div style="font-family:'Courier New',monospace;font-size:11px;letter-spacing:0.25em;text-transform:uppercase;color:#9a7a2e;margin-bottom:24px">
-              Reading Oracle
+              The Books Oracle
             </div>
             <p style="font-family:Georgia,serif;font-size:16px;color:#2a1d0e;line-height:1.6;margin:0 0 20px">
               ${email.body}

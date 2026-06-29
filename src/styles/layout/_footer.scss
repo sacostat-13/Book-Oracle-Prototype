@@ -1,0 +1,145 @@
+// layout/_footer.scss — The Books Oracle R2
+// Three-column DS footer: brand+tagline+social | Product | Legal
+// Inset card treatment (bg-deep, border, border-radius 20px) matching the DS spec.
+
+.site-footer {
+  margin-top: 5rem;
+  padding-inline: var(--ro-gutter-desktop);
+  padding-bottom: 2rem;
+
+  @include ro-down(tablet) { padding-inline: var(--ro-gutter-mobile); }
+}
+
+.footer-card {
+  background: var(--ro-bg-deep);
+  border: 1px solid var(--ro-border);
+  border-radius: 20px;
+  overflow: hidden;
+}
+
+// ── Three-column body ─────────────────────────────────────────────────────────
+.footer-body {
+  display: grid;
+  grid-template-columns: 1.6fr 1fr 1fr;
+  gap: 32px;
+  padding: 40px;
+
+  @include ro-down(tablet) {
+    grid-template-columns: 1fr 1fr;
+    gap: 28px;
+    padding: 28px;
+  }
+
+  @include ro-down(mobile) {
+    grid-template-columns: 1fr;
+    gap: 24px;
+    padding: 24px;
+  }
+}
+
+// ── Brand column ──────────────────────────────────────────────────────────────
+.footer-brand {
+  &__wordmark {
+    font-family: var(--ro-font-display);
+    font-size: 22px;
+    color: var(--ro-gold-text);
+    span { font-style: italic; color: var(--ro-burgundy); }
+  }
+
+  &__tagline {
+    font-family: var(--ro-font-body);
+    font-size: 13px;
+    line-height: 1.6;
+    color: var(--ro-muted);
+    margin-top: 12px;
+    max-width: 300px;
+  }
+
+  &__social {
+    display: flex;
+    gap: 10px;
+    margin-top: 18px;
+  }
+}
+
+.footer-social-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  border: 1px solid var(--ro-border-strong);
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ro-muted);
+  cursor: pointer;
+  text-decoration: none;
+  transition: border-color .15s, color .15s;
+
+  &:hover { border-color: var(--ro-gold); color: var(--ro-gold-text); }
+
+  svg { width: 17px; height: 17px; fill: currentColor; }
+}
+
+// ── Link columns (Product · Legal) ────────────────────────────────────────────
+.footer-col {
+  &__heading {
+    font-family: var(--ro-font-mono);
+    font-weight: 600;
+    font-size: 10px;
+    letter-spacing: .16em;
+    text-transform: uppercase;
+    color: var(--ro-gold);
+    margin-bottom: 16px;
+  }
+
+  &__links {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+}
+
+.footer-link {
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  font-family: var(--ro-font-body);
+  font-weight: 500;
+  font-size: 14px;
+  color: var(--ro-muted);
+  text-align: left;
+  text-decoration: none;
+  transition: color .15s;
+
+  &:hover { color: var(--ro-gold-text); }
+}
+
+// ── Bottom bar ────────────────────────────────────────────────────────────────
+.footer-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 20px 40px;
+  border-top: 1px solid var(--ro-border);
+  flex-wrap: wrap;
+
+  @include ro-down(tablet) { padding: 16px 28px; }
+  @include ro-down(mobile) { padding: 14px 24px; }
+}
+
+.footer-copy {
+  font-family: var(--ro-font-body);
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--ro-dim);
+}
+
+.footer-legal {
+  display: flex;
+  gap: 22px;
+  align-items: center;
+  flex-wrap: wrap;
+}

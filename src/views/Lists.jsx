@@ -23,12 +23,12 @@ function CreateListModal({ onSave, onClose }) {
 
   return (
     <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal" style={{ maxWidth: 480 }} onClick={e => e.stopPropagation()}>
-        <button className="book-modal-close" onClick={onClose} style={{ position: 'absolute', top: '1rem', right: '1rem' }}>✕</button>
-        <div className="book-modal-section-title" style={{ marginBottom: '1.25rem' }}>
+      <div className="modal modal--narrow" onClick={e => e.stopPropagation()}>
+        <button className="modal__close" onClick={onClose}>✕</button>
+        <div className="bp-section__label">
           {t('lists.newListBtn')}
         </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+        <div className="lists-modal-form">
           <div>
             <label className="form-label">{t('report.fieldTitle')}</label>
             <input
@@ -43,7 +43,7 @@ function CreateListModal({ onSave, onClose }) {
           <div>
             <label className="form-label">
               {t('bookModal.description')}{' '}
-              <span style={{ opacity: 0.4 }}>({t('lists.optional')})</span>
+              <span className="lists-optional-label">({t('lists.optional')})</span>
             </label>
             <textarea
               className="search-input"
@@ -51,10 +51,10 @@ function CreateListModal({ onSave, onClose }) {
               value={description}
               onChange={e => setDescription(e.target.value)}
               rows={3}
-              style={{ resize: 'vertical' }}
+              
             />
           </div>
-          <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+          <div className="lists-modal-actions">
             <button className="btn btn-ghost" onClick={onClose}>{t('common.cancel')}</button>
             <button className="btn" onClick={handleSave} disabled={!title.trim() || saving}>
               {saving ? '…' : (t('lists.createList'))}
@@ -104,12 +104,12 @@ export default function Lists() {
         <h1 className="page-title">
           {t('lists.curated')} <span className="accent">{t('about.featureListsTitle')}</span>
         </h1>
-        <p style={{ color: 'var(--text-muted)', fontSize: '0.95rem', marginTop: '0.5rem' }}>
+        <p className="lists-empty-text">
           {t('lists')}
         </p>
       </div>
 
-      <div style={{ marginBottom: '2rem' }}>
+      <div className="lists-grid">
         <button className="btn" onClick={() => setCreating(true)}>
           + {t('lists.newListBtn')}
         </button>
@@ -130,20 +130,20 @@ export default function Lists() {
             return (
               <div key={list.id} className="cover-shelf">
                 {/* Shelf header */}
-                <div className="cover-shelf-label" style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem' }}>
+                <div className="cover-shelf-label lists-shelf-label">
                   <span
-                    style={{ cursor: 'pointer' }}
+                    
                     onClick={() => go('list-detail', { listId: list.id })}
                   >
                     {list.title}
                     <span className="count"> · {books.length} {t('common.books')}</span>
                     {list.is_public && (
-                      <span style={{ marginLeft: '0.5rem', fontFamily: "'Special Elite',monospace", fontSize: '0.6rem', letterSpacing: '0.1em', color: 'rgba(201,162,75,0.7)' }}>
+                      <span className="lists-shelf-badge">
                         ✦ {t('lists.publicBadge')}
                       </span>
                     )}
                   </span>
-                  <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+                  <div className="bp-actions">
                     <button className="li-action" onClick={e => togglePublic(list, e)}>
                       {list.is_public
                         ? (t('lists.makePrivate'))
@@ -154,7 +154,7 @@ export default function Lists() {
                         {t('lists.copyLink')}
                       </button>
                     )}
-                    <button className="li-action" style={{ color: 'var(--blood-bright)' }}
+                    <button className="li-action"
                       onClick={e => handleDelete(list, e)}>
                       {t('common.delete')}
                     </button>
@@ -163,7 +163,7 @@ export default function Lists() {
 
                 {books.length === 0 ? (
                   <div
-                    style={{ padding: '1.5rem', textAlign: 'center', color: 'var(--text-dim)', fontStyle: 'italic', cursor: 'pointer', border: '1px dashed rgba(176,140,63,0.15)', borderRadius: 2 }}
+                    className="lv-empty" style={{ cursor: "pointer", border: "1px dashed var(--ro-border)" }}
                     onClick={() => go('list-detail', { listId: list.id })}
                   >
                     {t('lists.emptyList')}

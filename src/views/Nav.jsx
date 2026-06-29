@@ -18,10 +18,10 @@ export default function Nav({ onPreviewBook }) {
   const { state } = useData();
   const { route, go } = useRouter();
   const { user, signInWithGoogle, signOut } = useAuth();
-  const { lang, toggleLang, t } = useI18n();
+  const { lang, toggleLang, t, tNode } = useI18n();
   const { theme, toggleTheme } = useTheme();
   const { notifications, unreadCount, markAllRead, markOneRead } = useNotifications();
-  const { acceptRequest, declineRequest } = useFriends();
+  const { acceptRequest, declineRequest, incoming } = useFriends();
   const [menuOpen, setMenuOpen]                     = useState(false);
   const [readingOpen, setReadingOpen]               = useState(false);
   const [moreOpen, setMoreOpen]                     = useState(false);
@@ -87,7 +87,7 @@ export default function Nav({ onPreviewBook }) {
     <>
       <nav className="topnav">
         <div className="brand" onClick={() => navigate('dashboard')} role="button" tabIndex={0}>
-          {t('app.brand', { wishlist: <span className="accent">{t('app.brandAccent')}</span> })}
+          {tNode('app.brand')}
         </div>
 
         <NavSearch onPreviewBook={onPreviewBook} />
@@ -139,19 +139,27 @@ export default function Nav({ onPreviewBook }) {
           {/* Lists */}
           <button className={`nav-btn${route.name==='lists'?' active':''}`} onClick={() => go('lists')}>
             {t('about.featureListsTitle')}
-            {listsCount > 0 && <span className="nav-badge">{listsCount}</span>}
+            {/* {listsCount > 0 && <span className="nav-badge">{listsCount}</span>} */}
           </button>
 
           {/* Book Clubs */}
           <button className={`nav-btn${clubsActive?' active':''}`} onClick={() => go('book-clubs')}>
             {t('clubs.titleAccent')}
-            {clubsCount > 0 && <span className="nav-badge">{clubsCount}</span>}
+            {/* {clubsCount > 0 && <span className="nav-badge">{clubsCount}</span>} */}
           </button>
 
           {/* Oracle */}
           <button className={`nav-btn${route.name==='oracle'?' active':''}`} onClick={() => go('oracle')}>
             {t('about.titleAccent')}
           </button>
+
+          {/* Friends */}
+          {user && (
+            <button className={`nav-btn${route.name==='friends'?' active':''}`} onClick={() => go('friends')}>
+              {t('nav.friends') || 'Friends'}
+              {incoming && incoming.length > 0 && <span className="nav-badge">{incoming.length}</span>}
+            </button>
+          )}
 
           {/* Notification bell */}
           {user && (
@@ -171,7 +179,7 @@ export default function Nav({ onPreviewBook }) {
               {bellOpen && (
                 <div className="nav-dropdown nav-dropdown--right nav-notif-panel">
                   <div className="nav-notif-header">
-                    <span style={{ fontFamily: "'Special Elite', monospace", fontSize: 'var(--text-xs)', letterSpacing: '0.18em', textTransform: 'uppercase', color: 'var(--gilt)' }}>
+                    <span style={{ fontFamily: 'var(--ro-font-mono)', fontSize: 'var(--ro-text-xs)', letterSpacing: '0.18em', textTransform: 'uppercase', color: 'var(--gilt)' }}>
                       {t('nav.notifications')}
                     </span>
                   </div>
@@ -220,10 +228,10 @@ export default function Nav({ onPreviewBook }) {
                               {/* Friend request inline actions */}
                               {n.type === 'friend_request' && !n.read && (
                                 <div className="nav-notif-actions" onClick={(e) => e.stopPropagation()}>
-                                  <button className="btn" style={{ fontSize: 'var(--text-xs)', padding: '0.25rem 0.65rem' }} onClick={() => handleAccept(friendshipId, n.id)}>
+                                  <button className="btn" style={{ fontSize: 'var(--ro-text-xs)', padding: '0.25rem 0.65rem' }} onClick={() => handleAccept(friendshipId, n.id)}>
                                     {t('nav.accept')}
                                   </button>
-                                  <button className="btn btn-ghost" style={{ fontSize: 'var(--text-xs)', padding: '0.25rem 0.65rem' }} onClick={() => handleDecline(friendshipId, n.id)}>
+                                  <button className="btn btn-ghost" style={{ fontSize: 'var(--ro-text-xs)', padding: '0.25rem 0.65rem' }} onClick={() => handleDecline(friendshipId, n.id)}>
                                     {t('nav.decline')}
                                   </button>
                                 </div>
@@ -273,11 +281,11 @@ export default function Nav({ onPreviewBook }) {
                   {toggleLabel}
                 </button>
                 <button className="nav-dropdown-item" onClick={() => { toggleTheme(); setMoreOpen(false); }}>
-                  {theme === 'dark' ? '☀ Light mode' : '☾ Dark mode'}
+                  {theme === 'dark' ? '☀ Parchment' : '☾ Dark mode'}
                 </button>
                 <div className="nav-dropdown-divider" />
                 {user ? (
-                  <button className="nav-dropdown-item nav-dropdown-item--muted" onClick={() => { signOut(); setMoreOpen(false); }} title={user.email}>
+                  <button className="nav-dropdown-item nav-dropdown-item--ro-muted" onClick={() => { signOut(); setMoreOpen(false); }} title={user.email}>
                     {t('nav.signOut')}
                   </button>
                 ) : (
@@ -313,6 +321,7 @@ export default function Nav({ onPreviewBook }) {
               { name:'lists',             label: t('nav.lists'),    count: listsCount },
               { name:'book-clubs',        label: t('nav.bookClubs'),    count: clubsCount },
               { name:'oracle',            label: t('nav.oracle'),      count: 0 },
+              { name:'friends',           label: t('nav.friends') || 'Friends', count: incoming?.length || 0 },
               { name:'profile',           label: t('nav.profile'),                  count: 0 },
               { name:'about',             label: t('nav.about'),                    count: 0 },
             ].map(({ name, label, count }) => (
@@ -322,7 +331,7 @@ export default function Nav({ onPreviewBook }) {
                 onClick={() => navigate(name)}
               >
                 {label}
-                {count > 0 && <span className="nav-badge">{count}</span>}
+                {/* {count > 0 && <span className="nav-badge">{count}</span>} */}
               </button>
             ))}
 
@@ -332,7 +341,7 @@ export default function Nav({ onPreviewBook }) {
               {toggleLabel}
             </button>
             <button className="mobile-menu-btn mobile-menu-btn--secondary" onClick={() => { toggleTheme(); setMenuOpen(false); }}>
-              {theme === 'dark' ? '☀ Light mode' : '☾ Dark mode'}
+              {theme === 'dark' ? '☀ Parchment' : '☾ Dark mode'}
             </button>
             {user ? (
               <button className="mobile-menu-btn mobile-menu-btn--secondary" onClick={() => { signOut(); setMenuOpen(false); }} title={user.email}>

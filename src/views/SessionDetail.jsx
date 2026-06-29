@@ -23,7 +23,7 @@ function Avatar({ displayName, avatarUrl, size = 28 }) {
     return <img src={avatarUrl} alt={displayName} onError={() => setImgFailed(true)} style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />;
   }
   return (
-    <div style={{ width: size, height: size, borderRadius: '50%', background: 'rgba(176,140,63,0.15)', border: '1px solid rgba(176,140,63,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Special Elite', monospace", fontSize: size * 0.35, color: 'var(--gilt)', flexShrink: 0 }}>
+    <div style={{ width: size, height: size, borderRadius: '50%', background: 'rgba(176,140,63,0.15)', border: '1px solid rgba(176,140,63,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--ro-font-mono)', fontSize: size * 0.35, color: 'var(--gilt)', flexShrink: 0 }}>
       {initials}
     </div>
   );
@@ -43,7 +43,7 @@ function MemberProgressRow({ member, totalPages }) {
             {member.display_name || 'Anonymous reader'}
           </span>
           {member.role === 'admin' && (
-            <span style={{ fontFamily: "'Special Elite', monospace", fontSize: '0.58rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--gilt)', opacity: 0.8 }}>admin</span>
+            <span style={{ fontFamily: 'var(--ro-font-mono)', fontSize: '0.58rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--gilt)', opacity: 0.8 }}>admin</span>
           )}
         </div>
         {member.is_reading ? (
@@ -52,19 +52,19 @@ function MemberProgressRow({ member, totalPages }) {
               <div style={{ height: '3px', background: 'rgba(176,140,63,0.12)', borderRadius: 2, overflow: 'hidden', marginBottom: '0.25rem' }}>
                 <div style={{ height: '100%', width: `${pct ?? 0}%`, background: finished ? 'var(--gilt-bright, #e8c560)' : 'var(--gilt, #b08c3f)', borderRadius: 2, transition: 'width 0.3s ease' }} />
               </div>
-              <div style={{ fontFamily: "'Special Elite', monospace", fontSize: '0.68rem', letterSpacing: '0.04em', color: 'var(--paper-aged)', opacity: 0.55 }}>
+              <div style={{ fontFamily: 'var(--ro-font-mono)', fontSize: '0.68rem', letterSpacing: '0.04em', color: 'var(--paper-aged)', opacity: 0.55 }}>
                 {member.pages_read > 0
                   ? `${member.pages_read} / ${totalPages} pages${pct !== null ? ` · ${pct}%` : ''}${finished ? ' · ✓ Finished' : ''}`
                   : `0 / ${totalPages} pages — not started`}
               </div>
             </div>
           ) : (
-            <div style={{ fontFamily: "'Special Elite', monospace", fontSize: '0.68rem', letterSpacing: '0.04em', color: 'var(--paper-aged)', opacity: 0.55 }}>
+            <div style={{ fontFamily: 'var(--ro-font-mono)', fontSize: '0.68rem', letterSpacing: '0.04em', color: 'var(--paper-aged)', opacity: 0.55 }}>
               {member.pages_read > 0 ? t('sessions.pagesNoTotal', { count: member.pages_read }) : t('sessions.pagesNoTotalYet')}
             </div>
           )
         ) : (
-          <div style={{ fontFamily: "'Special Elite', monospace", fontSize: '0.68rem', letterSpacing: '0.04em', color: 'var(--paper-aged)', opacity: 0.35 }}>
+          <div style={{ fontFamily: 'var(--ro-font-mono)', fontSize: '0.68rem', letterSpacing: '0.04em', color: 'var(--paper-aged)', opacity: 0.35 }}>
             {t('sessions.notTracking')}
           </div>
         )}
@@ -80,16 +80,16 @@ const inputStyle = {
   boxSizing: 'border-box',
   background: 'rgba(176, 140, 63, 0.04)',
   border: '1px solid rgba(176, 140, 63, 0.25)',
-  borderRadius: '2px',
+  borderRadius: 'var(--ro-radius-sm)',
   padding: '0.6rem 0.85rem',
   color: 'var(--paper)',
-  fontFamily: "'Cormorant Garamond', serif",
+  fontFamily: 'var(--ro-font-display)',
   fontSize: '1.05rem',
 };
 
 const labelStyle = {
   display: 'block',
-  fontFamily: "'Special Elite', monospace",
+  fontFamily: 'var(--ro-font-mono)',
   fontSize: '0.72rem',
   letterSpacing: '0.15em',
   textTransform: 'uppercase',
@@ -160,11 +160,11 @@ function EditSessionModal({ session, book, onSave, onClose }) {
       onClick={(e) => { if (e.target === e.currentTarget && !saving) onClose(); }}
       style={{ position: 'fixed', inset: 0, background: 'rgba(10,8,6,0.78)', backdropFilter: 'blur(4px)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}
     >
-      <div style={{ background: 'var(--ink, #1a1410)', border: '1px solid rgba(176,140,63,0.35)', borderRadius: '4px', maxWidth: '520px', width: '100%', padding: '2rem 2.2rem', boxShadow: '0 20px 60px rgba(0,0,0,0.6)', maxHeight: '90vh', overflowY: 'auto' }}>
-        <div style={{ fontFamily: "'Special Elite', monospace", fontSize: '0.75rem', letterSpacing: '0.18em', textTransform: 'uppercase', color: 'var(--gilt)', marginBottom: '0.5rem' }}>
+      <div style={{ background: 'var(--ink, #1a1410)', border: '1px solid rgba(176,140,63,0.35)', borderRadius: 'var(--ro-radius-sm)', maxWidth: '520px', width: '100%', padding: '2rem 2.2rem', boxShadow: '0 20px 60px rgba(0,0,0,0.6)', maxHeight: '90vh', overflowY: 'auto' }}>
+        <div style={{ fontFamily: 'var(--ro-font-mono)', fontSize: '0.75rem', letterSpacing: '0.18em', textTransform: 'uppercase', color: 'var(--gilt)', marginBottom: '0.5rem' }}>
           {t('sessions.editEyebrow', { clubName: 'Admin' })}
         </div>
-        <h2 style={{ fontFamily: "'Cormorant Garamond', serif", fontStyle: 'italic', fontSize: '1.6rem', color: 'var(--paper)', margin: '0 0 1.5rem' }}>
+        <h2 style={{ fontFamily: 'var(--ro-font-display)', fontStyle: 'italic', fontSize: '1.6rem', color: 'var(--paper)', margin: '0 0 1.5rem' }}>
           {t('sessions.editTitle')}
         </h2>
 
@@ -176,7 +176,7 @@ function EditSessionModal({ session, book, onSave, onClose }) {
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.5rem 0.75rem', border: '1px solid rgba(176,140,63,0.35)', borderRadius: 2, background: 'rgba(176,140,63,0.04)' }}>
                 <BookThumb book={selectedBook} size={28} />
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontFamily: "'Cormorant Garamond', serif", fontStyle: 'italic', color: 'var(--paper)', fontSize: '0.95rem' }}>{selectedBook.t || selectedBook.title}</div>
+                  <div style={{ fontFamily: 'var(--ro-font-display)', fontStyle: 'italic', color: 'var(--paper)', fontSize: '0.95rem' }}>{selectedBook.t || selectedBook.title}</div>
                   {(selectedBook.a || selectedBook.author) && <div style={{ fontSize: '0.78rem', color: 'var(--paper-aged)', opacity: 0.65 }}>{selectedBook.a || selectedBook.author}</div>}
                 </div>
                 <button className="li-action" onClick={() => { setSelectedBook(null); setBookResults([]); }}>{t('sessions.changeBook')}</button>
@@ -203,7 +203,7 @@ function EditSessionModal({ session, book, onSave, onClose }) {
                       >
                         <BookThumb book={b} size={24} />
                         <div>
-                          <div style={{ fontSize: '0.9rem', color: 'var(--paper)', fontFamily: "'Cormorant Garamond', serif", fontStyle: 'italic' }}>{b.t}</div>
+                          <div style={{ fontSize: '0.9rem', color: 'var(--paper)', fontFamily: 'var(--ro-font-display)', fontStyle: 'italic' }}>{b.t}</div>
                           {b.a && <div style={{ fontSize: '0.75rem', color: 'var(--paper-aged)', opacity: 0.6 }}>{b.a}</div>}
                         </div>
                       </div>
@@ -389,10 +389,10 @@ export default function SessionDetail() {
           <BookCover title={book.title} author={book.author} coverUrl={book.cover_url} />
         </div>
         <div>
-          <div style={{ fontFamily: "'Special Elite', monospace", fontSize: '0.7rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: isActive ? 'var(--gilt)' : isPast ? 'var(--text-dim)' : 'var(--paper-aged)', marginBottom: '0.4rem' }}>
+          <div style={{ fontFamily: 'var(--ro-font-mono)', fontSize: '0.7rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: isActive ? 'var(--gilt)' : isPast ? 'var(--ro-text-dim)' : 'var(--paper-aged)', marginBottom: '0.4rem' }}>
             {isActive ? t('sessions.statusActive') : isPast ? t('sessions.statusPast') : t('sessions.statusUpcoming')}
           </div>
-          <h1 style={{ fontFamily: "'Cormorant Garamond', serif", fontStyle: 'italic', fontSize: '1.7rem', color: 'var(--paper)', margin: 0, lineHeight: 1.15, marginBottom: '0.25rem' }}>
+          <h1 style={{ fontFamily: 'var(--ro-font-display)', fontStyle: 'italic', fontSize: '1.7rem', color: 'var(--paper)', margin: 0, lineHeight: 1.15, marginBottom: '0.25rem' }}>
             {session.title}
           </h1>
           {book.author && (
@@ -400,7 +400,7 @@ export default function SessionDetail() {
               {book.author}
             </div>
           )}
-          <div style={{ fontFamily: "'Special Elite', monospace", fontSize: '0.72rem', letterSpacing: '0.06em', color: 'var(--paper-aged)', opacity: 0.5 }}>
+          <div style={{ fontFamily: 'var(--ro-font-mono)', fontSize: '0.72rem', letterSpacing: '0.06em', color: 'var(--paper-aged)', opacity: 0.5 }}>
             {fmtDate(session.starts_at)} — {fmtDate(session.ends_at)}
             {book.pages ? ` · ${book.pages} pages` : ''}
           </div>
@@ -434,10 +434,10 @@ export default function SessionDetail() {
       {/* Admin notes */}
       {session.admin_notes && (
         <div style={{ borderLeft: '2px solid rgba(176,140,63,0.35)', paddingLeft: '1rem', marginBottom: '2rem' }}>
-          <div style={{ fontFamily: "'Special Elite', monospace", fontSize: '0.65rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--gilt)', opacity: 0.7, marginBottom: '0.4rem' }}>
+          <div style={{ fontFamily: 'var(--ro-font-mono)', fontSize: '0.65rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--gilt)', opacity: 0.7, marginBottom: '0.4rem' }}>
             {t('sessions.adminLabel')}
           </div>
-          <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '1.05rem', color: 'var(--paper-aged)', lineHeight: 1.65, margin: 0 }}>
+          <p style={{ fontFamily: 'var(--ro-font-display)', fontSize: '1.05rem', color: 'var(--paper-aged)', lineHeight: 1.65, margin: 0 }}>
             {session.admin_notes}
           </p>
         </div>
@@ -446,10 +446,10 @@ export default function SessionDetail() {
       {/* Book description */}
       {book.description && (
         <div style={{ marginBottom: '2rem' }}>
-          <div style={{ fontFamily: "'Special Elite', monospace", fontSize: '0.65rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--gilt)', opacity: 0.7, marginBottom: '0.5rem' }}>
+          <div style={{ fontFamily: 'var(--ro-font-mono)', fontSize: '0.65rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--gilt)', opacity: 0.7, marginBottom: '0.5rem' }}>
             {t('sessions.aboutBook')}
           </div>
-          <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '1.05rem', color: 'var(--paper-aged)', lineHeight: 1.65, margin: 0 }}>
+          <p style={{ fontFamily: 'var(--ro-font-display)', fontSize: '1.05rem', color: 'var(--paper-aged)', lineHeight: 1.65, margin: 0 }}>
             {book.description}
           </p>
         </div>
@@ -477,11 +477,11 @@ export default function SessionDetail() {
 
       {/* Progress grid */}
       <section>
-        <div style={{ fontFamily: "'Special Elite', monospace", fontSize: '0.7rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--gilt)', marginBottom: '0.75rem' }}>
+        <div style={{ fontFamily: 'var(--ro-font-mono)', fontSize: '0.7rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--gilt)', marginBottom: '0.75rem' }}>
           {t('sessions.memberProgress', { count: (progress || []).length })}
         </div>
         {sortedProgress.length === 0 ? (
-          <div style={{ color: 'var(--text-dim)', fontStyle: 'italic', fontSize: '0.9rem' }}>
+          <div style={{ color: 'var(--ro-text-dim)', fontStyle: 'italic', fontSize: '0.9rem' }}>
             {t('sessions.noMembers')}
           </div>
         ) : (

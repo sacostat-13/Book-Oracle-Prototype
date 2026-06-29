@@ -7,7 +7,7 @@
 //
 // Required env vars:
 //   LEMON_SQUEEZY_REDIRECT_URL  — full checkout URL from LS dashboard
-//                                 e.g. https://thereadingoracle.lemonsqueezy.com/checkout/buy/...
+//                                 e.g. https://thebooksoracle.lemonsqueezy.com/checkout/buy/...
 //   SUPABASE_URL
 //   SUPABASE_SERVICE_ROLE_KEY   (optional — used to look up email if not in JWT)
 

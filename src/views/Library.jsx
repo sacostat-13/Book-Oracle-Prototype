@@ -6,7 +6,7 @@ import BulkImport from '../components/BulkImport';
 import OracleCategorizationButton from '../components/OracleCategorizationButton';
 import RatingModal from '../components/RatingModal';
 import LibraryCoverGrid from '../components/LibraryCoverGrid';
-import { useT } from '../lib/I18nContext';
+import { useT, useTNode } from '../lib/I18nContext';
 import { useSelection } from '../lib/useSelection';
 import SelectionBar from '../components/SelectionBar';
 
@@ -17,6 +17,7 @@ export default function Library({ onOpenBook }) {
   const { state, removeFromLibrary, updateReadBook, getCategoriesForBook } = useData();
   const { go } = useRouter();
   const t = useT();
+  const tNode = useTNode();
   const [bulkOpen, setBulkOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [genreFilter, setGenreFilter] = useState('all');
@@ -122,7 +123,7 @@ export default function Library({ onOpenBook }) {
       </div>
       <div className="page-header">
         <div className="page-eyebrow">Library</div>
-        <h1 className="page-title">Books I've <span className="accent">Read</span></h1>
+        <h1 className="page-title">{tNode('library.pageTitle')}</h1>
         <p className="page-subtitle">{lib.length} books across {genreKeys.length} genre{genreKeys.length !== 1 ? 's' : ''}.</p>
       </div>
 
@@ -135,12 +136,12 @@ export default function Library({ onOpenBook }) {
               placeholder="Search title or author…"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              style={{ maxWidth: '280px' }}
+              
             />
             <select
               value={genreFilter}
               onChange={(e) => setGenreFilter(e.target.value)}
-              style={{ maxWidth: '220px' }}
+              
             >
               <option value="all">— All genres —</option>
               {genreOptions.map((o) => (
@@ -153,7 +154,7 @@ export default function Library({ onOpenBook }) {
               <select
                 value={categoryFilter}
                 onChange={(e) => setCategoryFilter(e.target.value)}
-                style={{ maxWidth: '220px' }}
+                
               >
                 <option value="all">— All categories —</option>
                 {categoryOptions.map((o) => (
@@ -164,7 +165,7 @@ export default function Library({ onOpenBook }) {
               </select>
             )}
           </div>
-          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+          <div className="lv-chips">
             {/* List / Covers toggle */}
             <button
               className={`btn btn-ghost${sel.active ? ' active' : ''}`}
@@ -224,7 +225,7 @@ export default function Library({ onOpenBook }) {
           <div className="empty-state-text">
             As you mark books as read, they'll appear here and fill your shelves on the dashboard.
           </div>
-          <div style={{ marginTop: '1.5rem' }}>
+          <div className="lv-load-more">
             <button className="btn" onClick={() => setBulkOpen(true)}>⇪ Bulk add read books</button>
           </div>
         </div>
@@ -265,24 +266,24 @@ export default function Library({ onOpenBook }) {
                     else setEditing(b);
                   }}
                   title={sel.active ? '' : (b.rating ? 'Edit your rating' : 'Rate this book')}
-                  style={{ cursor: 'pointer' }}
+                  
                 >
                   {sel.active
                     ? <span className="li-checkbox">{isSelected ? '✓' : ''}</span>
                     : (b.rating ? '★'.repeat(b.rating) : '❦')}
                 </div>
-                <div className="li-content" onClick={() => !sel.active && onOpenBook?.(b)} style={{ cursor: sel.active ? 'default' : 'pointer' }}>
+                <div className="li-content" onClick={() => !sel.active && onOpenBook?.(b)}>
                   <div className="li-title">{b.t}</div>
                   <div className="li-author">
                     {b.a}
                     {b.dateRead && (
-                      <> · <span style={{ opacity: 0.55 }}>
+                      <> · <span className="lv-hl-muted">
                         {new Date(b.dateRead).toLocaleDateString(undefined, { month: 'short', year: 'numeric' })}
                       </span></>
                     )}
-                    {b.fromGoodreads && <> · <span style={{ color: 'var(--gilt)', opacity: 0.7 }}>from Goodreads</span></>}
+                    {b.fromGoodreads && <> · <span className="lv-hl-dim">from Goodreads</span></>}
                     {b.notes && (
-                      <> · <span style={{ color: 'var(--gilt)', opacity: 0.7 }} title={b.notes}>has notes</span></>
+                      <> · <span className="lv-hl-dim" title={b.notes}>has notes</span></>
                     )}
                   </div>
                   {(() => {
