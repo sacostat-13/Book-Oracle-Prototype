@@ -18,10 +18,10 @@ function Avatar({ displayName, avatarUrl, size = 26 }) {
   const [failed, setFailed] = useState(false);
   const initials = (displayName || '?').split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase();
   if (avatarUrl && !failed) {
-    return <img src={avatarUrl} alt={displayName} onError={() => setFailed(true)} style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />;
+    return <img src={avatarUrl} alt={displayName} onError={() => setFailed(true)} className="friend-avatar" style={{ '--fa-sz': `${size}px` }} />;
   }
   return (
-    <div style={{ width: size, height: size, borderRadius: '50%', background: 'rgba(176,140,63,0.15)', border: '1px solid rgba(176,140,63,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--ro-font-mono)', fontSize: size * 0.36, color: 'var(--gilt)', flexShrink: 0 }}>
+    <div className="friend-avatar--fallback" style={{ '--fa-sz': `${size}px`, fontSize: size * 0.36 }}>
       {initials}
     </div>
   );
@@ -53,7 +53,7 @@ function CommentInput({ onPost, placeholder = 'Add a comment…', autoFocus = fa
   }
 
   return (
-    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-end' }}>
+    <div className="comment-reply-row">
       <textarea
         value={body}
         onChange={(e) => setBody(e.target.value)}
@@ -61,13 +61,8 @@ function CommentInput({ onPost, placeholder = 'Add a comment…', autoFocus = fa
         placeholder={placeholder}
         rows={2}
         autoFocus={autoFocus}
-        style={{
+        className="textarea" style={{
           flex: 1,
-          background: 'rgba(176,140,63,0.04)',
-          border: '1px solid rgba(176,140,63,0.2)',
-          borderRadius: 'var(--ro-radius-sm)',
-          padding: '0.45rem 0.7rem',
-          color: 'var(--paper)',
           fontFamily: 'var(--ro-font-display)',
           fontSize: '0.95rem',
           resize: 'none',
@@ -79,7 +74,7 @@ function CommentInput({ onPost, placeholder = 'Add a comment…', autoFocus = fa
         className="li-action"
         onClick={handlePost}
         disabled={!body.trim() || posting}
-        style={{ flexShrink: 0, alignSelf: 'flex-end', paddingBottom: '0.45rem' }}
+        className="comment-reply-send"
       >
         {posting ? t('discussion.posting') : t('discussion.post')}
       </button>
@@ -99,26 +94,20 @@ function EditInput({ initialBody, onSave, onCancel }) {
   }
 
   return (
-    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-end', marginTop: '0.35rem' }}>
+    <div className="comment-reply-row">
       <textarea
         value={body}
         onChange={(e) => setBody(e.target.value)}
         rows={2}
         autoFocus
-        style={{
+        className="textarea" style={{
           flex: 1,
-          background: 'rgba(176,140,63,0.04)',
-          border: '1px solid rgba(176,140,63,0.3)',
-          borderRadius: 'var(--ro-radius-sm)',
-          padding: '0.45rem 0.7rem',
-          color: 'var(--paper)',
-          fontFamily: 'var(--ro-font-display)',
           fontSize: '0.95rem',
           resize: 'none',
           colorScheme: 'dark',
         }}
       />
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+      <div className="comment-reply-compose">
         <button className="li-action" onClick={handleSave} disabled={!body.trim() || saving}>{saving ? '…' : 'Save'}</button>
         <button className="li-action" onClick={onCancel}>{t('discussion.cancelReply')}</button>
       </div>
@@ -145,14 +134,14 @@ function SingleComment({ comment, onPost, onDelete, onEdit, isReply = false }) {
   }
 
   return (
-    <div style={{ display: 'flex', gap: '0.6rem', marginBottom: isReply ? '0.5rem' : '0.85rem' }}>
+    <div className="comment-item">
       <Avatar displayName={comment.display_name} avatarUrl={comment.avatar_url} size={isReply ? 22 : 26} />
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', marginBottom: '0.2rem' }}>
-          <span style={{ fontSize: '0.82rem', fontWeight: 500, color: 'var(--paper)' }}>
+      <div className="comment-item__body">
+        <div className="comment-item__head">
+          <span className="comment-item__name">
             {comment.display_name || 'Anonymous'}
           </span>
-          <span style={{ fontSize: '0.72rem', color: 'var(--paper-aged)', opacity: 0.45 }}>
+          <span className="comment-item__meta">
             {relativeTime(comment.created_at)}
             {comment.updated_at && comment.updated_at !== comment.created_at && t('discussion.edited')}
           </span>
@@ -161,24 +150,17 @@ function SingleComment({ comment, onPost, onDelete, onEdit, isReply = false }) {
         {editing ? (
           <EditInput initialBody={comment.body} onSave={handleEdit} onCancel={() => setEditing(false)} />
         ) : (
-          <p style={{
-            fontFamily: 'var(--ro-font-display)',
-            fontSize: '1rem',
-            color: 'var(--paper-aged)',
-            lineHeight: 1.55,
-            margin: 0,
-            wordBreak: 'break-word',
-          }}>
+          <p className="comment-item__text">
             {comment.body}
           </p>
         )}
 
         {!editing && (
-          <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.3rem' }}>
+          <div className="comment-item__actions">
             {!isReply && (
               <button
                 onClick={() => setReplying(!replying)}
-                style={{ fontSize: '0.72rem', color: 'var(--paper-aged)', opacity: 0.5, background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontFamily: 'var(--ro-font-mono)', letterSpacing: '0.05em' }}
+                className="comment-item__reply"
               >
                 {replying ? t('discussion.cancelReply') : t('discussion.reply')}
               </button>
@@ -187,13 +169,13 @@ function SingleComment({ comment, onPost, onDelete, onEdit, isReply = false }) {
               <>
                 <button
                   onClick={() => setEditing(true)}
-                  style={{ fontSize: '0.72rem', color: 'var(--paper-aged)', opacity: 0.5, background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontFamily: 'var(--ro-font-mono)', letterSpacing: '0.05em' }}
+                  className="comment-item__reply"
                 >
                   {t('discussion.edit')}
                 </button>
                 <button
                   onClick={() => onDelete(comment.id)}
-                  style={{ fontSize: '0.72rem', color: 'rgba(180,60,60,0.6)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontFamily: 'var(--ro-font-mono)', letterSpacing: '0.05em' }}
+                  className="comment-item__reply" style={{ color: "var(--ro-error)" }}
                 >{t('discussion.delete')}</button>
               </>
             )}
@@ -202,7 +184,7 @@ function SingleComment({ comment, onPost, onDelete, onEdit, isReply = false }) {
 
         {/* Replies */}
         {comment.replies?.length > 0 && (
-          <div style={{ marginTop: '0.6rem', paddingLeft: '0.75rem', borderLeft: '1px solid rgba(176,140,63,0.12)' }}>
+          <div className="session-prompt" style={{ marginTop: "0.6rem", marginBottom: 0 }}>
             {comment.replies.map((r) => (
               <SingleComment
                 key={r.id}
@@ -218,7 +200,7 @@ function SingleComment({ comment, onPost, onDelete, onEdit, isReply = false }) {
 
         {/* Reply input */}
         {replying && (
-          <div style={{ marginTop: '0.5rem' }}>
+          <div >
             <CommentInput onPost={handleReply} placeholder="Write a reply…" autoFocus />
           </div>
         )}
@@ -244,7 +226,7 @@ export default function CommentThread({ comments = [], onPost, onDelete, onEdit,
       ))}
 
       {user && (
-        <div style={{ marginTop: comments.length > 0 ? '0.5rem' : 0 }}>
+        <div >
           <CommentInput
             onPost={(body) => onPost(body, null)}
             placeholder={placeholder || t('discussion.commentPlaceholder')}

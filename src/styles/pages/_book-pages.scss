@@ -4,7 +4,11 @@
 // All inline styles from R4 views migrate here.
 
 // ── Shared section skeleton used on Library / Wishlist / Currently Reading ────
-.lv-page { display: flex; flex-direction: column; gap: var(--ro-space-8); }
+.lv-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ro-space-8);
+}
 
 .lv-toolbar {
   display: flex;
@@ -17,7 +21,7 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  background: var(--field);
+  background: var(--ro-field);
   border: 1px solid var(--ro-border-strong);
   border-radius: var(--ro-radius-md);
   padding: 13px 16px;
@@ -25,7 +29,11 @@
   min-width: 240px;
   max-width: 340px;
 
-  svg { color: var(--ro-gold-text); flex-shrink: 0; }
+  svg {
+    color: var(--ro-gold-text);
+    flex-shrink: 0;
+  }
+
   input {
     flex: 1;
     border: 0;
@@ -34,7 +42,10 @@
     color: var(--ro-text);
     font-family: var(--ro-font-body);
     font-size: 15px;
-    &::placeholder { color: var(--ro-muted); }
+
+    &::placeholder {
+      color: var(--ro-muted);
+    }
   }
 }
 
@@ -54,7 +65,10 @@
   color: var(--ro-text-2);
   cursor: pointer;
   transition: border-color .15s;
-  &:hover { border-color: var(--ro-gold); }
+
+  &:hover {
+    border-color: var(--ro-gold);
+  }
 }
 
 .lv-chips {
@@ -72,7 +86,10 @@
   gap: 16px;
 }
 
-.lv-empty-icon { font-size: 2rem; opacity: .35; }
+.lv-empty-icon {
+  font-size: 2rem;
+  opacity: .35;
+}
 
 .lv-empty-title {
   font-family: var(--ro-font-display);
@@ -98,9 +115,18 @@
 }
 
 // Inline text highlights (reading status, added-by tags in list)
-.lv-hl     { color: var(--ro-gold-text); }
-.lv-hl-dim { color: var(--ro-gold-text); opacity: .7; }
-.lv-hl-muted { opacity: .55; }
+.lv-hl {
+  color: var(--ro-gold-text);
+}
+
+.lv-hl-dim {
+  color: var(--ro-gold-text);
+  opacity: .7;
+}
+
+.lv-hl-muted {
+  opacity: .55;
+}
 
 // ── Currently Reading — progress update ───────────────────────────────────────
 .cr-card {
@@ -114,7 +140,10 @@
   align-items: start;
   transition: border-color .15s;
   cursor: pointer;
-  &:hover { border-color: var(--ro-gold); }
+
+  &:hover {
+    border-color: var(--ro-gold);
+  }
 }
 
 .cr-cover {
@@ -122,11 +151,13 @@
   border-radius: 9px;
   object-fit: cover;
   border: 1px solid var(--ro-border-strong);
-  box-shadow: 0 10px 22px rgba(0,0,0,.4);
+  box-shadow: 0 10px 22px rgba(0, 0, 0, .4);
   width: 100%;
 }
 
-.cr-body { min-width: 0; }
+.cr-body {
+  min-width: 0;
+}
 
 .cr-title {
   font-family: var(--ro-font-display);
@@ -166,9 +197,13 @@
   color: var(--ro-muted);
 }
 
-.cr-days { color: var(--ro-gold-text); }
+.cr-days {
+  color: var(--ro-gold-text);
+}
 
-.cr-progress-wrap { margin: 14px 0 4px; }
+.cr-progress-wrap {
+  margin: 14px 0 4px;
+}
 
 .cr-progress-bar {
   height: 6px;
@@ -202,7 +237,11 @@
 }
 
 // ── Book Page — hero layout ───────────────────────────────────────────────────
-.bp-page { display: flex; flex-direction: column; gap: 32px; }
+.bp-page {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
 
 .bp-hero {
   display: grid;
@@ -221,17 +260,22 @@
   }
 }
 
-.bp-cover-col { position: sticky; top: 80px; }
+.bp-cover-col {
+  position: sticky;
+  top: 80px;
+}
 
 .bp-cover {
   aspect-ratio: 2/3;
   border-radius: var(--ro-radius-lg);
   overflow: hidden;
-  box-shadow: 0 18px 38px rgba(0,0,0,.5);
+  box-shadow: 0 18px 38px rgba(0, 0, 0, .5);
   border: 1px solid var(--ro-gold);
 }
 
-.bp-info { min-width: 0; }
+.bp-info {
+  min-width: 0;
+}
 
 .bp-title {
   font-family: var(--ro-font-display);
@@ -271,18 +315,20 @@
   background: transparent;
 
   &--read {
-    background: var(--forest);
-    border-color: var(--forest);
+    background: var(--ro-forest);
+    border-color: var(--ro-forest);
     color: #fff;
   }
+
   &--ro-gold {
     background: color-mix(in srgb, var(--ro-gold) 18%, transparent);
     border-color: var(--ro-gold);
     color: var(--ro-gold-text);
   }
+
   &--moss {
-    background: var(--forest);
-    border-color: var(--forest);
+    background: var(--ro-forest);
+    border-color: var(--ro-forest);
     color: #fff;
   }
 }
@@ -310,12 +356,21 @@
   cursor: pointer;
   text-decoration: none;
   transition: border-color .15s;
-  &:hover { border-color: var(--ro-gold); color: var(--ro-gold-text); }
-  svg { color: var(--ro-gold-text); }
+
+  &:hover {
+    border-color: var(--ro-gold);
+    color: var(--ro-gold-text);
+  }
+
+  svg {
+    color: var(--ro-gold-text);
+  }
 }
 
 // ── Series block inside book page ─────────────────────────────────────────────
-.bp-series { margin-top: 20px; }
+.bp-series {
+  margin-top: 20px;
+}
 
 .bp-series__head {
   display: flex;
@@ -330,7 +385,10 @@
   font-size: 18px;
   color: var(--ro-text);
   cursor: pointer;
-  &:hover { color: var(--ro-gold-text); }
+
+  &:hover {
+    color: var(--ro-gold-text);
+  }
 }
 
 .bp-series__open {
@@ -344,7 +402,10 @@
   border: 0;
   cursor: pointer;
   padding: 0;
-  &:hover { opacity: .8; }
+
+  &:hover {
+    opacity: .8;
+  }
 }
 
 // ── Book page actions ─────────────────────────────────────────────────────────
@@ -406,7 +467,10 @@
   text-decoration: none;
   border-bottom: 1px dotted color-mix(in srgb, var(--ro-gold) 30%, transparent);
   transition: opacity .15s;
-  &:hover { opacity: 1; }
+
+  &:hover {
+    opacity: 1;
+  }
 }
 
 // ── Rating display ────────────────────────────────────────────────────────────
@@ -414,7 +478,10 @@
   color: var(--ro-gold-text);
   font-size: 1.4rem;
   letter-spacing: .1em;
-  span { color: color-mix(in srgb, var(--ro-gold) 25%, transparent); }
+
+  span {
+    color: color-mix(in srgb, var(--ro-gold) 25%, transparent);
+  }
 }
 
 .bp-no-rating {
@@ -464,7 +531,10 @@
   font-size: 13px;
   line-height: 0;
   padding: 0;
-  &:hover { color: var(--ro-text); }
+
+  &:hover {
+    color: var(--ro-text);
+  }
 }
 
 .bp-cat-add {
@@ -479,7 +549,11 @@
   font-family: var(--ro-font-body);
   font-size: 13px;
   cursor: pointer;
-  &:hover { border-color: var(--ro-gold); color: var(--ro-gold-text); }
+
+  &:hover {
+    border-color: var(--ro-gold);
+    color: var(--ro-gold-text);
+  }
 }
 
 .bp-cat-help {
@@ -502,7 +576,10 @@
   flex-direction: column;
   gap: 12px;
   cursor: pointer;
-  &:hover .bp-similar-cover { border-color: var(--ro-gold); }
+
+  &:hover .bp-similar-cover {
+    border-color: var(--ro-gold);
+  }
 }
 
 .bp-similar-cover {
@@ -510,10 +587,15 @@
   border-radius: 10px;
   overflow: hidden;
   border: 1px solid var(--ro-border-strong);
-  box-shadow: 0 10px 22px rgba(0,0,0,.38);
+  box-shadow: 0 10px 22px rgba(0, 0, 0, .38);
   position: relative;
   transition: border-color .15s;
-  img { width: 100%; height: 100%; object-fit: cover; }
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
 }
 
 .bp-similar-cover--placeholder {
@@ -546,7 +628,11 @@
 }
 
 // ── Oracle recommendation cards ───────────────────────────────────────────────
-.rec-page { display: flex; flex-direction: column; gap: 28px; }
+.rec-page {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
 
 .rec-header {}
 
@@ -565,7 +651,10 @@
   text-transform: uppercase;
   color: var(--ro-muted);
   margin-top: 10px;
-  span { color: var(--ro-gold-text); }
+
+  span {
+    color: var(--ro-gold-text);
+  }
 }
 
 .rec-grid {
@@ -586,8 +675,13 @@
   border-radius: 14px;
   overflow: hidden;
   border: 1px solid var(--ro-gold);
-  box-shadow: 0 14px 30px rgba(0,0,0,.4);
-  img { width: 100%; height: 100%; object-fit: cover; }
+  box-shadow: 0 14px 30px rgba(0, 0, 0, .4);
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
 }
 
 .rec-cover--placeholder {
@@ -632,7 +726,10 @@
   align-items: center;
   justify-content: center;
   transition: background .15s;
-  &:hover { background: color-mix(in srgb, var(--ro-gold) 20%, var(--ro-bg-deep)); }
+
+  &:hover {
+    background: color-mix(in srgb, var(--ro-gold) 20%, var(--ro-bg-deep));
+  }
 }
 
 .rec-card-title {
@@ -671,7 +768,7 @@
   border: 1px solid var(--ro-gold);
   border-radius: 20px;
   padding: 30px 34px;
-  box-shadow: inset 0 2px 4px rgba(0,0,0,.12);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, .12);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -689,7 +786,11 @@
 }
 
 // ── Oracle flows (Fork, Categories, Similar) ──────────────────────────────────
-.oracle-page { display: flex; flex-direction: column; gap: 28px; }
+.oracle-page {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
 
 .oracle-title {
   font-family: var(--ro-font-display);
@@ -698,13 +799,18 @@
   color: var(--ro-text);
 }
 
-.oracle-title__accent { color: var(--ro-burgundy); }
+.oracle-title__accent {
+  color: var(--ro-burgundy);
+}
 
 .oracle-fork-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 20px;
-  @include ro-down(mobile) { grid-template-columns: 1fr; }
+
+  @include ro-down(mobile) {
+    grid-template-columns: 1fr;
+  }
 }
 
 .oracle-fork-card {
@@ -715,8 +821,16 @@
   text-align: left;
   background: transparent;
   transition: border-color .15s, background .15s;
-  &:hover { border-color: var(--ro-gold); background: color-mix(in srgb, var(--ro-gold) 5%, transparent); }
-  &.is-active { border-color: var(--ro-gold); background: color-mix(in srgb, var(--ro-gold) 10%, transparent); }
+
+  &:hover {
+    border-color: var(--ro-gold);
+    background: color-mix(in srgb, var(--ro-gold) 5%, transparent);
+  }
+
+  &.is-active {
+    border-color: var(--ro-gold);
+    background: color-mix(in srgb, var(--ro-gold) 10%, transparent);
+  }
 }
 
 .oracle-fork-card__label {
@@ -725,7 +839,10 @@
   font-weight: 600;
   font-size: 24px;
   color: var(--ro-text);
-  em { color: var(--ro-burgundy); }
+
+  em {
+    color: var(--ro-burgundy);
+  }
 }
 
 .oracle-fork-card__sub {
@@ -736,7 +853,12 @@
   line-height: 1.5;
 }
 
-.oracle-quota { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.oracle-quota {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
 
 .oracle-quota-note {
   font-family: var(--ro-font-body);
@@ -760,8 +882,14 @@
   background: transparent;
   transition: all .15s;
 
-  &:hover { border-color: var(--ro-gold); }
-  &.is-selected { border-color: var(--ro-gold); background: color-mix(in srgb, var(--ro-gold) 10%, transparent); }
+  &:hover {
+    border-color: var(--ro-gold);
+  }
+
+  &.is-selected {
+    border-color: var(--ro-gold);
+    background: color-mix(in srgb, var(--ro-gold) 10%, transparent);
+  }
 }
 
 .oracle-cat-card__name {
@@ -800,8 +928,16 @@
   border: 2px solid transparent;
   transition: border-color .15s;
   position: relative;
-  img { width: 100%; height: 100%; object-fit: cover; }
-  &.is-selected { border-color: var(--ro-gold); }
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  &.is-selected {
+    border-color: var(--ro-gold);
+  }
 }
 
 .oracle-similar-title {
@@ -826,7 +962,10 @@
   font-style: italic;
   font-size: 28px;
   color: var(--ro-text);
-  em { color: var(--ro-gold-text); }
+
+  em {
+    color: var(--ro-gold-text);
+  }
 }
 
 .oracle-results-sub {
@@ -838,7 +977,11 @@
 }
 
 // ── Series Page ───────────────────────────────────────────────────────────────
-.sp-page { display: flex; flex-direction: column; gap: 28px; }
+.sp-page {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
 
 .sp-progress {
   background: var(--ro-surface);
@@ -868,13 +1011,31 @@
   font-weight: 600;
   font-size: 14px;
   color: var(--ro-gold-text);
-  span { opacity: .6; }
+
+  span {
+    opacity: .6;
+  }
 }
 
-.sp-bar { height: 6px; border-radius: var(--ro-radius-pill); background: var(--ro-ring-track); overflow: hidden; margin-bottom: 10px; }
-.sp-bar__fill { height: 100%; border-radius: var(--ro-radius-pill); background: var(--ro-gold); width: var(--sp-pct, 0%); transition: width .4s; }
+.sp-bar {
+  height: 6px;
+  border-radius: var(--ro-radius-pill);
+  background: var(--ro-ring-track);
+  overflow: hidden;
+  margin-bottom: 10px;
+}
 
-.sp-read-label { color: var(--forest); }
+.sp-bar__fill {
+  height: 100%;
+  border-radius: var(--ro-radius-pill);
+  background: var(--ro-gold);
+  width: var(--sp-pct, 0%);
+  transition: width .4s;
+}
+
+.sp-read-label {
+  color: var(--ro-forest);
+}
 
 .sp-description {
   font-family: var(--ro-font-body);
@@ -892,7 +1053,11 @@
   text-transform: uppercase;
   color: var(--ro-muted);
   margin-bottom: 14px;
-  span { opacity: .5; margin-left: 6px; }
+
+  span {
+    opacity: .5;
+    margin-left: 6px;
+  }
 }
 
 .sp-no-books {
@@ -908,11 +1073,18 @@
   font-size: 12px;
   text-decoration: none;
   border-bottom: 1px dotted color-mix(in srgb, var(--ro-gold) 30%, transparent);
-  &:hover { opacity: 1; color: var(--ro-gold-text); }
+
+  &:hover {
+    opacity: 1;
+    color: var(--ro-gold-text);
+  }
 }
 
 // Disabled action state (already-reading / already-queued indicators)
-.li-action--disabled { opacity: .5; cursor: default; }
+.li-action--disabled {
+  opacity: .5;
+  cursor: default;
+}
 
 // Notes quote variant (left-rule treatment for personal reading notes)
 .bp-notes--quote {
@@ -924,4 +1096,6 @@
 }
 
 // Star empty/filled split
-.bp-stars__empty { color: color-mix(in srgb, var(--ro-gold) 25%, transparent); }
+.bp-stars__empty {
+  color: color-mix(in srgb, var(--ro-gold) 25%, transparent);
+}

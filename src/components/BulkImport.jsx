@@ -193,15 +193,15 @@ export default function BulkImport({ onClose, target = 'wishlist' }) {
   const hasResults = results.length > 0;
 
   return (
-    <div className="manual-add-form" style={{ marginBottom: '1.5rem' }}>
+    <div className="bulk-form">
       <div className="manual-add-header">
         <h3>{isLibrary ? t('bulkImport.titleLibrary') : t('bulkImport.titleWishlist')}</h3>
         <button className="manual-add-close" onClick={onClose}>×</button>
       </div>
 
-      <div style={{ display: 'flex', gap: '0.4rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
+      <div className="bulk-tabs">
         {tabs.map((tb) => (
-          <button key={tb.id} className={`toggle-btn ${tab === tb.id ? 'active' : ''}`} onClick={() => switchTab(tb.id)} style={{ flex: '1 1 auto', minWidth: '160px' }}>
+          <button key={tb.id} className={`toggle-btn ${tab === tb.id ? 'active' : ''}`} onClick={() => switchTab(tb.id)}>
             {tb.label}<span className="toggle-sub">{tb.sub}</span>
           </button>
         ))}
@@ -229,10 +229,10 @@ export default function BulkImport({ onClose, target = 'wishlist' }) {
         <>
           <div className="field field-full">
             <label>{t('bulkImport.titlesOnePerLine')}</label>
-            <textarea placeholder={t('bulkImport.titlesPlaceholder')} rows={10} value={titleText} onChange={(e) => setTitleText(e.target.value)} style={{ fontFamily: 'monospace', fontSize: '0.9rem' }} />
+            <textarea placeholder={t('bulkImport.titlesPlaceholder')} rows={10} value={titleText} onChange={(e) => setTitleText(e.target.value)} className="textarea" style={{ fontFamily: "monospace" }} />
           </div>
           <div className="upload-help">{t('bulkImport.titlesHelp')}</div>
-          <div className="manual-add-actions" style={{ marginTop: '1rem' }}>
+          <div className="bulk-actions">
             <span className="manual-add-note">{isLibrary ? t('bulkImport.titlesNoteLibrary') : t('bulkImport.titlesNoteWishlist')}</span>
             <button className="btn" onClick={lookupTitleList} disabled={!titleText.trim()}>{t('bulkImport.lookUpBtn')}</button>
           </div>
@@ -243,10 +243,10 @@ export default function BulkImport({ onClose, target = 'wishlist' }) {
         <>
           <div className="field field-full">
             <label>{t('bulkImport.amazonOnePerLine')}</label>
-            <textarea placeholder="https://www.amazon.com/dp/B07XYZ1234" rows={10} value={amazonText} onChange={(e) => setAmazonText(e.target.value)} style={{ fontFamily: 'monospace', fontSize: '0.85rem' }} />
+            <textarea placeholder="https://www.amazon.com/dp/B07XYZ1234" rows={10} value={amazonText} onChange={(e) => setAmazonText(e.target.value)} className="textarea" style={{ fontFamily: "monospace" }} />
           </div>
           <div className="upload-help">{t('bulkImport.amazonHelp')}</div>
-          <div className="manual-add-actions" style={{ marginTop: '1rem' }}>
+          <div className="bulk-actions">
             <span className="manual-add-note">{t('bulkImport.amazonNote')}</span>
             <button className="btn" onClick={lookupAmazonUrls} disabled={!amazonText.trim()}>{t('bulkImport.lookUpBtn')}</button>
           </div>
@@ -255,31 +255,31 @@ export default function BulkImport({ onClose, target = 'wishlist' }) {
 
       {hasResults && (
         <>
-          <div style={{ marginBottom: '1rem', display: 'flex', gap: '0.6rem', flexWrap: 'wrap', alignItems: 'center' }}>
-            <span style={{ color: 'var(--paper-aged)' }}>
+          <div className="bulk-source-row">
+            <span className="about-section__body">
               {progress ? (
                 <>{t('bulkImport.lookingUp', { done: progress.done, total: progress.total })}</>
               ) : (
                 <>
-                  <span style={{ color: 'var(--gilt-bright)' }}>{t('bulkImport.readyCount', { count: foundCount })}</span>
-                  {unmatchedCount > 0 && <> · <span style={{ color: 'var(--gilt)' }}>{t('bulkImport.addAsIs', { count: unmatchedCount })}</span></>}
-                  {dupCount > 0 && <> · <span style={{ opacity: 0.6 }}>{t('bulkImport.alreadyHave', { count: dupCount })}</span></>}
-                  {missCount > 0 && <> · <span style={{ color: 'var(--blood-bright)' }}>{t('bulkImport.notFoundCount', { count: missCount })}</span></>}
+                  <span className="lv-hl">{t('bulkImport.readyCount', { count: foundCount })}</span>
+                  {unmatchedCount > 0 && <> · <span className="lv-hl">{t('bulkImport.addAsIs', { count: unmatchedCount })}</span></>}
+                  {dupCount > 0 && <> · <span className="lv-hl-muted">{t('bulkImport.alreadyHave', { count: dupCount })}</span></>}
+                  {missCount > 0 && <> · <span className="pf-error" style={{ display: "inline" }}>{t('bulkImport.notFoundCount', { count: missCount })}</span></>}
                 </>
               )}
             </span>
           </div>
 
-          <div style={{ maxHeight: '50vh', overflowY: 'auto', border: '1px solid rgba(176, 140, 63, 0.2)', borderRadius: 'var(--ro-radius-sm)' }}>
+          <div className="ldetail-scroll" style={{ maxHeight: "50vh", border: "1px solid var(--ro-border)" }}>
             {results.map((r, i) => (
               <ResultRow key={i} row={r} t={t} onRemove={() => setResults(results.filter((_, idx) => idx !== i))} />
             ))}
           </div>
 
-          <div className="manual-add-actions" style={{ marginTop: '1rem' }}>
+          <div className="bulk-actions">
             <span className="manual-add-note">
               {t('bulkImport.resultsReadyNote')}{' '}
-              {unmatchedCount > 0 && <em style={{ opacity: 0.7 }}>{t('bulkImport.resultsUnmatchedNote')}</em>}
+              {unmatchedCount > 0 && <em style={{ opacity: .7 }}>{t('bulkImport.resultsUnmatchedNote')}</em>}
             </span>
             <button className="btn btn-ghost" onClick={clearResults} disabled={importing}>{t('bulkImport.startOver')}</button>
             <button className="btn" onClick={confirmImport} disabled={(foundCount + unmatchedCount) === 0 || importing || progress}>
@@ -294,34 +294,34 @@ export default function BulkImport({ onClose, target = 'wishlist' }) {
 
 function ResultRow({ row, onRemove, t }) {
   const statusBadge = {
-    pending:   { label: t('bulkImport.statusPending'),   color: 'var(--paper-aged)' },
-    found:     { label: t('bulkImport.statusFound'),     color: 'var(--gilt-bright)' },
+    pending: { label: t('bulkImport.statusPending'), color: 'var(--paper-aged)' },
+    found: { label: t('bulkImport.statusFound'), color: 'var(--gilt-bright)' },
     duplicate: { label: t('bulkImport.statusDuplicate'), color: 'var(--paper-aged)' },
-    missing:   { label: t('bulkImport.statusMissing'),   color: 'var(--blood-bright)' },
+    missing: { label: t('bulkImport.statusMissing'), color: 'var(--blood-bright)' },
     unmatched: { label: t('bulkImport.statusUnmatched'), color: 'var(--gilt)' },
   }[row.status] || { label: row.status, color: 'var(--paper-aged)' };
 
   return (
-    <div style={{ padding: '0.7rem 0.9rem', borderBottom: '1px solid rgba(176, 140, 63, 0.1)', display: 'flex', alignItems: 'center', gap: '0.8rem', opacity: row.status === 'pending' || row.status === 'duplicate' || row.status === 'missing' ? 0.7 : 1 }}>
-      <div style={{ flex: 1, minWidth: 0 }}>
+    <div className="bulk-result-row" style={{ opacity: row.status === 'pending' || row.status === 'duplicate' || row.status === 'missing' ? 0.7 : 1 }}>
+      <div className="session-form__book-wrap">
         {row.book ? (
           <>
-            <div style={{ color: 'var(--paper)', fontFamily: 'var(--ro-font-display)', fontStyle: 'italic', fontSize: '1.05rem' }}>{row.book.t}</div>
-            <div style={{ color: 'var(--paper-aged)', fontSize: '0.85rem' }}>
+            <div className="bulk-result-title">{row.book.t}</div>
+            <div className="bulk-result-meta">
               {row.book.a}
               {row.book.g && <> · {row.book.g}</>}
-              {row.book.rating > 0 && <> · <span style={{ color: 'var(--gilt-bright)' }}>{'★'.repeat(row.book.rating)}</span></>}
+              {row.book.rating > 0 && <> · <span className="lv-hl">{'★'.repeat(row.book.rating)}</span></>}
             </div>
           </>
         ) : (
-          <div style={{ color: 'var(--paper-aged)', fontSize: '0.9rem', wordBreak: 'break-all' }}>{row.input}</div>
+          <div className="bulk-result-meta" style={{ wordBreak: "break-all" }}>{row.input}</div>
         )}
-        {row.error && <div style={{ color: 'var(--blood-bright)', fontSize: '0.8rem', marginTop: '0.2rem' }}>{row.error}</div>}
+        {row.error && <div className="pf-error">{row.error}</div>}
       </div>
-      <span style={{ fontFamily: 'var(--ro-font-mono)', fontSize: '0.7rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: statusBadge.color, whiteSpace: 'nowrap' }}>
+      <span className="cat-auto__tag" style={{ color: statusBadge.color }}>
         {statusBadge.label}
       </span>
-      <button onClick={onRemove} style={{ background: 'none', border: 'none', color: 'var(--paper-aged)', opacity: 0.5, cursor: 'pointer', fontSize: '1.2rem', padding: '0 0.3rem' }} title={t('bulkImport.removeRow')}>
+      <button onClick={onRemove} className="modal-close-btn" style={{ fontSize: "1.2rem" }} title={t('bulkImport.removeRow')}>
         ×
       </button>
     </div>

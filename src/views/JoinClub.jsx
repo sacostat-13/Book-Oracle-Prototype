@@ -42,7 +42,7 @@ export default function JoinClub() {
 
   if (status === 'loading') {
     return (
-      <div className="loading" style={{ paddingTop: '6rem' }}>
+      <div className="loading">
         <div className="loading-spinner" />
         <div className="loading-text">{t('joinClub.loadingText')}</div>
       </div>
@@ -52,12 +52,12 @@ export default function JoinClub() {
   if (status === 'invalid') {
     return (
       <div className="onboarding-wrap">
-        <div className="onboarding-card" style={{ maxWidth: 480 }}>
+        <div className="onboarding-card join-card">
           <div className="onb-eyebrow">{t('joinClub.invalidEyebrow')}</div>
-          <h1 className="onb-title" style={{ fontSize: '1.9rem' }}>
+          <h1 className="onb-title join-card__title-sm">
             {t('joinClub.invalidTitle', { accent: <span className="accent">{t('joinClub.invalidTitleAccent')}</span> })}
           </h1>
-          <p className="onb-desc" style={{ opacity: 0.65 }}>
+          <p className="onb-desc join-card__desc-dim">
             {error || t('joinClub.invalidText')}
           </p>
           {user && (
@@ -76,12 +76,12 @@ export default function JoinClub() {
   if (status === 'joined') {
     return (
       <div className="onboarding-wrap">
-        <div className="onboarding-card" style={{ maxWidth: 480 }}>
+        <div className="onboarding-card join-card">
           <div className="onb-eyebrow">{t('joinClub.joinedEyebrow')}</div>
-          <h1 className="onb-title" style={{ fontSize: '1.9rem' }}>
+          <h1 className="onb-title join-card__title-sm">
             {t('joinClub.joinedTitle', { accent: <span className="accent">{clubName}</span> })}
           </h1>
-          <p className="onb-desc" style={{ opacity: 0.65 }}>{t('joinClub.joinedText')}</p>
+          <p className="onb-desc join-card__desc-dim">{t('joinClub.joinedText')}</p>
         </div>
       </div>
     );
@@ -89,7 +89,7 @@ export default function JoinClub() {
 
   if (status === 'joining') {
     return (
-      <div className="loading" style={{ paddingTop: '6rem' }}>
+      <div className="loading">
         <div className="loading-spinner" />
         <div className="loading-text">{t('joinClub.joiningText', { name: clubName })}</div>
       </div>
@@ -99,13 +99,13 @@ export default function JoinClub() {
   // status === 'preview'
   return (
     <div className="onboarding-wrap">
-      <div className="onboarding-card" style={{ maxWidth: 520 }}>
+      <div className="onboarding-card join-card">
         <div className="onb-eyebrow">{t('joinClub.invitedEyebrow')}</div>
-        <h1 className="onb-title" style={{ fontSize: '2rem' }}>
+        <h1 className="onb-title">
           {t('joinClub.previewTitle', { accent: <span className="accent">{clubName}</span> })}
         </h1>
         {clubDesc && (
-          <p className="onb-desc" style={{ opacity: 0.65, lineHeight: 1.6 }}>{clubDesc}</p>
+          <p className="onb-desc join-card__desc-dim">{clubDesc}</p>
         )}
         <div className="onb-actions">
           <div />
@@ -120,7 +120,7 @@ export default function JoinClub() {
           )}
         </div>
         {!user && (
-          <p style={{ marginTop: '1rem', fontSize: '0.82rem', color: 'var(--paper-aged)', opacity: 0.5, textAlign: 'center' }}>
+          <p className="clubs-empty-text" style={{ textAlign: "center", marginTop: "1rem" }}>
             {t('joinClub.needAccount')}
           </p>
         )}

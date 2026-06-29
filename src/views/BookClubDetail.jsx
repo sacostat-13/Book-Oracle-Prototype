@@ -13,12 +13,12 @@ function Avatar({ displayName, avatarUrl, size = 32 }) {
   const [imgFailed, setImgFailed] = useState(false);
   const initials = (displayName || '?').split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase();
   const initialsEl = (
-    <div style={{ width: size, height: size, borderRadius: '50%', background: 'rgba(176,140,63,0.15)', border: '1px solid rgba(176,140,63,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--ro-font-mono)', fontSize: size * 0.35, color: 'var(--gilt)', flexShrink: 0 }}>
+    <div className="friend-avatar--fallback" style={{ '--fa-sz': `${size}px`, fontSize: size * 0.35 }}>
       {initials}
     </div>
   );
   if (avatarUrl && !imgFailed) {
-    return <img src={avatarUrl} alt={displayName} onError={() => setImgFailed(true)} style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />;
+    return <img src={avatarUrl} alt={displayName} onError={() => setImgFailed(true)} className="friend-avatar" style={{ '--fa-sz': `${size}px` }} />;
   }
   return initialsEl;
 }
@@ -32,21 +32,21 @@ function SessionCard({ session, onClick, t }) {
   const fmtDate = (d) => new Date(d).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
 
   return (
-    <div className="cr-card" style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', cursor: 'pointer', gridTemplateColumns: undefined }} onClick={onClick}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+    <div className="session-card" onClick={onClick}>
+      <div className="session-card__head">
         {session.book?.cover_url && (
-          <div style={{ width: 40, flexShrink: 0 }}>
+          <div className="session-card__cover--placeholder">
             <BookCover title={session.book.title} author={session.book.author} coverUrl={session.book.cover_url} />
           </div>
         )}
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontFamily: 'var(--ro-font-display)', fontStyle: 'italic', fontSize: '1.05rem', color: 'var(--paper)', lineHeight: 1.2 }}>{session.title}</div>
-          {session.book?.author && <div style={{ fontSize: '0.8rem', color: 'var(--paper-aged)', opacity: 0.65 }}>{session.book.author}</div>}
+        <div className="session-card__body">
+          <div className="session-card__title">{session.title}</div>
+          {session.book?.author && <div className="session-card__author">{session.book.author}</div>}
         </div>
-        {isActive && <span style={{ fontFamily: 'var(--ro-font-mono)', fontSize: '0.6rem', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--gilt)', flexShrink: 0 }}>{t('clubs.sessionActive')}</span>}
-        {isPast && <span style={{ fontFamily: 'var(--ro-font-mono)', fontSize: '0.6rem', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--paper-aged)', opacity: 0.4, flexShrink: 0 }}>{t('clubs.sessionPast')}</span>}
+        {isActive && <span className="session-card__status session-card__status--active">{t('clubs.sessionActive')}</span>}
+        {isPast && <span className="session-card__status session-card__status--past">{t('clubs.sessionPast')}</span>}
       </div>
-      <div style={{ fontSize: '0.78rem', color: 'var(--paper-aged)', opacity: 0.55, fontFamily: 'var(--ro-font-mono)', letterSpacing: '0.04em' }}>
+      <div className="club-member-progress-label">
         {fmtDate(session.starts_at)} — {fmtDate(session.ends_at)}
       </div>
     </div>
@@ -118,7 +118,7 @@ export default function BookClubDetail() {
 
   if (loading) {
     return (
-      <div className="loading" style={{ paddingTop: '6rem' }}>
+      <div className="loading">
         <div className="loading-spinner" />
         <div className="loading-text">{t('clubs.loadingClub')}</div>
       </div>
@@ -133,7 +133,7 @@ export default function BookClubDetail() {
           <div className="ornament">❦</div>
           <div className="empty-state-title">{t('clubs.clubNotFound')}</div>
           <div className="empty-state-text">{t('clubs.clubNotFoundText')}</div>
-          <button className="btn btn-ghost" style={{ marginTop: '1.5rem' }} onClick={() => go('book-clubs')}>{t('clubs.backToClubs')}</button>
+          <button className="btn-secondary" onClick={() => go('book-clubs')}>{t('clubs.backToClubs')}</button>
         </div>
       </>
     );
@@ -155,15 +155,15 @@ export default function BookClubDetail() {
       <div className="page-header">
         <div className="page-eyebrow">{isAdmin ? t('clubs.detailAdminBadge') : t('clubs.memberBadge')}</div>
         <h1 className="page-title">{club.name}</h1>
-        {club.description && <p style={{ color: 'var(--ro-text-muted)', fontSize: '0.95rem', marginTop: '0.4rem', lineHeight: 1.6 }}>{club.description}</p>}
+        {club.description && <p className="club-form__desc">{club.description}</p>}
         {genres?.length > 0 && (
-          <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', marginTop: '0.75rem' }}>
+          <div className="club-form__genre-row">
             {genres.map((g) => <span key={g.id} className="li-genre-pill">{g.name}</span>)}
           </div>
         )}
       </div>
 
-      <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '2.5rem' }}>
+      <div className="bp-actions">
         <button className="li-action" onClick={copyJoinLink}>{linkCopied ? t('clubs.linkCopied') : t('clubs.copyJoinLink')}</button>
         {isAdmin && (
           <>
@@ -175,27 +175,27 @@ export default function BookClubDetail() {
       </div>
 
       {activeSession && (
-        <div style={{ marginBottom: '2rem' }}>
-          <div style={{ fontFamily: 'var(--ro-font-mono)', fontSize: '0.7rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--gilt)', marginBottom: '0.6rem' }}>
+        <div className="db-section">
+          <div className="session-section-label">
             {t('clubs.currentSession')}
           </div>
           <SessionCard session={activeSession} onClick={() => go('session-detail', { sessionId: activeSession.id })} t={t} />
         </div>
       )}
 
-      <section style={{ marginBottom: '2.5rem' }}>
-        <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: '0.75rem', gap: '1rem' }}>
-          <div style={{ fontFamily: 'var(--ro-font-mono)', fontSize: '0.7rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--gilt)' }}>
+      <section className="db-section">
+        <div className="club-card__head">
+          <div className="session-section-label">
             {activeSession ? t('clubs.pastSessions') : t('clubs.sessions')}
           </div>
           {isAdmin && <button className="li-action" onClick={() => go('session-create', { clubId })}>{t('clubs.newSessionBtn')}</button>}
         </div>
         {(activeSession ? otherSessions : sessions).length === 0 ? (
-          <div style={{ color: 'var(--ro-text-dim)', fontStyle: 'italic', fontSize: '0.9rem' }}>
+          <div className="session-no-comments">
             {isAdmin ? t('clubs.noSessionsAdmin') : t('clubs.noSessions')}
           </div>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+          <div className="pf-series-list">
             {(activeSession ? otherSessions : sessions).map((s) => (
               <SessionCard key={s.id} session={s} onClick={() => go('session-detail', { sessionId: s.id })} t={t} />
             ))}
@@ -211,27 +211,27 @@ export default function BookClubDetail() {
         onCreateSession={(winnerOption) => go('session-create', { clubId, prefillTitle: winnerOption.label, prefillAuthor: winnerOption.book_author })}
       />
 
-      <section style={{ marginBottom: '2.5rem' }}>
-        <div style={{ fontFamily: 'var(--ro-font-mono)', fontSize: '0.7rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--gilt)', marginBottom: '0.75rem' }}>
+      <section className="db-section">
+        <div className="session-section-label">
           {t('clubs.membersSection', { count: members?.length ?? 0 })}
         </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+        <div className="pf-series-list">
           {(members || []).map((m) => {
             const isSelf = m.user_id === user?.id;
             return (
-              <div key={m.id} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+              <div key={m.id} className="session-card__head">
                 <Avatar displayName={m.display_name} avatarUrl={m.avatar_url} />
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <span style={{ fontSize: '0.9rem', color: 'var(--paper)' }}>{m.display_name || t('clubs.anonymousReader')}</span>
-                  {isSelf && <span style={{ opacity: 0.4, fontSize: '0.8rem', marginLeft: '0.4rem' }}>{t('clubs.you')}</span>}
+                <div className="session-card__body">
+                  <span className="club-member-row__display">{m.display_name || t('clubs.anonymousReader')}</span>
+                  {isSelf && <span className="lv-hl-muted">{t('clubs.you')}</span>}
                 </div>
-                <span style={{ fontFamily: 'var(--ro-font-mono)', fontSize: '0.62rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: m.role === 'admin' ? 'var(--gilt)' : 'var(--paper-aged)', opacity: m.role === 'admin' ? 1 : 0.4 }}>
+                <span className={`club-card__badge${m.role === 'admin' ? ' club-card__badge--active' : ''}`}>
                   {m.role === 'admin' ? t('clubs.roleAdmin') : t('clubs.roleMember')}
                 </span>
                 {isAdmin && !isSelf && (
-                  <div style={{ display: 'flex', gap: '0.3rem' }}>
-                    {m.role === 'member' && <button className="li-action" style={{ fontSize: '0.7rem' }} onClick={() => handlePromoteMember(m.user_id)}>{t('clubs.makeAdmin')}</button>}
-                    <button className="li-action danger" style={{ fontSize: '0.7rem' }} onClick={() => handleRemoveMember(m.user_id, m.display_name)}>{t('clubs.removeMember')}</button>
+                  <div className="friend-row__actions">
+                    {m.role === 'member' && <button className="li-action" onClick={() => handlePromoteMember(m.user_id)}>{t('clubs.makeAdmin')}</button>}
+                    <button className="li-action" onClick={() => handleRemoveMember(m.user_id, m.display_name)}>{t('clubs.removeMember')}</button>
                   </div>
                 )}
               </div>
@@ -241,15 +241,15 @@ export default function BookClubDetail() {
       </section>
 
       {isCreator && (
-        <section style={{ borderTop: '1px solid rgba(176,140,63,0.1)', paddingTop: '1.5rem', marginTop: '1rem' }}>
-          <div style={{ fontFamily: 'var(--ro-font-mono)', fontSize: '0.7rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: 'rgba(180,60,60,0.7)', marginBottom: '0.75rem' }}>
+        <section className="session-divider" style={{ paddingTop: "1.5rem" }}>
+          <div className="session-section-label" style={{ color: "var(--ro-error)" }}>
             {t('clubs.dangerZone')}
           </div>
           {!confirmDelete ? (
             <button className="li-action danger" onClick={() => setConfirmDelete(true)}>{t('clubs.deleteClub')}</button>
           ) : (
-            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-              <span style={{ fontSize: '0.85rem', color: 'var(--paper-aged)', opacity: 0.7 }}>{t('clubs.deleteClubConfirm')}</span>
+            <div className="bp-actions">
+              <span className="clubs-empty-text">{t('clubs.deleteClubConfirm')}</span>
               <button className="li-action danger" onClick={handleDelete}>{t('clubs.confirmDeleteYes')}</button>
               <button className="li-action" onClick={() => setConfirmDelete(false)}>{t('clubs.cancel')}</button>
             </div>

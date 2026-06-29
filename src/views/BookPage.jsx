@@ -529,7 +529,7 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
             {display.c && <span className="level-pill">prose {'●'.repeat(display.c)}{'○'.repeat(5 - display.c)}</span>}
             {display.p && <span className="level-pill">depth {'●'.repeat(display.p)}{'○'.repeat(5 - display.p)}</span>}
             {(display.status === 'verified' || display.status === 'oracle_categorized') && (
-              <span className="level-pill" className="bp-pill bp-pill--ro-gold"
+              <span className="level-pill" className="bp-pill bp-pill--gold"
                 title="Curated · verified by our editors">
                 {t('bookPage.verified')}
               </span>

@@ -19,13 +19,13 @@ export default function BookClubs() {
       <div className="page-header">
         <div className="page-eyebrow">{t('clubs.eyebrow')}</div>
         <h1 className="page-title">{tNode('clubs.pageTitle')}</h1>
-        <p style={{ color: 'var(--ro-text-muted)', fontSize: '0.95rem', marginTop: '0.5rem' }}>
+        <p className="clubs-empty-text">
           {t('clubs.subtitle')}
         </p>
       </div>
 
       {user && (
-        <div style={{ marginBottom: '2rem' }}>
+        <div className="clubs-list">
           <button className="btn" onClick={() => go('book-club-create')}>
             {t('clubs.newClub')}
           </button>
@@ -39,32 +39,24 @@ export default function BookClubs() {
           <div className="empty-state-text">{t('clubs.emptyText')}</div>
         </div>
       ) : (
-        <div className="plan-grid" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+        <div className="clubs-list">
           {clubs.map((club) => (
             <div
               key={club.id}
               className="cr-card"
-              style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', cursor: 'pointer', gridTemplateColumns: undefined }}
+              className="club-card"
               onClick={() => go('book-club-detail', { clubId: club.id })}
             >
-              <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: '1rem' }}>
-                <div style={{ fontFamily: 'var(--ro-font-display)', fontStyle: 'italic', fontSize: '1.2rem', color: 'var(--paper)' }}>
+              <div className="club-card__head">
+                <div className="club-card__name">
                   {club.name}
                 </div>
-                <span style={{
-                  fontFamily: 'var(--ro-font-mono)',
-                  fontSize: '0.65rem',
-                  letterSpacing: '0.12em',
-                  textTransform: 'uppercase',
-                  color: club.callerRole === 'admin' ? 'var(--gilt)' : 'var(--paper-aged)',
-                  opacity: club.callerRole === 'admin' ? 1 : 0.5,
-                  flexShrink: 0,
-                }}>
+                <span className={`club-card__badge${club.callerRole === 'admin' ? ' club-card__badge--active' : ' club-card__badge--past'}`}>
                   {club.callerRole === 'admin' ? t('clubs.roleAdmin') : t('clubs.roleMember')}
                 </span>
               </div>
               {club.description && (
-                <div style={{ fontSize: '0.88rem', color: 'var(--paper-aged)', opacity: 0.65, lineHeight: 1.5 }}>
+                <div className="club-card__desc">
                   {club.description}
                 </div>
               )}

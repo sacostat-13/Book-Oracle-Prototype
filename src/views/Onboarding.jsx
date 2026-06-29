@@ -119,7 +119,7 @@ export default function Onboarding() {
               <div className="upload-icon">📚</div>
               <div className="upload-text">
                 {goodreadsBooks.length > 0
-                  ? <><strong style={{ color: 'var(--gilt)' }}>{goodreadsBooks.length}</strong> {t('onboarding.uploadLoaded', { count: '' }).trim()}</>
+                  ? <><strong className="lv-hl">{goodreadsBooks.length}</strong> {t('onboarding.uploadLoaded', { count: '' }).trim()}</>
                   : t('onboarding.uploadDrop')}
               </div>
               <div className="upload-sub">

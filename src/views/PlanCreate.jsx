@@ -294,7 +294,7 @@ Return ONLY valid JSON in this exact format:
           <div className="loading-spinner"></div>
           <div className="loading-text">
             The oracle is composing your path…<br />
-            <span style={{ fontSize: '0.9rem', opacity: 0.6 }}>This may take a moment.</span>
+            <span className="plan-note">This may take a moment.</span>
           </div>
         </div>
       </>
@@ -315,9 +315,9 @@ Return ONLY valid JSON in this exact format:
         <p className="page-subtitle">We'll build a paced, curated path from where you are to where you're headed.</p>
       </div>
 
-      <div className="onboarding-card" style={{ maxWidth: '720px', margin: '0 auto' }}>
+      <div className="onboarding-card plan-card">
         <div className="onb-eyebrow">1 · Plan type</div>
-        <h2 className="onb-title" style={{ fontSize: '1.6rem', marginBottom: '1.5rem' }}>What's the goal?</h2>
+        <h2 className="onb-title">What's the goal?</h2>
         <div className="choice-grid">
           {[
             { v: 'level', title: 'Reach a reading level', sub: 'Build prose-complexity gradually. Good if you want to read more challenging fiction without bouncing off the deep end.' },
@@ -337,8 +337,8 @@ Return ONLY valid JSON in this exact format:
 
         {type === 'level' && (
           <>
-            <div className="onb-eyebrow" style={{ marginTop: '2rem' }}>2 · Target level</div>
-            <h2 className="onb-title" style={{ fontSize: '1.6rem', marginBottom: '1.5rem' }}>Aim for:</h2>
+            <div className="onb-eyebrow plan-step-eyebrow">2 · Target level</div>
+            <h2 className="onb-title">Aim for:</h2>
             <div className="choice-grid">
               {[3, 4, 5].filter((l) => l > userLevel).map((l) => (
                 <button
@@ -356,9 +356,9 @@ Return ONLY valid JSON in this exact format:
 
         {type === 'experience' && (
           <>
-            <div className="onb-eyebrow" style={{ marginTop: '2rem' }}>2 · Which genre?</div>
-            <h2 className="onb-title" style={{ fontSize: '1.6rem', marginBottom: '1.5rem' }}>Explore:</h2>
-            <select value={target || ''} onChange={(e) => setTarget(e.target.value || null)} style={{ marginBottom: '1rem' }}>
+            <div className="onb-eyebrow plan-step-eyebrow">2 · Which genre?</div>
+            <h2 className="onb-title">Explore:</h2>
+            <select value={target || ''} onChange={(e) => setTarget(e.target.value || null)} >
               <option value="">— Choose a genre —</option>
               {(state.genres || []).slice().sort((a, b) => a.name.localeCompare(b.name)).map((g) => (
                 <option key={g.id} value={g.name} title={g.description || undefined}>{g.name}</option>
@@ -367,7 +367,7 @@ Return ONLY valid JSON in this exact format:
             {target && (() => {
               const g = (state.genres || []).find((x) => x.name === target);
               return g?.description ? (
-                <p style={{ fontStyle: 'italic', color: 'var(--paper-aged)', fontSize: '0.9rem', marginBottom: '1.5rem', lineHeight: 1.6 }}>
+                <p className="fp-empty">
                   {g.description}
                 </p>
               ) : null;
@@ -377,13 +377,13 @@ Return ONLY valid JSON in this exact format:
 
         {type === 'series' && (
           <>
-            <div className="onb-eyebrow" style={{ marginTop: '2rem' }}>2 · Which series?</div>
-            <h2 className="onb-title" style={{ fontSize: '1.6rem', marginBottom: '1.5rem' }}>
+            <div className="onb-eyebrow plan-step-eyebrow">2 · Which series?</div>
+            <h2 className="onb-title">
               {inProgressSeries.length > 0 ? 'Continue a series, or search for a new one:' : 'Search for a series to finish:'}
             </h2>
             {inProgressSeries.length > 0 && (
               <>
-                <div className="onb-eyebrow" style={{ marginBottom: '0.6rem', marginTop: '0.5rem' }}>In progress</div>
+                <div className="onb-eyebrow">In progress</div>
                 <div className="choice-grid">
                   {inProgressSeries.map((s) => (
                     <button
@@ -400,7 +400,7 @@ Return ONLY valid JSON in this exact format:
             )}
             {wishlistedSeries.length > 0 && (
               <>
-                <div className="onb-eyebrow" style={{ marginTop: '1.25rem', marginBottom: '0.6rem' }}>On your wishlist</div>
+                <div className="onb-eyebrow">On your wishlist</div>
                 <div className="choice-grid">
                   {wishlistedSeries.map((s) => (
                     <button
@@ -415,28 +415,28 @@ Return ONLY valid JSON in this exact format:
                 </div>
               </>
             )}
-            <div className="onb-eyebrow" style={{ marginTop: '1.5rem' }}>Or search by series name</div>
-            <div style={{ display: 'flex', gap: '0.6rem', marginTop: '0.5rem' }}>
+            <div className="onb-eyebrow">Or search by series name</div>
+            <div className="club-form__actions">
               <input
                 type="text"
                 className="search-input"
                 placeholder='e.g. "The Stormlight Archive"'
-                style={{ flex: 1 }}
+                className="session-form__book-wrap"
                 value={seriesSearch}
                 onChange={(e) => setSeriesSearch(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && doSeriesSearch()}
               />
               <button className="btn btn-gilt" onClick={doSeriesSearch}>Search ❦</button>
             </div>
-            <div style={{ marginTop: '1rem' }}>
+            <div >
               {seriesSearchLoading && (
-                <div className="loading" style={{ padding: '1.5rem' }}>
-                  <div className="loading-spinner" style={{ width: '24px', height: '24px' }}></div>
-                  <div className="loading-text" style={{ fontSize: '0.9rem' }}>Searching Open Library…</div>
+                <div className="loading">
+                  <div className="loading-spinner"></div>
+                  <div className="loading-text">Searching Open Library…</div>
                 </div>
               )}
               {seriesSearchResult?.found === false && (
-                <div style={{ padding: '1rem', color: 'var(--paper-aged)', opacity: 0.7, fontStyle: 'italic' }}>
+                <div className="fp-empty">
                   No matches for "{seriesSearchResult.q}" on Open Library. Try a different name or spelling.
                 </div>
               )}
@@ -445,7 +445,7 @@ Return ONLY valid JSON in this exact format:
                   <div style={{ fontFamily: 'var(--ro-font-display)', fontStyle: 'italic', fontSize: '1.1rem', color: 'var(--paper)', marginBottom: '0.4rem' }}>
                     Found <strong>{seriesSearchResult.books.length}</strong> books in <em>{seriesSearchResult.name}</em>
                   </div>
-                  <div style={{ fontSize: '0.85rem', color: 'var(--paper-aged)', opacity: 0.7 }}>
+                  <div className="session-form__book-author">
                     {seriesSearchResult.books.slice(0, 5).map((b) => b.t).join(' · ')}
                     {seriesSearchResult.books.length > 5 ? ' …' : ''}
                   </div>
@@ -457,15 +457,15 @@ Return ONLY valid JSON in this exact format:
 
         {((type === 'level' && target) || (type === 'experience' && target)) && (
           <>
-            <div className="onb-eyebrow" style={{ marginTop: '2rem' }}>3 · Timeline</div>
-            <h2 className="onb-title" style={{ fontSize: '1.6rem', marginBottom: '1.5rem' }}>Over how many months?</h2>
+            <div className="onb-eyebrow plan-step-eyebrow">3 · Timeline</div>
+            <h2 className="onb-title">Over how many months?</h2>
             <div className="choice-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))' }}>
               {[3, 6, 9, 12].map((m) => (
                 <button
                   key={m}
                   className={`choice ${timeline === m ? 'selected' : ''}`}
                   onClick={() => setTimeline(m)}
-                  style={{ textAlign: 'center' }}
+                  
                 >
                   <div className="choice-title">{m}</div>
                   <div className="choice-sub">months</div>
@@ -476,7 +476,7 @@ Return ONLY valid JSON in this exact format:
         )}
 
         {type === 'series' && target && (
-          <p style={{ color: 'var(--paper-aged)', opacity: 0.7, marginTop: '1rem', fontStyle: 'italic' }}>
+          <p className="fp-empty">
             Series plans use the actual book count as the timeline. We'll pace one book per month.
           </p>
         )}

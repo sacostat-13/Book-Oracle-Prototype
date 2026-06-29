@@ -53,12 +53,12 @@ export default function BookClubCreate() {
       <div className="page-header">
         <div className="page-eyebrow">{t('clubs.createEyebrow')}</div>
         <h1 className="page-title">{tNode('clubs.createPageTitle')}</h1>
-        <p style={{ color: 'var(--ro-text-muted)', fontSize: '0.95rem', marginTop: '0.5rem' }}>
+        <p className="club-form__desc">
           {t('clubs.createSubtitle')}
         </p>
       </div>
 
-      <div style={{ maxWidth: 560, display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+      <div className="club-form">
         <div>
           <label style={labelStyle}>{t('clubs.fieldName')}</label>
           <input
@@ -74,10 +74,10 @@ export default function BookClubCreate() {
         <div>
           <label style={labelStyle}>
             {t('clubs.fieldDescription')}{' '}
-            <span style={{ opacity: 0.45, textTransform: 'none', letterSpacing: 0 }}>({t('clubs.fieldOptional')})</span>
+            <span className="club-form__optional">({t('clubs.fieldOptional')})</span>
           </label>
           <textarea
-            style={{ ...inputStyle, minHeight: 90, resize: 'vertical' }}
+            className="textarea"
             placeholder={t('clubs.fieldDescPlaceholder')}
             value={description}
             onChange={(e) => setDescription(e.target.value)}
@@ -89,22 +89,15 @@ export default function BookClubCreate() {
           <div>
             <label style={labelStyle}>
               {t('clubs.fieldGenres')}{' '}
-              <span style={{ opacity: 0.45, textTransform: 'none', letterSpacing: 0 }}>({t('clubs.fieldOptional')})</span>
+              <span className="club-form__optional">({t('clubs.fieldOptional')})</span>
             </label>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.45rem', marginTop: '0.1rem' }}>
+            <div className="club-form__genre-row">
               {genres.map((g) => {
                 const selected = selectedGenreIds.includes(g.id);
                 return (
                   <button
                     key={g.id} type="button" onClick={() => toggleGenre(g.id)}
-                    style={{
-                      padding: '0.3rem 0.75rem', borderRadius: '1rem',
-                      border: `1px solid ${selected ? 'rgba(176,140,63,0.7)' : 'rgba(176,140,63,0.2)'}`,
-                      background: selected ? 'rgba(176,140,63,0.12)' : 'transparent',
-                      color: selected ? 'var(--gilt-bright, #e8c560)' : 'var(--paper-aged)',
-                      fontFamily: 'var(--ro-font-mono)', fontSize: '0.7rem',
-                      letterSpacing: '0.08em', cursor: 'pointer', transition: 'all 0.15s',
-                    }}
+                    className={`chip${selected ? ' chip--active' : ''}`}
                   >
                     {g.name}
                   </button>
@@ -114,7 +107,7 @@ export default function BookClubCreate() {
           </div>
         )}
 
-        <div style={{ display: 'flex', gap: '0.75rem', paddingTop: '0.5rem' }}>
+        <div className="club-form__actions">
           <button className="btn btn-ghost" onClick={() => go('book-clubs')}>{t('clubs.cancel')}</button>
           <button className="btn" onClick={handleSubmit} disabled={!name.trim() || saving}>
             {saving ? t('clubs.creating') : t('clubs.createButton')}

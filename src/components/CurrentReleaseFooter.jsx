@@ -25,51 +25,20 @@ export default function CurrentReleaseFooter() {
 
   return (
     <>
-      <div
-        style={{
-          marginTop: '3rem',
-          paddingTop: '1.6rem',
-          borderTop: '1px dotted rgba(176, 140, 63, 0.25)',
-        }}
-      >
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'baseline',
-            gap: '0.7rem',
-            marginBottom: '0.4rem',
-            flexWrap: 'wrap',
-          }}
-        >
-          <span
-            style={{
-              fontFamily: 'var(--ro-font-mono)',
-              fontSize: '0.75rem',
-              letterSpacing: '0.18em',
-              textTransform: 'uppercase',
-              color: 'var(--gilt)',
-            }}
-          >
+      <div className="release-footer" style={{ marginTop: "3rem", paddingTop: "1.6rem", border: "none", borderTop: "1px dotted var(--ro-border)" }}>
+        <div className="pf-username-row">
+          <span className="session-section-label" style={{ marginBottom: 0 }}>
             {current.version}
             {' · '}
             {t('releaseNotes.currentVersion')}
           </span>
         </div>
-        <div
-          style={{
-            color: 'var(--paper)',
-            fontFamily: 'var(--ro-font-display)',
-            fontStyle: 'italic',
-            fontSize: '1.15rem',
-            marginBottom: '0.8rem',
-          }}
-        >
+        <div className="session-card__title">
           {title}
         </div>
         <button
           onClick={() => setOpen(true)}
-          className="btn btn-ghost"
-          style={{ fontSize: '0.85rem' }}
+          className="btn-tertiary btn--sm"
         >
           {t('releaseNotes.seeAllReleases')}
         </button>

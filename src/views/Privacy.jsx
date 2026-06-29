@@ -4,13 +4,13 @@ import { useT } from '../lib/I18nContext';
 
 function S({ title, children }) {
   return (
-    <div style={{ marginBottom: '2rem' }}>
-      <h2 style={{ fontFamily: 'var(--ro-font-display)', fontStyle: 'italic', fontSize: '1.35rem', color: 'var(--paper)', marginBottom: '0.75rem' }}>{title}</h2>
-      <div style={{ color: 'var(--paper-aged)', lineHeight: 1.75, fontSize: '0.95rem' }}>{children}</div>
+    <div className="legal-section">
+      <h2 className="legal-section__title">{title}</h2>
+      <div className="legal-section__body">{children}</div>
     </div>
   );
 }
-function P({ children }) { return <p style={{ margin: '0 0 0.75rem' }}>{children}</p>; }
+function P({ children }) { return <p >{children}</p>; }
 
 export default function Privacy() {
   const { go } = useRouter();
@@ -21,19 +21,19 @@ export default function Privacy() {
       <div className="page-header">
         <div className="page-eyebrow">Legal</div>
         <h1 className="page-title">Privacy <span className="accent">Policy</span></h1>
-        <p style={{ color: 'var(--paper-aged)', fontSize: '0.85rem', marginTop: '0.5rem' }}>Last updated: June 25, 2026</p>
+        <p className="legal-updated">Last updated: June 25, 2026</p>
       </div>
-      <div style={{ maxWidth: '680px' }}>
+      <div className="legal-page">
         <S title="Who we are">
           <P>The The Books Oracle (accessible at thebooksoracle.com) is a personal reading companion application operated by an individual developer based in Costa Rica.</P>
           <P>For privacy-related questions: support@thebooksoracle.com</P>
         </S>
         <S title="What data we collect">
-          <P><strong style={{ color: 'var(--paper)' }}>Account data.</strong> When you sign in with Google, we receive your name, email address, and profile photo. We store these to identify your account.</P>
-          <P><strong style={{ color: 'var(--paper)' }}>Reading data.</strong> Your library, wishlist, read-next queue, ratings, notes, reading dates, and progress belong to you and are stored in your account.</P>
-          <P><strong style={{ color: 'var(--paper)' }}>Usage data.</strong> We track how many times you use AI features per month to enforce free-tier quotas and monitor infrastructure costs. This counter resets monthly.</P>
-          <P><strong style={{ color: 'var(--paper)' }}>Subscription data.</strong> If you subscribe to Pro, we store your Paddle customer ID and subscription ID. We never store card numbers or payment details — all payment processing is handled by Paddle.</P>
-          <P><strong style={{ color: 'var(--paper)' }}>Club data.</strong> Your display name, reading activity, and any posts or discussion contributions in book clubs are visible to other club members.</P>
+          <P><strong >Account data.</strong> When you sign in with Google, we receive your name, email address, and profile photo. We store these to identify your account.</P>
+          <P><strong >Reading data.</strong> Your library, wishlist, read-next queue, ratings, notes, reading dates, and progress belong to you and are stored in your account.</P>
+          <P><strong >Usage data.</strong> We track how many times you use AI features per month to enforce free-tier quotas and monitor infrastructure costs. This counter resets monthly.</P>
+          <P><strong >Subscription data.</strong> If you subscribe to Pro, we store your Paddle customer ID and subscription ID. We never store card numbers or payment details — all payment processing is handled by Paddle.</P>
+          <P><strong >Club data.</strong> Your display name, reading activity, and any posts or discussion contributions in book clubs are visible to other club members.</P>
         </S>
         <S title="What we do not collect">
           <P>We do not collect your location, device identifiers, browsing history outside the app, or biometric data. We do not run advertising and have no advertising partners. We do not sell your data to any third party.</P>

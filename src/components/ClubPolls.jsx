@@ -73,49 +73,26 @@ function PollOptionCard({ option, selected, myVote, totalVotes, closed, onVote }
   const isMyVote = myVote === option.id;
 
   return (
-    <div
-      onClick={!closed ? () => onVote(option.id) : undefined}
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: '0.75rem',
-        padding: '0.65rem 0.85rem',
-        border: `1px solid ${isMyVote ? 'rgba(176,140,63,0.5)' : 'rgba(176,140,63,0.15)'}`,
-        borderRadius: 2,
-        background: isMyVote ? 'rgba(176,140,63,0.07)' : 'transparent',
-        cursor: closed ? 'default' : 'pointer',
-        transition: 'all 0.15s',
-        position: 'relative',
-        overflow: 'hidden',
-      }}
-      onMouseEnter={(e) => { if (!closed) e.currentTarget.style.background = 'rgba(176,140,63,0.05)'; }}
-      onMouseLeave={(e) => { if (!closed && !isMyVote) e.currentTarget.style.background = 'transparent'; }}
-    >
+    <div onClick={!closed ? () => onVote(option.id) : undefined} className={`poll-option${isMyVote ? ' poll-option--selected' : ''}`}>
       {/* Vote fill bar behind content */}
       {(closed || myVote) && totalVotes > 0 && (
-        <div style={{
-          position: 'absolute', left: 0, top: 0, bottom: 0,
-          width: `${pct}%`,
-          background: isMyVote ? 'rgba(176,140,63,0.1)' : 'rgba(176,140,63,0.04)',
-          transition: 'width 0.4s ease',
-          pointerEvents: 'none',
-        }} />
+        <div className="poll-option__bar" style={{ '--poll-pct': `${pct}%` }} />
       )}
 
       {/* Cover thumbnail */}
       {option.cover_url && (
-        <div style={{ width: 28, height: 42, flexShrink: 0, overflow: 'hidden', borderRadius: 1, zIndex: 1 }}>
+        <div className="poll-option__cover--placeholder">
           <BookCover title={option.label} author={option.book_author} coverUrl={option.cover_url} />
         </div>
       )}
 
       {/* Label + author */}
-      <div style={{ flex: 1, minWidth: 0, zIndex: 1 }}>
-        <div style={{ fontFamily: 'var(--ro-font-display)', fontStyle: 'italic', fontSize: '1rem', color: 'var(--paper)', lineHeight: 1.2 }}>
+      <div className="poll-option__body">
+        <div className="poll-option__title">
           {option.label}
         </div>
         {option.book_author && (
-          <div style={{ fontSize: '0.78rem', color: 'var(--paper-aged)', opacity: 0.6, marginTop: 1 }}>
+          <div className="poll-option__author">
             {option.book_author}
           </div>
         )}
@@ -123,14 +100,14 @@ function PollOptionCard({ option, selected, myVote, totalVotes, closed, onVote }
 
       {/* Vote count / % */}
       {(myVote || closed) && totalVotes > 0 && (
-        <div style={{ fontFamily: 'var(--ro-font-mono)', fontSize: '0.72rem', letterSpacing: '0.06em', color: isMyVote ? 'var(--gilt)' : 'var(--paper-aged)', opacity: isMyVote ? 1 : 0.5, flexShrink: 0, zIndex: 1 }}>
+        <div className={`poll-option__votes${isMyVote ? ' poll-option__votes--mine' : ' poll-option__votes--other'}`}>
           {option.vote_count} · {pct}%
         </div>
       )}
 
       {/* My vote indicator */}
       {isMyVote && (
-        <div style={{ fontFamily: 'var(--ro-font-mono)', fontSize: '0.65rem', color: 'var(--gilt)', flexShrink: 0, zIndex: 1 }}>
+        <div className="poll-option__leader">
           ✦
         </div>
       )}
@@ -150,32 +127,32 @@ function PollCard({ poll, isAdmin, onVote, onClose, onDelete, onCreateSession })
   const fmtDate = (d) => new Date(d).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 
   return (
-    <div style={{ padding: '1.25rem', border: '1px solid rgba(176,140,63,0.2)', borderRadius: 2, marginBottom: '1rem' }}>
+    <div className="poll-card">
       {/* Poll header */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '0.75rem', marginBottom: '0.85rem' }}>
-        <div style={{ flex: 1 }}>
+      <div className="poll-card__head">
+        <div className="poll-card__body">
           {poll.is_oracle_pick && (
-            <div style={{ fontFamily: 'var(--ro-font-mono)', fontSize: '0.6rem', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--gilt)', opacity: 0.8, marginBottom: '0.25rem' }}>
+            <div className="session-section-label">
               {t('polls.oracleLabel')}
             </div>
           )}
-          <div style={{ fontFamily: 'var(--ro-font-display)', fontStyle: 'italic', fontSize: '1.1rem', color: 'var(--paper)', lineHeight: 1.3 }}>
+          <div className="poll-card__question">
             {poll.question}
           </div>
-          <div style={{ fontSize: '0.75rem', color: 'var(--paper-aged)', opacity: 0.4, marginTop: '0.25rem', fontFamily: 'var(--ro-font-mono)', letterSpacing: '0.04em' }}>
+          <div className="poll-card__meta">
             {totalVotes} vote{totalVotes !== 1 ? 's' : ''}
             {poll.closes_at && !poll.closed && ` · ${t('polls.closesOn', { date: fmtDate(poll.closes_at) })}`}
             {poll.closed && t('polls.closed')}
           </div>
         </div>
         {isAdmin && (
-          <div style={{ display: 'flex', gap: '0.35rem', flexShrink: 0 }}>
+          <div className="friend-row__actions">
             {!poll.closed && (
-              <button className="li-action" style={{ fontSize: '0.7rem' }} onClick={() => onClose(poll.id)}>
+              <button className="li-action" onClick={() => onClose(poll.id)}>
                 {t('polls.closePoll')}
               </button>
             )}
-            <button className="li-action danger" style={{ fontSize: '0.7rem' }} onClick={() => onDelete(poll.id)}>
+            <button className="li-action" onClick={() => onDelete(poll.id)}>
               {t('polls.deletePoll')}
             </button>
           </div>
@@ -183,7 +160,7 @@ function PollCard({ poll, isAdmin, onVote, onClose, onDelete, onCreateSession })
       </div>
 
       {/* Options */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+      <div className="poll-compose">
         {poll.options.map((opt) => (
           <PollOptionCard
             key={opt.id}
@@ -198,8 +175,8 @@ function PollCard({ poll, isAdmin, onVote, onClose, onDelete, onCreateSession })
 
       {/* Winner + create session CTA */}
       {winner && isAdmin && !poll.result_session_id && (
-        <div style={{ marginTop: '0.85rem', padding: '0.65rem 0.85rem', background: 'rgba(176,140,63,0.07)', borderRadius: 2 }}>
-          <div style={{ fontFamily: 'var(--ro-font-mono)', fontSize: '0.68rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--gilt)', marginBottom: '0.4rem' }}>
+        <div className="session-form__book-row">
+          <div className="session-section-label">
             Winner: {winner.label}
           </div>
           <button className="li-action" onClick={() => onCreateSession(winner)}>
@@ -239,40 +216,40 @@ function CreatePollForm({ onAdd, onCancel }) {
   }
 
   return (
-    <div style={{ padding: '1rem', border: '1px solid rgba(176,140,63,0.2)', borderRadius: 2, marginBottom: '1rem', background: 'rgba(176,140,63,0.03)' }}>
-      <div style={{ fontFamily: 'var(--ro-font-mono)', fontSize: '0.7rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--gilt)', marginBottom: '0.75rem' }}>
+    <div className="poll-card">
+      <div className="session-section-label">
         {t('polls.newPollLabel')}
       </div>
-      <div style={{ marginBottom: '0.75rem' }}>
+      <div >
         <input
           {...{placeholder: t('polls.oraclePollQuestion')}}
           value={question}
           onChange={(e) => setQuestion(e.target.value)}
           autoFocus
-          style={{ width: '100%', boxSizing: 'border-box', background: 'rgba(176,140,63,0.04)', border: '1px solid rgba(176,140,63,0.25)', borderRadius: 2, padding: '0.5rem 0.75rem', color: 'var(--paper)', fontFamily: 'var(--ro-font-display)', fontSize: '1rem', colorScheme: 'dark' }}
+          className="input"
         />
       </div>
       {options.map((opt, i) => (
-        <div key={i} style={{ marginBottom: '0.4rem', display: 'flex', gap: '0.4rem' }}>
+        <div key={i} className="club-form__actions">
           <input
             {...{placeholder: t('polls.optionPlaceholder', { n: i + 1 })}}
             value={opt.label}
             onChange={(e) => setOptionLabel(i, e.target.value)}
-            style={{ flex: 1, background: 'rgba(176,140,63,0.04)', border: '1px solid rgba(176,140,63,0.2)', borderRadius: 2, padding: '0.45rem 0.7rem', color: 'var(--paper)', fontFamily: 'var(--ro-font-display)', fontSize: '0.95rem', colorScheme: 'dark' }}
+            className="input"
           />
           {options.length > 2 && (
-            <button className="li-action danger" style={{ fontSize: '0.7rem' }} onClick={() => setOptions((o) => o.filter((_, idx) => idx !== i))}>✕</button>
+            <button className="li-action" onClick={() => setOptions((o) => o.filter((_, idx) => idx !== i))}>✕</button>
           )}
         </div>
       ))}
       {options.length < 5 && (
-        <button className="li-action" style={{ fontSize: '0.72rem', marginTop: '0.35rem' }} onClick={() => setOptions((o) => [...o, { label: '' }])}>
+        <button className="li-action" onClick={() => setOptions((o) => [...o, { label: '' }])}>
           {t('polls.addOption')}
         </button>
       )}
-      <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.85rem' }}>
-        <button className="btn btn-ghost" onClick={onCancel} style={{ fontSize: '0.85rem' }}>{t('polls.cancel')}</button>
-        <button className="btn" onClick={handleAdd} disabled={!question.trim() || !validOptions || saving} style={{ fontSize: '0.85rem' }}>
+      <div className="club-form__actions">
+        <button className="btn-tertiary" onClick={onCancel}>{t('polls.cancel')}</button>
+        <button className="btn-primary" onClick={handleAdd} disabled={!question.trim() || !validOptions || saving}>
           {saving ? t('polls.creating') : t('polls.createPollBtn')}
         </button>
       </div>
@@ -365,24 +342,24 @@ export default function ClubPolls({ clubId, clubName, clubGenres = [], isAdmin, 
   const closedPolls = polls.filter((p) => p.closed);
 
   return (
-    <section style={{ marginBottom: '2.5rem' }}>
+    <section className="db-section">
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.85rem', flexWrap: 'wrap', gap: '0.5rem' }}>
-        <div style={{ fontFamily: 'var(--ro-font-mono)', fontSize: '0.7rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--gilt)' }}>
+      <div className="club-card__head">
+        <div className="session-section-label">
           Polls
         </div>
         {isAdmin && (
-          <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+          <div className="friend-row__actions">
             <button
               className="li-action"
               onClick={handleOracleSuggest}
               disabled={oracleLoading}
-              style={{ color: 'var(--gilt)', fontSize: '0.72rem' }}
+              
             >
               {oracleLoading ? t('polls.oracleThinking') : t('polls.oracleSuggestsBtn')}
             </button>
             {!showCreate && (
-              <button className="li-action" style={{ fontSize: '0.72rem' }} onClick={() => setShowCreate(true)}>
+              <button className="li-action" onClick={() => setShowCreate(true)}>
                 {t('polls.newPoll')}
               </button>
             )}
@@ -391,7 +368,7 @@ export default function ClubPolls({ clubId, clubName, clubGenres = [], isAdmin, 
       </div>
 
       {oracleError && (
-        <div style={{ fontSize: '0.82rem', color: 'rgba(180,60,60,0.8)', marginBottom: '0.75rem' }}>
+        <div className="pf-error">
           {oracleError}
         </div>
       )}
@@ -401,7 +378,7 @@ export default function ClubPolls({ clubId, clubName, clubGenres = [], isAdmin, 
       )}
 
       {polls.length === 0 && !showCreate && (
-        <div style={{ color: 'var(--ro-text-dim)', fontStyle: 'italic', fontSize: '0.88rem' }}>
+        <div className="friends-empty">
           {isAdmin ? t('polls.noPollsAdmin') : t('polls.noPolls')}
         </div>
       )}
@@ -422,7 +399,7 @@ export default function ClubPolls({ clubId, clubName, clubGenres = [], isAdmin, 
       {/* Closed polls */}
       {closedPolls.length > 0 && (
         <>
-          <div style={{ fontFamily: 'var(--ro-font-mono)', fontSize: '0.65rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--paper-aged)', opacity: 0.35, margin: '1rem 0 0.75rem' }}>
+          <div className="pf-overline" style={{ opacity: .35, margin: "1rem 0 0.75rem" }}>
             {t('polls.pastPolls')}
           </div>
           {closedPolls.map((poll) => (

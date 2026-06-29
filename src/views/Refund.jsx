@@ -4,13 +4,13 @@ import { useT } from '../lib/I18nContext';
 
 function S({ title, children }) {
   return (
-    <div style={{ marginBottom: '2rem' }}>
-      <h2 style={{ fontFamily: 'var(--ro-font-display)', fontStyle: 'italic', fontSize: '1.35rem', color: 'var(--paper)', marginBottom: '0.75rem' }}>{title}</h2>
-      <div style={{ color: 'var(--paper-aged)', lineHeight: 1.75, fontSize: '0.95rem' }}>{children}</div>
+    <div className="legal-section">
+      <h2 className="legal-section__title">{title}</h2>
+      <div className="legal-section__body">{children}</div>
     </div>
   );
 }
-function P({ children }) { return <p style={{ margin: '0 0 0.75rem' }}>{children}</p>; }
+function P({ children }) { return <p >{children}</p>; }
 
 export default function Refund() {
   const { go } = useRouter();
@@ -21,9 +21,9 @@ export default function Refund() {
       <div className="page-header">
         <div className="page-eyebrow">Legal</div>
         <h1 className="page-title">Refund <span className="accent">Policy</span></h1>
-        <p style={{ color: 'var(--paper-aged)', fontSize: '0.85rem', marginTop: '0.5rem' }}>Last updated: June 25, 2026</p>
+        <p className="legal-updated">Last updated: June 25, 2026</p>
       </div>
-      <div style={{ maxWidth: '680px' }}>
+      <div className="legal-page">
         <S title="Our approach">
           <P>We want you to be happy with The Books Oracle Pro. If you subscribed and feel it isn't right for you, we will make it right.</P>
         </S>

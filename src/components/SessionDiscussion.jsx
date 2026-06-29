@@ -85,56 +85,33 @@ function OracleSuggestions({ suggestions, onPick, onDismiss }) {
   const [added, setAdded] = useState(new Set());
 
   async function handlePick(suggestion, i) {
-  const t = useT();
+    const t = useT();
     await onPick(suggestion);
     setAdded((prev) => new Set([...prev, i]));
   }
 
   return (
-    <div style={{
-      marginBottom: '1rem',
-      padding: '1rem 1.1rem',
-      border: '1px solid rgba(176,140,63,0.3)',
-      borderRadius: 2,
-      background: 'rgba(176,140,63,0.04)',
-    }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
-        <div style={{ fontFamily: 'var(--ro-font-mono)', fontSize: '0.65rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--gilt)', opacity: 0.9 }}>
+    <div className="sd-checklist">
+      <div className="sd-checklist__head">
+        <div className="sd-checklist__label">
           {t('discussion.oracleSuggestionsTitle')}
         </div>
         <button
           onClick={onDismiss}
-          style={{ fontSize: '0.7rem', color: 'var(--paper-aged)', opacity: 0.4, background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'var(--ro-font-mono)', letterSpacing: '0.05em' }}
+          className="sd-checklist__clear"
         >
           {t('discussion.oracleDismiss')}
         </button>
       </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+      <div className="sd-checklist__list">
         {suggestions.map((s, i) => {
           const done = added.has(i);
           return (
-            <div
-              key={i}
-              onClick={() => !done && handlePick(s, i)}
-              style={{
-                display: 'flex',
-                alignItems: 'flex-start',
-                gap: '0.6rem',
-                padding: '0.55rem 0.75rem',
-                borderRadius: 2,
-                border: `1px solid ${done ? 'rgba(176,140,63,0.35)' : 'rgba(176,140,63,0.12)'}`,
-                background: done ? 'rgba(176,140,63,0.08)' : 'transparent',
-                cursor: done ? 'default' : 'pointer',
-                transition: 'all 0.15s',
-                opacity: done ? 0.6 : 1,
-              }}
-              onMouseEnter={(e) => { if (!done) e.currentTarget.style.background = 'rgba(176,140,63,0.06)'; }}
-              onMouseLeave={(e) => { if (!done) e.currentTarget.style.background = done ? 'rgba(176,140,63,0.08)' : 'transparent'; }}
-            >
-              <span style={{ fontFamily: 'var(--ro-font-mono)', fontSize: '0.7rem', color: done ? 'var(--gilt)' : 'rgba(176,140,63,0.4)', flexShrink: 0, marginTop: 2 }}>
+            <div key={i} onClick={() => !done && handlePick(s, i)} className="sd-check-item" style={{ opacity: done ? 0.6 : 1, cursor: done ? "default" : "pointer" }}>
+              <span className={`sd-check-item__tick${done ? " sd-check-item__tick--done" : " sd-check-item__tick--empty"}`}>
                 {done ? '✦' : '+'}
               </span>
-              <span style={{ fontFamily: 'var(--ro-font-display)', fontStyle: 'italic', fontSize: '0.98rem', color: 'var(--paper-aged)', lineHeight: 1.4 }}>
+              <span className={`sd-check-item__text${done ? " sd-check-item__text--done" : ""}`}>
                 {s}
               </span>
             </div>
@@ -153,7 +130,7 @@ function AddQuestionForm({ onAdd, onCancel, nextPosition }) {
   const [saving, setSaving] = useState(false);
 
   async function handleAdd() {
-  const t = useT();
+    const t = useT();
     if (!body.trim() || saving) return;
     setSaving(true);
     await onAdd(body.trim(), nextPosition);
@@ -162,19 +139,19 @@ function AddQuestionForm({ onAdd, onCancel, nextPosition }) {
   }
 
   return (
-    <div style={{ marginBottom: '1rem', padding: '1rem', border: '1px solid rgba(176,140,63,0.2)', borderRadius: 2, background: 'rgba(176,140,63,0.03)' }}>
-      <label style={labelStyle}>New discussion question</label>
+    <div className="sd-checklist">
+      <label className="session-section-label">New discussion question</label>
       <textarea
-        style={{ ...inputStyle, marginBottom: '0.75rem' }}
-        {...{placeholder: t('discussion.newQuestionPlaceholder')}}
+        className="textarea"
+        {...{ placeholder: t('discussion.newQuestionPlaceholder') }}
         value={body}
         onChange={(e) => setBody(e.target.value)}
         rows={2}
         autoFocus
       />
-      <div style={{ display: 'flex', gap: '0.5rem' }}>
-        <button className="btn btn-ghost" onClick={onCancel} style={{ fontSize: '0.85rem' }}>Cancel</button>
-        <button className="btn" onClick={handleAdd} disabled={!body.trim() || saving} style={{ fontSize: '0.85rem' }}>
+      <div className="club-form__actions">
+        <button className="btn-tertiary" onClick={onCancel}>Cancel</button>
+        <button className="btn-primary" onClick={handleAdd} disabled={!body.trim() || saving}>
           {saving ? t('discussion.adding') : t('discussion.addQuestionBtn')}
         </button>
       </div>
@@ -189,32 +166,26 @@ function QuestionBlock({ question, isAdmin, onPostAnswer, onDelete, onEditCommen
   const [collapsed, setCollapsed] = useState(false);
 
   return (
-    <div style={{ marginBottom: '1.5rem', paddingBottom: '1.5rem', borderBottom: '1px solid rgba(176,140,63,0.08)' }}>
-      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem', marginBottom: '0.75rem' }}>
-        <div style={{
-          width: 24, height: 24, borderRadius: '50%',
-          background: 'rgba(176,140,63,0.15)', border: '1px solid rgba(176,140,63,0.3)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontFamily: 'var(--ro-font-mono)', fontSize: '0.65rem', color: 'var(--gilt)',
-          flexShrink: 0, marginTop: 2,
-        }}>
+    <div className="session-prompt" style={{ paddingBottom: "1.5rem", marginBottom: "1.5rem" }}>
+      <div className="club-member-row">
+        <div className="friend-avatar--fallback" style={{ "--fa-sz": "24px", fontSize: "0.65rem" }}>
           Q
         </div>
-        <div style={{ flex: 1 }}>
-          <p style={{ fontFamily: 'var(--ro-font-display)', fontStyle: 'italic', fontSize: '1.1rem', color: 'var(--paper)', margin: 0, lineHeight: 1.4 }}>
+        <div className="session-form__book-wrap">
+          <p className="session-hero__title" style={{ fontSize: "1.1rem", margin: 0 }}>
             {question.body}
           </p>
-          <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.3rem' }}>
+          <div className="comment-item__actions">
             <button
               onClick={() => setCollapsed(!collapsed)}
-              style={{ fontSize: '0.72rem', color: 'var(--paper-aged)', opacity: 0.45, background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontFamily: 'var(--ro-font-mono)', letterSpacing: '0.05em' }}
+              className="comment-item__reply"
             >
               {(collapsed ? (question.answers?.length === 1 ? t('discussion.showAnswers', { count: 1 }) : t('discussion.showAnswersPlural', { count: question.answers?.length || 0 })) : t('discussion.collapseAnswers'))}
             </button>
             {isAdmin && (
               <button
                 onClick={() => onDelete(question.id)}
-                style={{ fontSize: '0.72rem', color: 'rgba(180,60,60,0.55)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontFamily: 'var(--ro-font-mono)', letterSpacing: '0.05em' }}
+                className="comment-item__reply" style={{ color: "var(--ro-error)" }}
               >
                 {t('discussion.removeQuestion')}
               </button>
@@ -224,13 +195,13 @@ function QuestionBlock({ question, isAdmin, onPostAnswer, onDelete, onEditCommen
       </div>
 
       {!collapsed && (
-        <div style={{ paddingLeft: '2rem' }}>
+        <div className="session-prompt" style={{ paddingLeft: "2rem", borderLeft: "none", marginBottom: 0 }}>
           <CommentThread
             comments={question.answers || []}
             onPost={(body) => onPostAnswer(body, question.id)}
             onDelete={onDeleteComment}
             onEdit={onEditComment}
-            {...{placeholder: t('discussion.answerPlaceholder')}}
+            {...{ placeholder: t('discussion.answerPlaceholder') }}
             compact
           />
         </div>
@@ -259,44 +230,44 @@ export default function SessionDiscussion({ sessionId, clubId, isAdmin, book = {
   useEffect(() => { loadDiscussion(); }, [loadDiscussion]);
 
   async function handlePostComment(body, parentId = null) {
-  const t = useT();
+    const t = useT();
     const comment = await postComment({ sessionId, clubId, body, parentId });
     if (comment) await loadDiscussion();
   }
 
   async function handlePostAnswer(body, questionId) {
-  const t = useT();
+    const t = useT();
     const comment = await postComment({ sessionId, clubId, body, questionId });
     if (comment) await loadDiscussion();
   }
 
   async function handleDeleteComment(commentId) {
-  const t = useT();
+    const t = useT();
     await deleteComment(commentId);
     await loadDiscussion();
   }
 
   async function handleEditComment(commentId, body) {
-  const t = useT();
+    const t = useT();
     await editComment(commentId, body);
     await loadDiscussion();
   }
 
   async function handleAddQuestion(body, position) {
-  const t = useT();
+    const t = useT();
     const q = await addQuestion({ sessionId, clubId, body, position });
     if (q) { setShowAddQuestion(false); await loadDiscussion(); }
   }
 
   async function handleDeleteQuestion(questionId) {
-  const t = useT();
+    const t = useT();
     if (!confirm(t('discussion.confirmRemoveQuestion'))) return;
     await deleteQuestion(questionId);
     await loadDiscussion();
   }
 
   async function handleOracleSuggest() {
-  const t = useT();
+    const t = useT();
     setOracleLoading(true);
     setOracleError(null);
     setOracleSuggestions(null);
@@ -314,7 +285,7 @@ export default function SessionDiscussion({ sessionId, clubId, isAdmin, book = {
   }
 
   async function handlePickSuggestion(body) {
-  const t = useT();
+    const t = useT();
     const position = (discussion?.questions || []).length;
     await addQuestion({ sessionId, clubId, body, position });
     await loadDiscussion();
@@ -322,7 +293,7 @@ export default function SessionDiscussion({ sessionId, clubId, isAdmin, book = {
 
   if (loading) {
     return (
-      <div style={{ color: 'var(--ro-text-dim)', fontSize: '0.9rem', fontStyle: 'italic', padding: '1rem 0' }}>
+      <div className="session-no-comments">
         Loading discussion…
       </div>
     );
@@ -335,21 +306,21 @@ export default function SessionDiscussion({ sessionId, clubId, isAdmin, book = {
     <div>
       {/* Discussion questions */}
       {(questions.length > 0 || isAdmin) && (
-        <section style={{ marginBottom: '2rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+        <section className="db-section">
+          <div className="club-card__head">
             <div style={labelStyle}>{t('discussion.questionsLabel')}</div>
             {isAdmin && (
-              <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+              <div className="friend-row__actions">
                 <button
                   className="li-action"
                   onClick={handleOracleSuggest}
                   disabled={oracleLoading}
-                  style={{ color: 'var(--gilt)', fontSize: '0.72rem' }}
+
                 >
                   {oracleLoading ? t('discussion.oracleThinking') : t('discussion.oracleSuggestsBtn')}
                 </button>
                 {!showAddQuestion && (
-                  <button className="li-action" style={{ fontSize: '0.72rem' }} onClick={() => setShowAddQuestion(true)}>
+                  <button className="li-action" onClick={() => setShowAddQuestion(true)}>
                     {t('discussion.addQuestion')}
                   </button>
                 )}
@@ -358,7 +329,7 @@ export default function SessionDiscussion({ sessionId, clubId, isAdmin, book = {
           </div>
 
           {oracleError && (
-            <div style={{ fontSize: '0.82rem', color: 'rgba(180,60,60,0.8)', marginBottom: '0.75rem' }}>
+            <div className="pf-error">
               {oracleError}
             </div>
           )}
@@ -380,7 +351,7 @@ export default function SessionDiscussion({ sessionId, clubId, isAdmin, book = {
           )}
 
           {questions.length === 0 && !showAddQuestion && !oracleSuggestions && (
-            <div style={{ color: 'var(--ro-text-dim)', fontStyle: 'italic', fontSize: '0.88rem', marginBottom: '1rem' }}>
+            <div className="session-no-comments">
               {isAdmin ? t('discussion.noQuestionsAdmin') : t('discussion.noQuestions')}
             </div>
           )}
@@ -404,13 +375,13 @@ export default function SessionDiscussion({ sessionId, clubId, isAdmin, book = {
         <div style={labelStyle}>
           {t('discussion.commentsLabel')}
           {comments.length > 0 && (
-            <span style={{ opacity: 0.4, marginLeft: '0.5rem', textTransform: 'none', letterSpacing: 0 }}>
+            <span className="club-form__optional">
               · {comments.length}
             </span>
           )}
         </div>
         {comments.length === 0 && (
-          <div style={{ color: 'var(--ro-text-dim)', fontStyle: 'italic', fontSize: '0.88rem', marginBottom: '0.75rem' }}>
+          <div className="session-no-comments">
             No comments yet. Be the first.
           </div>
         )}

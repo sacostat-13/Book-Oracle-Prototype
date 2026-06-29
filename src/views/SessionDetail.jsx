@@ -20,10 +20,10 @@ function Avatar({ displayName, avatarUrl, size = 28 }) {
   const [imgFailed, setImgFailed] = useState(false);
   const initials = (displayName || '?').split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase();
   if (avatarUrl && !imgFailed) {
-    return <img src={avatarUrl} alt={displayName} onError={() => setImgFailed(true)} style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />;
+    return <img src={avatarUrl} alt={displayName} onError={() => setImgFailed(true)} className="friend-avatar" style={{ '--fa-sz': `${size}px` }} />;
   }
   return (
-    <div style={{ width: size, height: size, borderRadius: '50%', background: 'rgba(176,140,63,0.15)', border: '1px solid rgba(176,140,63,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--ro-font-mono)', fontSize: size * 0.35, color: 'var(--gilt)', flexShrink: 0 }}>
+    <div className="friend-avatar--fallback" style={{ '--fa-sz': `${size}px`, fontSize: size * 0.35 }}>
       {initials}
     </div>
   );
@@ -35,36 +35,36 @@ function MemberProgressRow({ member, totalPages }) {
     : null;
   const finished = pct === 100;
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.6rem 0', borderBottom: '1px solid rgba(176,140,63,0.07)' }}>
+    <div className="club-member-row">
       <Avatar displayName={member.display_name} avatarUrl={member.avatar_url} />
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', marginBottom: '0.3rem' }}>
-          <span style={{ fontSize: '0.88rem', color: 'var(--paper)' }}>
+      <div className="club-member-row__body">
+        <div className="club-member-row__name">
+          <span className="club-member-row__display">
             {member.display_name || 'Anonymous reader'}
           </span>
           {member.role === 'admin' && (
-            <span style={{ fontFamily: 'var(--ro-font-mono)', fontSize: '0.58rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--gilt)', opacity: 0.8 }}>admin</span>
+            <span className="club-member-row__admin">admin</span>
           )}
         </div>
         {member.is_reading ? (
           totalPages ? (
             <div>
-              <div style={{ height: '3px', background: 'rgba(176,140,63,0.12)', borderRadius: 2, overflow: 'hidden', marginBottom: '0.25rem' }}>
-                <div style={{ height: '100%', width: `${pct ?? 0}%`, background: finished ? 'var(--gilt-bright, #e8c560)' : 'var(--gilt, #b08c3f)', borderRadius: 2, transition: 'width 0.3s ease' }} />
+              <div className="club-member-progress-bar">
+                <div className={`club-member-progress-fill${finished ? ' club-member-progress-fill--done' : ''}`} style={{ '--mp-pct': `${pct ?? 0}%` }} />
               </div>
-              <div style={{ fontFamily: 'var(--ro-font-mono)', fontSize: '0.68rem', letterSpacing: '0.04em', color: 'var(--paper-aged)', opacity: 0.55 }}>
+              <div className="club-member-progress-label">
                 {member.pages_read > 0
                   ? `${member.pages_read} / ${totalPages} pages${pct !== null ? ` · ${pct}%` : ''}${finished ? ' · ✓ Finished' : ''}`
                   : `0 / ${totalPages} pages — not started`}
               </div>
             </div>
           ) : (
-            <div style={{ fontFamily: 'var(--ro-font-mono)', fontSize: '0.68rem', letterSpacing: '0.04em', color: 'var(--paper-aged)', opacity: 0.55 }}>
+            <div className="club-member-progress-label">
               {member.pages_read > 0 ? t('sessions.pagesNoTotal', { count: member.pages_read }) : t('sessions.pagesNoTotalYet')}
             </div>
           )
         ) : (
-          <div style={{ fontFamily: 'var(--ro-font-mono)', fontSize: '0.68rem', letterSpacing: '0.04em', color: 'var(--paper-aged)', opacity: 0.35 }}>
+          <div className="club-member-progress-label" style={{ opacity: .35 }}>
             {t('sessions.notTracking')}
           </div>
         )}
@@ -99,7 +99,7 @@ const labelStyle = {
 
 function BookThumb({ book, size = 28 }) {
   return (
-    <div style={{ width: size, height: size * 1.5, flexShrink: 0, overflow: 'hidden', borderRadius: 2 }}>
+    <div className="session-form__cover" style={{ '--sc-w': `${size}px`, '--sc-h': `${size * 1.5}px` }}>
       <BookCover title={book.t || book.title} author={book.a || book.author} coverUrl={book.coverUrl || book.cover_url} />
     </div>
   );
@@ -158,31 +158,31 @@ function EditSessionModal({ session, book, onSave, onClose }) {
   return (
     <div
       onClick={(e) => { if (e.target === e.currentTarget && !saving) onClose(); }}
-      style={{ position: 'fixed', inset: 0, background: 'rgba(10,8,6,0.78)', backdropFilter: 'blur(4px)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}
+      className="rating-modal-overlay"
     >
-      <div style={{ background: 'var(--ink, #1a1410)', border: '1px solid rgba(176,140,63,0.35)', borderRadius: 'var(--ro-radius-sm)', maxWidth: '520px', width: '100%', padding: '2rem 2.2rem', boxShadow: '0 20px 60px rgba(0,0,0,0.6)', maxHeight: '90vh', overflowY: 'auto' }}>
-        <div style={{ fontFamily: 'var(--ro-font-mono)', fontSize: '0.75rem', letterSpacing: '0.18em', textTransform: 'uppercase', color: 'var(--gilt)', marginBottom: '0.5rem' }}>
+      <div className="rating-modal" style={{ maxWidth: "520px", maxHeight: "90vh", overflowY: "auto" }}>
+        <div className="rating-modal__eyebrow">
           {t('sessions.editEyebrow', { clubName: 'Admin' })}
         </div>
-        <h2 style={{ fontFamily: 'var(--ro-font-display)', fontStyle: 'italic', fontSize: '1.6rem', color: 'var(--paper)', margin: '0 0 1.5rem' }}>
+        <h2 className="rating-modal__title">
           {t('sessions.editTitle')}
         </h2>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+        <div className="session-form">
           {/* Book picker */}
           <div>
             <label style={labelStyle}>Book</label>
             {selectedBook ? (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.5rem 0.75rem', border: '1px solid rgba(176,140,63,0.35)', borderRadius: 2, background: 'rgba(176,140,63,0.04)' }}>
+              <div className="session-form__book-row">
                 <BookThumb book={selectedBook} size={28} />
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontFamily: 'var(--ro-font-display)', fontStyle: 'italic', color: 'var(--paper)', fontSize: '0.95rem' }}>{selectedBook.t || selectedBook.title}</div>
-                  {(selectedBook.a || selectedBook.author) && <div style={{ fontSize: '0.78rem', color: 'var(--paper-aged)', opacity: 0.65 }}>{selectedBook.a || selectedBook.author}</div>}
+                <div className="club-member-row__body">
+                  <div className="session-form__book-title">{selectedBook.t || selectedBook.title}</div>
+                  {(selectedBook.a || selectedBook.author) && <div className="session-form__book-author">{selectedBook.a || selectedBook.author}</div>}
                 </div>
                 <button className="li-action" onClick={() => { setSelectedBook(null); setBookResults([]); }}>{t('sessions.changeBook')}</button>
               </div>
             ) : (
-              <div style={{ position: 'relative' }}>
+              <div className="session-form__dropdown">
                 <input
                   style={inputStyle}
                   placeholder="Search by title or author…"
@@ -191,20 +191,18 @@ function EditSessionModal({ session, book, onSave, onClose }) {
                   autoFocus
                 />
                 {(bookResults.length > 0 || searching) && (
-                  <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 20, background: 'var(--ink, #1a1410)', border: '1px solid rgba(176,140,63,0.25)', borderTop: 'none', borderRadius: '0 0 2px 2px', maxHeight: 240, overflowY: 'auto' }}>
-                    {searching && <div style={{ padding: '0.6rem 0.85rem', color: 'var(--paper-aged)', fontSize: '0.85rem', opacity: 0.6 }}>Searching…</div>}
+                  <div className="session-form__search-results">
+                    {searching && <div className="ldetail-empty">Searching…</div>}
                     {bookResults.map((b, i) => (
                       <div
                         key={b.bookId || i}
-                        style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.5rem 0.85rem', cursor: 'pointer', borderBottom: '1px solid rgba(176,140,63,0.1)' }}
+                        className="ldetail-pick-row"
                         onClick={() => { setSelectedBook(b); setBookResults([]); setBookQuery(''); }}
-                        onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(176,140,63,0.06)'}
-                        onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
                       >
                         <BookThumb book={b} size={24} />
                         <div>
-                          <div style={{ fontSize: '0.9rem', color: 'var(--paper)', fontFamily: 'var(--ro-font-display)', fontStyle: 'italic' }}>{b.t}</div>
-                          {b.a && <div style={{ fontSize: '0.75rem', color: 'var(--paper-aged)', opacity: 0.6 }}>{b.a}</div>}
+                          <div className="ldetail-pick-title">{b.t}</div>
+                          {b.a && <div className="ldetail-pick-author">{b.a}</div>}
                         </div>
                       </div>
                     ))}
@@ -215,7 +213,7 @@ function EditSessionModal({ session, book, onSave, onClose }) {
           </div>
 
           {/* Dates */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+          <div className="db-stats-grid">
             <div>
               <label style={labelStyle}>Starts</label>
               <input type="date" style={inputStyle} value={startsAt} onChange={(e) => setStartsAt(e.target.value)} />
@@ -230,10 +228,10 @@ function EditSessionModal({ session, book, onSave, onClose }) {
           <div>
             <label style={labelStyle}>
               Notes for members{' '}
-              <span style={{ opacity: 0.45, textTransform: 'none', letterSpacing: 0 }}>(optional)</span>
+              <span className="club-form__optional">(optional)</span>
             </label>
             <textarea
-              style={{ ...inputStyle, minHeight: 90, resize: 'vertical' }}
+              className="textarea"
               placeholder="Discussion questions, reading goals, pace suggestions…"
               value={adminNotes}
               onChange={(e) => setAdminNotes(e.target.value)}
@@ -299,7 +297,7 @@ export default function SessionDetail() {
           <div className="ornament">❦</div>
           <div className="empty-state-title">{t('sessions.sessionNotFound')}</div>
           <div className="empty-state-text">{t('sessions.sessionNotFoundText')}</div>
-          <button className="btn btn-ghost" style={{ marginTop: '1.5rem' }} onClick={() => go('book-clubs')}>{t('sessions.backToClubs')}</button>
+          <button className="btn-secondary" onClick={() => go('book-clubs')}>{t('sessions.backToClubs')}</button>
         </div>
       </>
     );
@@ -384,23 +382,23 @@ export default function SessionDetail() {
       </div>
 
       {/* Book header */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '1.5rem', marginBottom: '2rem', alignItems: 'start' }}>
-        <div style={{ width: 90, cursor: 'pointer' }} onClick={() => openBookTab(bookForModal, 'session')}>
+      <div className="session-hero">
+        <div className="session-hero__cover" onClick={() => openBookTab(bookForModal, 'session')}>
           <BookCover title={book.title} author={book.author} coverUrl={book.cover_url} />
         </div>
         <div>
-          <div style={{ fontFamily: 'var(--ro-font-mono)', fontSize: '0.7rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: isActive ? 'var(--gilt)' : isPast ? 'var(--ro-text-dim)' : 'var(--paper-aged)', marginBottom: '0.4rem' }}>
+          <div className={`session-hero__status${isActive ? ' session-hero__status--active' : isPast ? ' session-hero__status--past' : ' session-hero__status--upcoming'}`}>
             {isActive ? t('sessions.statusActive') : isPast ? t('sessions.statusPast') : t('sessions.statusUpcoming')}
           </div>
-          <h1 style={{ fontFamily: 'var(--ro-font-display)', fontStyle: 'italic', fontSize: '1.7rem', color: 'var(--paper)', margin: 0, lineHeight: 1.15, marginBottom: '0.25rem' }}>
+          <h1 className="session-hero__title">
             {session.title}
           </h1>
           {book.author && (
-            <div style={{ fontSize: '0.9rem', color: 'var(--paper-aged)', opacity: 0.65, marginBottom: '0.5rem' }}>
+            <div className="session-hero__book">
               {book.author}
             </div>
           )}
-          <div style={{ fontFamily: 'var(--ro-font-mono)', fontSize: '0.72rem', letterSpacing: '0.06em', color: 'var(--paper-aged)', opacity: 0.5 }}>
+          <div className="session-hero__meta">
             {fmtDate(session.starts_at)} — {fmtDate(session.ends_at)}
             {book.pages ? ` · ${book.pages} pages` : ''}
           </div>
@@ -409,7 +407,7 @@ export default function SessionDetail() {
 
       {/* Admin actions */}
       {isAdmin && (
-        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '2rem' }}>
+        <div className="session-hero__actions">
           <button className="li-action" onClick={() => setShowEditModal(true)}>
             {t('sessions.editSession')}
           </button>
@@ -419,7 +417,7 @@ export default function SessionDetail() {
             </button>
           ) : (
             <>
-              <span style={{ fontSize: '0.82rem', color: 'var(--paper-aged)', opacity: 0.7, alignSelf: 'center' }}>
+              <span className="session-hero__action-note">
                 {t('sessions.deleteConfirm')}
               </span>
               <button className="li-action danger" onClick={handleDelete} disabled={deleting}>
@@ -433,11 +431,11 @@ export default function SessionDetail() {
 
       {/* Admin notes */}
       {session.admin_notes && (
-        <div style={{ borderLeft: '2px solid rgba(176,140,63,0.35)', paddingLeft: '1rem', marginBottom: '2rem' }}>
-          <div style={{ fontFamily: 'var(--ro-font-mono)', fontSize: '0.65rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--gilt)', opacity: 0.7, marginBottom: '0.4rem' }}>
+        <div className="session-prompt">
+          <div className="session-prompt__label">
             {t('sessions.adminLabel')}
           </div>
-          <p style={{ fontFamily: 'var(--ro-font-display)', fontSize: '1.05rem', color: 'var(--paper-aged)', lineHeight: 1.65, margin: 0 }}>
+          <p className="session-prompt__text">
             {session.admin_notes}
           </p>
         </div>
@@ -445,11 +443,11 @@ export default function SessionDetail() {
 
       {/* Book description */}
       {book.description && (
-        <div style={{ marginBottom: '2rem' }}>
-          <div style={{ fontFamily: 'var(--ro-font-mono)', fontSize: '0.65rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--gilt)', opacity: 0.7, marginBottom: '0.5rem' }}>
+        <div className="db-section">
+          <div className="session-section-label">
             {t('sessions.aboutBook')}
           </div>
-          <p style={{ fontFamily: 'var(--ro-font-display)', fontSize: '1.05rem', color: 'var(--paper-aged)', lineHeight: 1.65, margin: 0 }}>
+          <p className="session-prompt__text">
             {book.description}
           </p>
         </div>
@@ -457,7 +455,7 @@ export default function SessionDetail() {
 
       {/* My progress CTA */}
       {user && isActive && (
-        <div style={{ marginBottom: '2rem', display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+        <div className="session-member-list">
           {iAmReading ? (
             <button className="btn" onClick={() => setShowProgressModal(true)}>
               {t('sessions.updateProgress')}
@@ -467,7 +465,7 @@ export default function SessionDetail() {
               <button className="btn" onClick={handleStartReading}>
                 {t('sessions.startTracking')}
               </button>
-              <span style={{ fontSize: '0.8rem', color: 'var(--paper-aged)', opacity: 0.5, alignSelf: 'center' }}>
+              <span className="session-section-note">
                 {t('sessions.startTrackingNote')}
               </span>
             </>
@@ -477,11 +475,11 @@ export default function SessionDetail() {
 
       {/* Progress grid */}
       <section>
-        <div style={{ fontFamily: 'var(--ro-font-mono)', fontSize: '0.7rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--gilt)', marginBottom: '0.75rem' }}>
+        <div className="session-section-label">
           {t('sessions.memberProgress', { count: (progress || []).length })}
         </div>
         {sortedProgress.length === 0 ? (
-          <div style={{ color: 'var(--ro-text-dim)', fontStyle: 'italic', fontSize: '0.9rem' }}>
+          <div className="session-no-comments">
             {t('sessions.noMembers')}
           </div>
         ) : (
@@ -511,7 +509,7 @@ export default function SessionDetail() {
       )}
 
       {/* Discussion — questions + free comments */}
-      <hr style={{ border: 'none', borderTop: '1px solid rgba(176,140,63,0.1)', margin: '2.5rem 0' }} />
+      <hr className="session-divider" />
       <SessionDiscussion
         sessionId={sessionId}
         clubId={session.club_id}

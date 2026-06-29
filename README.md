@@ -391,7 +391,7 @@ DELETE FROM public.announcements;
 
 The `FriendLibrary` toolbar in `FriendProfile.jsx` was using inline `style` objects with `var(--input-bg)`, `var(--ro-text-primary)`, Special Elite monospace font, and no custom caret — matching neither dark nor light mode appearance of the rest of the app's filter controls.
 
-Fixed by switching to the established CSS classes: `.wishlist-toolbar` (flex row with space-between, wraps on mobile), `.wishlist-filters` (left group with gap), `.search-input` (dark background, gilt border, EB Garamond italic). The `select` elements now use inline styles that replicate the global `select` rule from `_oracle.scss` — `var(--shadow)` background, gilt SVG caret via `background-image`, `appearance: none`, EB Garamond italic. This matches the Library and Wishlist toolbar appearance exactly.
+Fixed by switching to the established CSS classes: `.wishlist-toolbar` (flex row with space-between, wraps on mobile), `.wishlist-filters` (left group with gap), `.search-input` (dark background, gilt border, EB Garamond italic). The `select` elements now use inline styles that replicate the global `select` rule from `_oracle.scss` — `var(--ro-shadow)` background, gilt SVG caret via `background-image`, `appearance: none`, EB Garamond italic. This matches the Library and Wishlist toolbar appearance exactly.
 
 ### v0.36.3 — Bug fix: friend library was empty
 

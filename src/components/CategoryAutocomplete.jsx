@@ -105,7 +105,7 @@ export default function CategoryAutocomplete({
   }
 
   return (
-    <div ref={containerRef} style={{ position: 'relative', display: 'inline-block', width: '100%', maxWidth: '320px' }}>
+    <div ref={containerRef} className="cat-auto">
       <input
         ref={inputRef}
         type="text"
@@ -116,7 +116,7 @@ export default function CategoryAutocomplete({
         onKeyDown={onKeyDown}
         placeholder={atCap ? t('categories.maxCategories') : (placeholder || t('categories.addPlaceholder'))}
         disabled={disabled || atCap || committing}
-        style={{ width: '100%', boxSizing: 'border-box', fontSize: '0.9rem', padding: '0.5rem 0.75rem', opacity: atCap ? 0.5 : 1 }}
+        className="input" style={{ opacity: atCap ? 0.5 : 1 }}
       />
       {open && !atCap && (
         <Dropdown
@@ -138,9 +138,9 @@ function Dropdown({ loading, results, showCreateNew, createNewLabel, highlightId
   if (!loading && results.length === 0 && !showCreateNew) return null;
 
   return (
-    <div style={{ position: 'absolute', top: 'calc(100% + 2px)', left: 0, right: 0, background: 'var(--ink, #1a1410)', border: '1px solid rgba(176, 140, 63, 0.4)', borderRadius: 'var(--ro-radius-sm)', boxShadow: '0 8px 24px rgba(0, 0, 0, 0.5)', maxHeight: '280px', overflowY: 'auto', zIndex: 100, opacity: committing ? 0.6 : 1, pointerEvents: committing ? 'none' : 'auto' }}>
+    <div className="cat-auto__dropdown" style={{ opacity: committing ? 0.6 : 1, pointerEvents: committing ? "none" : "auto" }}>
       {loading && results.length === 0 && (
-        <div style={{ padding: '0.6rem 0.85rem', color: 'var(--paper-aged)', opacity: 0.6, fontSize: '0.85rem', fontStyle: 'italic', fontFamily: 'var(--ro-font-display)' }}>
+        <div className="cat-auto__empty">
           {t('navSearch.loadingText')}
         </div>
       )}
@@ -151,11 +151,11 @@ function Dropdown({ loading, results, showCreateNew, createNewLabel, highlightId
       ))}
       {showCreateNew && (
         <DropdownRow highlighted={highlightIdx === results.length} onClick={() => onPick(createNewLabel)} isCreateNew>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <span style={{ fontFamily: 'var(--ro-font-mono)', fontSize: '0.65rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--gilt)' }}>
+          <div className="cat-auto__row">
+            <span className="cat-auto__tag">
               {t('categories.createBtn')}
             </span>
-            <span style={{ fontFamily: 'var(--ro-font-display)', fontStyle: 'italic', fontSize: '1.05rem', color: 'var(--paper)' }}>
+            <span className="session-form__book-title">
               "{createNewLabel}"
             </span>
           </div>
@@ -169,7 +169,7 @@ function DropdownRow({ children, highlighted, onClick, isCreateNew }) {
   return (
     <div
       onMouseDown={(e) => { e.preventDefault(); onClick?.(); }}
-      style={{ padding: '0.55rem 0.85rem', cursor: 'pointer', background: highlighted ? 'rgba(176, 140, 63, 0.12)' : 'transparent', borderTop: isCreateNew ? '1px dotted rgba(176, 140, 63, 0.2)' : 'none', transition: 'background 0.08s ease' }}
+      className="ldetail-pick-row" style={{ background: highlighted ? 'rgba(176, 140, 63, 0.12)' : 'transparent', borderTop: isCreateNew ? '1px dotted var(--ro-border)' : 'none' }}
     >
       {children}
     </div>
@@ -178,10 +178,10 @@ function DropdownRow({ children, highlighted, onClick, isCreateNew }) {
 
 function RowContent({ name, verified, usageCount, t }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', minWidth: 0 }}>
+    <div className="club-card__head">
+      <div className="lv-curated-by">
         {verified && (
-          <span style={{ fontFamily: 'var(--ro-font-mono)', fontSize: '0.65rem', color: 'var(--gilt-bright)', flexShrink: 0 }} title={t('categories.editorVerified')}>
+          <span className="cat-auto__tag" title={t('categories.editorVerified')}>
             ☩
           </span>
         )}

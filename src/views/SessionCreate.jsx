@@ -21,7 +21,7 @@ const labelStyle = {
 
 function BookThumb({ book, size = 28 }) {
   return (
-    <div style={{ width: size, height: size * 1.5, flexShrink: 0, overflow: 'hidden', borderRadius: 2 }}>
+    <div className="session-form__cover" style={{ '--sc-w': `${size}px`, '--sc-h': `${size * 1.5}px` }}>
       <BookCover title={book.t} author={book.a} coverUrl={book.coverUrl} />
     </div>
   );
@@ -91,34 +91,34 @@ export default function SessionCreate() {
         <h1 className="page-title">{tNode('sessions.createPageTitle')}</h1>
       </div>
 
-      <div style={{ maxWidth: 560, display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+      <div className="session-form">
         <div>
           <label style={labelStyle}>{t('sessions.fieldBook')}</label>
           {selectedBook ? (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.6rem 0.85rem', border: '1px solid rgba(176,140,63,0.35)', borderRadius: 2, background: 'rgba(176,140,63,0.04)' }}>
+            <div className="session-form__book-row">
               <BookThumb book={selectedBook} size={32} />
-              <div style={{ flex: 1 }}>
-                <div style={{ fontFamily: 'var(--ro-font-display)', fontStyle: 'italic', color: 'var(--paper)', fontSize: '1rem' }}>{selectedBook.t}</div>
-                {selectedBook.a && <div style={{ fontSize: '0.8rem', color: 'var(--paper-aged)', opacity: 0.65 }}>{selectedBook.a}</div>}
+              <div className="session-form__book-wrap">
+                <div className="session-form__book-title">{selectedBook.t}</div>
+                {selectedBook.a && <div className="session-form__book-author">{selectedBook.a}</div>}
               </div>
               <button className="li-action" onClick={() => { setSelectedBook(null); setBookQuery(''); setBookResults([]); }}>{t('sessions.changeBook')}</button>
             </div>
           ) : (
-            <div style={{ position: 'relative' }}>
+            <div className="session-form__dropdown">
               <input style={inputStyle} placeholder={t('sessions.fieldBookPlaceholder')} value={bookQuery} onChange={(e) => { setBookQuery(e.target.value); searchBooks(e.target.value); }} autoFocus />
               {(bookResults.length > 0 || searching) && (
-                <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 20, background: 'var(--ink, #1a1410)', border: '1px solid rgba(176,140,63,0.25)', borderTop: 'none', borderRadius: '0 0 2px 2px', maxHeight: 280, overflowY: 'auto' }}>
-                  {searching && <div style={{ padding: '0.75rem 1rem', color: 'var(--paper-aged)', fontSize: '0.85rem', opacity: 0.6 }}>{t('sessions.searching')}</div>}
+                <div className="session-form__search-results">
+                  {searching && <div className="ldetail-empty">{t('sessions.searching')}</div>}
                   {bookResults.map((b, i) => (
-                    <div key={b.bookId || i} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.6rem 0.85rem', cursor: 'pointer', borderBottom: '1px solid rgba(176,140,63,0.1)', transition: 'background 0.12s' }}
+                    <div key={b.bookId || i} className="ldetail-pick-row"
                       onClick={() => { setSelectedBook(b); setBookResults([]); setBookQuery(''); }}
                       onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(176,140,63,0.06)'}
                       onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
                     >
                       <BookThumb book={b} size={28} />
                       <div>
-                        <div style={{ fontSize: '0.9rem', color: 'var(--paper)', fontFamily: 'var(--ro-font-display)', fontStyle: 'italic' }}>{b.t}</div>
-                        {b.a && <div style={{ fontSize: '0.75rem', color: 'var(--paper-aged)', opacity: 0.6 }}>{b.a}</div>}
+                        <div className="ldetail-pick-title">{b.t}</div>
+                        {b.a && <div className="ldetail-pick-author">{b.a}</div>}
                       </div>
                     </div>
                   ))}
@@ -128,7 +128,7 @@ export default function SessionCreate() {
           )}
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+        <div className="db-stats-grid">
           <div>
             <label style={labelStyle}>{t('sessions.fieldStarts')}</label>
             <input type="date" style={inputStyle} value={startsAt} onChange={(e) => setStartsAt(e.target.value)} />
@@ -142,12 +142,12 @@ export default function SessionCreate() {
         <div>
           <label style={labelStyle}>
             {t('sessions.fieldNotes')}{' '}
-            <span style={{ opacity: 0.45, textTransform: 'none', letterSpacing: 0 }}>{t('sessions.fieldNotesOptional')}</span>
+            <span className="club-form__optional">{t('sessions.fieldNotesOptional')}</span>
           </label>
-          <textarea style={{ ...inputStyle, minHeight: 100, resize: 'vertical' }} placeholder={t('sessions.fieldNotesPlaceholder')} value={adminNotes} onChange={(e) => setAdminNotes(e.target.value)} rows={4} />
+          <textarea className="textarea" placeholder={t('sessions.fieldNotesPlaceholder')} value={adminNotes} onChange={(e) => setAdminNotes(e.target.value)} rows={4} />
         </div>
 
-        <div style={{ display: 'flex', gap: '0.75rem', paddingTop: '0.5rem' }}>
+        <div className="club-form__actions">
           <button className="btn btn-ghost" onClick={() => go('book-club-detail', { clubId })}>{t('sessions.cancel')}</button>
           <button className="btn" onClick={handleSubmit} disabled={!selectedBook || !startsAt || !endsAt || saving}>
             {saving ? t('sessions.creating') : t('sessions.createButton')}

@@ -2,7 +2,8 @@
 // Body defaults, app shell rails, and a few cross-cutting primitives
 // (page header, breadcrumb, eyebrow) that nearly every page uses.
 
-html, body {
+html,
+body {
   background: var(--ro-bg);
   color: var(--ro-text);
   font-family: var(--ro-font-body);
@@ -26,20 +27,23 @@ html, body {
 }
 
 // ── Page header (eyebrow + title + optional lead) ─────────────────────────────
-.db-page{
+.db-page {
   padding: var(--ro-gutter-desktop);
 
 }
+
 .page-head {
   display: flex;
   flex-direction: column;
   gap: var(--ro-space-2);
   margin-bottom: var(--ro-space-8);
 }
+
 .page-head__title {
   @include ro-type(h1);
   color: var(--ro-text);
 }
+
 .page-head__lead {
   @include ro-type(body-lg);
   font-style: italic;
@@ -49,15 +53,25 @@ html, body {
 // ── Breadcrumb (mono, uppercase) ──────────────────────────────────────────────
 .breadcrumb {
   @include ro-type(overline);
+  font-size: 11px;
   color: var(--ro-muted);
   display: flex;
   align-items: center;
   gap: var(--ro-space-2);
   margin-bottom: var(--ro-space-4);
 
-  a { color: var(--ro-muted); transition: color .15s; }
-  a:hover { color: var(--ro-gold-text); }
-  .sep { opacity: .5; }
+  a {
+    color: var(--ro-gold);
+    transition: color .15s;
+  }
+
+  a:hover {
+    color: var(--ro-gold-text);
+  }
+
+  .sep {
+    opacity: .5;
+  }
 }
 
 // ── Generic surface panel ─────────────────────────────────────────────────────
@@ -78,7 +92,13 @@ html, body {
 
 // ── Utility ───────────────────────────────────────────────────────────────────
 .sr-only {
-  position: absolute; width: 1px; height: 1px;
-  padding: 0; margin: -1px; overflow: hidden;
-  clip: rect(0,0,0,0); white-space: nowrap; border: 0;
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }

@@ -19,19 +19,19 @@ function normalizeBook(row) {
   // _genres is attached by getFriendLibrary from a separate book_genres query
   const b = row.book || {};
   return {
-    id:       row.id,
-    bookId:   b.id,
+    id: row.id,
+    bookId: b.id,
     // books table uses 'title', 'author', 'cover_url', 'page_count'
     // (DataContext maps these to t, a, coverUrl, pp via bookRowToClient)
-    t:        b.title      || '',
-    a:        b.author     || '',
-    coverUrl: b.cover_url  || null,
-    pp:       b.page_count || null,
-    g:        b.genre      || null,   // raw genre text field (pre-Oracle)
-    rating:   row.rating   || null,
-    notes:    row.notes    || null,
-    dateRead: row.read_at  || null,
-    genres:   row._genres  || [],     // from separate book_genres query
+    t: b.title || '',
+    a: b.author || '',
+    coverUrl: b.cover_url || null,
+    pp: b.page_count || null,
+    g: b.genre || null,   // raw genre text field (pre-Oracle)
+    rating: row.rating || null,
+    notes: row.notes || null,
+    dateRead: row.read_at || null,
+    genres: row._genres || [],     // from separate book_genres query
   };
 }
 
@@ -66,11 +66,11 @@ function Stars({ rating }) {
 // ── Friend Library ─────────────────────────────────────────────────────────────
 
 function FriendLibrary({ library, go, t }) {
-  const [search,      setSearch]      = useState('');
+  const [search, setSearch] = useState('');
   const [genreFilter, setGenreFilter] = useState('all');
-  const [yearFilter,  setYearFilter]  = useState('all');
-  const [sort,        setSort]        = useState('recent');
-  const [page,        setPage]        = useState(1);
+  const [yearFilter, setYearFilter] = useState('all');
+  const [sort, setSort] = useState('recent');
+  const [page, setPage] = useState(1);
 
   // Reset page when filters change
   useEffect(() => setPage(1), [search, genreFilter, yearFilter, sort]);
@@ -131,22 +131,22 @@ function FriendLibrary({ library, go, t }) {
 
     // Sort
     switch (sort) {
-      case 'title':   out = [...out].sort((a, b) => (a.t || '').localeCompare(b.t || '')); break;
-      case 'author':  out = [...out].sort((a, b) => (a.a || '').localeCompare(b.a || '')); break;
-      case 'rating':  out = [...out].sort((a, b) => (b.rating || 0) - (a.rating || 0)); break;
+      case 'title': out = [...out].sort((a, b) => (a.t || '').localeCompare(b.t || '')); break;
+      case 'author': out = [...out].sort((a, b) => (a.a || '').localeCompare(b.a || '')); break;
+      case 'rating': out = [...out].sort((a, b) => (b.rating || 0) - (a.rating || 0)); break;
       case 'recent':
-      default:        out = [...out].sort((a, b) => (b.dateRead || '') > (a.dateRead || '') ? 1 : -1); break;
+      default: out = [...out].sort((a, b) => (b.dateRead || '') > (a.dateRead || '') ? 1 : -1); break;
     }
 
     return out;
   }, [library, search, genreFilter, yearFilter, sort]);
 
-  const visible  = filtered.slice(0, page * PAGE_SIZE);
-  const hasMore  = visible.length < filtered.length;
+  const visible = filtered.slice(0, page * PAGE_SIZE);
+  const hasMore = visible.length < filtered.length;
   const hasFilter = search || genreFilter !== 'all' || yearFilter !== 'all' || sort !== 'recent';
 
   const selectStyle = {
-    background: 'var(--shadow)',
+    background: 'var(--ro-shadow)',
     color: 'var(--paper)',
     border: '1px solid var(--input-border)',
     borderRadius: 'var(--ro-radius-sm)',
@@ -176,7 +176,7 @@ function FriendLibrary({ library, go, t }) {
             placeholder={t('friends.librarySearch')}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            
+
           />
 
           {/* Genre filter */}
@@ -272,17 +272,17 @@ export default function FriendProfile() {
 
   const username = route.params?.username;
 
-  const [profile,  setProfile]  = useState(null);
-  const [library,  setLibrary]  = useState([]);
-  const [reading,  setReading]  = useState([]);
-  const [loading,  setLoading]  = useState(true);
+  const [profile, setProfile] = useState(null);
+  const [library, setLibrary] = useState([]);
+  const [reading, setReading] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
-  const [reqSent,  setReqSent]  = useState(false);
+  const [reqSent, setReqSent] = useState(false);
   const [reqError, setReqError] = useState(null);
 
-  const isFriend   = friends.some((f) => f.other?.username === username);
+  const isFriend = friends.some((f) => f.other?.username === username);
   const hasPending = pending.some((p) => p.other?.username === username);
-  const isSelf     = state.profile?.username === username;
+  const isSelf = state.profile?.username === username;
 
   useEffect(() => {
     if (!username) { setNotFound(true); setLoading(false); return; }
@@ -297,7 +297,7 @@ export default function FriendProfile() {
       setProfile(p);
 
       const privacyPrefs = p.preferences || {};
-      const showLibrary  = privacyPrefs.friendsCanSeeLibrary !== false;
+      const showLibrary = privacyPrefs.friendsCanSeeLibrary !== false;
 
       const [libRaw, cr] = await Promise.all([
         showLibrary || isSelf ? getFriendLibrary(p.id) : Promise.resolve([]),
@@ -335,10 +335,10 @@ export default function FriendProfile() {
     </div>
   );
 
-  const displayName   = profile.display_name || profile.username;
-  const thisYear      = new Date().getFullYear();
+  const displayName = profile.display_name || profile.username;
+  const thisYear = new Date().getFullYear();
   const booksThisYear = library.filter((b) => b.dateRead?.startsWith(String(thisYear))).length;
-  const showLibrary   = (profile.preferences?.friendsCanSeeLibrary !== false) || isSelf;
+  const showLibrary = (profile.preferences?.friendsCanSeeLibrary !== false) || isSelf;
 
   let friendBtn = null;
   if (!isSelf && user) {

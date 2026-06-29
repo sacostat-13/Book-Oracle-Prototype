@@ -53,11 +53,11 @@ export default function AddToListModal({ books = [], onClose }) {
 
   return (
     <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal" style={{ maxWidth: 480 }} onClick={e => e.stopPropagation()}>
+      <div className="modal" onClick={e => e.stopPropagation()}>
         <button className="book-modal-close" onClick={onClose}
-          style={{ position: 'absolute', top: '1rem', right: '1rem' }}>✕</button>
+          className="modal__close">✕</button>
 
-        <div className="book-modal-section-title" style={{ marginBottom: '1.25rem', paddingRight: '2rem' }}>
+        <div className="bp-section__label">
           {isSingle
             ? (t('addToList.title'))
             : t('addToList.addMultiple', { count: bookList.length })}
@@ -65,20 +65,16 @@ export default function AddToListModal({ books = [], onClose }) {
 
         {/* Book preview(s) */}
         {isSingle && singleBook && (
-          <div style={{
-            display: 'flex', gap: '0.85rem', alignItems: 'center',
-            padding: '0.75rem 1rem', marginBottom: '1.25rem',
-            background: 'var(--shadow)', border: '1px solid rgba(176,140,63,0.15)', borderRadius: 2,
-          }}>
+          <div className="atl-book-row">
             {singleBook.coverUrl && (
               <img src={singleBook.coverUrl} alt={singleBook.t}
-                style={{ width: 36, height: 54, objectFit: 'cover', borderRadius: 2, flexShrink: 0 }} />
+                className="atl-cover" />
             )}
             <div>
-              <div style={{ fontFamily: 'var(--ro-font-display)', fontStyle: 'italic', fontWeight: 600, fontSize: '1.05rem', color: 'var(--paper)' }}>
+              <div className="atl-book-title">
                 {singleBook.t}
               </div>
-              <div style={{ fontFamily: 'var(--ro-font-mono)', fontSize: '0.65rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--paper-aged)', opacity: 0.7, marginTop: 3 }}>
+              <div className="atl-book-author">
                 {singleBook.a}
               </div>
             </div>
@@ -86,11 +82,7 @@ export default function AddToListModal({ books = [], onClose }) {
         )}
 
         {!isSingle && (
-          <div style={{
-            padding: '0.6rem 1rem', marginBottom: '1.25rem',
-            background: 'var(--shadow)', border: '1px solid rgba(176,140,63,0.15)', borderRadius: 2,
-            fontFamily: 'var(--ro-font-display)', fontStyle: 'italic', color: 'var(--paper-aged)',
-          }}>
+          <div className="session-form__book-row">
             {bookList.slice(0, 3).map(b => b.t).join(', ')}
             {bookList.length > 3 && ` ${t('common.and')} ${bookList.length - 3} ${t('common.more')}…`}
           </div>
@@ -98,11 +90,11 @@ export default function AddToListModal({ books = [], onClose }) {
 
         {/* Lists */}
         {lists.length === 0 && !creating ? (
-          <p style={{ color: 'var(--paper-aged)', fontStyle: 'italic', opacity: 0.6, marginBottom: '1rem' }}>
+          <p className="fp-empty">
             {t('addToList.noLists')}
           </p>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', marginBottom: '1rem' }}>
+          <div className="pf-series-list">
             {lists.map(list => {
               const already = allInList(list);
               const status = results[list.id];
@@ -112,18 +104,12 @@ export default function AddToListModal({ books = [], onClose }) {
                 <button key={list.id}
                   onClick={() => handleAdd(list)}
                   disabled={done || adding || saving}
-                  className="btn btn-ghost"
-                  style={{
-                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                    width: '100%', textAlign: 'left',
-                    opacity: done ? 0.7 : 1,
-                    borderColor: done ? 'rgba(176,140,63,0.45)' : undefined,
-                  }}
+                  className="atl-list-item" style={{ opacity: done ? 0.7 : 1 }}
                 >
-                  <span style={{ fontFamily: 'var(--ro-font-display)', fontStyle: 'italic', fontSize: '1rem' }}>
+                  <span className="atl-list-name">
                     {list.title}
                   </span>
-                  <span style={{ fontFamily: 'var(--ro-font-mono)', fontSize: '0.6rem', letterSpacing: '0.1em', textTransform: 'uppercase', opacity: 0.5, marginLeft: '0.75rem', flexShrink: 0 }}>
+                  <span className="pf-overline" style={{ flexShrink: 0, marginLeft: "0.75rem", marginBottom: 0 }}>
                     {adding ? '…' : done ? t('addToList.addedDone') : t('addToList.bookCount', { count: list.books?.length || 0 })}
                   </span>
                 </button>
@@ -134,7 +120,7 @@ export default function AddToListModal({ books = [], onClose }) {
 
         {/* Create new list */}
         {creating ? (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+          <div className="lists-modal-form">
             <input
               className="search-input"
               placeholder={t('addToList.listNamePlaceholder')}
@@ -143,22 +129,22 @@ export default function AddToListModal({ books = [], onClose }) {
               autoFocus
               onKeyDown={e => e.key === 'Enter' && handleCreate()}
             />
-            <div style={{ display: 'flex', gap: '0.5rem' }}>
-              <button className="btn" onClick={handleCreate} disabled={!newTitle.trim() || saving} style={{ flex: 1 }}>
+            <div className="lists-modal-actions">
+              <button className="btn-primary" onClick={handleCreate} disabled={!newTitle.trim() || saving} style={{ flex: 1 }}>
                 {saving ? '…' : (t('addToList.createAndAdd'))}
               </button>
-              <button className="btn btn-ghost" onClick={() => { setCreating(false); setNewTitle(''); }}>
+              <button className="btn-tertiary" onClick={() => { setCreating(false); setNewTitle(''); }}>
                 {t('common.cancel')}
               </button>
             </div>
           </div>
         ) : (
-          <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'space-between', borderTop: '1px solid rgba(176,140,63,0.1)', paddingTop: '0.85rem' }}>
+          <div className="modal-foot">
             <button className="btn" onClick={() => setCreating(true)}>
               + {t('lists.newListBtn')}
             </button>
             <button className="btn btn-ghost" onClick={() => { onClose(); go('lists'); }}
-              style={{ fontSize: '0.8rem' }}>
+              >
               {t('addToList.manageLists')}
             </button>
           </div>

@@ -49,7 +49,7 @@ export default function PlanView() {
   const { genresByBookId } = state;
 
   if (loadingRemote) return (
-    <div className="loading" style={{ paddingTop: '6rem' }}>
+    <div className="loading">
       <div className="loading-spinner" />
       <div className="loading-text">{t('plans.loadingPlan')}</div>
     </div>
@@ -65,7 +65,7 @@ export default function PlanView() {
           <div className="ornament">❦</div>
           <div className="empty-state-title">{t('plans.noActivePlan')}</div>
           <div className="empty-state-text">{t('plans.noActivePlanText')}</div>
-          <div style={{ marginTop: '1.5rem' }}>
+          <div >
             <button className="btn" onClick={() => go('plan-create')}>{t('plans.createOwnPlan')}</button>
           </div>
         </div>
@@ -115,7 +115,7 @@ export default function PlanView() {
       <div className="page-header">
         <div className="page-eyebrow">
           {isSharedView && remoteOwner ? (
-            <>Reading plan by <strong style={{ color: '#d8b66a' }}>{remoteOwner.display_name}</strong></>
+            <>Reading plan by <strong className="lv-curator-name">{remoteOwner.display_name}</strong></>
           ) : (
             t('plans.yourPlan')
           )}
@@ -124,7 +124,7 @@ export default function PlanView() {
         <p className="page-subtitle">{plan.intro || ''}</p>
       </div>
 
-      <div style={{ marginBottom: '2rem', display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+      <div className="plan-actions">
         {plan.type === 'series' && plan.seriesName && (
           <button
             className="btn"
@@ -174,7 +174,7 @@ export default function PlanView() {
                 <div className="plan-author">
                   {found.a}
                   {pages && (
-                    <> · <span style={{ color: 'var(--paper-aged)', opacity: 0.7, fontSize: '0.9rem' }}>
+                    <> · <span className="plan-book-author">
                       ~{pages} pages
                     </span></>
                   )}
@@ -183,7 +183,7 @@ export default function PlanView() {
                 {(() => {
                   const genres = genresByBookId[found.bookId];
                   return genres && genres.length > 0 ? (
-                    <div className="li-genres" style={{ marginTop: '0.5rem' }}>
+                    <div className="li-genres cr-genres">
                       {genres.map((g) => (
                         <span key={g.genreId} className="li-genre-pill" title={g.description || undefined}>
                           {g.name}
@@ -192,9 +192,9 @@ export default function PlanView() {
                     </div>
                   ) : null;
                 })()}
-                <div style={{ marginTop: '0.8rem', display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+                <div className="bp-actions">
                   {isRead ? (
-                    <span className="level-pill" style={{ background: 'var(--moss)', color: 'var(--paper)', borderColor: 'var(--moss)' }}>
+                    <span className="level-pill bp-pill--moss">
                       ✓ Read
                     </span>
                   ) : isQueued ? (
