@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { useData } from '../lib/DataContext';
 import { useRouter } from '../lib/RouterContext';
 import { bookKey } from '../lib/bookHelpers';
@@ -6,12 +6,19 @@ import BulkImport from '../components/BulkImport';
 import OracleCategorizationButton from '../components/OracleCategorizationButton';
 import RatingModal from '../components/RatingModal';
 import LibraryCoverGrid from '../components/LibraryCoverGrid';
+import ScrollSentinel from '../components/ScrollSentinel';
 import { useT, useTNode } from '../lib/I18nContext';
 import { useSelection } from '../lib/useSelection';
 import SelectionBar from '../components/SelectionBar';
+import { usePagedList } from '../lib/usePagedList';
 
 // v0.15 phase 2.5: two-dropdown filter (genres + categories) + Oracle genre grouping.
-// Grouping uses Oracle genres; books without genres fall back to b.g then 'Imported'.
+// v0.16 DS pass: migrated to .lv-* / .btn-* / .select tokens.
+// v0.16 perf: chunked rendering via usePagedList + ScrollSentinel.
+//   Pagination happens on the flat `filtered` array *before* grouping so that
+//   groups and genreKeys grow naturally as more items load. Both list and cover
+//   view modes share the same paged slice — the cover grid simply receives fewer
+//   grouped items until the user scrolls further.
 
 export default function Library({ onOpenBook }) {
   const { state, removeFromLibrary, updateReadBook, getCategoriesForBook } = useData();
@@ -30,7 +37,6 @@ export default function Library({ onOpenBook }) {
   const { genresByBookId } = state;
   const lib = state.library;
 
-  // Helper: primary genre label for a book.
   function getPrimaryGenre(b) {
     const genres = genresByBookId[b.bookId];
     if (genres && genres.length > 0) return genres[0].name;
@@ -68,47 +74,59 @@ export default function Library({ onOpenBook }) {
 
   const hasCategoryFilter = categoryOptions.length > 0;
 
-  // --- Filtering ---
+  // --- Filtering (runs on the full library) ---
   const sel = useSelection(lib);
 
-  let filtered = lib;
+  const filtered = useMemo(() => {
+    let result = lib;
+    if (genreFilter !== 'all') {
+      result = result.filter((b) => {
+        const genres = genresByBookId[b.bookId] || [];
+        return genres.some((g) => g.normalizedName === genreFilter);
+      });
+    }
+    if (categoryFilter !== 'all') {
+      result = result.filter((b) => {
+        const cats = getCategoriesForBook(b);
+        return cats.some((c) => c.name === categoryFilter);
+      });
+    }
+    if (search) {
+      const q = search.toLowerCase();
+      result = result.filter(
+        (b) => b.t.toLowerCase().includes(q) || (b.a || '').toLowerCase().includes(q)
+      );
+    }
+    return result;
+  }, [lib, genreFilter, categoryFilter, search, genresByBookId, getCategoriesForBook]);
 
-  if (genreFilter !== 'all') {
-    filtered = filtered.filter((b) => {
-      const genres = genresByBookId[b.bookId] || [];
-      return genres.some((g) => g.normalizedName === genreFilter);
-    });
-  }
+  // resetKey: a stable string that changes when any filter changes.
+  // usePagedList watches this to snap the page count back to 1 on filter change,
+  // so the user doesn't see a half-loaded page from a prior filter state.
+  const resetKey = `${genreFilter}|${categoryFilter}|${search}`;
 
-  if (categoryFilter !== 'all') {
-    filtered = filtered.filter((b) => {
-      const cats = getCategoriesForBook(b);
-      return cats.some((c) => c.name === categoryFilter);
-    });
-  }
+  const { visible: pagedItems, hasMore, loadMore } = usePagedList(filtered, resetKey);
 
-  if (search) {
-    const q = search.toLowerCase();
-    filtered = filtered.filter(
-      (b) => b.t.toLowerCase().includes(q) || (b.a || '').toLowerCase().includes(q)
-    );
-  }
+  // Grouping is performed on the *paged* slice — groups grow as more pages load.
+  const grouped = useMemo(() => {
+    const g = {};
+    for (const b of pagedItems) {
+      const genre = getPrimaryGenre(b);
+      if (!g[genre]) g[genre] = [];
+      g[genre].push(b);
+    }
+    return g;
+  }, [pagedItems, genresByBookId]);
 
-  // --- Grouping by Oracle genre ---
-  const grouped = {};
-  for (const b of filtered) {
-    const g = getPrimaryGenre(b);
-    if (!grouped[g]) grouped[g] = [];
-    grouped[g].push(b);
-  }
-  const genreKeys = Object.keys(grouped).sort();
+  const genreKeys = useMemo(() => Object.keys(grouped).sort(), [grouped]);
+
+  // Stable loadMore reference for the sentinel
+  const handleLoadMore = useCallback(() => loadMore(), [loadMore]);
 
   function switchViewMode(mode) {
     setViewMode(mode);
-    try { localStorage.setItem('library_view_mode', mode); } catch {}
+    try { localStorage.setItem('library_view_mode', mode); } catch { }
   }
-
-  const hasFilters = genreFilter !== 'all' || categoryFilter !== 'all' || search;
 
   async function handleSaveRating({ rating, notes, readAt }) {
     if (!editing) return;
@@ -118,44 +136,38 @@ export default function Library({ onOpenBook }) {
 
   return (
     <>
-      <div className="breadcrumb">
-        <a onClick={() => go('dashboard')}>Dashboard</a> · Library
-      </div>
-      <div className="page-header">
-        <div className="page-eyebrow">Library</div>
-        <h1 className="page-title">{tNode('library.pageTitle')}</h1>
-        <p className="page-subtitle">{lib.length} books across {genreKeys.length} genre{genreKeys.length !== 1 ? 's' : ''}.</p>
+
+      <div className="page-head">
+        <div className="page-head__eyebrow"><span>Dashboard</span> · Library</div>
+        <h1 className="page-head__title">{tNode('library.pageTitle')}</h1>
+        <p className="page-head__lead">
+          {lib.length} books across {genreKeys.length} genre{genreKeys.length !== 1 ? 's' : ''}.
+        </p>
       </div>
 
       {lib.length > 0 && (
-        <div className="wishlist-toolbar">
-          <div className="wishlist-filters">
-            <input
-              type="text"
-              className="search-input"
-              placeholder="Search title or author…"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              
-            />
-            <select
-              value={genreFilter}
-              onChange={(e) => setGenreFilter(e.target.value)}
-              
-            >
+        <div className="lv-toolbar">
+          <div className="lv-toolbar__filters">
+            <div className="lv-search">
+              <svg className="lv-search__icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+                <circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" />
+              </svg>
+              <input
+                type="text"
+                className="lv-search__input"
+                placeholder="Search title or author…"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+            </div>
+            <select className="select" value={genreFilter} onChange={(e) => setGenreFilter(e.target.value)}>
               <option value="all">— All genres —</option>
               {genreOptions.map((o) => (
-                <option key={o.normalizedName} value={o.normalizedName}>
-                  ☩ {o.name}
-                </option>
+                <option key={o.normalizedName} value={o.normalizedName}>☩ {o.name}</option>
               ))}
             </select>
             {hasCategoryFilter && (
-              <select
-                value={categoryFilter}
-                onChange={(e) => setCategoryFilter(e.target.value)}
-                
-              >
+              <select className="select" value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)}>
                 <option value="all">— All categories —</option>
                 {categoryOptions.map((o) => (
                   <option key={o.name} value={o.name}>
@@ -166,47 +178,45 @@ export default function Library({ onOpenBook }) {
             )}
           </div>
           <div className="lv-chips">
-            {/* List / Covers toggle */}
             <button
-              className={`btn btn-ghost${sel.active ? ' active' : ''}`}
+              className={`btn btn-tertiary${sel.active ? ' is-active' : ''}`}
               onClick={() => sel.active ? sel.exit() : sel.enter()}
             >
-              {sel.active ? (t('common.cancel')) : (t('lists.selectMode'))}
+              {sel.active ? t('common.cancel') : t('lists.selectMode')}
             </button>
-            <div className="view-toggle">
+            <div className="lv-view-toggle">
               <button
-                className={`view-toggle-btn${viewMode === 'list' ? ' active' : ''}`}
+                className={`lv-view-toggle__btn${viewMode === 'list' ? ' is-active' : ''}`}
                 onClick={() => switchViewMode('list')}
                 title="List view"
                 aria-pressed={viewMode === 'list'}
               >
-                ☰ List
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01" />
+                </svg>
+                List
               </button>
               <button
-                className={`view-toggle-btn${viewMode === 'covers' ? ' active' : ''}`}
+                className={`lv-view-toggle__btn${viewMode === 'covers' ? ' is-active' : ''}`}
                 onClick={() => switchViewMode('covers')}
                 title="Cover grid view"
                 aria-pressed={viewMode === 'covers'}
               >
-                ⊞ Covers
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" />
+                  <rect x="3" y="14" width="7" height="7" rx="1" /><rect x="14" y="14" width="7" height="7" rx="1" />
+                </svg>
+                Covers
               </button>
             </div>
-            <button
-              className="btn btn-ghost"
-              onClick={() => setBulkOpen((v) => !v)}
-            >
-              ⇪ Bulk add
+            <button className="btn btn-tertiary" onClick={() => setBulkOpen((v) => !v)}>
+              <span className="btn__plus">+</span> Bulk add
             </button>
           </div>
         </div>
       )}
 
-      {bulkOpen && (
-        <BulkImport
-          target="library"
-          onClose={() => setBulkOpen(false)}
-        />
-      )}
+      {bulkOpen && <BulkImport target="library" onClose={() => setBulkOpen(false)} />}
 
       <OracleCategorizationButton books={lib} />
       <SelectionBar
@@ -219,109 +229,133 @@ export default function Library({ onOpenBook }) {
       />
 
       {lib.length === 0 ? (
-        <div className="empty-state">
-          <div className="ornament">📚</div>
-          <div className="empty-state-title">Empty library</div>
-          <div className="empty-state-text">
+        <div className="lv-empty">
+          <div className="lv-empty-icon">📚</div>
+          <div className="lv-empty-title">Empty library</div>
+          <div className="lv-empty-text">
             As you mark books as read, they'll appear here and fill your shelves on the dashboard.
           </div>
           <div className="lv-load-more">
-            <button className="btn" onClick={() => setBulkOpen(true)}>⇪ Bulk add read books</button>
+            <button className="btn btn-secondary" onClick={() => setBulkOpen(true)}>+ Bulk add read books</button>
           </div>
         </div>
       ) : filtered.length === 0 ? (
-        <div className="empty-state">
-          <div className="ornament">📚</div>
-          <div className="empty-state-title">No books match</div>
-          <div className="empty-state-text">Try clearing your filters.</div>
+        <div className="lv-empty">
+          <div className="lv-empty-icon">📚</div>
+          <div className="lv-empty-title">No books match</div>
+          <div className="lv-empty-text">Try clearing your filters.</div>
         </div>
       ) : viewMode === 'covers' ? (
-        <LibraryCoverGrid
-          grouped={grouped}
-          genreKeys={genreKeys}
-          genresByBookId={genresByBookId}
-          onOpenBook={onOpenBook}
-          selectionMode={sel.active}
-          selected={sel.selected}
-          onToggle={sel.toggle}
-        />
+        <>
+          {/*
+            LibraryCoverGrid receives only the paged slice via `grouped`.
+            As the sentinel fires and more pages load, `grouped` grows and
+            the grid re-renders with the new items appended — no full remount.
+          */}
+          <LibraryCoverGrid
+            grouped={grouped}
+            genreKeys={genreKeys}
+            genresByBookId={genresByBookId}
+            onOpenBook={onOpenBook}
+            selectionMode={sel.active}
+            selected={sel.selected}
+            onToggle={sel.toggle}
+          />
+          <ScrollSentinel onVisible={handleLoadMore} enabled={hasMore} />
+          {hasMore && (
+            <p className="lv-load-hint">
+              Showing {pagedItems.length} of {filtered.length} books — scroll to load more
+            </p>
+          )}
+        </>
       ) : (
-        genreKeys.map((g) => (
-          <div className="list-section" key={g}>
-            <h2>{g} <span className="count">· {grouped[g].length}</span></h2>
-            {grouped[g].map((b, i) => {
-              const isSelected = sel.active && b.bookId && sel.selected.has(b.bookId);
-              return (
-              <div
-                className={`list-item${isSelected ? ' list-item--selected' : ''}`}
-                key={`${bookKey(b)}-${i}`}
-                onClick={() => sel.active ? sel.toggle(b.bookId) : null}
-                style={sel.active ? { cursor: 'pointer' } : {}}
-              >
-                <div
-                  className="li-num"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    if (sel.active) sel.toggle(b.bookId);
-                    else setEditing(b);
-                  }}
-                  title={sel.active ? '' : (b.rating ? 'Edit your rating' : 'Rate this book')}
-                  
-                >
-                  {sel.active
-                    ? <span className="li-checkbox">{isSelected ? '✓' : ''}</span>
-                    : (b.rating ? '★'.repeat(b.rating) : '❦')}
-                </div>
-                <div className="li-content" onClick={() => !sel.active && onOpenBook?.(b)}>
-                  <div className="li-title">{b.t}</div>
-                  <div className="li-author">
-                    {b.a}
-                    {b.dateRead && (
-                      <> · <span className="lv-hl-muted">
-                        {new Date(b.dateRead).toLocaleDateString(undefined, { month: 'short', year: 'numeric' })}
-                      </span></>
-                    )}
-                    {b.fromGoodreads && <> · <span className="lv-hl-dim">from Goodreads</span></>}
-                    {b.notes && (
-                      <> · <span className="lv-hl-dim" title={b.notes}>has notes</span></>
-                    )}
-                  </div>
-                  {(() => {
-                    const genres = genresByBookId[b.bookId];
-                    return genres && genres.length > 0 ? (
-                      <div className="li-genres">
-                        {genres.map((g) => <span key={g.genreId} className="li-genre-pill" title={g.description || undefined}>{g.name}</span>)}
+        <>
+          {genreKeys.map((g) => (
+            <div className="lv-section" key={g}>
+              <div className="lv-section__head">{g}<span className="count">· {grouped[g].length}</span></div>
+              <div className="lv-list">
+                {grouped[g].map((b, i) => {
+                  const isSelected = sel.active && b.bookId && sel.selected.has(b.bookId);
+                  return (
+                    <div
+                      className={`lv-row${sel.active ? ' lv-row--clickable' : ''}${isSelected ? ' lv-row--selected' : ''}`}
+                      key={`${bookKey(b)}-${i}`}
+                      onClick={() => sel.active ? sel.toggle(b.bookId) : null}
+                    >
+                      <div
+                        className="lv-row__num"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (sel.active) sel.toggle(b.bookId);
+                          else setEditing(b);
+                        }}
+                        title={sel.active ? '' : (b.rating ? 'Edit your rating' : 'Rate this book')}
+                      >
+                        {sel.active
+                          ? <span className="lv-row__checkbox">{isSelected ? '✓' : ''}</span>
+                          : (b.rating ? '★'.repeat(b.rating) : '❦')}
                       </div>
-                    ) : null;
-                  })()}
-                </div>
-                {!sel.active && (
-                  <div className="li-actions">
-                    <button
-                      className="li-action"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setEditing(b);
-                      }}
-                    >
-                      {b.rating ? 'Edit rating' : '+ Rate'}
-                    </button>
-                    <button
-                      className="li-action danger"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (confirm(`Remove "${b.t}" from your library?`)) removeFromLibrary(b);
-                      }}
-                    >
-                      Remove
-                    </button>
-                  </div>
-                )}
+                      <div className="lv-row__content" onClick={() => !sel.active && onOpenBook?.(b)}>
+                        <div className="lv-row__title">{b.t}</div>
+                        <div className="lv-row__author">
+                          {b.a}
+                          {b.dateRead && (
+                            <> · <span className="lv-hl-muted">
+                              {new Date(b.dateRead).toLocaleDateString(undefined, { month: 'short', year: 'numeric' })}
+                            </span></>
+                          )}
+                          {b.fromGoodreads && <> · <span className="lv-hl-dim">from Goodreads</span></>}
+                          {b.notes && <> · <span className="lv-hl-dim" title={b.notes}>has notes</span></>}
+                        </div>
+                        {(() => {
+                          const genres = genresByBookId[b.bookId];
+                          return genres && genres.length > 0 ? (
+                            <div className="lv-row__genres">
+                              {genres.map((g) => (
+                                <span key={g.genreId} className="status" title={g.description || undefined}>{g.name}</span>
+                              ))}
+                            </div>
+                          ) : null;
+                        })()}
+                      </div>
+                      {!sel.active && (
+                        <div className="lv-row__actions">
+                          <button
+                            className="btn btn-tertiary btn--sm"
+                            onClick={(e) => { e.stopPropagation(); setEditing(b); }}
+                          >
+                            {b.rating ? 'Edit rating' : '+ Rate'}
+                          </button>
+                          <button
+                            className="btn btn-danger btn--sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (confirm(`Remove "${b.t}" from your library?`)) removeFromLibrary(b);
+                            }}
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
-              );
-            })}
-          </div>
-        ))
+            </div>
+          ))}
+
+          {/*
+            Sentinel sits below the rendered genre groups.
+            400px rootMargin means the next 100 items mount before
+            the user reaches the bottom of the last visible group.
+          */}
+          <ScrollSentinel onVisible={handleLoadMore} enabled={hasMore} />
+          {hasMore && (
+            <p className="lv-load-hint">
+              Showing {pagedItems.length} of {filtered.length} books — scroll to load more
+            </p>
+          )}
+        </>
       )}
 
       {editing && (

@@ -67,12 +67,12 @@ export default function OracleCategorizationButton({ books }) {
     <div className="oracle-categorization-button">
       {!running ? (
         <button
-          className="btn btn-ghost oracle-btn"
+          className="btn btn-oracle oracle-btn"
           onClick={handleRun}
           title={`${count} book${count !== 1 ? 's' : ''} without genre assignments`}
         >
           {t('oracle.categorizeBtnLabel')}
-          <span className="oracle-btn-count">{count}</span>
+          <span className="oracle-btn-count"> {count}</span>
         </button>
       ) : (
         <div className="oracle-progress">

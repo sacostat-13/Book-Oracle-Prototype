@@ -29,11 +29,11 @@
     "more": "···",
     "lightMode": "Modo claro",
     "darkMode": "Modo oscuro",
-    "currentlyReadingFull": "Leyendo ahora",
+    "currentlyReadingFull": "<em class=\"accent\">Leyendo</em> ahora",
     "myLists": "Mis listas",
     "bookClubs": "Clubs",
     "oracleNav": "Oráculo",
-    "currentlyReadingLabel": "Leyendo ahora",
+    "currentlyReadingLabel": "<em class=\"accent\">Leyendo</em> ahora",
     "listsLabel": "Mis listas",
     "bookClubsLabel": "Clubs",
     "oracleLabel": "Oráculo",
@@ -186,7 +186,7 @@
     "markFinished": "✓ Terminado",
     "remove": "Quitar",
     "confirmRemove": "¿Quitás \"{title}\" de leyendo ahora?",
-    "pageTitle": "Leyendo <em class=\"accent\">ahora</em>"
+    "pageTitle": "<em class=\"accent\">Leyendo</em> ahora"
   },
   "readNext": {
     "breadcrumb": "Inicio",
@@ -204,7 +204,7 @@
   },
   "wishlist": {
     "eyebrow": "Lista de deseos",
-    "subtitle": "{count} libros.",
+    "subtitle": "libros en la lista de deseos.",
     "subtitleOne": "1 libro.",
     "subtitleEmpty": "Tu lista está vacía.",
     "emptyTitle": "Todavía no hay nada",

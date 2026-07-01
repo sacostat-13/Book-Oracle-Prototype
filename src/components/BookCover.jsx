@@ -71,10 +71,10 @@ export default function BookCover({ title, author, coverUrl, className = '', eag
   const orn = ORNAMENTS[hashStr(author || '') % ORNAMENTS.length];
   return (
     <div className={`placeholder ${className}`} style={{ background: palette.bg }}>
-      <div className="ph-ornament" style={{ color: palette.accent }}>{orn}</div>
+      <div className="ph-ornament">{orn}</div>
       <div className="ph-title">{title}</div>
-      <div className="ph-author" style={{ color: palette.accent }}>{author || ''}</div>
-      <div className="ph-ornament" style={{ color: palette.accent }}>{orn}</div>
+      <div className="ph-author">{author || ''}</div>
+      <div className="ph-ornament">{orn}</div>
     </div>
   );
 }

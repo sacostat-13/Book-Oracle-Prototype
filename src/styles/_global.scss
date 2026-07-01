@@ -14,6 +14,32 @@ body {
   transition: background .25s ease, color .25s ease;
 }
 
+.loading {
+  text-align: center;
+  padding: 4rem 2rem;
+  height: 100%;
+  display: flex;
+  min-height: 100vh;
+  flex-flow: column;
+  align-items: center;
+  justify-content: center;
+
+  .loading-spinner {
+    width: 40px;
+    height: 40px;
+    margin: 0 auto 1rem;
+    border: 2px solid rgba(176, 140, 63, .2);
+    border-top-color: var(--gilt);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+  }
+
+  .loading-text {
+    font-family: var(--ro-font-display);
+    font-size: 1.5rem;
+  }
+}
+
 // ── Centered content rail ─────────────────────────────────────────────────────
 .rail {
   width: 100%;
@@ -27,10 +53,6 @@ body {
 }
 
 // ── Page header (eyebrow + title + optional lead) ─────────────────────────────
-.db-page {
-  padding: var(--ro-gutter-desktop);
-
-}
 
 .page-head {
   display: flex;
@@ -46,6 +68,8 @@ body {
 
 .page-head__lead {
   @include ro-type(body-lg);
+  font-family: 'Instrument Serif';
+  font-size: 18px;
   font-style: italic;
   color: var(--ro-muted);
 }
@@ -101,4 +125,88 @@ body {
   clip: rect(0, 0, 0, 0);
   white-space: nowrap;
   border: 0;
+}
+
+.placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 1rem;
+  color: var(--paper);
+  position: relative;
+  overflow: hidden;
+
+  .ph-ornament {
+    text-align: center;
+    font-size: 1.1rem;
+    opacity: .6;
+    color: var(--ro-accent-on);
+
+  }
+
+  .ph-title {
+    font-family: var(--ro-font-display),
+      serif;
+    font-size: 1rem;
+    line-height: 1.2;
+    font-weight: 500;
+    text-align: center;
+    margin-top: auto;
+    margin-bottom: auto;
+    color: var(--ro-accent-on);
+  }
+
+  .ph-author {
+    font-family: var(--ro-font-display);
+    color: var(--ro-accent-on);
+    font-size: .6rem;
+    letter-spacing: .2em;
+    text-transform: uppercase;
+    text-align: center;
+    opacity: .7;
+  }
+}
+
+.progress-track {
+  position: relative;
+  height: 3px;
+  border-radius: var(--ro-radius-pill);
+  background: var(--ro-ring-track);
+  margin: 13px 0;
+  overflow: hidden;
+
+  .progress__fill {
+    position: absolute;
+    inset: 0 auto 0 0;
+    min-width: 2px;
+    width: var(--ai-pct, 0%);
+    border-radius: var(--ro-radius-pill);
+    background: linear-gradient(90deg, var(--ro-gold), var(--ro-gold-text));
+    transition: width 0.4s ease;
+  }
+}
+
+.chip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 15px;
+  border-radius: var(--ro-radius-pill);
+  border: 1px solid var(--ro-border-strong);
+  background: color-mix(in srgb, var(--ro-gold) 6%, transparent);
+  font-family: var(--ro-font-mono);
+  font-weight: 600;
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ro-text-2);
+  white-space: nowrap;
+
+  .chip__glyph {
+    color: var(--ro-gold);
+    font-size: 11px;
+    line-height: 1;
+  }
 }

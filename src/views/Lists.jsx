@@ -51,12 +51,12 @@ function CreateListModal({ onSave, onClose }) {
               value={description}
               onChange={e => setDescription(e.target.value)}
               rows={3}
-              
+
             />
           </div>
           <div className="lists-modal-actions">
-            <button className="btn btn-ghost" onClick={onClose}>{t('common.cancel')}</button>
-            <button className="btn" onClick={handleSave} disabled={!title.trim() || saving}>
+            <button className="btn btn-danger" onClick={onClose}>{t('common.cancel')}</button>
+            <button className="btn btn-primary" onClick={handleSave} disabled={!title.trim() || saving}>
               {saving ? '…' : (t('lists.createList'))}
             </button>
           </div>
@@ -99,10 +99,10 @@ export default function Lists() {
 
   return (
     <>
-      <div className="page-header">
-        <div className="page-eyebrow">{t('lists.eyebrow')}</div>
-        <h1 className="page-title">
-          {t('lists.curated')} <span className="accent">{t('about.featureListsTitle')}</span>
+      <div className="page-page-head">
+        <div className="page-head__eyebrow"><span>Dashboard</span> · Lists</div>
+        <h1 className="page-head__title-title">
+          <span className="accent">{t('about.featureListsTitle')}</span>
         </h1>
         <p className="lists-empty-text">
           {t('lists')}
@@ -110,7 +110,7 @@ export default function Lists() {
       </div>
 
       <div className="lists-grid">
-        <button className="btn" onClick={() => setCreating(true)}>
+        <button className="btn btn-primary" onClick={() => setCreating(true)}>
           + {t('lists.newListBtn')}
         </button>
       </div>
@@ -120,7 +120,7 @@ export default function Lists() {
           <div className="ornament">❦</div>
           <div className="empty-state-title">{t('lists.emptyTitle')}</div>
           <div className="empty-state-text">
-            { t('emptyText') }
+            {t('emptyText')}
           </div>
         </div>
       ) : (
@@ -132,7 +132,7 @@ export default function Lists() {
                 {/* Shelf header */}
                 <div className="cover-shelf-label lists-shelf-label">
                   <span
-                    
+
                     onClick={() => go('list-detail', { listId: list.id })}
                   >
                     {list.title}
@@ -144,17 +144,17 @@ export default function Lists() {
                     )}
                   </span>
                   <div className="bp-actions">
-                    <button className="li-action" onClick={e => togglePublic(list, e)}>
+                    <button className="btn btn-secondary" onClick={e => togglePublic(list, e)}>
                       {list.is_public
                         ? (t('lists.makePrivate'))
                         : (t('lists.makePublic'))}
                     </button>
                     {list.is_public && (
-                      <button className="li-action" onClick={e => copyLink(list, e)}>
+                      <button className="btn btn-secondary" onClick={e => copyLink(list, e)}>
                         {t('lists.copyLink')}
                       </button>
                     )}
-                    <button className="li-action"
+                    <button className="btn btn-secondary"
                       onClick={e => handleDelete(list, e)}>
                       {t('common.delete')}
                     </button>
@@ -187,7 +187,7 @@ export default function Lists() {
                       </div>
                     ))}
                     {/* Manage shelf button */}
-                    
+
                   </div>
                 )}
               </div>

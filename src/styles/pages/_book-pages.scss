@@ -128,7 +128,419 @@
   opacity: .55;
 }
 
+// Selection Bar
+.selection-bar {
+  position: fixed;
+  bottom: 1.5rem;
+  left: 50%;
+  transform: translate(-50%);
+  z-index: 300;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: .75rem 1.25rem;
+  background: var(--ro-surface);
+  // border: 1px solid var(--ro-text);
+  border-radius: 4px;
+  box-shadow: 0 0px 5px var(--ro-text);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  min-width: 340px;
+  max-width: 90vw;
+  animation: selBarIn .2s cubic-bezier(.2, .8, .2, 1);
+
+  .selection-bar__left {
+    display: flex;
+    align-items: center;
+    gap: .6rem;
+
+    .selection-bar__cancel {
+      background: transparent;
+      border: 1px solid var(--ro-text);
+      border-radius: 50%;
+      width: 26px;
+      height: 26px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--ro-text);
+      cursor: pointer;
+      font-size: .75rem;
+      transition: border-color .15s,
+        color .15s;
+      flex-shrink: 0;
+    }
+
+    .selection-bar__action-group {
+      display: flex;
+      flex-flow: column;
+
+      button {
+        padding: 5px;
+      }
+    }
+
+    .selection-bar__count {
+
+      font-size: .68rem;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      color: var(--paper-aged);
+      white-space: nowrap;
+
+      strong {
+        color: var(--gilt);
+      }
+    }
+
+    .selection-bar__secondary {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-family: Special Elite, monospace;
+      font-size: .6rem;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      cursor: pointer;
+      padding: 0;
+      transition: color .12s;
+    }
+  }
+
+  .selection-bar__actions {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    flex-wrap: wrap;
+  }
+
+  .selection-bar__btn {
+    padding: .45rem .9rem;
+    background: transparent;
+    border: 1px solid rgba(201, 162, 75, .3);
+    border-radius: 2px;
+    color: var(--text-secondary);
+    font-family: Cormorant Garamond, serif;
+    font-style: italic;
+    font-size: .95rem;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background .15s, border-color .15s;
+  }
+}
+
+// Covers view
+.cover-shelf-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+  gap: 1rem;
+
+  .cover-grid-item {
+    position: relative;
+    cursor: pointer;
+
+    .cover-grid-checkbox {
+      position: absolute;
+      top: 6px;
+      left: 6px;
+      z-index: 3;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: #0e0a07d9;
+      border: 1.5px solid rgba(201, 162, 75, .6);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      color: #c9a24bf2;
+      pointer-events: none;
+      transition: background .12s,
+        border-color .12s;
+    }
+
+    .cover-grid-img {
+      aspect-ratio: 2 / 3;
+      width: 100%;
+      overflow: hidden;
+      border-radius: 2px;
+      box-shadow: 0 2px 8px #00000073;
+      transition: opacity .18s;
+      aspect-ratio: 2 / 3;
+      border-radius: 10px;
+      border: 1px solid var(--border-strong);
+      box-shadow: rgba(0, 0, 0, 0.38) 0px 10px 22px;
+      display: flex;
+      align-items: flex-start;
+    }
+
+    .cover-grid-hover {
+      position: absolute;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      left: 0;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      padding: .6rem .5rem;
+      background: linear-gradient(to top, rgba(10, 8, 6, .92) 0%, rgba(10, 8, 6, .3) 60%, transparent 100%);
+      opacity: 0;
+      transition: opacity .18s;
+      pointer-events: none;
+      border-radius: 2px;
+
+      .cover-grid-hover-title {
+        font-family: --var(--ro-font-display);
+        font-style: italic;
+        font-size: 15px;
+        color: var(--ro-text);
+      }
+
+      .cover-grid-hover-author {
+        font-family: --var(--ro-font-body);
+        font-size: 13px;
+        color: var(--ro-muted);
+      }
+    }
+
+    .cover-grid-rating {
+      /* position: absolute; */
+      bottom: 1.7rem;
+      left: 0;
+      right: 0;
+      text-align: center;
+      font-size: 1rem;
+      color: var(--ro-gold);
+      letter-spacing: .05em;
+      text-shadow: 0 1px 3px rgba(0, 0, 0, .8);
+      pointer-events: none;
+    }
+  }
+}
+
+// ── Append to pages/_book-pages.scss ───────────────────────────────────────────
+// Library / Wishlist row list + view toggle + page-head eyebrow.
+// Reuses existing tokens only — no new colors, radii, or fonts introduced.
+
+// Eyebrow line above page-head__title ("Dashboard · Library")
+.page-head__eyebrow {
+  @include ro-type(overline);
+  font-size: 11px;
+  color: var(--ro-muted);
+
+  span {
+    color: var(--ro-gold);
+  }
+}
+
+// Toolbar filter cluster (search + two selects) — sits to the left of lv-chips
+.lv-toolbar__filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  flex: 1;
+  min-width: 0;
+
+  .select {
+    min-width: 190px;
+    width: auto;
+    flex: 0 1 220px;
+  }
+}
+
+// Segmented List/Covers toggle (matches DS Action Bar reference)
+.lv-view-toggle {
+  display: flex;
+  border: 1px solid var(--ro-border-strong);
+  border-radius: var(--ro-radius-md);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.lv-view-toggle__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 13px 18px;
+  border: 0;
+  border-left: 1px solid var(--ro-border-strong);
+  background: transparent;
+  color: var(--ro-text-2);
+  font-family: var(--ro-font-mono);
+  font-weight: 600;
+  font-size: 12px;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background .15s, color .15s;
+
+  &:first-child {
+    border-left: 0;
+  }
+
+  &:hover {
+    color: var(--ro-gold-text);
+  }
+
+  &.is-active {
+    background: var(--ro-gold);
+    color: var(--ro-gold-on);
+  }
+}
+
+// Section group header above each genre cluster in list view
+.lv-section {
+  &+& {
+    margin-top: var(--ro-space-8);
+  }
+}
+
+.lv-section__head {
+  @include ro-type(overline);
+  font-size: 11px;
+  color: var(--ro-muted);
+  margin-bottom: var(--ro-space-3);
+
+  .count {
+    opacity: .5;
+    margin-left: 6px;
+  }
+}
+
+// Row list container (mirrors the DS Action Bar .lv-list reference markup)
+.lv-list {
+  background: var(--ro-surface);
+  border: 1px solid var(--ro-border);
+  border-radius: var(--ro-radius-lg);
+  overflow: hidden;
+}
+
+.lv-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--ro-border);
+  transition: background .12s, border-color .15s;
+
+  &:last-child {
+    border-bottom: 0;
+  }
+
+  &--clickable {
+    cursor: pointer;
+  }
+
+  &:hover {
+    background: var(--ro-surface-2);
+  }
+
+  &--selected {
+    background: color-mix(in srgb, var(--ro-gold) 10%, transparent);
+    border-color: var(--ro-gold);
+  }
+}
+
+.lv-row__num {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: var(--ro-gold-text);
+  font-size: 14px;
+  cursor: pointer;
+  background: var(--ro-surface-2);
+  border: 1px solid var(--ro-border-strong);
+  transition: border-color .15s;
+
+  &:hover {
+    border-color: var(--ro-gold);
+  }
+}
+
+.lv-row__checkbox {
+  font-size: 14px;
+  color: var(--ro-gold);
+}
+
+.lv-row__content {
+  flex: 1;
+  min-width: 0;
+}
+
+.lv-row__title {
+  font-family: var(--ro-font-display);
+  font-size: 18px;
+  line-height: 1.2;
+  color: var(--ro-text);
+}
+
+.lv-row__author {
+  font-family: var(--ro-font-body);
+  font-size: 13px;
+  line-height: 1.3;
+  color: var(--ro-muted);
+  margin-top: 2px;
+}
+
+.lv-row__genres {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.lv-row__actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+@include ro-down(mobile) {
+  .lv-row__actions {
+    display: none;
+  }
+
+  // collapse to row-tap / select-mode on mobile
+}
+
+// ── Append to pages/_book-pages.scss (after the existing lv-rows-addendum block) ──
+
+// Zero-height IntersectionObserver anchor — invisible by design.
+.scroll-sentinel {
+  height: 1px;
+  width: 100%;
+  pointer-events: none;
+}
+
+// Soft "showing N of M" hint below the list when more items are available.
+// Intentionally muted — it's ambient info, not a call-to-action.
+.lv-load-hint {
+  text-align: center;
+  font-family: var(--ro-font-mono);
+  font-size: 11px;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--ro-muted);
+  opacity: .55;
+  padding: var(--ro-space-4) 0 var(--ro-space-8);
+}
+
+
+
 // ── Currently Reading — progress update ───────────────────────────────────────
+.cr-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+
+}
+
 .cr-card {
   background: var(--ro-surface);
   border: 1px solid var(--ro-border);
@@ -180,6 +592,16 @@
   flex-wrap: wrap;
   gap: 8px;
   margin-top: 14px;
+
+  .cr-chip {
+    border: 1px solid var(--ro-border-strong);
+    color: var(--ro-muted);
+    font: 600 10px / 1 "IBM Plex Mono";
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 7px 11px;
+    border-radius: 6px;
+  }
 }
 
 .cr-meta {
@@ -188,6 +610,20 @@
   line-height: 1.5;
   color: var(--ro-text-2);
   margin-top: 14px;
+  display: flex;
+  flex-flow: column;
+
+  .cr-started {
+    font-size: 13px;
+    font-weight: 500;
+    margin-top: 14px;
+    color: var(--ro-text-2);
+  }
+
+  .cr-pages {
+    font: 400 12px / 1.4 "Inter";
+    color: var(--ro-muted);
+  }
 }
 
 .cr-meta-dim {
@@ -205,14 +641,14 @@
   margin: 14px 0 4px;
 }
 
-.cr-progress-bar {
+.cr-progress-bar-track {
   height: 6px;
   border-radius: var(--ro-radius-pill);
   background: var(--ro-ring-track);
   overflow: hidden;
 }
 
-.cr-progress-fill {
+.cr-progress-bar-fill {
   height: 100%;
   border-radius: var(--ro-radius-pill);
   background: var(--ro-gold);

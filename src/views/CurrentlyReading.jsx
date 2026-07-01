@@ -40,18 +40,20 @@ export default function CurrentlyReading({ onOpenBook }) {
 
   return (
     <>
-      <div className="breadcrumb">
-        <a onClick={() => go('dashboard')}>{t('currentlyReading.breadcrumb')}</a> · {t('currentlyReading.eyebrow')}
-      </div>
-      <div className="page-header">
-        <h1 className="page-title">{tNode('currentlyReading.pageTitle')}</h1>
-        <p className="page-subtitle">
-          {currentlyReading.length === 0
-            ? t('currentlyReading.subtitleEmpty')
-            : currentlyReading.length === 1
-            ? t('currentlyReading.subtitleOne')
-            : t('currentlyReading.subtitleMany', { count: currentlyReading.length })}
-        </p>
+      <div className="page-head">
+        <div className="page-head__eyebrow">
+          <a onClick={() => go('dashboard')}>{t('currentlyReading.breadcrumb')}</a> · {t('currentlyReading.eyebrow')}
+        </div>
+        <div className="page-header">
+          <h1 className="page-head__title">{tNode('currentlyReading.pageTitle')}</h1>
+          <p className="page-head__lead">
+            {currentlyReading.length === 0
+              ? t('currentlyReading.subtitleEmpty')
+              : currentlyReading.length === 1
+                ? t('currentlyReading.subtitleOne')
+                : t('currentlyReading.subtitleMany', { count: currentlyReading.length })}
+          </p>
+        </div>
       </div>
 
       {currentlyReading.length === 0 ? (
@@ -78,7 +80,7 @@ export default function CurrentlyReading({ onOpenBook }) {
                 <div
                   className="cr-cover"
                   onClick={() => onOpenBook?.(b)}
-                  
+
                 >
                   <BookCover title={b.t} author={b.a} coverUrl={b.coverUrl} />
                 </div>
@@ -86,7 +88,7 @@ export default function CurrentlyReading({ onOpenBook }) {
                   <div
                     className="cr-title"
                     onClick={() => onOpenBook?.(b)}
-                    
+
                   >
                     {b.t}
                   </div>
@@ -94,7 +96,7 @@ export default function CurrentlyReading({ onOpenBook }) {
                   {genres && genres.length > 0 && (
                     <div className="li-genres cr-genres">
                       {genres.map((g) => (
-                        <span key={g.genreId} className="li-genre-pill" title={g.description || undefined}>
+                        <span key={g.genreId} className="cr-chip" title={g.description || undefined}>
                           {g.name}
                         </span>
                       ))}
@@ -133,20 +135,19 @@ export default function CurrentlyReading({ onOpenBook }) {
 
                   <div className="cr-actions">
                     <button
-                      className="li-action"
+                      className="btn btn-secondary"
                       onClick={() => setUpdatingProgress(b)}
-                      className="cr-days"
                     >
                       {t('currentlyReading.updateProgress')}
                     </button>
                     <button
-                      className="li-action success"
+                      className="btn btn-secondary"
                       onClick={() => setFinishing(b)}
                     >
                       {t('currentlyReading.markFinished')}
                     </button>
                     <button
-                      className="li-action danger"
+                      className="btn btn-danger"
                       onClick={() => {
                         if (confirm(t('currentlyReading.confirmRemove', { title: b.t }))) {
                           removeFromCurrentlyReading(b);

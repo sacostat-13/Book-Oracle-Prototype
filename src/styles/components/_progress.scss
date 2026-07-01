@@ -3,30 +3,49 @@
 //   .progress        track + fill (fill width via --val, e.g. style="--val:72%")
 //   .ring            circular goal ring wrapper (SVG inside)
 
+.loading {}
+
 .progress {
   height: 8px;
   background: var(--ro-ring-track);
   border-radius: var(--ro-radius-pill);
   overflow: hidden;
 }
+
 .progress__fill {
   height: 100%;
   width: var(--val, 0%);
   background: var(--ro-gold);
   border-radius: var(--ro-radius-pill);
   transition: width .4s ease;
-  &--success { background: var(--ro-success); }
+
+  &--success {
+    background: var(--ro-success);
+  }
 }
-.progress--thin { height: 3px; }
-.progress--thick { height: 12px; }
+
+.progress--thin {
+  height: 3px;
+}
+
+.progress--thick {
+  height: 12px;
+}
 
 // Circular ring (SVG strokes use the tokens directly)
 .ring {
   position: relative;
   width: 200px;
   height: 200px;
-  &__track { stroke: var(--ro-ring-track); }
-  &__fill  { stroke: var(--ro-gold); }
+
+  &__track {
+    stroke: var(--ro-ring-track);
+  }
+
+  &__fill {
+    stroke: var(--ro-gold);
+  }
+
   &__center {
     position: absolute;
     inset: 0;
@@ -35,6 +54,7 @@
     align-items: center;
     justify-content: center;
   }
+
   &__value {
     font-family: var(--ro-font-body);
     font-weight: 700;
@@ -42,6 +62,7 @@
     line-height: 1;
     color: var(--ro-gold-text);
   }
+
   &__label {
     font-family: var(--ro-font-mono);
     font-weight: 600;

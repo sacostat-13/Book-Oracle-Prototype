@@ -69,17 +69,19 @@ export default function SelectionBar({
           <button className="selection-bar__cancel" onClick={onExit} disabled={working}>
             ✕
           </button>
-          <span className="selection-bar__count">
-            <strong>{count}</strong> {t('selection.selected')}
-          </span>
-          <button className="selection-bar__secondary" onClick={onSelectAll} disabled={working}>
-            {t('selection.all')}
-          </button>
-          {count > 0 && (
-            <button className="selection-bar__secondary" onClick={onClearAll} disabled={working}>
-              {t('selection.none')}
+          <div className="selection-bar__action-group">
+            <span className="selection-bar__count">
+              <strong>{count}</strong> {t('selection.selected')}
+            </span>
+            <button className="btn btn-text" onClick={onSelectAll} disabled={working}>
+              {t('selection.all')}
             </button>
-          )}
+            {count > 0 && (
+              <button className="btn btn-text" onClick={onClearAll} disabled={working}>
+                {t('selection.none')}
+              </button>
+            )}
+          </div>
         </div>
 
         <div className="selection-bar__actions">
@@ -87,7 +89,7 @@ export default function SelectionBar({
             <>
               {/* Add to list — all contexts */}
               <button
-                className="selection-bar__btn"
+                className="btn btn-primary"
                 onClick={() => setShowListPicker(true)}
                 disabled={working}
               >
@@ -97,7 +99,7 @@ export default function SelectionBar({
               {/* Mark as read — wishlist only */}
               {context === 'wishlist' && (
                 <button
-                  className="selection-bar__btn"
+                  className="btn btn-primary"
                   onClick={handleMarkRead}
                   disabled={working}
                 >
@@ -107,7 +109,7 @@ export default function SelectionBar({
 
               {/* Remove */}
               <button
-                className="selection-bar__btn selection-bar__btn--danger"
+                className="btn btn-danger"
                 onClick={handleRemove}
                 disabled={working}
               >

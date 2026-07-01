@@ -187,7 +187,7 @@ export default function App() {
     case 'library': page = <Library onOpenBook={openBook} />; break;
     case 'read-next': page = <ReadNext onOpenBook={openBook} />; break;
     case 'currently-reading': page = <CurrentlyReading onOpenBook={openBook} />; break;
-    case 'profile':       page = <Profile />; break;
+    case 'profile': page = <Profile />; break;
     case 'friend-profile': page = <FriendProfile />; break;
     case 'friends': page = <Friends />; break;
     case 'about': page = <About />; break;
@@ -221,8 +221,8 @@ export default function App() {
       <Nav onPreviewBook={setPreviewBook} />
       <div className="container">
         {page}
-        <Footer />
       </div>
+      <Footer />
       <Toast />
     </div>
   );

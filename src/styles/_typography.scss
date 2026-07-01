@@ -4,24 +4,43 @@
 //   <h1 class="t-display">  <span class="t-overline">  <p class="t-body">
 // Display = Instrument Serif · Body = EB Garamond · Labels = IBM Plex Mono.
 
-@each $name, $spec in $ro-type {
+@each $name,
+$spec in $ro-type {
   .t-#{$name} {
     @include ro-type($name);
   }
 }
 
 // Italic emphasis helper (EB Garamond italic — the Oracle's softer voice)
-.t-italic { font-style: italic; }
+.t-italic {
+  font-style: italic;
+}
 
 // Color helpers tied to the token system
-.t-accent  { color: var(--ro-burgundy); }
-.t-gold    { color: var(--ro-gold-text); }
-.t-muted   { color: var(--ro-muted); }
-.t-dim     { color: var(--ro-dim); }
+.t-accent {
+  color: var(--ro-burgundy);
+}
+
+.t-gold {
+  color: var(--ro-gold-text);
+}
+
+.t-muted {
+  color: var(--ro-muted);
+}
+
+.t-dim {
+  color: var(--ro-dim);
+}
 
 // The recurring "eyebrow" overline used above section titles
 .eyebrow {
   @include ro-type(overline);
   color: var(--ro-gold);
   letter-spacing: .18em;
+}
+
+.accent {
+  color: var(--ro-burgundy);
+
 }

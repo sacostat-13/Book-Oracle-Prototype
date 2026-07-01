@@ -11,8 +11,8 @@ export default function LibraryCoverGrid({ grouped, genreKeys, genresByBookId, o
   return (
     <div className="cover-grid-shelves">
       {genreKeys.map((genre) => (
-        <div className="cover-shelf" key={genre}>
-          <h2 className="cover-shelf-label">
+        <div className="lv-section" key={genre}>
+          <h2 className="lv-section__head">
             {genre} <span className="count">· {grouped[genre].length}</span>
           </h2>
           <div className="cover-shelf-grid">
