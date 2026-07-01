@@ -64,10 +64,10 @@ function RequestRow({ req, onAccept, onDecline }) {
           Accept
         </button>
         <button
-          className="btn-ghost btn-sm"
+          className="btn-secondary btn-sm"
           onClick={() => handle(onDecline)}
           disabled={busy}
-          
+
         >
           Decline
         </button>
@@ -99,9 +99,9 @@ function FriendRow({ friend, onRemove, onView }) {
       <div className="friend-row__actions">
         {other?.username && (
           <button
-            className="btn-ghost btn-sm"
+            className="btn-secondary btn-sm"
             onClick={() => onView(other.username)}
-            
+
           >
             View
           </button>
@@ -110,7 +110,7 @@ function FriendRow({ friend, onRemove, onView }) {
           className="btn-danger btn-sm"
           onClick={async () => { setBusy(true); await onRemove(friend.id); setBusy(false); }}
           disabled={busy}
-          
+
         >
           Remove
         </button>
@@ -126,9 +126,9 @@ function SearchResultRow({ profile, onSend, relationStatus }) {
   let actionLabel = 'Add friend';
   let actionClass = 'btn-gilt btn-sm';
   let disabled = false;
-  if (relationStatus === 'friends')        { actionLabel = 'Friends ✓'; disabled = true; }
-  if (relationStatus === 'pending_out')    { actionLabel = 'Request sent'; disabled = true; }
-  if (relationStatus === 'pending_in')     { actionLabel = 'Accept request'; actionClass = 'btn btn-sm'; }
+  if (relationStatus === 'friends') { actionLabel = 'Friends ✓'; disabled = true; }
+  if (relationStatus === 'pending_out') { actionLabel = 'Request sent'; disabled = true; }
+  if (relationStatus === 'pending_in') { actionLabel = 'Accept request'; actionClass = 'btn btn-sm'; }
 
   return (
     <div className="friends-suggest-card">
@@ -146,7 +146,7 @@ function SearchResultRow({ profile, onSend, relationStatus }) {
       <button
         className={actionClass}
         disabled={disabled || busy}
-        
+
         onClick={async () => { setBusy(true); await onSend(profile.id); setBusy(false); }}
       >
         {actionLabel}
@@ -162,10 +162,10 @@ export default function Friends() {
   const { go } = useRouter();
   const { friends, incoming, pending, loading, acceptRequest, declineRequest, removeFriend, sendRequest } = useFriends();
 
-  const [query, setQuery]             = useState('');
+  const [query, setQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
-  const [searching, setSearching]     = useState(false);
-  const [searchDone, setSearchDone]   = useState(false);
+  const [searching, setSearching] = useState(false);
+  const [searchDone, setSearchDone] = useState(false);
 
   // Derive relation status map for search results
   const relationMap = {};
@@ -221,7 +221,7 @@ export default function Friends() {
       <div className="friends-toolbar">
         <div className="lv-search">
           <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="var(--ro-gold-text)" strokeWidth={1.8}>
-            <circle cx={11} cy={11} r={7}/><path d="m20 20-3.5-3.5"/>
+            <circle cx={11} cy={11} r={7} /><path d="m20 20-3.5-3.5" />
           </svg>
           <input
             value={query}

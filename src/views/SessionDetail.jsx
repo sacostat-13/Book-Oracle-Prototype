@@ -241,7 +241,7 @@ function EditSessionModal({ session, book, onSave, onClose }) {
 
           {/* Actions */}
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', flexWrap: 'wrap' }}>
-            <button className="btn btn-ghost" onClick={onClose} disabled={saving}>Cancel</button>
+            <button className="btn btn-secondary" onClick={onClose} disabled={saving}>Cancel</button>
             <button className="btn" onClick={handleSave} disabled={!selectedBook || !startsAt || !endsAt || saving}>
               {saving ? t('sessions.saving') : t('sessions.saveButton')}
             </button>

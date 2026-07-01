@@ -45,7 +45,7 @@ function AddBookPicker({ list, onClose }) {
           value={query}
           onChange={e => setQuery(e.target.value)}
           autoFocus
-          
+
         />
         <div className="ldetail-scroll">
           {candidates.length === 0 && (
@@ -140,7 +140,7 @@ export default function ListDetail() {
         <button className="btn" onClick={() => setAddingBook(true)}>
           {t('listDetail.addBook')}
         </button>
-        <button className="btn btn-ghost" onClick={togglePublic}>
+        <button className="btn btn-secondary" onClick={togglePublic}>
           {list.is_public
             ? (t('lists.makePrivate'))
             : (t('lists.makePublic'))}
@@ -152,7 +152,7 @@ export default function ListDetail() {
         )}
         {books.length > 0 && (
           <button
-            className={`btn btn-ghost${sel.active ? ' active' : ''}`}
+            className={`btn btn-secondary${sel.active ? ' active' : ''}`}
             onClick={() => sel.active ? sel.exit() : sel.enter()}
           >
             {sel.active ? (t('common.cancel')) : (t('lists.selectMode'))}

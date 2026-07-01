@@ -138,10 +138,10 @@ export default function PlanView() {
         </button>
         {!isSharedView && (
           <>
-            <button className="btn btn-ghost" onClick={() => go('plan-create')}>
+            <button className="btn btn-secondary" onClick={() => go('plan-create')}>
               {t('plans.createAnother')}
             </button>
-            <button className="btn btn-ghost" onClick={handleDeletePlan}>
+            <button className="btn btn-secondary" onClick={handleDeletePlan}>
               Delete this plan
             </button>
           </>
@@ -151,7 +151,7 @@ export default function PlanView() {
             <button className="btn btn-gilt" onClick={handleCopyPlan}>
               {t('plans.copyPlan')}
             </button>
-            <button className="btn btn-ghost" onClick={() => go('plan-create')}>
+            <button className="btn btn-secondary" onClick={() => go('plan-create')}>
               {t('plans.createOwnPlan')}
             </button>
           </>

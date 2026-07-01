@@ -15,10 +15,10 @@ export default function ReportBookForm({ book }) {
   const formRef = useRef(null);
 
   const REPORT_FIELDS = [
-    { key: 'title',       label: t('report.fieldTitle') },
+    { key: 'title', label: t('report.fieldTitle') },
     { key: 'description', label: t('report.fieldDescription') },
-    { key: 'series',      label: t('report.fieldSeries') },
-    { key: 'genres',      label: t('report.fieldGenres') },
+    { key: 'series', label: t('report.fieldSeries') },
+    { key: 'genres', label: t('report.fieldGenres') },
   ];
 
   useEffect(() => {
@@ -76,7 +76,7 @@ export default function ReportBookForm({ book }) {
             rows={3}
           />
           <div className="report-book-actions">
-            <button className="btn btn-ghost" onClick={handleCancel} disabled={submitting}>
+            <button className="btn btn-secondary" onClick={handleCancel} disabled={submitting}>
               {t('report.cancel')}
             </button>
             <button className="btn" onClick={handleSubmit} disabled={submitting || fields.length === 0}>

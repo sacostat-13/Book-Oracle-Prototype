@@ -127,9 +127,9 @@ export default function BookModal({ book, onClose, onOpenBook }) {
     return () => {
       cancelled = true;
     };
-  // Stable identifiers only — [book] would loop because cacheBookFields writes
-  // back to DataContext producing a new book object ref on every enrichment.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // Stable identifiers only — [book] would loop because cacheBookFields writes
+    // back to DataContext producing a new book object ref on every enrichment.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [book?.t, book?.a, book?.hardcoverId, !!(book?.coverUrl), !!(book?.pp), !!(book?.d), !!(book?.s)]);
 
   useEffect(() => {
@@ -147,9 +147,9 @@ export default function BookModal({ book, onClose, onOpenBook }) {
     return () => {
       cancelled = true;
     };
-  // Depend on stable strings, not object references — object refs change every render
-  // when cacheBookFields writes back to DataContext, which would create an infinite loop.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // Depend on stable strings, not object references — object refs change every render
+    // when cacheBookFields writes back to DataContext, which would create an infinite loop.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [enrichedOverlay?.s?.name, book?.s?.name, enrichment?.series?.name, book?.a]);
 
   useEffect(() => {
@@ -267,7 +267,7 @@ export default function BookModal({ book, onClose, onOpenBook }) {
     // 'oracle_categorized' count as verified for display.
     const seriesIsVerified = display.s.status === 'verified' || display.s.status === 'oracle_categorized';
     const seriesNeedsReview = display.s.status === 'incomplete' ||
-                               (display.s.status === 'unreviewed' && !!display.s.seriesId);
+      (display.s.status === 'unreviewed' && !!display.s.seriesId);
 
     let sourceLabel;
     if (seriesIsVerified) sourceLabel = 'verified';
@@ -653,7 +653,7 @@ export default function BookModal({ book, onClose, onOpenBook }) {
                 href={link.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="btn btn-ghost"
+                className="btn btn-secondary"
                 style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}
                 title={link.kind === 'search' ? 'Opens a search — no direct product link available' : null}
               >
@@ -665,13 +665,13 @@ export default function BookModal({ book, onClose, onOpenBook }) {
 
         <div className="book-modal-actions">
           {inLib ? (
-            <button className="btn btn-ghost" onClick={() => { removeFromLibrary(display); onClose(); }}>
+            <button className="btn btn-secondary" onClick={() => { removeFromLibrary(display); onClose(); }}>
               Remove from library
             </button>
           ) : inNext ? (
             <>
               <button className="btn" onClick={() => { markAsRead(display); onClose(); }}>✓ Mark as read</button>
-              <button className="btn btn-ghost" onClick={() => { removeFromReadNext(display); onClose(); }}>
+              <button className="btn btn-secondary" onClick={() => { removeFromReadNext(display); onClose(); }}>
                 Remove from queue
               </button>
             </>
@@ -683,11 +683,11 @@ export default function BookModal({ book, onClose, onOpenBook }) {
                   + Add to Wishlist
                 </button>
               )}
-              <button className="btn btn-ghost" onClick={() => { markAsRead(display); onClose(); }}>✓ Mark as read</button>
+              <button className="btn btn-secondary" onClick={() => { markAsRead(display); onClose(); }}>✓ Mark as read</button>
             </>
           )}
-        </div> 
-        <AddToListPicker book={display} /> 
+        </div>
+        <AddToListPicker book={display} />
 
         <ReportBookForm book={display} />
       </div>
@@ -719,16 +719,16 @@ function CategoryPill({ category, removing, canRemove, onRemove }) {
   const { name, verified } = category;
   const baseStyle = verified
     ? {
-        background: 'rgba(176, 140, 63, 0.18)',
-        borderColor: 'var(--gilt)',
-        color: 'var(--gilt-bright)',
-      }
+      background: 'rgba(176, 140, 63, 0.18)',
+      borderColor: 'var(--gilt)',
+      color: 'var(--gilt-bright)',
+    }
     : {
-        background: 'rgba(176, 140, 63, 0.04)',
-        borderColor: 'rgba(176, 140, 63, 0.3)',
-        color: 'var(--paper-aged)',
-        opacity: 0.9,
-      };
+      background: 'rgba(176, 140, 63, 0.04)',
+      borderColor: 'rgba(176, 140, 63, 0.3)',
+      color: 'var(--paper-aged)',
+      opacity: 0.9,
+    };
 
   const showRemove = canRemove && !verified;
 

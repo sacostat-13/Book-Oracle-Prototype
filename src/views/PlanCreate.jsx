@@ -131,8 +131,8 @@ export default function PlanCreate() {
         const targetC = start + ((end - start) * (i / Math.max(1, timeline - 1)));
         const cands = sorted.filter(
           (b) => Math.abs((b.c || 3) - targetC) <= 0.7 &&
-                 !steps.some((s) => s.t === b.t) &&
-                 !state.library.some((l) => bookKey(l) === bookKey(b))
+            !steps.some((s) => s.t === b.t) &&
+            !state.library.some((l) => bookKey(l) === bookKey(b))
         );
         const picked = cands[Math.floor(Math.random() * Math.min(cands.length, 5))];
         if (picked) steps.push({ ...picked, month: i + 1, reason: `A measured step toward level ${end} prose.` });
@@ -151,8 +151,8 @@ export default function PlanCreate() {
       title: b.t,
       author: b.a,
       reason: i === 0 ? 'An accessible foundation for the genre.' :
-              i === pool.length - 1 ? 'A defining, demanding work.' :
-              "A deeper step into the genre's core themes.",
+        i === pool.length - 1 ? 'A defining, demanding work.' :
+          "A deeper step into the genre's core themes.",
     }));
     return {
       title: `An immersion in ${target}`,
@@ -465,7 +465,7 @@ Return ONLY valid JSON in this exact format:
                   key={m}
                   className={`choice ${timeline === m ? 'selected' : ''}`}
                   onClick={() => setTimeline(m)}
-                  
+
                 >
                   <div className="choice-title">{m}</div>
                   <div className="choice-sub">months</div>
@@ -482,7 +482,7 @@ Return ONLY valid JSON in this exact format:
         )}
 
         <div className="onb-actions">
-          <button className="btn btn-ghost" onClick={() => go('dashboard')}>← Back</button>
+          <button className="btn btn-secondary" onClick={() => go('dashboard')}>← Back</button>
           <button className="btn" disabled={!canGenerate} onClick={generate}>
             Generate plan ❦
           </button>

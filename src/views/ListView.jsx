@@ -22,16 +22,16 @@ function CoverImg({ book, size = 60 }) {
 
 export default function ListView() {
   const { route, go } = useRouter();
-  const { user }      = useAuth();
-  const { state }     = useData();
-  const t             = useT();
-  const [data, setData]       = useState(null);
+  const { user } = useAuth();
+  const { state } = useData();
+  const t = useT();
+  const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError]     = useState(null);
+  const [error, setError] = useState(null);
 
   const listId = route.params?.listId;
   const planId = route.params?.planId;
-  const mode   = listId ? 'list' : 'plan';
+  const mode = listId ? 'list' : 'plan';
 
   useEffect(() => {
     async function load() {
@@ -91,7 +91,7 @@ export default function ListView() {
 
         {user && (
           <div className="lv-list-entries">
-            <button className="btn btn-ghost" onClick={() => go('lists')}>{t('lists.saveToMyLists')}</button>
+            <button className="btn btn-secondary" onClick={() => go('lists')}>{t('lists.saveToMyLists')}</button>
           </div>
         )}
 
@@ -110,7 +110,7 @@ export default function ListView() {
               {user && (
                 <div className="li-actions">
                   <button className="li-action" onClick={() => {
-                    go('book-page', { bookKey: `${(entry.book.title||'').toLowerCase().replace(/[^a-z0-9]/g,'')}|${(entry.book.author||'').toLowerCase().replace(/[^a-z0-9]/g,'').slice(0,10)}` });
+                    go('book-page', { bookKey: `${(entry.book.title || '').toLowerCase().replace(/[^a-z0-9]/g, '')}|${(entry.book.author || '').toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 10)}` });
                   }}>
                     {t('lists.viewBook')}
                   </button>
@@ -126,7 +126,7 @@ export default function ListView() {
   // ── Plan view ────────────────────────────────────────────────────────────────
   const { plan, owner } = data;
   const content = plan.content || {};
-  const books   = content.books || [];
+  const books = content.books || [];
 
   return (
     <>

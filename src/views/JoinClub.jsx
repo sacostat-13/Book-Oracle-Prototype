@@ -63,7 +63,7 @@ export default function JoinClub() {
           {user && (
             <div className="onb-actions">
               <div />
-              <button className="btn btn-ghost" onClick={() => go('book-clubs')}>
+              <button className="btn btn-secondary" onClick={() => go('book-clubs')}>
                 {t('joinClub.myClubs')}
               </button>
             </div>

@@ -13,7 +13,7 @@ export default function AddToListPicker({ book }) {
 
   return (
     <>
-      <button className="btn btn-ghost" onClick={() => setOpen(true)}>
+      <button className="btn btn-secondary" onClick={() => setOpen(true)}>
         {t('addToListPicker.btn')}
       </button>
       {open && <AddToListModal books={[book]} onClose={() => setOpen(false)} />}

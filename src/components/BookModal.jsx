@@ -239,7 +239,7 @@ export default function BookModal({ book, onClose, onOpenBook }) {
             className={`series-dot ${cls}`}
             title={`${entry.t}${read ? ' — read' : queued ? ' — queued' : ''}`}
             onClick={() => isCurrent ? null : onOpenBook?.(entry)}
-            
+
           >
             {i}
           </div>
@@ -257,7 +257,7 @@ export default function BookModal({ book, onClose, onOpenBook }) {
     // 'oracle_categorized' count as verified for display.
     const seriesIsVerified = display.s.status === 'verified' || display.s.status === 'oracle_categorized';
     const seriesNeedsReview = display.s.status === 'incomplete' ||
-                               (display.s.status === 'unreviewed' && !!display.s.seriesId);
+      (display.s.status === 'unreviewed' && !!display.s.seriesId);
 
     let sourceLabel;
     if (seriesIsVerified) sourceLabel = 'verified';
@@ -401,7 +401,7 @@ export default function BookModal({ book, onClose, onOpenBook }) {
                 <button
                   className="li-action"
                   onClick={() => setAdderOpen((v) => !v)}
-                  
+
                 >
                   {adderOpen
                     ? t('bookModal.done')
@@ -456,7 +456,7 @@ export default function BookModal({ book, onClose, onOpenBook }) {
                 <button
                   className="li-action"
                   onClick={() => setRatingEditorOpen(true)}
-                  
+
                 >
                   {liveRating > 0 || liveNotes
                     ? (t('common.edit'))
@@ -522,7 +522,8 @@ export default function BookModal({ book, onClose, onOpenBook }) {
                         href={seriesDescription.wikipediaUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="bp-wiki-link" style={{ marginLeft: "0.3rem",
+                        className="bp-wiki-link" style={{
+                          marginLeft: "0.3rem",
                         }}
                         title="From Wikipedia"
                       >
@@ -582,7 +583,7 @@ export default function BookModal({ book, onClose, onOpenBook }) {
                 href={link.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="btn btn-ghost"
+                className="btn btn-secondary"
                 className="bp-link"
                 title={link.kind === 'search' ? 'Opens a search — no direct product link available' : null}
               >
@@ -594,13 +595,13 @@ export default function BookModal({ book, onClose, onOpenBook }) {
 
         <div className="book-modal-actions">
           {inLib ? (
-            <button className="btn btn-ghost" onClick={() => { removeFromLibrary(display); onClose(); }}>
+            <button className="btn btn-secondary" onClick={() => { removeFromLibrary(display); onClose(); }}>
               Remove from library
             </button>
           ) : inNext ? (
             <>
               <button className="btn" onClick={() => { markAsRead(display); onClose(); }}>✓ Mark as read</button>
-              <button className="btn btn-ghost" onClick={() => { removeFromReadNext(display); onClose(); }}>
+              <button className="btn btn-secondary" onClick={() => { removeFromReadNext(display); onClose(); }}>
                 Remove from queue
               </button>
             </>
@@ -612,7 +613,7 @@ export default function BookModal({ book, onClose, onOpenBook }) {
                   + Add to Wishlist
                 </button>
               )}
-              <button className="btn btn-ghost" onClick={() => { markAsRead(display); onClose(); }}>✓ Mark as read</button>
+              <button className="btn btn-secondary" onClick={() => { markAsRead(display); onClose(); }}>✓ Mark as read</button>
             </>
           )}
         </div>
@@ -647,16 +648,16 @@ function CategoryPill({ category, removing, canRemove, onRemove }) {
   const { name, verified } = category;
   const baseStyle = verified
     ? {
-        background: 'rgba(176, 140, 63, 0.18)',
-        borderColor: 'var(--gilt)',
-        color: 'var(--gilt-bright)',
-      }
+      background: 'rgba(176, 140, 63, 0.18)',
+      borderColor: 'var(--gilt)',
+      color: 'var(--gilt-bright)',
+    }
     : {
-        background: 'rgba(176, 140, 63, 0.04)',
-        borderColor: 'rgba(176, 140, 63, 0.3)',
-        color: 'var(--paper-aged)',
-        opacity: 0.9,
-      };
+      background: 'rgba(176, 140, 63, 0.04)',
+      borderColor: 'rgba(176, 140, 63, 0.3)',
+      color: 'var(--paper-aged)',
+      opacity: 0.9,
+    };
 
   const showRemove = canRemove && !verified;
 

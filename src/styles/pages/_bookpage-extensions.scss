@@ -1,0 +1,117 @@
+// pages/_bookpage-extensions.scss — The Books Oracle
+// Supplemental partial: fills the genuine gaps found while auditing
+// BookPage.jsx against the existing design system. Same ground rule as
+// pages/_profile-extensions.scss — only existing tokens are consumed.
+//
+// Import this after pages/book-pages in main.scss:
+//   @import 'pages/book-pages';
+//   @import 'pages/bookpage-extensions';
+
+// ══════════════════════════════════════════════════════════════════════════════
+// Category pill — verified/unverified modifier
+// (.bp-cat as shipped is a single fixed "verified" look; the unverified/
+// private-category state was previously done with inline styles referencing
+// --gilt/--paper-aged, tokens that don't exist post theme-rename.)
+// ══════════════════════════════════════════════════════════════════════════════
+.bp-cat--unverified {
+  border-color: var(--ro-border-strong);
+  background: color-mix(in srgb, var(--ro-gold) 4%, transparent);
+  color: var(--ro-text-2);
+}
+
+.bp-cat--removing {
+  opacity: .4;
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// Series — compact dot track (≤6 books) and progress track (>6 books)
+// Same visual language as .sp-bar/.sp-bar__fill (Series Page) and
+// .pf-pip/.pf-pip--filled (Profile), scoped for the Book Page hero.
+// ══════════════════════════════════════════════════════════════════════════════
+.bp-series__dots {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: var(--ro-space-2);
+}
+
+.bp-series__dot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 1px solid var(--ro-border-strong);
+  background: transparent;
+  color: var(--ro-muted);
+  font-family: var(--ro-font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+
+  &--read {
+    background: var(--ro-forest);
+    border-color: var(--ro-forest);
+    color: #fff;
+  }
+
+  &--queued {
+    border-style: dashed;
+    border-color: var(--ro-gold);
+    color: var(--ro-gold-text);
+  }
+
+  &--current {
+    border-color: var(--ro-gold);
+    background: var(--ro-gold);
+    color: var(--ro-gold-on);
+    cursor: default;
+  }
+}
+
+.bp-series__track {
+  position: relative;
+  height: 6px;
+  border-radius: var(--ro-radius-pill);
+  background: var(--ro-ring-track);
+  overflow: visible;
+  margin-top: var(--ro-space-2);
+}
+
+.bp-series__track-fill {
+  height: 100%;
+  border-radius: var(--ro-radius-pill);
+  background: var(--ro-gold);
+  width: var(--sp-pct, 0%);
+  transition: width .4s;
+}
+
+.bp-series__track-cursor {
+  position: absolute;
+  top: -3px;
+  width: 2px;
+  height: 12px;
+  background: var(--ro-text);
+  opacity: .6;
+}
+
+.bp-series__progress-text {
+  display: block;
+  font-family: var(--ro-font-mono);
+  font-weight: 600;
+  font-size: 11px;
+  letter-spacing: .04em;
+  color: var(--ro-muted);
+  margin-top: var(--ro-space-2);
+}
+
+.bp-series__desc {
+  font-family: var(--ro-font-body);
+  font-size: 15px;
+  line-height: 1.7;
+  color: var(--ro-text-2);
+  max-width: 680px;
+  margin-top: var(--ro-space-3);
+}

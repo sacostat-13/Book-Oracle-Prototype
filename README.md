@@ -138,7 +138,7 @@ oracle/
     │   │   ├── _mobile-nav.scss    Hamburger + full-screen mobile menu
     │   │   └── _shelf.scss         Shelf controls bar
     │   ├── components/
-    │   │   ├── _buttons.scss       .btn, .btn-ghost, .btn-gilt
+    │   │   ├── _buttons.scss       .btn, .btn-secondary, .btn-gilt
     │   │   ├── _badges.scss        Level pill + all genre/status pills
     │   │   ├── _loading.scss       Spinner only
     │   │   ├── _toast.scss         Toast notification

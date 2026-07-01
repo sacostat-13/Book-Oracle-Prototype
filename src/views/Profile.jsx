@@ -22,25 +22,30 @@ const GOAL_NAMES = {
 // ── Small stat card ──────────────────────────────────────────────────────────
 function StatCard({ value, label, sub }) {
   return (
-    <div className="pf-stat">
-      <div className="pf-stat__value">{value}</div>
-      <div className="pf-stat__label">{label}</div>
-      {sub && <div className="pf-stat__sub">{sub}</div>}
+    <div className="pf-stat-card">
+      <div className="pf-stat-value">{value}</div>
+      <div className="pf-stat-label">{label}</div>
+      {sub && <div className="pf-stat-sub">{sub}</div>}
     </div>
   );
 }
 
 // ── Horizontal bar for genre breakdown ───────────────────────────────────────
+// NOTE: the wrapper previously reused the ".pf-genre-bar" class name, but in
+// the design system ".pf-genre-bar" IS the 2px track itself (overflow:hidden) —
+// applying it to the wrapper silently clipped/collapsed the head + track.
+// Correct wrapper is ".pf-genre-row"; track is ".pf-genre-bar"; fill is
+// ".pf-genre-fill" (".pf-bar-track"/".pf-bar-fill" don't exist in the DS).
 function GenreBar({ name, count, max }) {
   const pct = max > 0 ? Math.round((count / max) * 100) : 0;
   return (
-    <div className="pf-genre-bar">
+    <div className="pf-genre-row">
       <div className="pf-genre-bar__head">
         <span className="pf-genre-bar__name">{name}</span>
         <span className="pf-genre-bar__count">{count}</span>
       </div>
-      <div className="pf-bar-track pf-bar-track--thin">
-        <div className="pf-bar-fill" style={{ '--pf-bar-w': `${pct}%` }} />
+      <div className="pf-genre-bar">
+        <div className="pf-genre-fill" style={{ '--pf-bar-w': `${pct}%` }} />
       </div>
     </div>
   );
@@ -76,35 +81,35 @@ function PaceChart({ books, onOpenBook }) {
   const selectedMonth = selected ? months.find((m) => m.key === selected) : null;
 
   return (
-    <div className="pf-pace">
+    <div className="pf-pace-panel">
       {/* Bar chart */}
-      <div className="pf-pace__bars">
+      <div className="pf-pace-bars">
         {months.map((m) => {
           const isHovered = hovered === m.key;
           const isSelected = selected === m.key;
           return (
             <div
               key={m.key}
-              className="pf-pace__col"
+              className="pf-pace-bar-col"
               onMouseEnter={() => setHovered(m.key)}
               onMouseLeave={() => setHovered(null)}
             >
               {/* Tooltip */}
               {isHovered && (
-                <div className="pf-pace__tooltip">
+                <div className="pf-pace-tooltip">
                   {m.count} book{m.count !== 1 ? 's' : ''}<br />
-                  <span className="pf-pace__tip-meta">{m.fullLabel}</span>
-                  {m.count > 0 && <div className="pf-pace__tip-hint">click to see list</div>}
+                  <span className="pf-pace-tooltip__meta">{m.fullLabel}</span>
+                  {m.count > 0 && <div className="pf-pace-tooltip__hint">click to see list</div>}
                 </div>
               )}
               {/* Bar */}
               <div
                 onClick={() => m.count > 0 && setSelected(selected === m.key ? null : m.key)}
-                className={`pf-pace__bar${m.count > 0 ? ' pf-pace__bar--has-books' : ''}${isSelected ? ' pf-pace__bar--selected' : isHovered && m.count > 0 ? ' pf-pace__bar--hover' : ''}`}
+                className={`pf-pace-bar${isSelected ? ' pf-pace-bar--active' : isHovered && m.count > 0 ? ' pf-pace-bar--hover' : ''}`}
                 style={{ '--pf-pace-h': `${Math.max(m.count / maxCount * 52, m.count > 0 ? 4 : 1)}px` }}
               />
               {/* Month label */}
-              <div className={`pf-pace__label${isSelected ? ' pf-pace__label--selected' : ''}`}>
+              <div className="pf-pace-label">
                 {m.label[0]}
               </div>
             </div>
@@ -114,27 +119,27 @@ function PaceChart({ books, onOpenBook }) {
 
       {/* Drill-down list for selected month */}
       {selectedMonth && selectedMonth.booksInMonth.length > 0 && (
-        <div className="pf-pace__drill">
-          <div className="pf-pace__drill-head">
+        <div className="pf-pace-drill">
+          <div className="pf-pace-drill__heading">
             {selectedMonth.fullLabel} · {selectedMonth.count} book{selectedMonth.count !== 1 ? 's' : ''}
           </div>
-          <div className="pf-pace__drill-list">
+          <div className="pf-pace-drill__list">
             {selectedMonth.booksInMonth.map((b, i) => (
               <div
                 key={b.bookId || b.t + i}
                 onClick={() => onOpenBook?.(b)}
-                className={`pf-pace__drill-row${onOpenBook ? ' pf-pace__drill-row--clickable' : ''}`}
+                className={`pf-pace-drill__row${onOpenBook ? ' pf-pace-drill__row--clickable' : ''}`}
               >
                 {b.coverUrl ? (
-                  <img src={b.coverUrl} alt={b.t} className="pf-pace__drill-cover" />
+                  <img src={b.coverUrl} alt={b.t} className="pf-pace-drill__cover" />
                 ) : (
-                  <div className="pf-pace__drill-cover" />
+                  <div className="pf-pace-drill__cover--placeholder" />
                 )}
                 <div style={{ minWidth: 0 }}>
-                  <div className="pf-pace__drill-title">{b.t}</div>
-                  <div className="pf-pace__drill-author">{b.a}</div>
+                  <div className="pf-pace-drill__title">{b.t}</div>
+                  <div className="pf-pace-drill__author">{b.a}</div>
                   {b.rating > 0 && (
-                    <div className="pf-pace__drill-stars">
+                    <div className="pf-pace-drill__stars">
                       {'★'.repeat(b.rating)}<span className="dim">{'★'.repeat(5 - b.rating)}</span>
                     </div>
                   )}
@@ -186,17 +191,17 @@ function UsernameSection({ profile, user, updateUsername, t }) {
   const availLabel = availability === 'available' ? t('profile.usernameAvailable') : availability === 'taken' ? t('profile.usernameTaken') : availability === 'invalid' ? t('profile.usernameInvalid') : null;
 
   return (
-    <div className="pf-section">
-      <h2 className="pf-section__title">
+    <div className="bp-section">
+      <h2 className="pf-account-card__section-title">
         {t('profile.labelUsername')}
       </h2>
-      <p className="pf-section__sub">
+      <p className="pf-account-card__hint">
         {t('profile.usernameClaimSub')}
       </p>
 
       {editing ? (
-        <div className="pf-edit-col">
-          <div className="pf-edit-inline">
+        <div className="pf-edit-stack">
+          <div className="pf-edit-row">
             <span className="pf-edit-prefix">@</span>
             <input
               type="text" maxLength={24}
@@ -205,42 +210,42 @@ function UsernameSection({ profile, user, updateUsername, t }) {
               onChange={(e) => onInputChange(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && save()}
               autoFocus
-              className="pf-input"
+              className="input"
             />
           </div>
           {availLabel && (
-            <div className={`pf-avail pf-avail--${availability === 'available' ? 'ok' : availability === 'taken' ? 'taken' : 'info'}`}>{availLabel}</div>
+            <div className={`status${availability === 'available' ? ' status--success' : availability === 'taken' ? ' status--error' : ''}`}>{availLabel}</div>
           )}
           {input && (
-            <div className="pf-url-preview">
+            <div className="pf-username-url">
               {window.location.origin}/u/{input.toLowerCase()}
             </div>
           )}
-          <div className="pf-edit-actions">
-            <button className="btn" onClick={save} disabled={availability !== 'available' || saving}>
+          <div className="pf-edit-row pf-edit-row--wrap">
+            <button className="btn-tertiary btn--sm" onClick={save} disabled={availability !== 'available' || saving}>
               {saving ? t('profile.usernameSaving') : t('common.save')}
             </button>
-            <button className="btn btn-ghost" onClick={() => { setEditing(false); setError(null); }}>{t('common.cancel')}</button>
+            <button className="btn-text" onClick={() => { setEditing(false); setError(null); }}>{t('common.cancel')}</button>
           </div>
           {error && <div className="pf-error">{error}</div>}
         </div>
       ) : profile.username ? (
-        <div className="pf-value-row">
-          <span className="pf-value">@{profile.username}</span>
+        <div className="pf-username-row">
+          <span className="pf-username-value">@{profile.username}</span>
           {profileUrl && (
-            <span className="pf-value-meta">{profileUrl}</span>
+            <span className="pf-username-url">{profileUrl}</span>
           )}
-          <button className="btn btn-ghost btn-sm" onClick={() => { setInput(profile.username || ''); setAvailability(null); setEditing(true); }}>
+          <button className="btn-tertiary btn--sm" onClick={() => { setInput(profile.username || ''); setAvailability(null); setEditing(true); }}>
             {t('profile.usernameEdit')}
           </button>
           {profileUrl && (
-            <button className="btn btn-ghost btn-sm" onClick={() => navigator.clipboard?.writeText(profileUrl)}>
+            <button className="btn-tertiary btn--sm" onClick={() => navigator.clipboard?.writeText(profileUrl)}>
               {t('friends.copyLink')}
             </button>
           )}
         </div>
       ) : (
-        <button className="btn btn-ghost" onClick={() => { setInput(''); setAvailability(null); setEditing(true); }}>
+        <button className="btn-tertiary btn--sm" onClick={() => { setInput(''); setAvailability(null); setEditing(true); }}>
           {t('profile.usernameClaim')}
         </button>
       )}
@@ -262,15 +267,15 @@ function DisplayNameSection({ profile, updateDisplayName, t }) {
   }
 
   return (
-    <div className="pf-section">
-      <h2 className="pf-section__title">
+    <div className="bp-section">
+      <h2 className="pf-account-card__section-title">
         {t('profile.labelDisplayName')}
       </h2>
-      <p className="pf-section__sub">
+      <p className="pf-account-card__hint">
         {t('profile.displayNameSub')}
       </p>
       {editing ? (
-        <div className="pf-edit-inline pf-edit-inline--wrap">
+        <div className="pf-edit-row pf-edit-row--wrap">
           <input
             type="text" maxLength={50}
             placeholder={t('profile.displayNamePlaceholder')}
@@ -278,17 +283,17 @@ function DisplayNameSection({ profile, updateDisplayName, t }) {
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && save()}
             autoFocus
-            className="pf-input"
+            className="input"
           />
-          <button className="btn" onClick={save} disabled={saving}>{saving ? t('profile.usernameSaving') : t('common.save')}</button>
-          <button className="btn btn-ghost" onClick={() => setEditing(false)}>{t('common.cancel')}</button>
+          <button className="btn-tertiary btn--sm" onClick={save} disabled={saving}>{saving ? t('profile.usernameSaving') : t('common.save')}</button>
+          <button className="btn-text" onClick={() => setEditing(false)}>{t('common.cancel')}</button>
         </div>
       ) : (
         <div className="pf-value-row">
-          <span className="pf-value pf-value--ro-text">
-            {profile.displayName || <span className="text-dim">{t('profile.notSet')}</span>}
+          <span className="pf-account-card__name">
+            {profile.displayName || <span className="lv-hl-muted">{t('profile.notSet')}</span>}
           </span>
-          <button className="btn btn-ghost btn-sm" onClick={() => { setInput(profile.displayName || ''); setEditing(true); }}>
+          <button className="btn-tertiary btn--sm" onClick={() => { setInput(profile.displayName || ''); setEditing(true); }}>
             {t('profile.usernameEdit')}
           </button>
         </div>
@@ -304,19 +309,19 @@ function PrivacySection({ profile, updatePrivacyPrefs, t }) {
   }
 
   const Toggle = ({ label, value, onToggle }) => (
-    <div className="pf-pref-row">
-      <span className="pf-pref-label">{label}</span>
+    <div className="pf-toggle-row">
+      <span className="pf-toggle-label">{label}</span>
       <button
         onClick={onToggle}
-        className={`pf-toggle${value ? ' pf-toggle--on' : ''}`}
+        className={`pf-toggle-switch${value ? ' pf-toggle-switch--on' : ''}`}
         aria-pressed={value}
       />
     </div>
   );
 
   return (
-    <div className="pf-section">
-      <h2 className="pf-section__title">
+    <div className="bp-section">
+      <h2 className="pf-account-card__section-title">
         {t('profile.labelPrivacy')}
       </h2>
       <Toggle label={t('profile.privacyDiscoverable')} value={profile.isDiscoverable} onToggle={() => toggle('isDiscoverable', profile.isDiscoverable)} />
@@ -340,7 +345,7 @@ function FriendsCallout({ go, t }) {
             : t('profile.friendsEmpty')}
         </div>
       </div>
-      <button className="btn-gilt btn-sm" onClick={() => go('friends')}>
+      <button className="btn-tertiary btn--sm" onClick={() => go('friends')}>
         {incoming.length > 0 ? `View (${incoming.length})` : 'View friends'}
       </button>
     </div>
@@ -386,11 +391,11 @@ function ReadingChallenge({ library, readingGoalCount, setReadingGoalCount, t })
 
   if (editing) {
     return (
-      <div className="pf-section">
+      <div className="bp-section">
         <p className="pf-prompt">
           {t('profile.challengeSubtitle')}
         </p>
-        <div className="pf-edit-inline pf-edit-inline--wrap">
+        <div className="pf-edit-row pf-edit-row--wrap">
           <input
             type="number" min="1" max="9999"
             placeholder={t('profile.challengePlaceholder')}
@@ -398,10 +403,10 @@ function ReadingChallenge({ library, readingGoalCount, setReadingGoalCount, t })
             onChange={(e) => setInputVal(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && save()}
             autoFocus
-            className="pf-input pf-input--narrow"
+            className="input pf-input--narrow"
           />
-          <button className="btn" onClick={save}>{t('profile.challengeSave')}</button>
-          <button className="btn btn-ghost" onClick={() => setEditing(false)}>{t('common.cancel')}</button>
+          <button className="btn-tertiary btn--sm" onClick={save}>{t('profile.challengeSave')}</button>
+          <button className="btn-text" onClick={() => setEditing(false)}>{t('common.cancel')}</button>
           {target && (
             <button
               onClick={remove}
@@ -417,11 +422,11 @@ function ReadingChallenge({ library, readingGoalCount, setReadingGoalCount, t })
 
   if (!target) {
     return (
-      <div className="pf-section">
+      <div className="bp-section">
         <p className="pf-prompt">
           {t('profile.challengeSubtitle')}
         </p>
-        <button className="btn btn-ghost" onClick={() => { setInputVal(''); setEditing(true); }}>
+        <button className="btn-tertiary btn--sm" onClick={() => { setInputVal(''); setEditing(true); }}>
           {t('profile.challengeSet')}
         </button>
       </div>
@@ -429,7 +434,7 @@ function ReadingChallenge({ library, readingGoalCount, setReadingGoalCount, t })
   }
 
   return (
-    <div className="pf-section">
+    <div className="bp-section">
       {/* Year label */}
       <div className="pf-challenge__year">
         {t('profile.challengeYear', { year })}
@@ -467,7 +472,7 @@ function ReadingChallenge({ library, readingGoalCount, setReadingGoalCount, t })
             {t('profile.challengeComplete', { done })}
           </span>
         ) : delta === 0 ? (
-          <span className="pf-hl-muted">
+          <span className="lv-hl-muted">
             {t('profile.challengePace', { projected })}
           </span>
         ) : delta > 0 ? (
@@ -482,7 +487,7 @@ function ReadingChallenge({ library, readingGoalCount, setReadingGoalCount, t })
       </div>
 
       <button
-        className="btn btn-ghost btn-sm"
+        className="btn-tertiary btn--sm"
         onClick={() => { setInputVal(String(target)); setEditing(true); }}
       >
         {t('profile.challengeEdit')}
@@ -705,13 +710,13 @@ export default function Profile() {
       <div className="breadcrumb">
         <a onClick={() => go('dashboard')}>Dashboard</a> · {t('profile.breadcrumb')}
       </div>
-      <div className="page-header">
-        <div className="page-eyebrow">{t('profile.eyebrowTitle')}</div>
-        <h1 className="page-title">
+      <div className="page-head">
+        <div className="page-head__eyebrow">{t('profile.eyebrowTitle')}</div>
+        <h1 className="page-head__title">
           {tNode('profile.pageTitle')}
         </h1>
         {hasStats && (
-          <p className="page-subtitle">
+          <p className="page-head__lead">
             {t('profile.subtitleStats', {
               books: stats.totalBooks,
               pages: stats.totalPages > 0 ? t('profile.subtitlePages', { pages: stats.totalPages.toLocaleString() }) : '',
@@ -722,7 +727,7 @@ export default function Profile() {
 
       {/* ── Reading Stats ─────────────────────────────────────────────────── */}
       {hasStats && (
-        <div className="pf-panel">
+        <div className="panel">
 
           {sectionTitle(t('profile.sectionStats'))}
 
@@ -765,9 +770,7 @@ export default function Profile() {
           {stats.datedBooks.length > 0 && (
             <>
               {sectionTitle(t('profile.sectionPace'))}
-              <div className="pf-panel-tint">
-                <PaceChart books={stats.datedBooks} onOpenBook={(b) => openBookTab(b, 'profile')} />
-              </div>
+              <PaceChart books={stats.datedBooks} onOpenBook={(b) => openBookTab(b, 'profile')} />
             </>
           )}
 
@@ -775,7 +778,7 @@ export default function Profile() {
           {stats.topGenres.length > 0 && (
             <>
               {sectionTitle(t('profile.sectionTopGenres'))}
-              <div className="pf-section">
+              <div>
                 {stats.topGenres.map((g) => (
                   <GenreBar key={g.name} name={g.name} count={g.count} max={stats.topGenres[0].count} />
                 ))}
@@ -787,9 +790,9 @@ export default function Profile() {
           {stats.topAuthor && stats.topAuthor[1] > 1 && (
             <>
               {sectionTitle(t('profile.sectionTopAuthor'))}
-              <p className="pf-author">
-                {stats.topAuthor[0]}
-                <span className="pf-author__count">
+              <p className="pf-author-line">
+                <span className="pf-author-name">{stats.topAuthor[0]}</span>
+                <span className="pf-author-count">
                   · {t('profile.topAuthorBooks', { count: stats.topAuthor[1] })}
                 </span>
               </p>
@@ -808,14 +811,14 @@ export default function Profile() {
                     onClick={() => go('series-page', { seriesName: s.name, from: 'profile', fromLabel: t('profile.fromProfile') })}
                     title={t('profile.openSeries')}
                   >
-                    <div>
-                      <div className="pf-series-row__name">{s.name}</div>
-                      <div className="pf-series-row__meta">
+                    <div className="pf-series-bar__body">
+                      <div className="pf-series-bar__name">{s.name}</div>
+                      <div className="pf-series-bar__meta">
                         {t('profile.seriesRead', { read: s.read, total: s.total })}
                       </div>
                     </div>
-                    <div className="pf-series-row__right">
-                      <span className="pf-series-row__open">
+                    <div className="pf-series-bar__right">
+                      <span className="bp-series__open">
                         {t('profile.openLink')}
                       </span>
                       <div className="pf-pips">
@@ -832,26 +835,26 @@ export default function Profile() {
 
           {/* No date data nudge */}
           {stats.datedBooks.length === 0 && stats.totalBooks > 0 && (
-            <p className="pf-nudge">
+            <p className="bp-no-rating">
               {t('profile.paceNudge')}
             </p>
           )}
 
-          <div className="pf-divider" />
+          <hr className="divider" />
         </div>
       )}
 
       {/* ── Profile settings ──────────────────────────────────────────────── */}
-      <div className="onboarding-card onboarding-card--wide">
+      <div className="panel">
         {user && (
           <>
-            <h2 className="pf-section__title pf-section__title--tight">
+            <h2 className="pf-account-card__section-title">
               {t('profile.sectionAccount')}
             </h2>
             <p className="pf-text">
               {state.profile.displayName || user.email}
               <br />
-              <span className="pf-inline-hl">
+              <span className="lv-hl">
                 {t('profile.accountSynced')}
               </span>
             </p>
@@ -863,14 +866,14 @@ export default function Profile() {
         <PrivacySection profile={state.profile} updatePrivacyPrefs={updatePrivacyPrefs} t={t} />
         <FriendsCallout go={go} t={t} />
 
-        <h2 className="pf-section__title" style={user ? undefined : { marginTop: 0 }}>
+        <h2 className="pf-account-card__section-title" style={user ? undefined : { marginTop: 0 }}>
           {t('profile.labelReadingLevel')}
         </h2>
         <p className="pf-text">
           {LEVEL_NAMES[state.profile.readingLevel] || t('profile.notSet')}
         </p>
 
-        <h2 className="pf-section__title">
+        <h2 className="pf-account-card__section-title">
           {t('profile.labelReadingChallenge')}
         </h2>
         <ReadingChallenge
@@ -880,28 +883,28 @@ export default function Profile() {
           t={t}
         />
 
-        <h2 className="pf-section__title">
+        <h2 className="pf-account-card__section-title">
           {t('profile.labelLibrary')}
         </h2>
         <p className="pf-text pf-text--gap-lg">
           {t('profile.librarySummary', { books: state.library.length, queued: state.readNext.length })}
           {state.profile.goodreadsImported && (
-            <><br /><span className="pf-text__hl">{t('profile.goodreadsImported')}</span></>
+            <><br /><span className="lv-hl">{t('profile.goodreadsImported')}</span></>
           )}
         </p>
 
-        <div className="pf-block">
+        <div>
           <input
             ref={fileRef}
             type="file"
             accept=".csv,text/csv"
-            className="file-hidden"
+            className="sr-only"
             onChange={(e) => {
               const f = e.target.files[0];
               if (f) handleReimport(f);
             }}
           />
-          <button className="btn btn-ghost" onClick={() => fileRef.current?.click()}>
+          <button className="btn-secondary" onClick={() => fileRef.current?.click()}>
             {state.profile.goodreadsImported
               ? t('profile.reimportGoodreads') : t('profile.importGoodreads')}
           </button>
@@ -909,22 +912,22 @@ export default function Profile() {
 
         {/* ── Subscription section ──────────────────────────────────────────── */}
         {user && (
-          <div className="pf-subsection">
-            <h2 className="pf-section__title pf-section__title--tight">
+          <div className="bp-section">
+            <h2 className="pf-account-card__section-title">
               {t('subscription.sectionTitle')}
             </h2>
 
-            {/* Tier badge */}
+            {/* Tier badge — reuses the global .status pill system */}
             {(() => {
               const status = quota?.subscription_status || 'free';
               const isPro     = status === 'active';
               const isPastDue = status === 'past_due';
               return (
                 <div className="pf-tier-row">
-                  <span className={`pf-tier-badge${isPro ? ' pf-tier-badge--pro' : isPastDue ? ' pf-tier-badge--pastdue' : ''}`}>
+                  <span className={`status${isPro ? ' status--success' : isPastDue ? ' status--warn' : ''}`}>
                     {isPro ? `✦ ${t('subscription.tierPro')}` : isPastDue ? `⚠ ${t('subscription.tierPastDue')}` : t('subscription.tierFree')}
                   </span>
-                  <span className="pf-tier-desc">
+                  <span className="pf-account-card__hint">
                     {isPro
                       ? t('subscription.proDesc')
                       : isPastDue
@@ -938,17 +941,18 @@ export default function Profile() {
               );
             })()}
 
-            {/* Quota bar — shown for all users */}
+            {/* Quota bar — reuses the dashboard's AI-quota bar (.db-ai__track/__fill),
+                the same visual pattern, instead of a duplicate .pf-quota* set */}
             {quota && (
-              <div className="pf-quota">
-                <div className="pf-quota__track">
+              <div>
+                <div className="db-ai__track">
                   <div
-                    className={`pf-quota__fill${quota.calls_remaining === 0 ? ' pf-quota__fill--empty' : ''}`}
-                    style={{ '--pf-quota-w': `${Math.round(((quota.calls_used ?? 0) / (quota.calls_limit ?? 5)) * 100)}%` }}
+                    className={`db-ai__fill${quota.calls_remaining === 0 ? ' db-ai__fill--empty' : ''}`}
+                    style={{ '--ai-pct': `${Math.round(((quota.calls_used ?? 0) / (quota.calls_limit ?? 5)) * 100)}%` }}
                   />
                 </div>
                 {quota.reset_at && (
-                  <div className="pf-quota__reset">
+                  <div className="db-ai__note">
                     {t('subscription.resetsOn', { date: new Date(quota.reset_at).toLocaleDateString(undefined, { month: 'long', day: 'numeric' }) })}
                   </div>
                 )}
@@ -957,12 +961,12 @@ export default function Profile() {
 
             {/* CTA */}
             {quota?.subscription_status === 'active' ? (
-              <button className="btn btn-ghost" onClick={handleManage} disabled={portalLoading}>
+              <button className="btn-secondary" onClick={handleManage} disabled={portalLoading}>
                 {portalLoading ? t('subscription.redirecting') : t('subscription.manageBtn')}
               </button>
             ) : (
               <div className="pf-upgrade">
-                <button className="btn" onClick={handleUpgrade} disabled={checkoutLoading}>
+                <button className="btn-primary" onClick={handleUpgrade} disabled={checkoutLoading}>
                   {checkoutLoading ? t('subscription.redirecting') : t('subscription.upgradeBtn')}
                 </button>
                 <div className="pf-upgrade__features">
@@ -984,9 +988,9 @@ export default function Profile() {
         )}
 
         {/* ── Danger zone ───────────────────────────────────────────────────── */}
-        <div className="pf-danger">
+        <div className="bp-section">
           <button
-            className="btn btn-ghost"
+            className="btn-danger"
             onClick={() => {
               if (confirm(t('library.confirmReset'))) {
                 resetAll();
@@ -1045,22 +1049,22 @@ function NotificationPreferences({ t, user, showToast }) {
   ];
 
   return (
-    <div className="pf-subsection">
-      <h2 className="pf-section__title pf-section__title--tight pf-section__title--sm">
+    <div className="bp-section">
+      <h2 className="pf-account-card__section-title">
         {t('notifications.prefTitle')}
       </h2>
-      <div className="pf-notif-list">
+      <div>
         {rows.map(({ key, label, desc, locked }) => (
-          <div key={key} className="pf-notif-row">
+          <div key={key} className="pf-toggle-row">
             <div>
-              <div className={`pf-notif-label${locked ? ' pf-notif-label--locked' : ''}`}>{label}</div>
+              <div className={`pf-toggle-label${locked ? ' pf-notif-label--locked' : ''}`}>{label}</div>
               <div className="pf-notif-desc">{desc}</div>
             </div>
             <button
               onClick={() => !locked && save({ ...prefs, [key]: !prefs[key] })}
               disabled={locked || saving}
               aria-pressed={prefs[key] || locked}
-              className={`pf-toggle${(prefs[key] || locked) ? ' pf-toggle--on' : ''}${locked ? ' pf-toggle--locked' : ''}`}
+              className={`pf-toggle-switch${(prefs[key] || locked) ? ' pf-toggle-switch--on' : ''}`}
             />
           </div>
         ))}

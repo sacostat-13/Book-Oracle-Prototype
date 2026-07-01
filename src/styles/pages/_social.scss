@@ -578,6 +578,24 @@
 .friend-row--request {
   background: color-mix(in srgb, var(--ro-gold) 5%, var(--ro-surface));
   border-color: color-mix(in srgb, var(--ro-gold) 30%, var(--ro-border));
+  position: relative;
+
+  @media (max-width: 767px) {
+    padding-bottom: var(--ro-space-16);
+
+  }
+}
+
+.friend-row__actions {
+  position: absolute;
+  right: 18px;
+  display: flex;
+  gap: 8px;
+
+  @media (max-width: 767px) {
+    bottom: var(--ro-space-2);
+    left: var(--ro-space-4);
+  }
 }
 
 // ── Current friends row (bigger avatar + name baseline) ───────────────────────

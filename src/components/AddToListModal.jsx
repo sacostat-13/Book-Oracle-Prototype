@@ -143,8 +143,8 @@ export default function AddToListModal({ books = [], onClose }) {
             <button className="btn" onClick={() => setCreating(true)}>
               + {t('lists.newListBtn')}
             </button>
-            <button className="btn btn-ghost" onClick={() => { onClose(); go('lists'); }}
-              >
+            <button className="btn btn-secondary" onClick={() => { onClose(); go('lists'); }}
+            >
               {t('addToList.manageLists')}
             </button>
           </div>

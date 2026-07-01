@@ -19,13 +19,13 @@ export default function Onboarding() {
   const LEVELS = [1, 2, 3, 4, 5].map((v) => ({
     v,
     title: t(`onboarding.levels.${v}.title`),
-    sub:   t(`onboarding.levels.${v}.sub`),
+    sub: t(`onboarding.levels.${v}.sub`),
   }));
 
   const GOALS = ['level-up', 'explore', 'random'].map((v) => ({
     v,
     title: t(`onboarding.goals.${v}.title`),
-    sub:   t(`onboarding.goals.${v}.sub`),
+    sub: t(`onboarding.goals.${v}.sub`),
   }));
 
   async function handleFile(file) {
@@ -134,7 +134,7 @@ export default function Onboarding() {
             </div>
 
             <div className="onb-actions">
-              <button className="btn btn-ghost" onClick={() => setStep(1)}>{t('onboarding.back')}</button>
+              <button className="btn btn-secondary" onClick={() => setStep(1)}>{t('onboarding.back')}</button>
               <button className="btn" onClick={() => setStep(3)}>{t('onboarding.continue')}</button>
             </div>
           </>
@@ -158,7 +158,7 @@ export default function Onboarding() {
               ))}
             </div>
             <div className="onb-actions">
-              <button className="btn btn-ghost" onClick={() => setStep(2)}>{t('onboarding.back')}</button>
+              <button className="btn btn-secondary" onClick={() => setStep(2)}>{t('onboarding.back')}</button>
               <button className="btn" disabled={goal == null} onClick={finish}>
                 {t('onboarding.enterLibrary')}
               </button>

@@ -281,7 +281,7 @@ export default function BulkImport({ onClose, target = 'wishlist' }) {
               {t('bulkImport.resultsReadyNote')}{' '}
               {unmatchedCount > 0 && <em style={{ opacity: .7 }}>{t('bulkImport.resultsUnmatchedNote')}</em>}
             </span>
-            <button className="btn btn-ghost" onClick={clearResults} disabled={importing}>{t('bulkImport.startOver')}</button>
+            <button className="btn btn-secondary" onClick={clearResults} disabled={importing}>{t('bulkImport.startOver')}</button>
             <button className="btn" onClick={confirmImport} disabled={(foundCount + unmatchedCount) === 0 || importing || progress}>
               {importing ? t('bulkImport.adding') : t('bulkImport.addBtn', { count: foundCount + unmatchedCount, target: targetWord })}
             </button>

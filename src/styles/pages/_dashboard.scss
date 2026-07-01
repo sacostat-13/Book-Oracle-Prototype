@@ -961,8 +961,8 @@
 }
 
 .db-ff-book-cover {
-  width: 32px;
-  height: 48px;
+  width: 64px;
+  height: 96px;
   object-fit: cover;
   border-radius: 3px;
   flex-shrink: 0;
@@ -975,13 +975,12 @@
 }
 
 .db-ff-text {
-  font-size: 14px;
+  font: 400 16px / 1.4 "Inter";
   line-height: 1.4;
 }
 
 .db-ff-name {
   font-family: var(--ro-font-display);
-  font-style: italic;
   font-weight: 600;
   color: var(--ro-text);
   cursor: pointer;
@@ -995,7 +994,6 @@
 
 .db-ff-title {
   font-family: var(--ro-font-display);
-  font-style: italic;
   font-weight: 600;
   color: var(--ro-text);
 }
@@ -1017,8 +1015,7 @@
 }
 
 .db-ff-time-label {
-  font-family: var(--ro-font-mono);
-  font-size: 10px;
+  font-size: 11px;
   letter-spacing: .06em;
   text-transform: uppercase;
   color: var(--ro-dim);

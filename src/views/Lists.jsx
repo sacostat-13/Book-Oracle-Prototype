@@ -100,11 +100,11 @@ export default function Lists() {
   return (
     <>
       <div className="page-page-head">
-        <div className="page-head__eyebrow"><span>Dashboard</span> · Lists</div>
-        <h1 className="page-head__title-title">
+        <div className="page-head__eyebrow"><span>Dashboard</span> · {t('lists.eyebrow')}</div>
+        <h1 className="page-head__title">
           <span className="accent">{t('about.featureListsTitle')}</span>
         </h1>
-        <p className="lists-empty-text">
+        <p className="page-head__lead">
           {t('lists')}
         </p>
       </div>
@@ -120,7 +120,7 @@ export default function Lists() {
           <div className="ornament">❦</div>
           <div className="empty-state-title">{t('lists.emptyTitle')}</div>
           <div className="empty-state-text">
-            {t('emptyText')}
+            {t('lists.emptyText')}
           </div>
         </div>
       ) : (

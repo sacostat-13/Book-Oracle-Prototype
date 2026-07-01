@@ -64,8 +64,8 @@ export default function CurrentlyReading({ onOpenBook }) {
             {t('currentlyReading.emptyText')}
           </div>
           <div className="lv-load-more">
-            <button className="btn btn-ghost" onClick={() => go('read-next')}>{t('nav.readNext')}</button>
-            <button className="btn btn-ghost" onClick={() => go('wishlist')}>{t('nav.wishlist')}</button>
+            <button className="btn btn-secondary" onClick={() => go('read-next')}>{t('nav.readNext')}</button>
+            <button className="btn btn-secondary" onClick={() => go('wishlist')}>{t('nav.wishlist')}</button>
           </div>
         </div>
       ) : (

@@ -68,19 +68,19 @@ function computeSimilar(display, genresByBookId, pool, limit = 12) {
 
 function SimilarBooks({ similar }) {
   const t = useT();
-  
+
   if (!similar.length) return null;
 
   return (
-    <div className="book-page-similar">
-      <div className="book-modal-section-title">
+    <div className="bp-section">
+      <div className="bp-section__label">
         {t('bookPage.youMightAlsoLike')}
       </div>
-      <div className="similar-grid">
+      <div className="bp-similar-grid">
         {similar.map((b, i) => (
           <div
             key={bookKey(b) + i}
-            className="similar-card"
+            className="bp-similar-item"
             onClick={() => openBookTab(b, 'book-page')}
             title={`${b.t}${b.a ? ' · ' + b.a : ''}`}
           >
@@ -88,17 +88,16 @@ function SimilarBooks({ similar }) {
               <img
                 src={b.coverUrl}
                 alt={b.t}
-                className="similar-card__cover"
+                className="bp-similar-cover"
               />
             ) : (
-              <div className="similar-card__cover similar-card__cover--fallback"
-                style={{ background: `linear-gradient(155deg,#3a2a1c,#1a100a)` }}>
-                <span className="similar-card__fallback-title">{b.t?.slice(0, 22)}</span>
+              <div className="bp-similar-cover bp-similar-cover--placeholder">
+                <span className="bp-similar-cover__title">{b.t?.slice(0, 22)}</span>
               </div>
             )}
-            <div className="similar-card__info">
-              <div className="similar-card__title">{b.t?.length > 34 ? b.t.slice(0, 33) + '…' : b.t}</div>
-              <div className="similar-card__author">{b.a}</div>
+            <div>
+              <div className="bp-similar-title">{b.t?.length > 34 ? b.t.slice(0, 33) + '…' : b.t}</div>
+              <div className="bp-similar-author">{b.a}</div>
             </div>
           </div>
         ))}
@@ -108,17 +107,18 @@ function SimilarBooks({ similar }) {
 }
 
 // ─── Category pill ────────────────────────────────────────────────────────────
-
+// Previously this had a duplicate `className` prop (invalid JSX — only the
+// second, "bp-cat", was ever applied, silently dropping "level-pill", which
+// doesn't exist in the design system anyway) plus inline styles referencing
+// --gilt/--paper-aged, tokens that no longer exist in _themes.scss (the theme
+// was renamed to the --ro- namespace). Verified vs. unverified is now a real
+// modifier class instead of inline styles.
 function CategoryPill({ category, removing, canRemove, onRemove }) {
   const { name, verified } = category;
-  const baseStyle = verified
-    ? { background: 'rgba(176,140,63,0.18)', borderColor: 'var(--gilt)', color: 'var(--gilt-bright)' }
-    : { background: 'rgba(176,140,63,0.04)', borderColor: 'rgba(176,140,63,0.3)', color: 'var(--paper-aged)', opacity: 0.9 };
   const showRemove = canRemove && !verified;
   return (
     <span
-      className="level-pill"
-      className="bp-cat" style={{ ...baseStyle, opacity: removing ? 0.4 : 1 }}
+      className={`bp-cat${verified ? '' : ' bp-cat--unverified'}${removing ? ' bp-cat--removing' : ''}`}
       title={verified ? 'Verified by our editors' : 'Your private category'}
     >
       {verified && <span>☩</span>}
@@ -218,13 +218,13 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
   // Enrichment — keyed on stable identifiers to avoid re-firing when DataContext
   // produces a new book object reference after cacheBookFields writes back.
   // Using [book] would loop: cacheBookFields → state update → new book ref → re-fire.
-  const bookTitle      = book?.t || null;
-  const bookAuthor     = book?.a || null;
+  const bookTitle = book?.t || null;
+  const bookAuthor = book?.a || null;
   const bookHardcoverId = book?.hardcoverId || null;
   const isPreviewParam = route.params?.preview === 'true';
-  const hasCover       = !!(book?.coverUrl);
-  const hasPages       = !!(book?.pp);
-  const hasDesc        = !!(book?.d);
+  const hasCover = !!(book?.coverUrl);
+  const hasPages = !!(book?.pp);
+  const hasDesc = !!(book?.d);
   useEffect(() => {
     if (!book) return;
     let cancelled = false;
@@ -294,7 +294,7 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
     }
     run();
     return () => { cancelled = true; };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bookTitle, bookAuthor, bookHardcoverId, isPreviewParam, hasCover, hasPages, hasDesc]);
 
   // Series fetch — keyed on stable string values, NOT object references.
@@ -317,17 +317,17 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
       if (!cancelled && d) setSeriesDescription(d);
     });
     return () => { cancelled = true; };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [seriesNameForEffect, authorForEffect]);
 
   if (notFound) {
     return (
-      <div className="empty-state lv-empty">
-        <div className="ornament">❦</div>
-        <div className="empty-state-title">
+      <div className="lv-empty">
+        <div className="lv-empty-icon">❦</div>
+        <div className="lv-empty-title">
           {t('bookPage.notFound')}
         </div>
-        <div className="empty-state-text">
+        <div className="lv-empty-text">
           {t('bookPage.notInCollection')}
         </div>
         <button className="btn-primary" onClick={() => go(from)}>
@@ -340,20 +340,20 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
   // While DataContext is loading, render from the URL snapshot if available
   if (!book && snapshotBook) {
     return (
-      <div className="book-page">
-        <div className="book-page-hero">
-          <div className="book-page-cover-col">
+      <div className="bp-page">
+        <div className="bp-hero">
+          <div className="bp-cover-col">
             <BookCover title={snapshotBook.t || ''} author={snapshotBook.a || ''} coverUrl={snapshotBook.coverUrl} />
           </div>
-          <div className="book-page-info-col">
+          <div className="bp-info">
             {snapshotBook.g && (
-              <div className="book-modal-genres">
-                <span className="book-modal-genre">{snapshotBook.g}</span>
+              <div className="bp-meta">
+                <span className="chip">{snapshotBook.g}</span>
               </div>
             )}
-            <h2 className="book-modal-title">{snapshotBook.t}</h2>
-            <div className="book-modal-author">{snapshotBook.a}</div>
-            <div className="book-page-actions bp-actions">
+            <h2 className="bp-title">{snapshotBook.t}</h2>
+            <div className="bp-author">{snapshotBook.a}</div>
+            <div className="bp-actions">
               {authPending || (isAuthed && !dataReady) ? (
                 <span className="bp-loading-note">
                   {t('bookPage.loadingLibrary')}
@@ -367,11 +367,11 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
           </div>
         </div>
         {snapshotBook.d && (
-          <div className="book-page-body">
-            <div className="book-modal-section-title">
+          <div className="bp-section">
+            <div className="bp-section__label">
               {t('bookModal.description')}
             </div>
-            <p className="book-page-description">{snapshotBook.d}</p>
+            <p className="bp-description">{snapshotBook.d}</p>
           </div>
         )}
       </div>
@@ -396,7 +396,7 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
 
   const libraryRow = inLib ? state.library.find((b) => bookKey(b) === k) : null;
   const liveRating = libraryRow?.rating ?? display.rating ?? null;
-  const liveNotes  = libraryRow?.notes ?? null;
+  const liveNotes = libraryRow?.notes ?? null;
 
   const categories = getCategoriesForBook ? getCategoriesForBook(display) : [];
   const existingCategoryIds = new Set(categories.map((c) => c.categoryId));
@@ -471,21 +471,20 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
         const isCurrent = bookKey(entry) === k;
         const read = state.library.some((l) => bookKey(l) === bookKey(entry));
         const queued = state.readNext.some((l) => bookKey(l) === bookKey(entry));
-        const cls = isCurrent ? 'current' : read ? 'read' : queued ? 'queued' : '';
+        const cls = isCurrent ? ' bp-series__dot--current' : read ? ' bp-series__dot--read' : queued ? ' bp-series__dot--queued' : '';
         dots.push(
           <div
             key={i}
-            className={`series-dot ${cls}`}
+            className={`bp-series__dot${cls}`}
             title={`${entry.t}${read ? ' — read' : queued ? ' — queued' : ''}`}
             onClick={() => !isCurrent && go('book-page', buildBookPageParams(entry, 'book-page', display.t))}
-            
           >
             {i}
           </div>
         );
       } else {
         dots.push(
-          <div key={i} className="series-dot" title={`Book ${i}`}>{i}</div>
+          <div key={i} className="bp-series__dot" title={`Book ${i}`}>{i}</div>
         );
       }
     }
@@ -495,7 +494,7 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
   const links = purchaseLinks(display);
 
   return (
-    <div className="book-page">
+    <div className="bp-page">
       {/* Breadcrumb */}
       <div className="breadcrumb">
         <a onClick={() => go(from)}>{fromLabel}</a>
@@ -504,48 +503,53 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
       </div>
 
       {/* Hero */}
-      <div className="book-page-hero">
-        <div className="book-page-cover">
+      <div className="bp-hero">
+        <div className="bp-cover-col">
           <BookCover title={display.t} author={display.a} coverUrl={display.coverUrl} eager />
         </div>
 
-        <div className="book-page-info">
+        <div className="bp-info">
           {genres.length > 0 && (
-            <div className="book-modal-genres">
+            <div className="bp-meta">
               {genres.map((g) => (
-                <span key={g.name} className="book-modal-genre" title={g.description || undefined}>
+                <span key={g.name} className="chip" title={g.description || undefined}>
                   {g.name}
                 </span>
               ))}
             </div>
           )}
 
-          <h1 className="book-page-title">{display.t}</h1>
-          <div className="book-page-author">{display.a}</div>
+          <h1 className="bp-title">{display.t}</h1>
+          <div className="bp-author">{display.a}</div>
 
-          {/* Meta pills */}
-          <div className="book-modal-meta bp-meta">
-            {display.pp && <span className="level-pill">📄 {display.pp} {t('profile.statPages')}</span>}
-            {display.c && <span className="level-pill">prose {'●'.repeat(display.c)}{'○'.repeat(5 - display.c)}</span>}
-            {display.p && <span className="level-pill">depth {'●'.repeat(display.p)}{'○'.repeat(5 - display.p)}</span>}
+          {/* Meta pills — .level-pill doesn't exist in the DS; the correct
+              class is .bp-pill, with modifiers matching what's actually
+              defined: --read / --ro-gold / --moss (not "--gold", which was
+              the bug silently dropping the verified-pill styling below). */}
+          <div className="bp-meta">
+            {display.pp && <span className="bp-pill">📄 {display.pp} {t('profile.statPages')}</span>}
+            {display.c && <span className="bp-pill">prose {'●'.repeat(display.c)}{'○'.repeat(5 - display.c)}</span>}
+            {display.p && <span className="bp-pill">depth {'●'.repeat(display.p)}{'○'.repeat(5 - display.p)}</span>}
             {(display.status === 'verified' || display.status === 'oracle_categorized') && (
-              <span className="level-pill" className="bp-pill bp-pill--gold"
-                title="Curated · verified by our editors">
+              <span
+                className="bp-pill bp-pill--ro-gold"
+                title="Curated · verified by our editors"
+              >
                 {t('bookPage.verified')}
               </span>
             )}
             {inLib && (
-              <span className="level-pill" className="bp-pill bp-pill--moss">
+              <span className="bp-pill bp-pill--moss">
                 ✓ {t('navSearch.statusRead')}
               </span>
             )}
             {inWish && !inLib && (
-              <span className="level-pill">
+              <span className="bp-pill">
                 {t('bookPage.inWishlistShort')}
               </span>
             )}
             {inNext && (
-              <span className="level-pill">
+              <span className="bp-pill">
                 {t('bookPage.inReadNextShort')}
               </span>
             )}
@@ -554,10 +558,7 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
           {/* Series */}
           {seriesLoading && display.s?.name && (
             <div className="bp-loading-note">
-              <div className="loading-spinner" />
-              <span className="t-overline">
-                {t('bookPage.loadingSeries')}
-              </span>
+              {t('bookPage.loadingSeries')}
             </div>
           )}
           {!seriesLoading && seriesBlock && (() => {
@@ -569,16 +570,16 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
             const trackCursorPct = totalBooks > 1 ? ((currentPos - 1) / (totalBooks - 1)) * 100 : 0;
             const goToSeries = () => go('series-page', { seriesName: name, from: 'book-page', fromLabel: display.t });
             return (
-              <div className="book-page-series">
+              <div className="bp-series">
                 {/* Label row — eyebrow left, open-series pill right */}
                 <div className="bp-series__head">
-                  <div className="book-page-series-label">
+                  <div className="bp-section__label">
                     {t('bookPage.partOfSeries')}
                   </div>
                   <button
                     onClick={goToSeries}
                     title={t('bookPage.openSeries')}
-                    className="series-open-btn"
+                    className="bp-series__open"
                   >
                     {t('bookPage.openSeries')}
                   </button>
@@ -586,35 +587,38 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
 
                 {/* Series name — clickable */}
                 <div
-                  className="series-name"
+                  className="bp-series__name"
                   onClick={goToSeries}
-                  
                 >
                   {name}
                 </div>
 
                 {useTrack ? (
-                  <div className="series-track">
-                    <div className="series-track__fill" style={{ '--sp-pct': `${trackReadPct}%` }} />
-                    <div className="series-track__cursor" style={{ left: `${Math.max(0, Math.min(100, trackCursorPct))}%` }} />
+                  <div className="bp-series__track">
+                    <div className="bp-series__track-fill" style={{ '--sp-pct': `${trackReadPct}%` }} />
+                    <div className="bp-series__track-cursor" style={{ left: `${Math.max(0, Math.min(100, trackCursorPct))}%` }} />
                   </div>
                 ) : (
-                  <div className="series-progress">
+                  <div className="bp-series__dots">
                     {dots}
                   </div>
                 )}
-                <span className="series-progress-text">
+                <span className="bp-series__progress-text">
                   {t('bookPage.seriesRead', { read: readCount, total: totalBooks })}
                 </span>
                 {seriesDescription && (
-                  <p className="book-page-series-desc">{seriesDescription.description}</p>
+                  <p className="bp-series__desc">{seriesDescription.description}</p>
                 )}
               </div>
             );
           })()}
 
-          {/* Actions */}
-          <div className="book-page-actions">
+          {/* Actions — .btn/.btn-secondary don't exist in the DS; mapped to the
+              actual six-variant button system (.btn-primary/-secondary/
+              -tertiary). Each duplicate `className` below (two attributes on
+              one element, invalid JSX) has been collapsed to one class,
+              since only the last of a duplicate pair was ever applied. */}
+          <div className="bp-actions">
             {authPending ? (
               // Auth check in progress — don't flash sign-in prompt
               <span className="bp-loading-note">
@@ -624,8 +628,7 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
               // Confirmed not signed in — show sign-in prompt
               <a
                 href={window.location.pathname}
-                className="btn btn-ghost"
-                className="bp-link"
+                className="btn-secondary"
               >
                 {t('bookPage.signInToAdd')}
               </a>
@@ -635,21 +638,21 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
                 {t('bookPage.loadingLibrary')}
               </span>
             ) : inLib ? (
-              <button className="btn btn-ghost" onClick={() => removeFromLibrary(display)}>
+              <button className="btn-secondary" onClick={() => removeFromLibrary(display)}>
                 {t('bookPage.removeFromLibrary')}
               </button>
             ) : inNext ? (
               <>
-                <button className="btn" onClick={() => markAsRead(display)}>
+                <button className="btn-primary" onClick={() => markAsRead(display)}>
                   {t('bookPage.markAsRead')}
                 </button>
-                <button className="btn btn-ghost" onClick={() => removeFromReadNext(display)}>
+                <button className="btn-secondary" onClick={() => removeFromReadNext(display)}>
                   {t('wishlist.remove')}
                 </button>
               </>
             ) : (
               <>
-                <button className="btn" onClick={() => addToReadNext(display)}>
+                <button className="btn-primary" onClick={() => addToReadNext(display)}>
                   {t('bookPage.addToNext')}
                 </button>
                 {!inWish && (
@@ -657,7 +660,7 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
                     {t('bookPage.addToWishlist')}
                   </button>
                 )}
-                <button className="btn btn-ghost" onClick={() => markAsRead(display)}>
+                <button className="btn-secondary" onClick={() => markAsRead(display)}>
                   {t('bookPage.markAsRead')}
                 </button>
               </>
@@ -665,16 +668,17 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
             {isAuthed && !authPending && dataReady && <AddToListPicker book={display} />}
           </div>
 
-          {/* Purchase */}
+          {/* Purchase — .bp-link is the exact existing class for this row;
+              the previous duplicate className also carried a dead
+              "btn btn-secondary" pair that was never applied. */}
           {links.length > 0 && (
-            <div className="book-page-purchase">
+            <div className="bp-links">
               {links.map((link) => (
                 <a
                   key={link.url}
                   href={link.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="btn btn-ghost"
                   className="bp-link"
                 >
                   ↗ {link.label}
@@ -687,8 +691,8 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
 
       {/* Description */}
       {display.d && (
-        <div className="book-page-body">
-          <div className="book-modal-section-title">
+        <div className="bp-section">
+          <div className="bp-section__label">
             {t('bookModal.description')}
             {display.descriptionSource === 'wikipedia' && display.wikipediaUrl && (
               <>
@@ -704,7 +708,7 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
               </>
             )}
           </div>
-          <p className="book-page-description">{display.d}</p>
+          <p className="bp-description">{display.d}</p>
         </div>
       )}
 
@@ -712,7 +716,7 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
       {/* {seriesBlock && (
         <div className="bp-actions">
           <button
-            className="li-action success"
+            className="btn-primary"
             onClick={() => go('plan-create', { seriesName: seriesBlock.name })}
           >
             {t('bookModal.createPlan')}
@@ -720,18 +724,19 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
         </div>
       )} */}
 
-      {/* Rating & notes — only shown for books in library */}
+      {/* Rating & notes — only shown for books in library.
+          (The section head previously carried two `className` attributes —
+          invalid JSX — silently dropping "book-modal-section-title", which
+          doesn't exist in the DS anyway; ".bp-section__head" is correct.
+          "li-action" has no base rule in the DS, only a "--disabled"
+          modifier, so it's replaced with the equivalent ".btn-text".) */}
       {inLib && (
-        <div className="book-page-body bp-section">
-          <div
-            className="book-modal-section-title"
-            className="bp-section__head"
-          >
-            <span>{t('rating.eyebrowEdit')}</span>
+        <div className="bp-section">
+          <div className="bp-section__head">
+            <span className="bp-section__label">{t('rating.eyebrowEdit')}</span>
             <button
-              className="li-action"
+              className="btn-text"
               onClick={() => setRatingEditorOpen(true)}
-
             >
               {liveRating > 0 || liveNotes ? t('common.edit') : t('bookModal.addRating')}
             </button>
@@ -757,12 +762,9 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
       )}
 
       {/* Categories */}
-      <div className="book-page-body bp-section">
-        <div
-          className="book-modal-section-title"
-          className="bp-section__head"
-        >
-          <span>
+      <div className="bp-section">
+        <div className="bp-section__head">
+          <span className="bp-section__label">
             {t('bookModal.categories')}
             {categories.length > 0 && (
               <span className="bp-section__count">· {categories.length}/10</span>
@@ -770,9 +772,8 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
           </span>
           {canAddCategories && !atCategoryCap && (
             <button
-              className="li-action"
+              className="btn-text"
               onClick={() => setAdderOpen((v) => !v)}
-
             >
               {adderOpen ? t('bookModal.done') : t('bookModal.addCategory')}
             </button>
@@ -797,7 +798,7 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
           </div>
         )}
         {adderOpen && canAddCategories && (
-          <div >
+          <div>
             <CategoryAutocomplete
               book={display}
               existingIds={existingCategoryIds}
