@@ -772,6 +772,16 @@
 .bp-cover-col {
   position: sticky;
   top: 80px;
+
+  >img {
+    aspect-ratio: 2 / 3;
+    border-radius: 12px;
+    box-shadow: rgba(0, 0, 0, 0.5) 0px 18px 38px;
+    border: 1px solid var(--gold);
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
 }
 
 .bp-cover {
