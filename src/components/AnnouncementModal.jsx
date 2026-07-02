@@ -5,6 +5,7 @@
 
 import { useEffect } from 'react';
 import { useT } from '../lib/I18nContext';
+import CornerBrackets from './CornerBrackets';
 
 export default function AnnouncementModal({ announcement, onClose }) {
   const t = useT();
@@ -28,11 +29,11 @@ export default function AnnouncementModal({ announcement, onClose }) {
 
   return (
     <div
-      className="modal-backdrop"
-      onClick={(e) => { if (e.target === e.currentTarget) onClose?.(); }}
       className="rating-modal-overlay"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose?.(); }}
     >
       <div className="rating-modal modal-wide">
+        <CornerBrackets />
         {/* Header */}
         <div className="modal-head">
           <div>
@@ -55,7 +56,7 @@ export default function AnnouncementModal({ announcement, onClose }) {
         {/* Body */}
         <div className="modal-body">
           {content.split('\n').filter(Boolean).map((para, i) => (
-            <p key={i} className="about-section__body" style={{ margin: "0 0 0.85rem" }}>
+            <p key={i} className="about-section__body">
               {para}
             </p>
           ))}

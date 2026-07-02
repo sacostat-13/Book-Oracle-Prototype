@@ -603,7 +603,7 @@ export default function BookModal({ book, onClose, onOpenBook }) {
               </div>
               <div style={{ marginTop: '0.8rem', display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                 <button
-                  className="btn"
+                  className="btn-primary"
                   onClick={() => { const n = seriesBlock.name; go('series-page', { seriesName: n, from: 'wishlist', fromLabel: t('navSearch.statusWishlist') }); onClose(); }}
                 >
                   {t('bookPage.openSeries')}
@@ -653,7 +653,7 @@ export default function BookModal({ book, onClose, onOpenBook }) {
                 href={link.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="btn btn-secondary"
+                className="btn-secondary"
                 style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}
                 title={link.kind === 'search' ? 'Opens a search — no direct product link available' : null}
               >
@@ -665,25 +665,25 @@ export default function BookModal({ book, onClose, onOpenBook }) {
 
         <div className="book-modal-actions">
           {inLib ? (
-            <button className="btn btn-secondary" onClick={() => { removeFromLibrary(display); onClose(); }}>
+            <button className="btn-secondary" onClick={() => { removeFromLibrary(display); onClose(); }}>
               Remove from library
             </button>
           ) : inNext ? (
             <>
-              <button className="btn" onClick={() => { markAsRead(display); onClose(); }}>✓ Mark as read</button>
-              <button className="btn btn-secondary" onClick={() => { removeFromReadNext(display); onClose(); }}>
+              <button className="btn-primary" onClick={() => { markAsRead(display); onClose(); }}>✓ Mark as read</button>
+              <button className="btn-secondary" onClick={() => { removeFromReadNext(display); onClose(); }}>
                 Remove from queue
               </button>
             </>
           ) : (
             <>
-              <button className="btn" onClick={() => { addToReadNext(display); onClose(); }}>+ Add to Read Next</button>
+              <button className="btn-primary" onClick={() => { addToReadNext(display); onClose(); }}>+ Add to Read Next</button>
               {!inWish && (
-                <button className="btn btn-gilt" onClick={() => { addToWishlist(display); onClose(); }}>
+                <button className="btn-gilt" onClick={() => { addToWishlist(display); onClose(); }}>
                   + Add to Wishlist
                 </button>
               )}
-              <button className="btn btn-secondary" onClick={() => { markAsRead(display); onClose(); }}>✓ Mark as read</button>
+              <button className="btn-secondary" onClick={() => { markAsRead(display); onClose(); }}>✓ Mark as read</button>
             </>
           )}
         </div>

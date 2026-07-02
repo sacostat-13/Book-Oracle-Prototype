@@ -11,7 +11,11 @@
 // BOOK CLUBS LIST
 // ══════════════════════════════════════════════════════════════════════════════
 
-.clubs-page { display: flex; flex-direction: column; gap: 28px; }
+.clubs-page {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
 
 .clubs-empty-text {
   color: var(--ro-muted);
@@ -20,7 +24,12 @@
   font-family: var(--ro-font-body);
 }
 
-.clubs-list { display: flex; flex-direction: column; gap: 1rem; margin-bottom: 2rem; }
+.clubs-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
 
 .club-card {
   @extend %widget-surface;
@@ -31,7 +40,10 @@
   flex-direction: column;
   gap: 0.5rem;
   transition: border-color .15s;
-  &:hover { border-color: var(--ro-gold); }
+
+  &:hover {
+    border-color: var(--ro-gold);
+  }
 }
 
 .club-card__head {
@@ -39,6 +51,10 @@
   align-items: baseline;
   justify-content: space-between;
   gap: 1rem;
+
+  .btn-tertiary {
+    margin-top: var(--ro-space-2)
+  }
 }
 
 .club-card__name {
@@ -63,7 +79,11 @@
     color: var(--ro-gold-text);
     border: 1px solid color-mix(in srgb, var(--ro-gold) 40%, transparent);
   }
-  &--past { color: var(--ro-muted); opacity: .4; }
+
+  &--past {
+    color: var(--ro-muted);
+    opacity: .4;
+  }
 }
 
 .club-card__desc {
@@ -87,7 +107,11 @@
 // BOOK CLUB DETAIL
 // ══════════════════════════════════════════════════════════════════════════════
 
-.club-detail { display: flex; flex-direction: column; gap: 28px; }
+.club-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
 
 .session-card {
   background: var(--ro-surface);
@@ -99,7 +123,10 @@
   flex-direction: column;
   gap: 0.5rem;
   transition: border-color .15s;
-  &:hover { border-color: var(--ro-gold); }
+
+  &:hover {
+    border-color: var(--ro-gold);
+  }
 }
 
 .session-card__head {
@@ -115,7 +142,12 @@
   overflow: hidden;
   flex-shrink: 0;
   border: 1px solid var(--ro-border-strong);
-  img { width: 100%; height: 100%; object-fit: cover; }
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
 }
 
 .session-card__cover--placeholder {
@@ -123,7 +155,10 @@
   background: var(--ro-surface-2);
 }
 
-.session-card__body { flex: 1; min-width: 0; }
+.session-card__body {
+  flex: 1;
+  min-width: 0;
+}
 
 .session-card__title {
   font-family: var(--ro-font-display);
@@ -147,8 +182,14 @@
   text-transform: uppercase;
   flex-shrink: 0;
 
-  &--active { color: var(--ro-gold-text); }
-  &--past   { color: var(--ro-muted); opacity: .4; }
+  &--active {
+    color: var(--ro-gold-text);
+  }
+
+  &--past {
+    color: var(--ro-muted);
+    opacity: .4;
+  }
 }
 
 // Member row in club detail
@@ -158,10 +199,16 @@
   gap: 0.75rem;
   padding: 0.6rem 0;
   border-bottom: 1px solid var(--ro-border);
-  &:last-child { border-bottom: 0; }
+
+  &:last-child {
+    border-bottom: 0;
+  }
 }
 
-.club-member-row__body { flex: 1; min-width: 0; }
+.club-member-row__body {
+  flex: 1;
+  min-width: 0;
+}
 
 .club-member-row__name {
   display: flex;
@@ -200,7 +247,10 @@
   background: var(--ro-gold);
   width: var(--mp-pct, 0%);
   transition: width .3s;
-  &--done { background: var(--ro-forest); }
+
+  &--done {
+    background: var(--ro-forest);
+  }
 }
 
 .club-member-progress-label {
@@ -214,7 +264,12 @@
 // BOOK CLUB CREATE / EDIT FORM
 // ══════════════════════════════════════════════════════════════════════════════
 
-.club-form { max-width: 560px; display: flex; flex-direction: column; gap: 1.5rem; }
+.club-form {
+  max-width: 560px;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
 
 .club-form__desc {
   color: var(--ro-muted);
@@ -246,7 +301,11 @@
 // SESSION DETAIL
 // ══════════════════════════════════════════════════════════════════════════════
 
-.session-detail { display: flex; flex-direction: column; gap: 28px; }
+.session-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
 
 // Hero: cover + meta
 .session-hero {
@@ -274,9 +333,17 @@
   text-transform: uppercase;
   margin-bottom: 0.4rem;
 
-  &--active  { color: var(--ro-gold-text); }
-  &--past    { color: var(--ro-dim); }
-  &--upcoming { color: var(--ro-muted); }
+  &--active {
+    color: var(--ro-gold-text);
+  }
+
+  &--past {
+    color: var(--ro-dim);
+  }
+
+  &--upcoming {
+    color: var(--ro-muted);
+  }
 }
 
 .session-hero__title {
@@ -319,6 +386,13 @@
   border-left: 2px solid color-mix(in srgb, var(--ro-gold) 35%, transparent);
   padding-left: 1rem;
   margin-bottom: 2rem;
+
+  // Reused as the nested-replies indent under a comment — tighter spacing,
+  // no bottom margin since it's the last thing in the comment card.
+  &--replies {
+    margin-top: 0.6rem;
+    margin-bottom: 0;
+  }
 }
 
 .session-prompt__label {
@@ -387,7 +461,12 @@
 // SESSION CREATE FORM
 // ══════════════════════════════════════════════════════════════════════════════
 
-.session-form { max-width: 560px; display: flex; flex-direction: column; gap: 1.5rem; }
+.session-form {
+  max-width: 560px;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
 
 .session-form__cover {
   width: var(--sc-w, 28px);
@@ -395,7 +474,12 @@
   flex-shrink: 0;
   overflow: hidden;
   border-radius: 3px;
-  img { width: 100%; height: 100%; object-fit: cover; }
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
 }
 
 .session-form__book-row {
@@ -420,7 +504,9 @@
   color: var(--ro-muted);
 }
 
-.session-form__book-wrap { flex: 1; }
+.session-form__book-wrap {
+  flex: 1;
+}
 
 .session-form__dropdown {
   position: relative;
@@ -444,9 +530,17 @@
 // JOIN CLUB
 // ══════════════════════════════════════════════════════════════════════════════
 
-.join-card { max-width: 480px; }
-.join-card__title-sm { font-size: 1.9rem; }
-.join-card__desc-dim { opacity: .65; }
+.join-card {
+  max-width: 480px;
+}
+
+.join-card__title-sm {
+  font-size: 1.9rem;
+}
+
+.join-card__desc-dim {
+  opacity: .65;
+}
 
 // ══════════════════════════════════════════════════════════════════════════════
 // COMMENT THREAD  (DS "comments" pattern)
@@ -474,7 +568,9 @@
   gap: 14px;
 }
 
-.comment-compose__input-wrap { flex: 1; }
+.comment-compose__input-wrap {
+  flex: 1;
+}
 
 .comment-compose__toolbar {
   display: flex;
@@ -493,7 +589,10 @@
   gap: 14px;
 }
 
-.comment-item__body { flex: 1; min-width: 0; }
+.comment-item__body {
+  flex: 1;
+  min-width: 0;
+}
 
 .comment-item__head {
   display: flex;
@@ -541,7 +640,10 @@
   background: none;
   border: 0;
   padding: 0;
-  &:hover { opacity: .8; }
+
+  &:hover {
+    opacity: .8;
+  }
 }
 
 .comment-item__reply {
@@ -553,17 +655,40 @@
   background: none;
   border: 0;
   padding: 0;
-  &:hover { color: var(--ro-text); }
+
+  &:hover {
+    color: var(--ro-text);
+  }
+
+  &--danger {
+    color: var(--ro-error);
+
+    &:hover {
+      color: var(--ro-error);
+      opacity: .8;
+    }
+  }
 }
 
 // Thread reply chain
-.comment-thread { display: flex; flex-direction: column; gap: 0; }
+.comment-thread {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
 
 .comment-reply-row {
   display: flex;
   gap: 0.5rem;
   align-items: flex-end;
   margin-top: 0.35rem;
+
+  // Compact, fixed-height reply box — no manual resize handle, grows to
+  // fill the row alongside the send button.
+  .textarea {
+    flex: 1;
+    resize: none;
+  }
 }
 
 .comment-reply-compose {
@@ -629,8 +754,13 @@
   overflow: hidden;
   transition: border-color .15s;
 
-  &:hover { border-color: var(--ro-gold); }
-  &--selected { border-color: var(--ro-gold); }
+  &:hover {
+    border-color: var(--ro-gold);
+  }
+
+  &--selected {
+    border-color: var(--ro-gold);
+  }
 }
 
 .poll-option__bar {
@@ -650,7 +780,12 @@
   overflow: hidden;
   border-radius: 2px;
   z-index: 1;
-  img { width: 100%; height: 100%; object-fit: cover; }
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
 }
 
 .poll-option__cover--placeholder {
@@ -658,7 +793,11 @@
   background: var(--ro-surface-2);
 }
 
-.poll-option__body { flex: 1; min-width: 0; z-index: 1; }
+.poll-option__body {
+  flex: 1;
+  min-width: 0;
+  z-index: 1;
+}
 
 .poll-option__title {
   font-family: var(--ro-font-display);
@@ -681,8 +820,14 @@
   flex-shrink: 0;
   z-index: 1;
 
-  &--mine { color: var(--ro-gold-text); }
-  &--other { color: var(--ro-muted); opacity: .5; }
+  &--mine {
+    color: var(--ro-gold-text);
+  }
+
+  &--other {
+    color: var(--ro-muted);
+    opacity: .5;
+  }
 }
 
 .poll-option__leader {

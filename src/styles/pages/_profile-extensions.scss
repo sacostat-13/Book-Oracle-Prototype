@@ -209,8 +209,14 @@
   margin-top: var(--ro-space-2);
 }
 
-.pf-hl-success { color: var(--ro-success); }
-.pf-hl-warn    { color: var(--ro-gold-text); }
+.pf-hl-success {
+  color: var(--ro-success);
+}
+
+.pf-hl-warn {
+  color: var(--ro-gold-text);
+}
+
 // .pf-hl-muted intentionally omitted — use the existing .lv-hl-muted instead.
 
 .pf-prompt {
@@ -271,4 +277,22 @@
   &--gap-lg {
     margin-top: var(--ro-space-4);
   }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// Reading-stats section rhythm
+// Per the DS Profile pattern, Reading Stats / Pace / Top Genres / Most Read
+// Author / Series in Progress are free-standing sections directly on the
+// page background (each subsection's own cards/rows already carry their own
+// borders) — NOT nested inside one shared bordered panel. Only the Account
+// settings block below is a single bordered card.
+// ══════════════════════════════════════════════════════════════════════════════
+.profile-stats {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ro-space-8);
+}
+
+.panel {
+  margin-top: var(--ro-space-4);
 }

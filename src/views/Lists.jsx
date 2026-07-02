@@ -6,6 +6,7 @@ import { useRouter } from '../lib/RouterContext';
 import { useT } from '../lib/I18nContext';
 import { openBookTab } from '../lib/bookHelpers';
 import BookCover from '../components/BookCover';
+import CornerBrackets from '../components/CornerBrackets';
 
 function CreateListModal({ onSave, onClose }) {
   const [title, setTitle] = useState('');
@@ -22,17 +23,18 @@ function CreateListModal({ onSave, onClose }) {
   }
 
   return (
-    <div className="modal-backdrop" onClick={onClose}>
+    <div className="overlay" onClick={onClose}>
       <div className="modal modal--narrow" onClick={e => e.stopPropagation()}>
+        <CornerBrackets />
         <button className="modal__close" onClick={onClose}>✕</button>
         <div className="bp-section__label">
           {t('lists.newListBtn')}
         </div>
         <div className="lists-modal-form">
           <div>
-            <label className="form-label">{t('report.fieldTitle')}</label>
+            <label className="field-label">{t('report.fieldTitle')}</label>
             <input
-              className="search-input"
+              className="input"
               placeholder={t('lists.newListPlaceholder')}
               value={title}
               onChange={e => setTitle(e.target.value)}
@@ -41,22 +43,21 @@ function CreateListModal({ onSave, onClose }) {
             />
           </div>
           <div>
-            <label className="form-label">
+            <label className="field-label">
               {t('bookModal.description')}{' '}
               <span className="lists-optional-label">({t('lists.optional')})</span>
             </label>
             <textarea
-              className="search-input"
+              className="textarea"
               placeholder={t('lists.descPlaceholder')}
               value={description}
               onChange={e => setDescription(e.target.value)}
               rows={3}
-
             />
           </div>
           <div className="lists-modal-actions">
-            <button className="btn btn-danger" onClick={onClose}>{t('common.cancel')}</button>
-            <button className="btn btn-primary" onClick={handleSave} disabled={!title.trim() || saving}>
+            <button className="btn-tertiary" onClick={onClose}>{t('common.cancel')}</button>
+            <button className="btn-primary" onClick={handleSave} disabled={!title.trim() || saving}>
               {saving ? '…' : (t('lists.createList'))}
             </button>
           </div>
@@ -99,7 +100,7 @@ export default function Lists() {
 
   return (
     <>
-      <div className="page-page-head">
+      <div className="page-head">
         <div className="page-head__eyebrow"><span>Dashboard</span> · {t('lists.eyebrow')}</div>
         <h1 className="page-head__title">
           <span className="accent">{t('about.featureListsTitle')}</span>
@@ -110,7 +111,7 @@ export default function Lists() {
       </div>
 
       <div className="lists-grid">
-        <button className="btn btn-primary" onClick={() => setCreating(true)}>
+        <button className="btn-primary" onClick={() => setCreating(true)}>
           + {t('lists.newListBtn')}
         </button>
       </div>
@@ -144,17 +145,17 @@ export default function Lists() {
                     )}
                   </span>
                   <div className="bp-actions">
-                    <button className="btn btn-secondary" onClick={e => togglePublic(list, e)}>
+                    <button className="btn-secondary" onClick={e => togglePublic(list, e)}>
                       {list.is_public
                         ? (t('lists.makePrivate'))
                         : (t('lists.makePublic'))}
                     </button>
                     {list.is_public && (
-                      <button className="btn btn-secondary" onClick={e => copyLink(list, e)}>
+                      <button className="btn-secondary" onClick={e => copyLink(list, e)}>
                         {t('lists.copyLink')}
                       </button>
                     )}
-                    <button className="btn btn-secondary"
+                    <button className="btn-secondary"
                       onClick={e => handleDelete(list, e)}>
                       {t('common.delete')}
                     </button>

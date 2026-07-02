@@ -670,7 +670,7 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
 
           {/* Purchase — .bp-link is the exact existing class for this row;
               the previous duplicate className also carried a dead
-              "btn btn-secondary" pair that was never applied. */}
+              "btn-secondary" pair that was never applied. */}
           {links.length > 0 && (
             <div className="bp-links">
               {links.map((link) => (

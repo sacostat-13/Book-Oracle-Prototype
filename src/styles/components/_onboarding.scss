@@ -1,0 +1,185 @@
+// components/_onboarding.scss — The Books Oracle
+// Full-screen centered card used by the sign-in gate (App.jsx) and the
+// three-step onboarding flow (views/Onboarding.jsx). Matches the DS
+// "Login & Onboarding" pattern: a bracketed card, step segments, option
+// cards, and a CSV dropzone.
+//
+// None of these classes previously had any CSS behind them at all — the
+// whole flow rendered as plain unstyled text on the page background.
+//
+//   .onboarding-wrap        full-viewport centering wrapper
+//   .onboarding-card        bracketed card surface (+ --wide for choice grids)
+//   .onb-eyebrow/-title/-desc   heading block
+//   .onb-steps/.onb-step-dot    step progress segments
+//   .onb-actions             back / continue button row
+//   .choice-grid/.choice(.selected)/.choice-title/.choice-sub   option cards
+//   .upload-zone(.dragover)/.upload-icon/.upload-text/.upload-sub/.upload-help
+
+.onboarding-wrap {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--ro-space-6) var(--ro-gutter-mobile);
+}
+
+.onboarding-card {
+  position: relative;
+  background: var(--ro-surface);
+  border: 1px solid var(--ro-border-strong);
+  border-radius: var(--ro-radius-xl);
+  box-shadow: var(--ro-shadow);
+  width: 100%;
+  max-width: 520px;
+  padding: 40px 36px;
+
+  // Wider variant for steps with a two-column choice grid
+  &--wide { max-width: 640px; }
+}
+
+.onb-eyebrow {
+  @include ro-type(overline);
+  color: var(--ro-gold);
+  text-align: center;
+}
+
+.onb-title {
+  font-family: var(--ro-font-display);
+  font-size: 34px;
+  line-height: 1.1;
+  color: var(--ro-text);
+  text-align: center;
+  margin-top: 14px;
+
+  .accent { color: var(--ro-gold-text); }
+}
+
+.onb-desc {
+  font-family: var(--ro-font-body);
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--ro-muted);
+  text-align: center;
+  margin-top: 8px;
+  max-width: 340px;
+  margin-inline: auto;
+}
+
+// ── Step progress segments ───────────────────────────────────────────────────
+.onb-steps {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 24px;
+}
+
+.onb-step-dot {
+  height: 4px;
+  flex: 1;
+  border-radius: var(--ro-radius-pill);
+  background: var(--ro-ring-track);
+  transition: background .2s;
+
+  &.active { background: var(--ro-gold); }
+  &.done   { background: var(--ro-gold); opacity: .55; }
+}
+
+.onb-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-top: 30px;
+}
+
+// ── Choice grid (reading level / goal picker) ────────────────────────────────
+.choice-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+  margin-top: 22px;
+
+  @include ro-up(tablet) {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.choice {
+  text-align: left;
+  display: block;
+  width: 100%;
+  border: 1px solid var(--ro-border-strong);
+  background: transparent;
+  border-radius: 14px;
+  padding: 15px 18px;
+  cursor: pointer;
+  transition: border-color .15s, background .15s;
+
+  &:hover { border-color: var(--ro-gold); }
+
+  &.selected {
+    border-color: var(--ro-gold);
+    background: color-mix(in srgb, var(--ro-gold) 10%, transparent);
+  }
+}
+
+.choice-title {
+  font-family: var(--ro-font-body);
+  font-weight: 600;
+  font-size: 16px;
+  color: var(--ro-text);
+}
+
+.choice-sub {
+  font-family: var(--ro-font-body);
+  font-size: 13px;
+  color: var(--ro-muted);
+  margin-top: 4px;
+}
+
+// ── Goodreads CSV dropzone ────────────────────────────────────────────────────
+.upload-zone {
+  border: 1.5px dashed var(--ro-border-strong);
+  border-radius: 16px;
+  padding: 34px 20px;
+  text-align: center;
+  cursor: pointer;
+  margin-top: 22px;
+  transition: border-color .15s, background .15s;
+
+  &:hover,
+  &.dragover {
+    border-color: var(--ro-gold);
+    background: color-mix(in srgb, var(--ro-gold) 6%, transparent);
+  }
+}
+
+.upload-icon {
+  font-size: 32px;
+  line-height: 1;
+  margin-bottom: 10px;
+}
+
+.upload-text {
+  font-family: var(--ro-font-body);
+  font-weight: 600;
+  font-size: 15px;
+  color: var(--ro-text);
+}
+
+.upload-sub {
+  font-family: var(--ro-font-body);
+  font-size: 13px;
+  color: var(--ro-muted);
+  margin-top: 4px;
+}
+
+.upload-help {
+  font-family: var(--ro-font-body);
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--ro-dim);
+  margin-top: 14px;
+  text-align: center;
+
+  a { color: var(--ro-gold-text); cursor: pointer; }
+}

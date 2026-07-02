@@ -210,7 +210,7 @@ export default function Library({ onOpenBook }) {
               </button>
             </div>
             <button className="btn btn-tertiary" onClick={() => setBulkOpen((v) => !v)}>
-              <span className="btn__plus">+</span> Bulk add
+              <span className="btn btn__plus">+</span> Bulk add
             </button>
           </div>
         </div>

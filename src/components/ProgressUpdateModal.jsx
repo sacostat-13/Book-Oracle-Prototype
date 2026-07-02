@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useT } from '../lib/I18nContext';
+import CornerBrackets from './CornerBrackets';
 
 export default function ProgressUpdateModal({ book, onSave, onClose }) {
   const t = useT();
@@ -27,26 +28,17 @@ export default function ProgressUpdateModal({ book, onSave, onClose }) {
     try { await onSave?.(cappedPages); } finally { setSaving(false); }
   }
 
-  const fieldStyle = {
-    background: 'rgba(176, 140, 63, 0.04)', border: '1px solid rgba(176, 140, 63, 0.25)',
-    borderRadius: 'var(--ro-radius-sm)', padding: '0.55rem 0.8rem', color: 'var(--paper)',
-    fontFamily: 'var(--ro-font-display)', fontSize: '1.1rem', width: '120px', colorScheme: 'dark',
-  };
-  const labelStyle = {
-    display: 'block', fontFamily: 'var(--ro-font-mono)', fontSize: '0.7rem',
-    letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--gilt)', marginBottom: '0.4rem',
-  };
-
   return (
     <div
       onClick={(e) => { if (e.target === e.currentTarget && !saving) onClose?.(); }}
       className="rating-modal-overlay"
     >
       <div className="rating-modal">
+        <CornerBrackets size="sm" />
         <div className="rating-modal__eyebrow">
           {t('progress.eyebrow')}
         </div>
-        <h2 className="plan-step-title" style={{ marginBottom: "0.35rem" }}>
+        <h2 className="plan-step-title plan-step-title--tight">
           {t('progress.title')}
         </h2>
         <p className="pu-book-sub">
@@ -54,8 +46,8 @@ export default function ProgressUpdateModal({ book, onSave, onClose }) {
           {book.a ? <span className="pu-book-author"> · {book.a}</span> : null}
         </p>
 
-        <div >
-          <label style={labelStyle}>
+        <div>
+          <label className="field-label">
             {t('progress.pagesLabel')}
             {totalPages && (
               <span className="club-form__optional">
@@ -68,7 +60,7 @@ export default function ProgressUpdateModal({ book, onSave, onClose }) {
               type="number" min="0" max={totalPages || undefined}
               value={pages} onChange={(e) => setPages(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleSave()}
-              placeholder="0" autoFocus style={fieldStyle}
+              placeholder="0" autoFocus className="input pf-input--narrow"
             />
             {totalPages && validPages ? (
               <span className="pu-progress-label">
@@ -79,7 +71,7 @@ export default function ProgressUpdateModal({ book, onSave, onClose }) {
         </div>
 
         {totalPages ? (
-          <div >
+          <div>
             <div className="db-ai__track">
               <div className="db-ai__fill" style={{ '--ai-pct': `${validPages ? Math.min(100, (cappedPages / totalPages) * 100) : 0}%` }} />
             </div>

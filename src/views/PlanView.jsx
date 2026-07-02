@@ -66,7 +66,7 @@ export default function PlanView() {
           <div className="empty-state-title">{t('plans.noActivePlan')}</div>
           <div className="empty-state-text">{t('plans.noActivePlanText')}</div>
           <div >
-            <button className="btn" onClick={() => go('plan-create')}>{t('plans.createOwnPlan')}</button>
+            <button className="btn-primary" onClick={() => go('plan-create')}>{t('plans.createOwnPlan')}</button>
           </div>
         </div>
       </>
@@ -127,31 +127,31 @@ export default function PlanView() {
       <div className="plan-actions">
         {plan.type === 'series' && plan.seriesName && (
           <button
-            className="btn"
+            className="btn-primary"
             onClick={() => go('series-page', { seriesName: plan.seriesName, from: 'plan-view', fromLabel: t('plans.readingPlanBreadcrumb') })}
           >
             {t('plans.openSeries')}
           </button>
         )}
-        <button className="btn btn-gilt" onClick={addAllToQueue}>
+        <button className="btn-gilt" onClick={addAllToQueue}>
           {t('plans.addAllToQueue')}
         </button>
         {!isSharedView && (
           <>
-            <button className="btn btn-secondary" onClick={() => go('plan-create')}>
+            <button className="btn-secondary" onClick={() => go('plan-create')}>
               {t('plans.createAnother')}
             </button>
-            <button className="btn btn-secondary" onClick={handleDeletePlan}>
+            <button className="btn-secondary" onClick={handleDeletePlan}>
               Delete this plan
             </button>
           </>
         )}
         {isSharedView && (
           <>
-            <button className="btn btn-gilt" onClick={handleCopyPlan}>
+            <button className="btn-gilt" onClick={handleCopyPlan}>
               {t('plans.copyPlan')}
             </button>
-            <button className="btn btn-secondary" onClick={() => go('plan-create')}>
+            <button className="btn-secondary" onClick={() => go('plan-create')}>
               {t('plans.createOwnPlan')}
             </button>
           </>

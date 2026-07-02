@@ -228,10 +228,10 @@ export default function Nav({ onPreviewBook }) {
                               {/* Friend request inline actions */}
                               {n.type === 'friend_request' && !n.read && (
                                 <div className="nav-notif-actions" onClick={(e) => e.stopPropagation()}>
-                                  <button className="btn" style={{ fontSize: 'var(--ro-text-xs)', padding: '0.25rem 0.65rem' }} onClick={() => handleAccept(friendshipId, n.id)}>
+                                  <button className="btn btn-primary btn--sm" onClick={() => handleAccept(friendshipId, n.id)}>
                                     {t('nav.accept')}
                                   </button>
-                                  <button className="btn btn-secondary" style={{ fontSize: 'var(--ro-text-xs)', padding: '0.25rem 0.65rem' }} onClick={() => handleDecline(friendshipId, n.id)}>
+                                  <button className="btn btn-secondary btn--sm" onClick={() => handleDecline(friendshipId, n.id)}>
                                     {t('nav.decline')}
                                   </button>
                                 </div>

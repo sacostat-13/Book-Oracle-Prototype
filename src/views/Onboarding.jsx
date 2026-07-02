@@ -1,14 +1,16 @@
 import { useState, useRef } from 'react';
 import { useData } from '../lib/DataContext';
 import { useRouter } from '../lib/RouterContext';
-import { useT } from '../lib/I18nContext';
+import { useT, useTNode } from '../lib/I18nContext';
 import { parseGoodreadsCSV } from '../lib/goodreadsImport';
+import CornerBrackets from '../components/CornerBrackets';
 import { findBookByTitle } from '../lib/bookHelpers';
 
 export default function Onboarding() {
   const { setProfile, setOnboarded, importGoodreads, showToast } = useData();
   const { go } = useRouter();
   const t = useT();
+  const tNode = useTNode();
   const [step, setStep] = useState(1);
   const [readingLevel, setReadingLevel] = useState(null);
   const [goal, setGoal] = useState(null);
@@ -58,11 +60,12 @@ export default function Onboarding() {
 
   return (
     <div className="onboarding-wrap">
-      <div className="onboarding-card">
-        <div className="progress">
-          <div className={`progress-dot ${step === 1 ? 'active' : step > 1 ? 'done' : ''}`}></div>
-          <div className={`progress-dot ${step === 2 ? 'active' : step > 2 ? 'done' : ''}`}></div>
-          <div className={`progress-dot ${step === 3 ? 'active' : ''}`}></div>
+      <div className="onboarding-card onboarding-card--wide">
+        <CornerBrackets />
+        <div className="onb-steps">
+          <div className={`onb-step-dot ${step === 1 ? 'active' : step > 1 ? 'done' : ''}`}></div>
+          <div className={`onb-step-dot ${step === 2 ? 'active' : step > 2 ? 'done' : ''}`}></div>
+          <div className={`onb-step-dot ${step === 3 ? 'active' : ''}`}></div>
         </div>
 
         {step === 1 && (
@@ -84,7 +87,7 @@ export default function Onboarding() {
             </div>
             <div className="onb-actions">
               <div></div>
-              <button className="btn" disabled={readingLevel == null} onClick={() => setStep(2)}>
+              <button className="btn-primary" disabled={readingLevel == null} onClick={() => setStep(2)}>
                 {t('onboarding.continue')}
               </button>
             </div>
@@ -112,7 +115,7 @@ export default function Onboarding() {
               <input
                 ref={fileRef}
                 type="file"
-                className="file-hidden"
+                className="sr-only"
                 accept=".csv,text/csv"
                 onChange={(e) => { const file = e.target.files[0]; if (file) handleFile(file); }}
               />
@@ -128,14 +131,14 @@ export default function Onboarding() {
             </div>
             <div className="upload-help">
               <strong>{t('onboarding.uploadHowTo')}</strong> {t('library.goodreadsHelp')}<br />
-              {t('onboarding.uploadNoFile', {
+              {tNode('onboarding.uploadNoFile', {
                 link: <a href="#" onClick={(e) => { e.preventDefault(); setStep(3); }}>{t('onboarding.skipStep')}</a>
               })}
             </div>
 
             <div className="onb-actions">
-              <button className="btn btn-secondary" onClick={() => setStep(1)}>{t('onboarding.back')}</button>
-              <button className="btn" onClick={() => setStep(3)}>{t('onboarding.continue')}</button>
+              <button className="btn-secondary" onClick={() => setStep(1)}>{t('onboarding.back')}</button>
+              <button className="btn-primary" onClick={() => setStep(3)}>{t('onboarding.continue')}</button>
             </div>
           </>
         )}
@@ -158,8 +161,8 @@ export default function Onboarding() {
               ))}
             </div>
             <div className="onb-actions">
-              <button className="btn btn-secondary" onClick={() => setStep(2)}>{t('onboarding.back')}</button>
-              <button className="btn" disabled={goal == null} onClick={finish}>
+              <button className="btn-secondary" onClick={() => setStep(2)}>{t('onboarding.back')}</button>
+              <button className="btn-primary" disabled={goal == null} onClick={finish}>
                 {t('onboarding.enterLibrary')}
               </button>
             </div>

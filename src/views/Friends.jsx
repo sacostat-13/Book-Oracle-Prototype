@@ -124,11 +124,11 @@ function SearchResultRow({ profile, onSend, relationStatus }) {
   const [busy, setBusy] = useState(false);
 
   let actionLabel = 'Add friend';
-  let actionClass = 'btn-gilt btn-sm';
+  let actionClass = 'btn btn-secondary btn-sm';
   let disabled = false;
   if (relationStatus === 'friends') { actionLabel = 'Friends ✓'; disabled = true; }
   if (relationStatus === 'pending_out') { actionLabel = 'Request sent'; disabled = true; }
-  if (relationStatus === 'pending_in') { actionLabel = 'Accept request'; actionClass = 'btn btn-sm'; }
+  if (relationStatus === 'pending_in') { actionLabel = 'Accept request'; actionClass = 'btn-sm'; }
 
   return (
     <div className="friends-suggest-card">

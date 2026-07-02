@@ -108,8 +108,8 @@ export default function BookClubCreate() {
         )}
 
         <div className="club-form__actions">
-          <button className="btn btn-secondary" onClick={() => go('book-clubs')}>{t('clubs.cancel')}</button>
-          <button className="btn" onClick={handleSubmit} disabled={!name.trim() || saving}>
+          <button className="btn-secondary" onClick={() => go('book-clubs')}>{t('clubs.cancel')}</button>
+          <button className="btn-primary" onClick={handleSubmit} disabled={!name.trim() || saving}>
             {saving ? t('clubs.creating') : t('clubs.createButton')}
           </button>
         </div>

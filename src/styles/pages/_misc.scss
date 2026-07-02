@@ -435,6 +435,10 @@
   line-height: 1.65;
   font-family: var(--ro-font-body);
   font-size: 1rem;
+
+  & + & {
+    margin-top: 0.85rem;
+  }
 }
 
 .about-card {
@@ -496,6 +500,10 @@
   font-size: 1.6rem;
   text-align: left;
   margin-bottom: 1.5rem;
+
+  &--tight {
+    margin-bottom: 0.35rem;
+  }
 }
 
 .plan-note {

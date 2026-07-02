@@ -152,26 +152,26 @@ export default function BookClubDetail() {
         <a onClick={() => go('book-clubs')}>{t('clubs.createBreadcrumb')}</a> · {club.name}
       </div>
 
-      <div className="page-header">
-        <div className="page-eyebrow">{isAdmin ? t('clubs.detailAdminBadge') : t('clubs.memberBadge')}</div>
-        <h1 className="page-title">{club.name}</h1>
+      <div className="page-head">
+        <div className="page-head__eyebrow">{isAdmin ? t('clubs.detailAdminBadge') : t('clubs.memberBadge')}</div>
+        <h1 className="page-head__title">{club.name}</h1>
         {club.description && <p className="club-form__desc">{club.description}</p>}
         {genres?.length > 0 && (
           <div className="club-form__genre-row">
-            {genres.map((g) => <span key={g.id} className="li-genre-pill">{g.name}</span>)}
+            {genres.map((g) => <span key={g.id} className="chip">{g.name}</span>)}
           </div>
         )}
       </div>
 
       <div className="bp-actions">
-        <button className="li-action" onClick={copyJoinLink}>{linkCopied ? t('clubs.linkCopied') : t('clubs.copyJoinLink')}</button>
+        <button className="btn-tertiary btn--sm" onClick={copyJoinLink}>{linkCopied ? t('clubs.linkCopied') : t('clubs.copyJoinLink')}</button>
         {isAdmin && (
           <>
-            <button className="li-action" onClick={() => go('session-create', { clubId })}>{t('clubs.newSession')}</button>
-            <button className="li-action" onClick={handleRegenerateToken}>{t('clubs.regenerateLink')}</button>
+            <button className="btn-primary btn--sm" onClick={() => go('session-create', { clubId })}>{t('clubs.newSession')}</button>
+            <button className="btn-secondary btn--sm" onClick={handleRegenerateToken}>{t('clubs.regenerateLink')}</button>
           </>
         )}
-        {!isCreator && <button className="li-action danger" onClick={handleLeave}>{t('clubs.leaveClub')}</button>}
+        {!isCreator && <button className="btn-secondary btn--sm" onClick={handleLeave}>{t('clubs.leaveClub')}</button>}
       </div>
 
       {activeSession && (
@@ -188,7 +188,7 @@ export default function BookClubDetail() {
           <div className="session-section-label">
             {activeSession ? t('clubs.pastSessions') : t('clubs.sessions')}
           </div>
-          {isAdmin && <button className="li-action" onClick={() => go('session-create', { clubId })}>{t('clubs.newSessionBtn')}</button>}
+          {isAdmin && <button className="btn-tertiary btn--sm" onClick={() => go('session-create', { clubId })}>{t('clubs.newSessionBtn')}</button>}
         </div>
         {(activeSession ? otherSessions : sessions).length === 0 ? (
           <div className="session-no-comments">
@@ -230,8 +230,8 @@ export default function BookClubDetail() {
                 </span>
                 {isAdmin && !isSelf && (
                   <div className="friend-row__actions">
-                    {m.role === 'member' && <button className="li-action" onClick={() => handlePromoteMember(m.user_id)}>{t('clubs.makeAdmin')}</button>}
-                    <button className="li-action" onClick={() => handleRemoveMember(m.user_id, m.display_name)}>{t('clubs.removeMember')}</button>
+                    {m.role === 'member' && <button className="btn-text" onClick={() => handlePromoteMember(m.user_id)}>{t('clubs.makeAdmin')}</button>}
+                    <button className="btn-text" onClick={() => handleRemoveMember(m.user_id, m.display_name)}>{t('clubs.removeMember')}</button>
                   </div>
                 )}
               </div>
@@ -241,20 +241,23 @@ export default function BookClubDetail() {
       </section>
 
       {isCreator && (
-        <section className="session-divider" style={{ paddingTop: "1.5rem" }}>
-          <div className="session-section-label" style={{ color: "var(--ro-error)" }}>
-            {t('clubs.dangerZone')}
-          </div>
-          {!confirmDelete ? (
-            <button className="li-action danger" onClick={() => setConfirmDelete(true)}>{t('clubs.deleteClub')}</button>
-          ) : (
-            <div className="bp-actions">
-              <span className="clubs-empty-text">{t('clubs.deleteClubConfirm')}</span>
-              <button className="li-action danger" onClick={handleDelete}>{t('clubs.confirmDeleteYes')}</button>
-              <button className="li-action" onClick={() => setConfirmDelete(false)}>{t('clubs.cancel')}</button>
+        <>
+          <hr className="session-divider" />
+          <section className="db-section">
+            <div className="session-section-label t-error">
+              {t('clubs.dangerZone')}
             </div>
-          )}
-        </section>
+            {!confirmDelete ? (
+              <button className="btn-danger btn--sm" onClick={() => setConfirmDelete(true)}>{t('clubs.deleteClub')}</button>
+            ) : (
+              <div className="bp-actions">
+                <span className="clubs-empty-text">{t('clubs.deleteClubConfirm')}</span>
+                <button className="btn-danger btn--sm" onClick={handleDelete}>{t('clubs.confirmDeleteYes')}</button>
+                <button className="btn-text" onClick={() => setConfirmDelete(false)}>{t('clubs.cancel')}</button>
+              </div>
+            )}
+          </section>
+        </>
       )}
     </>
   );

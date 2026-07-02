@@ -148,8 +148,8 @@ export default function SessionCreate() {
         </div>
 
         <div className="club-form__actions">
-          <button className="btn btn-secondary" onClick={() => go('book-club-detail', { clubId })}>{t('sessions.cancel')}</button>
-          <button className="btn" onClick={handleSubmit} disabled={!selectedBook || !startsAt || !endsAt || saving}>
+          <button className="btn-secondary" onClick={() => go('book-club-detail', { clubId })}>{t('sessions.cancel')}</button>
+          <button className="btn-primary" onClick={handleSubmit} disabled={!selectedBook || !startsAt || !endsAt || saving}>
             {saving ? t('sessions.creating') : t('sessions.createButton')}
           </button>
         </div>

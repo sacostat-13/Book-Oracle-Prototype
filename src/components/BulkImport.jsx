@@ -234,7 +234,7 @@ export default function BulkImport({ onClose, target = 'wishlist' }) {
           <div className="upload-help">{t('bulkImport.titlesHelp')}</div>
           <div className="bulk-actions">
             <span className="manual-add-note">{isLibrary ? t('bulkImport.titlesNoteLibrary') : t('bulkImport.titlesNoteWishlist')}</span>
-            <button className="btn" onClick={lookupTitleList} disabled={!titleText.trim()}>{t('bulkImport.lookUpBtn')}</button>
+            <button className="btn-primary" onClick={lookupTitleList} disabled={!titleText.trim()}>{t('bulkImport.lookUpBtn')}</button>
           </div>
         </>
       )}
@@ -248,7 +248,7 @@ export default function BulkImport({ onClose, target = 'wishlist' }) {
           <div className="upload-help">{t('bulkImport.amazonHelp')}</div>
           <div className="bulk-actions">
             <span className="manual-add-note">{t('bulkImport.amazonNote')}</span>
-            <button className="btn" onClick={lookupAmazonUrls} disabled={!amazonText.trim()}>{t('bulkImport.lookUpBtn')}</button>
+            <button className="btn-primary" onClick={lookupAmazonUrls} disabled={!amazonText.trim()}>{t('bulkImport.lookUpBtn')}</button>
           </div>
         </>
       )}
@@ -281,8 +281,8 @@ export default function BulkImport({ onClose, target = 'wishlist' }) {
               {t('bulkImport.resultsReadyNote')}{' '}
               {unmatchedCount > 0 && <em style={{ opacity: .7 }}>{t('bulkImport.resultsUnmatchedNote')}</em>}
             </span>
-            <button className="btn btn-secondary" onClick={clearResults} disabled={importing}>{t('bulkImport.startOver')}</button>
-            <button className="btn" onClick={confirmImport} disabled={(foundCount + unmatchedCount) === 0 || importing || progress}>
+            <button className="btn-secondary" onClick={clearResults} disabled={importing}>{t('bulkImport.startOver')}</button>
+            <button className="btn-primary" onClick={confirmImport} disabled={(foundCount + unmatchedCount) === 0 || importing || progress}>
               {importing ? t('bulkImport.adding') : t('bulkImport.addBtn', { count: foundCount + unmatchedCount, target: targetWord })}
             </button>
           </div>

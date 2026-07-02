@@ -199,7 +199,7 @@ export default function Wishlist({ onOpenBook }) {
             </button>
           </div>
           <button className="btn btn-tertiary" onClick={() => setBulkOpen((v) => !v)}>
-            <span className="btn__plus">+</span> Bulk import
+            <span className="btn btn__plus">+</span> Bulk import
           </button>
           <button
             className={`btn btn-tertiary${sel.active ? ' is-active' : ''}`}

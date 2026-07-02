@@ -12,25 +12,23 @@ export default function OracleFork() {
       <div className="breadcrumb">
         <a onClick={() => go('dashboard')}>{t('oracle.breadcrumbDashboard')}</a> · {t('oracle.forkEyebrow')}
       </div>
-      <div className="page-header">
-        <div className="page-eyebrow">{t('oracle.forkEyebrow')}</div>
-        <h1 className="page-title">{tNode('oracle.forkPageTitle')}</h1>
-        <p className="page-subtitle">
+      <div className="page-head">
+        <div className="page-head__eyebrow">{t('oracle.forkEyebrow')}</div>
+        <h1 className="page-head__title">{tNode('oracle.forkPageTitle')}</h1>
+        <p className="page-head__lead">
           {t('oracle.forkSubtitle')}
           {' '}<OracleQuotaBadge />
         </p>
       </div>
-      <div className="oracle-fork">
-        <div className="cta-card" onClick={() => go('oracle-categories')}>
-          <div className="cta-ornament">❦</div>
-          <h2 className="cta-title">{tNode('oracle.forkByGenres')}</h2>
-          <p className="cta-desc">{t('oracle.forkByGenresDesc')}</p>
-        </div>
-        <div className="cta-card" onClick={() => go('oracle-similar')}>
-          <div className="cta-ornament">✦</div>
-          <h2 className="cta-title">{tNode('oracle.forkBySimilar')}</h2>
-          <p className="cta-desc">{t('oracle.forkBySimilarDesc')}</p>
-        </div>
+      <div className="oracle-fork-grid">
+        <button className="oracle-fork-card" onClick={() => go('oracle-categories')}>
+          <h2 className="oracle-fork-card__label">❦ {tNode('oracle.forkByGenres')}</h2>
+          <p className="oracle-fork-card__sub">{t('oracle.forkByGenresDesc')}</p>
+        </button>
+        <button className="oracle-fork-card" onClick={() => go('oracle-similar')}>
+          <h2 className="oracle-fork-card__label">✦ {tNode('oracle.forkBySimilar')}</h2>
+          <p className="oracle-fork-card__sub">{t('oracle.forkBySimilarDesc')}</p>
+        </button>
       </div>
     </>
   );

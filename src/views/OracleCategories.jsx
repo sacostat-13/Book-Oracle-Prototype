@@ -189,10 +189,10 @@ Return ONLY valid JSON in this format:
       <div className="breadcrumb">
         <a onClick={() => go('dashboard')}>Dashboard</a> · <a onClick={() => go('oracle')}>Oracle</a> · By Genres
       </div>
-      <div className="page-header">
-        <div className="page-eyebrow">By genres</div>
-        <h1 className="page-title">Choose a <span className="accent">temperament</span></h1>
-        <p className="page-subtitle">
+      <div className="page-head">
+        <div className="page-head__eyebrow">By genres</div>
+        <h1 className="page-head__title">Choose a <span className="accent">temperament</span></h1>
+        <p className="page-head__lead">
           Three books drawn fresh, {sourceDesc}.
         </p>
       </div>
@@ -225,7 +225,7 @@ Return ONLY valid JSON in this format:
             ))}
           </select>
         </div>
-        <button className="btn" onClick={handleDraw} disabled={loading || (mode === 'ai' && quotaExhausted)}>
+        <button className="btn-primary" onClick={handleDraw} disabled={loading || (mode === 'ai' && quotaExhausted)}>
           {loading ? t('oracle.categoriesDrawing') : t('oracle.categoriesDraw')}
         </button>
         {mode === 'ai' && quotaExhausted && (
@@ -235,7 +235,7 @@ Return ONLY valid JSON in this format:
         )}
       </section>
 
-      <section className="cards">
+      <section className="oracle-results-grid">
         {loading ? (
           <div className="loading">
             <div className="loading-spinner"></div>

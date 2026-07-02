@@ -73,11 +73,11 @@ export default function SelectionBar({
             <span className="selection-bar__count">
               <strong>{count}</strong> {t('selection.selected')}
             </span>
-            <button className="btn btn-text" onClick={onSelectAll} disabled={working}>
+            <button className="btn-text" onClick={onSelectAll} disabled={working}>
               {t('selection.all')}
             </button>
             {count > 0 && (
-              <button className="btn btn-text" onClick={onClearAll} disabled={working}>
+              <button className="btn-text" onClick={onClearAll} disabled={working}>
                 {t('selection.none')}
               </button>
             )}
@@ -89,7 +89,7 @@ export default function SelectionBar({
             <>
               {/* Add to list — all contexts */}
               <button
-                className="btn btn-primary"
+                className="btn-primary"
                 onClick={() => setShowListPicker(true)}
                 disabled={working}
               >
@@ -99,7 +99,7 @@ export default function SelectionBar({
               {/* Mark as read — wishlist only */}
               {context === 'wishlist' && (
                 <button
-                  className="btn btn-primary"
+                  className="btn-primary"
                   onClick={handleMarkRead}
                   disabled={working}
                 >
@@ -109,7 +109,7 @@ export default function SelectionBar({
 
               {/* Remove */}
               <button
-                className="btn btn-danger"
+                className="btn-danger"
                 onClick={handleRemove}
                 disabled={working}
               >

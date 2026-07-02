@@ -12,6 +12,7 @@ import { lookupByTitle } from '../lib/bookLookup';
 import BookCover from '../components/BookCover';
 import ProgressUpdateModal from '../components/ProgressUpdateModal';
 import SessionDiscussion from '../components/SessionDiscussion';
+import CornerBrackets from '../components/CornerBrackets';
 import { useT } from '../lib/I18nContext';
 
 // ── Shared sub-components ─────────────────────────────────────────────────────
@@ -30,6 +31,7 @@ function Avatar({ displayName, avatarUrl, size = 28 }) {
 }
 
 function MemberProgressRow({ member, totalPages }) {
+  const t = useT();
   const pct = totalPages && member.pages_read > 0
     ? Math.min(100, Math.round((member.pages_read / totalPages) * 100))
     : null;
@@ -74,28 +76,9 @@ function MemberProgressRow({ member, totalPages }) {
 }
 
 // ── Edit session modal ────────────────────────────────────────────────────────
-
-const inputStyle = {
-  width: '100%',
-  boxSizing: 'border-box',
-  background: 'rgba(176, 140, 63, 0.04)',
-  border: '1px solid rgba(176, 140, 63, 0.25)',
-  borderRadius: 'var(--ro-radius-sm)',
-  padding: '0.6rem 0.85rem',
-  color: 'var(--paper)',
-  fontFamily: 'var(--ro-font-display)',
-  fontSize: '1.05rem',
-};
-
-const labelStyle = {
-  display: 'block',
-  fontFamily: 'var(--ro-font-mono)',
-  fontSize: '0.72rem',
-  letterSpacing: '0.15em',
-  textTransform: 'uppercase',
-  color: 'var(--gilt)',
-  marginBottom: '0.4rem',
-};
+// inputStyle/labelStyle previously built inline styles from --paper/--gilt,
+// tokens that don't exist post theme-rename (should be --ro-text/--ro-gold).
+// Replaced with the real .field-label / .input classes used everywhere else.
 
 function BookThumb({ book, size = 28 }) {
   return (
@@ -107,6 +90,7 @@ function BookThumb({ book, size = 28 }) {
 
 function EditSessionModal({ session, book, onSave, onClose }) {
   const { state, upsertBookOnServer } = useData();
+  const t = useT();
 
   // Normalise the current book into the client shape the picker expects
   const currentBook = { t: book.title, a: book.author, coverUrl: book.cover_url, bookId: book.id, pp: book.pages };
@@ -160,7 +144,8 @@ function EditSessionModal({ session, book, onSave, onClose }) {
       onClick={(e) => { if (e.target === e.currentTarget && !saving) onClose(); }}
       className="rating-modal-overlay"
     >
-      <div className="rating-modal" style={{ maxWidth: "520px", maxHeight: "90vh", overflowY: "auto" }}>
+      <div className="rating-modal rating-modal--scroll">
+        <CornerBrackets />
         <div className="rating-modal__eyebrow">
           {t('sessions.editEyebrow', { clubName: 'Admin' })}
         </div>
@@ -171,7 +156,7 @@ function EditSessionModal({ session, book, onSave, onClose }) {
         <div className="session-form">
           {/* Book picker */}
           <div>
-            <label style={labelStyle}>Book</label>
+            <label className="field-label">Book</label>
             {selectedBook ? (
               <div className="session-form__book-row">
                 <BookThumb book={selectedBook} size={28} />
@@ -179,12 +164,12 @@ function EditSessionModal({ session, book, onSave, onClose }) {
                   <div className="session-form__book-title">{selectedBook.t || selectedBook.title}</div>
                   {(selectedBook.a || selectedBook.author) && <div className="session-form__book-author">{selectedBook.a || selectedBook.author}</div>}
                 </div>
-                <button className="li-action" onClick={() => { setSelectedBook(null); setBookResults([]); }}>{t('sessions.changeBook')}</button>
+                <button className="btn-text" onClick={() => { setSelectedBook(null); setBookResults([]); }}>{t('sessions.changeBook')}</button>
               </div>
             ) : (
               <div className="session-form__dropdown">
                 <input
-                  style={inputStyle}
+                  className="input"
                   placeholder="Search by title or author…"
                   value={bookQuery}
                   onChange={(e) => { setBookQuery(e.target.value); searchBooks(e.target.value); }}
@@ -215,18 +200,18 @@ function EditSessionModal({ session, book, onSave, onClose }) {
           {/* Dates */}
           <div className="db-stats-grid">
             <div>
-              <label style={labelStyle}>Starts</label>
-              <input type="date" style={inputStyle} value={startsAt} onChange={(e) => setStartsAt(e.target.value)} />
+              <label className="field-label">Starts</label>
+              <input type="date" className="input" value={startsAt} onChange={(e) => setStartsAt(e.target.value)} />
             </div>
             <div>
-              <label style={labelStyle}>Ends</label>
-              <input type="date" style={inputStyle} value={endsAt} min={startsAt} onChange={(e) => setEndsAt(e.target.value)} />
+              <label className="field-label">Ends</label>
+              <input type="date" className="input" value={endsAt} min={startsAt} onChange={(e) => setEndsAt(e.target.value)} />
             </div>
           </div>
 
           {/* Notes */}
           <div>
-            <label style={labelStyle}>
+            <label className="field-label">
               Notes for members{' '}
               <span className="club-form__optional">(optional)</span>
             </label>
@@ -240,9 +225,9 @@ function EditSessionModal({ session, book, onSave, onClose }) {
           </div>
 
           {/* Actions */}
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', flexWrap: 'wrap' }}>
-            <button className="btn btn-secondary" onClick={onClose} disabled={saving}>Cancel</button>
-            <button className="btn" onClick={handleSave} disabled={!selectedBook || !startsAt || !endsAt || saving}>
+          <div className="bp-actions">
+            <button className="btn-secondary" onClick={onClose} disabled={saving}>Cancel</button>
+            <button className="btn-primary" onClick={handleSave} disabled={!selectedBook || !startsAt || !endsAt || saving}>
               {saving ? t('sessions.saving') : t('sessions.saveButton')}
             </button>
           </div>
@@ -408,11 +393,11 @@ export default function SessionDetail() {
       {/* Admin actions */}
       {isAdmin && (
         <div className="session-hero__actions">
-          <button className="li-action" onClick={() => setShowEditModal(true)}>
+          <button className="btn-text" onClick={() => setShowEditModal(true)}>
             {t('sessions.editSession')}
           </button>
           {!confirmDelete ? (
-            <button className="li-action danger" onClick={() => setConfirmDelete(true)}>
+            <button className="btn-danger btn--sm" onClick={() => setConfirmDelete(true)}>
               {t('sessions.deleteSession')}
             </button>
           ) : (
@@ -420,10 +405,10 @@ export default function SessionDetail() {
               <span className="session-hero__action-note">
                 {t('sessions.deleteConfirm')}
               </span>
-              <button className="li-action danger" onClick={handleDelete} disabled={deleting}>
+              <button className="btn-danger btn--sm" onClick={handleDelete} disabled={deleting}>
                 {deleting ? t('sessions.deleting') : t('sessions.deleteYes')}
               </button>
-              <button className="li-action" onClick={() => setConfirmDelete(false)}>{t('sessions.cancel')}</button>
+              <button className="btn-text" onClick={() => setConfirmDelete(false)}>{t('sessions.cancel')}</button>
             </>
           )}
         </div>
@@ -457,12 +442,12 @@ export default function SessionDetail() {
       {user && isActive && (
         <div className="session-member-list">
           {iAmReading ? (
-            <button className="btn" onClick={() => setShowProgressModal(true)}>
+            <button className="btn-primary" onClick={() => setShowProgressModal(true)}>
               {t('sessions.updateProgress')}
             </button>
           ) : (
             <>
-              <button className="btn" onClick={handleStartReading}>
+              <button className="btn-primary" onClick={handleStartReading}>
                 {t('sessions.startTracking')}
               </button>
               <span className="session-section-note">

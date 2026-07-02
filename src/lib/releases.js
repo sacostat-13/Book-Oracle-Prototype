@@ -16,9 +16,33 @@
 
 // The version label shown as "current" — keep in sync with package.json and
 // the README version line.
-export const CURRENT_VERSION = 'v0.37';
+export const CURRENT_VERSION = 'v0.37.1';
 
 export const RELEASES = [
+  {
+    version: 'v0.37.1',
+    date: '2026-07-01',
+    titleEn: 'Design system pass — sign-in, forms, Oracle, clubs, profile',
+    titleEs: 'Repaso del sistema de diseño — inicio de sesión, formularios, Oráculo, clubs, perfil',
+    bodyEn: [
+      'Fixed a crash on club session pages: the member progress row called a translation function that was never loaded, so any session with a page-count goal could fail to render.',
+      'Fixed a bug where the guest sign-in prompt showed the literal text "[object Object]" instead of a clickable link — the translation system now correctly embeds links and other elements into sentences, not just plain text.',
+      'The sign-in screen and the three-step onboarding flow (reading level, Goodreads import, goal) had no styling behind them at all and rendered as plain unformatted text. They now use the same bracketed card, step indicator, and button styling as the rest of the app.',
+      'The Oracle\'s two recommendation flows — by genre and by similar books — are rebuilt on the shared card and pill components, including the italic "why this book" line the Oracle gives for AI matches.',
+      'The book club page, the "new list" and "report a problem" forms, and the session edit modal now use the app\'s real buttons, inputs, and dropdowns instead of unstyled or dead classes.',
+      'Modals, the login card, and the profile\'s account card now consistently show all four gold corner brackets — previously only the top two ever rendered, since the bottom two required page code that no screen actually included.',
+      'Your reading stats, pace chart, top genres, favourite author, and series in progress now sit as their own sections on the Profile page instead of inside one shared box, matching the design system; your account settings remain grouped together in a single card below.',
+    ],
+    bodyEs: [
+      'Se corrigió un error que rompía la página de sesión del club: la fila de progreso de cada miembro llamaba a una función de traducción que nunca se había cargado, por lo que cualquier sesión con una meta de páginas podía fallar al mostrarse.',
+      'Se corrigió un error donde la invitación a probar como invitada mostraba el texto literal "[object Object]" en vez de un link — el sistema de traducciones ahora puede insertar links y otros elementos dentro de una oración, no solo texto plano.',
+      'La pantalla de inicio de sesión y el flujo de bienvenida de tres pasos (nivel de lectura, importar Goodreads, meta) no tenían ningún estilo y se mostraban como texto plano sin formato. Ahora usan la misma tarjeta con esquinas doradas, indicador de pasos y botones que el resto de la app.',
+      'Los dos flujos de recomendación del Oráculo — por género y por libros similares — se reconstruyeron sobre los componentes de tarjeta y píldora compartidos, incluida la línea itálica de "por qué este libro" que da el Oráculo en las recomendaciones con IA.',
+      'La página del club de lectura, los formularios de "nueva lista" y "reportar un problema", y el modal de edición de sesión ahora usan los botones, campos y desplegables reales de la app en vez de clases sin estilo o inexistentes.',
+      'Los modales, la tarjeta de inicio de sesión y la tarjeta de cuenta del perfil ahora muestran consistentemente las cuatro esquinas doradas — antes solo se veían las dos de arriba, porque las de abajo necesitaban código que ninguna pantalla incluía.',
+      'Tus estadísticas de lectura, el gráfico de ritmo, los géneros más leídos, tu autora favorita y las sagas en progreso ahora son secciones propias en tu Perfil en vez de estar dentro de una sola caja, siguiendo el sistema de diseño; la configuración de tu cuenta se mantiene agrupada en una sola tarjeta más abajo.',
+    ],
+  },
   {
     version: 'v0.36.4',
     date: '2026-06-24',

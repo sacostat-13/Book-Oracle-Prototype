@@ -26,7 +26,7 @@ export default function BookClubs() {
 
       {user && (
         <div className="clubs-list">
-          <button className="btn" onClick={() => go('book-club-create')}>
+          <button className="btn-primary" onClick={() => go('book-club-create')}>
             {t('clubs.newClub')}
           </button>
         </div>
@@ -43,7 +43,6 @@ export default function BookClubs() {
           {clubs.map((club) => (
             <div
               key={club.id}
-              className="cr-card"
               className="club-card"
               onClick={() => go('book-club-detail', { clubId: club.id })}
             >

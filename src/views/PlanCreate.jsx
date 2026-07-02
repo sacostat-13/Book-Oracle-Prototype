@@ -309,10 +309,10 @@ Return ONLY valid JSON in this exact format:
       <div className="breadcrumb">
         <a onClick={() => go('dashboard')}>{t('plans.breadcrumb')}</a> · {t('plans.createPlanBreadcrumb')}
       </div>
-      <div className="page-header">
-        <div className="page-eyebrow">Create a reading plan</div>
-        <h1 className="page-title">Where do you want to <span className="accent">go</span>?</h1>
-        <p className="page-subtitle">We'll build a paced, curated path from where you are to where you're headed.</p>
+      <div className="page-head">
+        <div className="page-head__eyebrow">Create a reading plan</div>
+        <h1 className="page-head__title">Where do you want to <span className="accent">go</span>?</h1>
+        <p className="page-head__lead">We'll build a paced, curated path from where you are to where you're headed.</p>
       </div>
 
       <div className="onboarding-card plan-card">
@@ -419,16 +419,15 @@ Return ONLY valid JSON in this exact format:
             <div className="club-form__actions">
               <input
                 type="text"
-                className="search-input"
+                className="input"
                 placeholder='e.g. "The Stormlight Archive"'
-                className="session-form__book-wrap"
                 value={seriesSearch}
                 onChange={(e) => setSeriesSearch(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && doSeriesSearch()}
               />
-              <button className="btn btn-gilt" onClick={doSeriesSearch}>Search ❦</button>
+              <button className="btn-primary" onClick={doSeriesSearch}>Search ❦</button>
             </div>
-            <div >
+            <div>
               {seriesSearchLoading && (
                 <div className="loading">
                   <div className="loading-spinner"></div>
@@ -441,8 +440,8 @@ Return ONLY valid JSON in this exact format:
                 </div>
               )}
               {seriesSearchResult?.found && (
-                <div style={{ padding: '1rem', background: 'rgba(176, 140, 63, 0.08)', border: '1px solid rgba(176, 140, 63, 0.3)', borderRadius: 'var(--ro-radius-sm)' }}>
-                  <div style={{ fontFamily: 'var(--ro-font-display)', fontStyle: 'italic', fontSize: '1.1rem', color: 'var(--paper)', marginBottom: '0.4rem' }}>
+                <div className="panel">
+                  <div className="pf-account-card__section-title" style={{ fontSize: '1.1rem' }}>
                     Found <strong>{seriesSearchResult.books.length}</strong> books in <em>{seriesSearchResult.name}</em>
                   </div>
                   <div className="session-form__book-author">
@@ -482,8 +481,8 @@ Return ONLY valid JSON in this exact format:
         )}
 
         <div className="onb-actions">
-          <button className="btn btn-secondary" onClick={() => go('dashboard')}>← Back</button>
-          <button className="btn" disabled={!canGenerate} onClick={generate}>
+          <button className="btn-secondary" onClick={() => go('dashboard')}>← Back</button>
+          <button className="btn-primary" disabled={!canGenerate} onClick={generate}>
             Generate plan ❦
           </button>
         </div>

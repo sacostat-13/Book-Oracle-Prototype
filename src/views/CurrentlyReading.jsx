@@ -135,19 +135,19 @@ export default function CurrentlyReading({ onOpenBook }) {
 
                   <div className="cr-actions">
                     <button
-                      className="btn btn-secondary"
+                      className="btn-secondary"
                       onClick={() => setUpdatingProgress(b)}
                     >
                       {t('currentlyReading.updateProgress')}
                     </button>
                     <button
-                      className="btn btn-secondary"
+                      className="btn-secondary"
                       onClick={() => setFinishing(b)}
                     >
                       {t('currentlyReading.markFinished')}
                     </button>
                     <button
-                      className="btn btn-danger"
+                      className="btn-danger"
                       onClick={() => {
                         if (confirm(t('currentlyReading.confirmRemove', { title: b.t }))) {
                           removeFromCurrentlyReading(b);

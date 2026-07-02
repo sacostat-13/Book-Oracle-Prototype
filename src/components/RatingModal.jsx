@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useT } from '../lib/I18nContext';
+import CornerBrackets from './CornerBrackets';
 
 const STARS = [1, 2, 3, 4, 5];
 const NOTES_MAX = 4000;
@@ -40,11 +41,11 @@ export default function RatingModal({ book, initialRating, initialNotes, initial
 
   return (
     <div
-      className="rating-modal-backdrop"
-      onClick={(e) => { if (e.target === e.currentTarget && !saving) onSkip?.(); }}
       className="rating-modal-overlay"
+      onClick={(e) => { if (e.target === e.currentTarget && !saving) onSkip?.(); }}
     >
       <div className="rating-modal">
+        <CornerBrackets size="sm" />
         <div className="rating-modal__eyebrow">
           {eyebrowText}
         </div>

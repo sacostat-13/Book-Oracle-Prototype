@@ -63,7 +63,7 @@ export default function JoinClub() {
           {user && (
             <div className="onb-actions">
               <div />
-              <button className="btn btn-secondary" onClick={() => go('book-clubs')}>
+              <button className="btn-secondary" onClick={() => go('book-clubs')}>
                 {t('joinClub.myClubs')}
               </button>
             </div>
@@ -110,11 +110,11 @@ export default function JoinClub() {
         <div className="onb-actions">
           <div />
           {user ? (
-            <button className="btn" onClick={() => setStatus('joining')}>
+            <button className="btn-primary" onClick={() => setStatus('joining')}>
               {t('joinClub.joinBtn')}
             </button>
           ) : (
-            <button className="btn" onClick={signInWithGoogle}>
+            <button className="btn-primary" onClick={signInWithGoogle}>
               {t('joinClub.signInToJoin')}
             </button>
           )}

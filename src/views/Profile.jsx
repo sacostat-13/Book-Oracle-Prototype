@@ -8,6 +8,7 @@ import { parseGoodreadsCSV } from '../lib/goodreadsImport';
 import { findBookByTitle, bookKey, openBookTab } from '../lib/bookHelpers';
 import { useFriends, checkUsernameAvailability, validateUsername } from '../lib/useFriends';
 import { supabase } from '../lib/supabase';
+import CornerBrackets from '../components/CornerBrackets';
 
 const LEVEL_NAMES = {
   1: 'Casual companion', 2: 'Steady reader', 3: 'Devoted reader',
@@ -727,68 +728,70 @@ export default function Profile() {
 
       {/* ── Reading Stats ─────────────────────────────────────────────────── */}
       {hasStats && (
-        <div className="panel">
+        <div className="profile-stats">
 
-          {sectionTitle(t('profile.sectionStats'))}
+          <section>
+            {sectionTitle(t('profile.sectionStats'))}
 
-          {/* Top-line numbers */}
-          <div className="pf-stats-grid">
-            <StatCard
-              value={stats.totalBooks}
-              label={t('profile.statBooksRead')}
-              sub={stats.booksThisYear > 0 ? t('profile.statThisYear', { count: stats.booksThisYear }) : null}
-            />
-            {stats.totalPages > 0 && (
+            {/* Top-line numbers */}
+            <div className="pf-stats-grid">
               <StatCard
-                value={stats.totalPages.toLocaleString()}
-                label={t('profile.statPages')}
-                sub={stats.pagesThisYear > 0 ? t('profile.statThisYear', { count: stats.pagesThisYear.toLocaleString() }) : null}
+                value={stats.totalBooks}
+                label={t('profile.statBooksRead')}
+                sub={stats.booksThisYear > 0 ? t('profile.statThisYear', { count: stats.booksThisYear }) : null}
               />
-            )}
-            {stats.pace && (
-              <StatCard
-                value={stats.pace}
-                label={t('profile.statBooksMonth')}
-                sub={t('profile.statLast12')}
-              />
-            )}
-            {stats.avgRating && (
-              <StatCard
-                value={`${stats.avgRating}★`}
-                label={t('profile.statAvgRating')}
-              />
-            )}
-            {stats.seriesCompleted > 0 && (
-              <StatCard
-                value={stats.seriesCompleted}
-                label={t('profile.statSeriesFinished')}
-              />
-            )}
-          </div>
+              {stats.totalPages > 0 && (
+                <StatCard
+                  value={stats.totalPages.toLocaleString()}
+                  label={t('profile.statPages')}
+                  sub={stats.pagesThisYear > 0 ? t('profile.statThisYear', { count: stats.pagesThisYear.toLocaleString() }) : null}
+                />
+              )}
+              {stats.pace && (
+                <StatCard
+                  value={stats.pace}
+                  label={t('profile.statBooksMonth')}
+                  sub={t('profile.statLast12')}
+                />
+              )}
+              {stats.avgRating && (
+                <StatCard
+                  value={`${stats.avgRating}★`}
+                  label={t('profile.statAvgRating')}
+                />
+              )}
+              {stats.seriesCompleted > 0 && (
+                <StatCard
+                  value={stats.seriesCompleted}
+                  label={t('profile.statSeriesFinished')}
+                />
+              )}
+            </div>
+          </section>
 
           {/* Pace chart */}
           {stats.datedBooks.length > 0 && (
-            <>
+            <section>
               {sectionTitle(t('profile.sectionPace'))}
               <PaceChart books={stats.datedBooks} onOpenBook={(b) => openBookTab(b, 'profile')} />
-            </>
+            </section>
           )}
 
           {/* Top genres */}
           {stats.topGenres.length > 0 && (
-            <>
+            <section>
               {sectionTitle(t('profile.sectionTopGenres'))}
               <div>
                 {stats.topGenres.map((g) => (
                   <GenreBar key={g.name} name={g.name} count={g.count} max={stats.topGenres[0].count} />
                 ))}
               </div>
-            </>
+            </section>
           )}
 
           {/* Favourite author */}
           {stats.topAuthor && stats.topAuthor[1] > 1 && (
-            <>
+            <section>
               {sectionTitle(t('profile.sectionTopAuthor'))}
               <p className="pf-author-line">
                 <span className="pf-author-name">{stats.topAuthor[0]}</span>
@@ -796,12 +799,12 @@ export default function Profile() {
                   · {t('profile.topAuthorBooks', { count: stats.topAuthor[1] })}
                 </span>
               </p>
-            </>
+            </section>
           )}
 
           {/* Series in progress */}
           {stats.seriesInProgress.length > 0 && (
-            <>
+            <section>
               {sectionTitle(t('profile.sectionSeries'))}
               <div className="pf-series-list">
                 {stats.seriesInProgress.map((s) => (
@@ -830,7 +833,7 @@ export default function Profile() {
                   </div>
                 ))}
               </div>
-            </>
+            </section>
           )}
 
           {/* No date data nudge */}
@@ -839,13 +842,12 @@ export default function Profile() {
               {t('profile.paceNudge')}
             </p>
           )}
-
-          <hr className="divider" />
         </div>
       )}
 
       {/* ── Profile settings ──────────────────────────────────────────────── */}
-      <div className="panel">
+      <div className="pf-account-card">
+        <CornerBrackets />
         {user && (
           <>
             <h2 className="pf-account-card__section-title">

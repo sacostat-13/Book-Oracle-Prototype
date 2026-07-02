@@ -18,35 +18,9 @@ import CommentThread from './CommentThread';
 import { useT } from '../lib/I18nContext';
 import { useOracleQuota } from '../lib/OracleQuotaContext';
 
-const labelStyle = {
-  display: 'block',
-  fontFamily: 'var(--ro-font-mono)',
-  fontSize: '0.7rem',
-  letterSpacing: '0.15em',
-  textTransform: 'uppercase',
-  color: 'var(--gilt)',
-  marginBottom: '0.6rem',
-};
-
-const inputStyle = {
-  width: '100%',
-  boxSizing: 'border-box',
-  background: 'rgba(176,140,63,0.04)',
-  border: '1px solid rgba(176,140,63,0.25)',
-  borderRadius: 'var(--ro-radius-sm)',
-  padding: '0.55rem 0.8rem',
-  color: 'var(--paper)',
-  fontFamily: 'var(--ro-font-display)',
-  fontSize: '1rem',
-  resize: 'vertical',
-  colorScheme: 'dark',
-};
-
 // ── Oracle question suggestion fetch ─────────────────────────────────────────
 
-async function fetchOracleQuestions({ book, existingQuestions = [] }) {
-  const t = useT();
-  const { handleQuotaError, onCallSucceeded } = useOracleQuota();
+async function fetchOracleQuestions({ book, existingQuestions = [], t, handleQuotaError, onCallSucceeded }) {
   const existingList = existingQuestions.length
     ? existingQuestions.map((q) => `- ${q.body}`).join('\n')
     : t('discussion.noQuestions');
@@ -85,7 +59,6 @@ function OracleSuggestions({ suggestions, onPick, onDismiss }) {
   const [added, setAdded] = useState(new Set());
 
   async function handlePick(suggestion, i) {
-    const t = useT();
     await onPick(suggestion);
     setAdded((prev) => new Set([...prev, i]));
   }
@@ -130,7 +103,6 @@ function AddQuestionForm({ onAdd, onCancel, nextPosition }) {
   const [saving, setSaving] = useState(false);
 
   async function handleAdd() {
-    const t = useT();
     if (!body.trim() || saving) return;
     setSaving(true);
     await onAdd(body.trim(), nextPosition);
@@ -166,13 +138,13 @@ function QuestionBlock({ question, isAdmin, onPostAnswer, onDelete, onEditCommen
   const [collapsed, setCollapsed] = useState(false);
 
   return (
-    <div className="session-prompt" style={{ paddingBottom: "1.5rem", marginBottom: "1.5rem" }}>
+    <div className="session-prompt session-prompt--question">
       <div className="club-member-row">
-        <div className="friend-avatar--fallback" style={{ "--fa-sz": "24px", fontSize: "0.65rem" }}>
+        <div className="friend-avatar--fallback" style={{ '--fa-sz': '24px', fontSize: '0.65rem' }}>
           Q
         </div>
         <div className="session-form__book-wrap">
-          <p className="session-hero__title" style={{ fontSize: "1.1rem", margin: 0 }}>
+          <p className="session-hero__title" style={{ fontSize: '1.1rem', margin: 0 }}>
             {question.body}
           </p>
           <div className="comment-item__actions">
@@ -185,7 +157,7 @@ function QuestionBlock({ question, isAdmin, onPostAnswer, onDelete, onEditCommen
             {isAdmin && (
               <button
                 onClick={() => onDelete(question.id)}
-                className="comment-item__reply" style={{ color: "var(--ro-error)" }}
+                className="comment-item__reply comment-item__reply--danger"
               >
                 {t('discussion.removeQuestion')}
               </button>
@@ -195,7 +167,7 @@ function QuestionBlock({ question, isAdmin, onPostAnswer, onDelete, onEditCommen
       </div>
 
       {!collapsed && (
-        <div className="session-prompt" style={{ paddingLeft: "2rem", borderLeft: "none", marginBottom: 0 }}>
+        <div className="session-prompt session-prompt--answers">
           <CommentThread
             comments={question.answers || []}
             onPost={(body) => onPostAnswer(body, question.id)}
@@ -214,6 +186,8 @@ function QuestionBlock({ question, isAdmin, onPostAnswer, onDelete, onEditCommen
 
 export default function SessionDiscussion({ sessionId, clubId, isAdmin, book = {} }) {
   const { postComment, deleteComment, editComment, addQuestion, deleteQuestion } = useData();
+  const t = useT();
+  const { handleQuotaError, onCallSucceeded } = useOracleQuota();
   const [discussion, setDiscussion] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showAddQuestion, setShowAddQuestion] = useState(false);
@@ -230,44 +204,37 @@ export default function SessionDiscussion({ sessionId, clubId, isAdmin, book = {
   useEffect(() => { loadDiscussion(); }, [loadDiscussion]);
 
   async function handlePostComment(body, parentId = null) {
-    const t = useT();
     const comment = await postComment({ sessionId, clubId, body, parentId });
     if (comment) await loadDiscussion();
   }
 
   async function handlePostAnswer(body, questionId) {
-    const t = useT();
     const comment = await postComment({ sessionId, clubId, body, questionId });
     if (comment) await loadDiscussion();
   }
 
   async function handleDeleteComment(commentId) {
-    const t = useT();
     await deleteComment(commentId);
     await loadDiscussion();
   }
 
   async function handleEditComment(commentId, body) {
-    const t = useT();
     await editComment(commentId, body);
     await loadDiscussion();
   }
 
   async function handleAddQuestion(body, position) {
-    const t = useT();
     const q = await addQuestion({ sessionId, clubId, body, position });
     if (q) { setShowAddQuestion(false); await loadDiscussion(); }
   }
 
   async function handleDeleteQuestion(questionId) {
-    const t = useT();
     if (!confirm(t('discussion.confirmRemoveQuestion'))) return;
     await deleteQuestion(questionId);
     await loadDiscussion();
   }
 
   async function handleOracleSuggest() {
-    const t = useT();
     setOracleLoading(true);
     setOracleError(null);
     setOracleSuggestions(null);
@@ -275,6 +242,9 @@ export default function SessionDiscussion({ sessionId, clubId, isAdmin, book = {
       const suggestions = await fetchOracleQuestions({
         book,
         existingQuestions: discussion?.questions || [],
+        t,
+        handleQuotaError,
+        onCallSucceeded,
       });
       setOracleSuggestions(suggestions);
     } catch (e) {
@@ -285,7 +255,6 @@ export default function SessionDiscussion({ sessionId, clubId, isAdmin, book = {
   }
 
   async function handlePickSuggestion(body) {
-    const t = useT();
     const position = (discussion?.questions || []).length;
     await addQuestion({ sessionId, clubId, body, position });
     await loadDiscussion();
@@ -308,19 +277,18 @@ export default function SessionDiscussion({ sessionId, clubId, isAdmin, book = {
       {(questions.length > 0 || isAdmin) && (
         <section className="db-section">
           <div className="club-card__head">
-            <div style={labelStyle}>{t('discussion.questionsLabel')}</div>
+            <div className="pf-overline">{t('discussion.questionsLabel')}</div>
             {isAdmin && (
               <div className="friend-row__actions">
                 <button
-                  className="li-action"
+                  className="btn-text"
                   onClick={handleOracleSuggest}
                   disabled={oracleLoading}
-
                 >
                   {oracleLoading ? t('discussion.oracleThinking') : t('discussion.oracleSuggestsBtn')}
                 </button>
                 {!showAddQuestion && (
-                  <button className="li-action" onClick={() => setShowAddQuestion(true)}>
+                  <button className="btn-text" onClick={() => setShowAddQuestion(true)}>
                     {t('discussion.addQuestion')}
                   </button>
                 )}
@@ -372,7 +340,7 @@ export default function SessionDiscussion({ sessionId, clubId, isAdmin, book = {
 
       {/* Free comments */}
       <section>
-        <div style={labelStyle}>
+        <div className="pf-overline">
           {t('discussion.commentsLabel')}
           {comments.length > 0 && (
             <span className="club-form__optional">

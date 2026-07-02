@@ -66,6 +66,12 @@
   color: var(--ro-gold);
 }
 
+// For .pf-overline used inline within a flex row (e.g. next to a badge)
+// instead of as a standalone block label above content.
+.pf-overline--inline {
+  margin-bottom: 0;
+}
+
 // ── Pace chart panel ──────────────────────────────────────────────────────────
 .pf-pace-panel {
   background: var(--ro-surface);
@@ -332,44 +338,6 @@
   border-radius: 18px;
   padding: 34px;
   box-shadow: var(--ro-shadow);
-
-  // Corner brackets (gold hairlines)
-  &::before,
-  &::after,
-  .pf-account-card__bl,
-  .pf-account-card__br {
-    content: '';
-    position: absolute;
-    width: 20px;
-    height: 20px;
-    border-color: var(--ro-gold);
-    border-style: solid;
-    pointer-events: none;
-  }
-
-  &::before {
-    top: 16px;
-    left: 16px;
-    border-width: 2px 0 0 2px;
-  }
-
-  &::after {
-    top: 16px;
-    right: 16px;
-    border-width: 2px 2px 0 0;
-  }
-
-  .pf-account-card__bl {
-    bottom: 16px;
-    left: 16px;
-    border-width: 0 0 2px 2px;
-  }
-
-  .pf-account-card__br {
-    bottom: 16px;
-    right: 16px;
-    border-width: 0 2px 2px 0;
-  }
 }
 
 .pf-account-card__title {
@@ -971,44 +939,13 @@
   width: 100%;
   padding: 32px;
   box-shadow: var(--ro-shadow);
+}
 
-  // Corner bracket ornaments
-  &::before,
-  &::after,
-  .rating-modal__bl,
-  .rating-modal__br {
-    content: '';
-    position: absolute;
-    width: 18px;
-    height: 18px;
-    border-color: var(--ro-gold);
-    border-style: solid;
-    pointer-events: none;
-  }
-
-  &::before {
-    top: 14px;
-    left: 14px;
-    border-width: 2px 0 0 2px;
-  }
-
-  &::after {
-    top: 14px;
-    right: 14px;
-    border-width: 2px 2px 0 0;
-  }
-
-  .rating-modal__bl {
-    bottom: 14px;
-    left: 14px;
-    border-width: 0 0 2px 2px;
-  }
-
-  .rating-modal__br {
-    bottom: 14px;
-    right: 14px;
-    border-width: 0 2px 2px 0;
-  }
+// For forms that can grow tall (e.g. edit-session with book picker + dates
+// + notes) — keeps the modal from overflowing the viewport.
+.rating-modal--scroll {
+  max-height: 90vh;
+  overflow-y: auto;
 }
 
 .rating-modal__close {

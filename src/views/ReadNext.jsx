@@ -31,7 +31,7 @@ export default function ReadNext({ onOpenBook }) {
           <div className="empty-state-title">{t('readNext.emptyTitle')}</div>
           <div className="empty-state-text">{t('readNext.emptyText')}</div>
           <div className="lv-load-more">
-            <button className="btn" onClick={() => go('oracle')}>{t('readNext.openOracle')}</button>
+            <button className="btn btn-primary" onClick={() => go('oracle')}>{t('readNext.openOracle')}</button>
           </div>
         </div>
       ) : (

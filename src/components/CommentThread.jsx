@@ -61,20 +61,12 @@ function CommentInput({ onPost, placeholder = 'Add a comment…', autoFocus = fa
         placeholder={placeholder}
         rows={2}
         autoFocus={autoFocus}
-        className="textarea" style={{
-          flex: 1,
-          fontFamily: 'var(--ro-font-display)',
-          fontSize: '0.95rem',
-          resize: 'none',
-          lineHeight: 1.5,
-          colorScheme: 'dark',
-        }}
+        className="textarea"
       />
       <button
-        className="li-action"
+        className="btn-text comment-reply-send"
         onClick={handlePost}
         disabled={!body.trim() || posting}
-        className="comment-reply-send"
       >
         {posting ? t('discussion.posting') : t('discussion.post')}
       </button>
@@ -100,16 +92,11 @@ function EditInput({ initialBody, onSave, onCancel }) {
         onChange={(e) => setBody(e.target.value)}
         rows={2}
         autoFocus
-        className="textarea" style={{
-          flex: 1,
-          fontSize: '0.95rem',
-          resize: 'none',
-          colorScheme: 'dark',
-        }}
+        className="textarea"
       />
       <div className="comment-reply-compose">
-        <button className="li-action" onClick={handleSave} disabled={!body.trim() || saving}>{saving ? '…' : 'Save'}</button>
-        <button className="li-action" onClick={onCancel}>{t('discussion.cancelReply')}</button>
+        <button className="btn-text" onClick={handleSave} disabled={!body.trim() || saving}>{saving ? '…' : 'Save'}</button>
+        <button className="btn-text" onClick={onCancel}>{t('discussion.cancelReply')}</button>
       </div>
     </div>
   );
@@ -175,7 +162,7 @@ function SingleComment({ comment, onPost, onDelete, onEdit, isReply = false }) {
                 </button>
                 <button
                   onClick={() => onDelete(comment.id)}
-                  className="comment-item__reply" style={{ color: "var(--ro-error)" }}
+                  className="comment-item__reply comment-item__reply--danger"
                 >{t('discussion.delete')}</button>
               </>
             )}
@@ -184,7 +171,7 @@ function SingleComment({ comment, onPost, onDelete, onEdit, isReply = false }) {
 
         {/* Replies */}
         {comment.replies?.length > 0 && (
-          <div className="session-prompt" style={{ marginTop: "0.6rem", marginBottom: 0 }}>
+          <div className="session-prompt session-prompt--replies">
             {comment.replies.map((r) => (
               <SingleComment
                 key={r.id}

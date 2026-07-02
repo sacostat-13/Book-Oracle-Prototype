@@ -145,43 +145,28 @@ function FriendLibrary({ library, go, t }) {
   const hasMore = visible.length < filtered.length;
   const hasFilter = search || genreFilter !== 'all' || yearFilter !== 'all' || sort !== 'recent';
 
-  const selectStyle = {
-    background: 'var(--ro-shadow)',
-    color: 'var(--paper)',
-    border: '1px solid var(--input-border)',
-    borderRadius: 'var(--ro-radius-sm)',
-    padding: '0.9rem 1rem',
-    fontFamily: 'var(--ro-font-body)',
-    fontSize: '1.05rem',
-    fontStyle: 'italic',
-    cursor: 'pointer',
-    appearance: 'none',
-    WebkitAppearance: 'none',
-    backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%23b08c3f' d='M6 8L0 0h12z'/%3E%3C/svg%3E\")",
-    backgroundRepeat: 'no-repeat',
-    backgroundPosition: 'right 1rem center',
-    paddingRight: '2.5rem',
-    transition: 'border-color 0.2s',
-  };
-
   return (
     <>
       {/* Toolbar — matches Library/Wishlist layout */}
-      <div className="wishlist-toolbar">
-        <div className="wishlist-filters">
+      <div className="lv-toolbar">
+        <div className="lv-toolbar__filters">
           {/* Search */}
-          <input
-            type="text"
-            className="search-input"
-            placeholder={t('friends.librarySearch')}
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-
-          />
+          <div className="lv-search">
+            <svg className="lv-search__icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+              <circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" />
+            </svg>
+            <input
+              type="text"
+              className="lv-search__input"
+              placeholder={t('friends.librarySearch')}
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
 
           {/* Genre filter */}
           {genreOptions.length > 0 && (
-            <select value={genreFilter} onChange={(e) => setGenreFilter(e.target.value)} style={selectStyle}>
+            <select className="select" value={genreFilter} onChange={(e) => setGenreFilter(e.target.value)}>
               <option value="all">{t('friends.libraryAllGenres')}</option>
               {genreOptions.map((o) => (
                 <option key={o.normalized_name} value={o.normalized_name}>☩ {o.name}</option>
@@ -191,7 +176,7 @@ function FriendLibrary({ library, go, t }) {
 
           {/* Year filter */}
           {yearOptions.length > 1 && (
-            <select value={yearFilter} onChange={(e) => setYearFilter(e.target.value)} style={selectStyle}>
+            <select className="select" value={yearFilter} onChange={(e) => setYearFilter(e.target.value)}>
               <option value="all">{t('friends.libraryAllYears')}</option>
               {yearOptions.map((y) => (
                 <option key={y} value={y}>{y}</option>
@@ -202,7 +187,7 @@ function FriendLibrary({ library, go, t }) {
 
         {/* Sort + count — right side */}
         <div className="fp-hero__actions">
-          <select value={sort} onChange={(e) => setSort(e.target.value)} style={selectStyle}>
+          <select className="select" value={sort} onChange={(e) => setSort(e.target.value)}>
             <option value="recent">{t('friends.librarySortRecent')}</option>
             <option value="rating">{t('friends.librarySortRating')}</option>
             <option value="title">{t('friends.librarySortTitle')}</option>
@@ -227,8 +212,6 @@ function FriendLibrary({ library, go, t }) {
                 key={b.id}
                 className="fp-book-item"
                 onClick={() => openBookTab(b, 'friend-profile')}
-                onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
-                onMouseLeave={(e) => e.currentTarget.style.transform = ''}
                 title={`${b.t}${b.a ? ` · ${b.a}` : ''}${b.dateRead ? ` · ${new Date(b.dateRead).getFullYear()}` : ''}`}
               >
                 <Cover book={b} size={90} onClick={() => openBookTab(b, 'friend-profile')} />
@@ -343,32 +326,32 @@ export default function FriendProfile() {
   let friendBtn = null;
   if (!isSelf && user) {
     if (isFriend) {
-      friendBtn = <span className="status-pill status-pill--read">{t('friends.alreadyFriends')}</span>;
+      friendBtn = <span className="status status--read">{t('friends.alreadyFriends')}</span>;
     } else if (hasPending || reqSent) {
-      friendBtn = <span className="status-pill status-pill--queued">{t('friends.requestSent')}</span>;
+      friendBtn = <span className="status status--reading">{t('friends.requestSent')}</span>;
     } else {
-      friendBtn = <button className="btn" onClick={handleSendRequest}>{t('friends.sendRequest')}</button>;
+      friendBtn = <button className="btn-primary" onClick={handleSendRequest}>{t('friends.sendRequest')}</button>;
     }
   }
 
   return (
-    <div className="friend-profile">
+    <div className="fp-page">
       <div className="breadcrumb">
         <a onClick={() => go('dashboard')}>{t('nav.dashboard')}</a>
         {' '}·{' '}{displayName}
       </div>
 
       {/* Header */}
-      <div className="friend-profile__header">
+      <div className="fp-hero">
         {profile.avatar_url ? (
-          <img src={profile.avatar_url} alt={displayName} className="friend-profile__avatar" />
+          <img src={profile.avatar_url} alt={displayName} className="friend-avatar" style={{ '--fa-sz': '88px' }} />
         ) : (
-          <div className="friend-profile__avatar friend-profile__avatar--fallback">
+          <div className="friend-avatar--fallback" style={{ '--fa-sz': '88px' }}>
             {displayName[0].toUpperCase()}
           </div>
         )}
 
-        <div className="friend-profile__identity">
+        <div className="fp-hero__info">
           <h1 className="fp-hero__name">
             {displayName}
           </h1>
@@ -378,10 +361,10 @@ export default function FriendProfile() {
             </div>
           )}
           <div className="bp-meta">
-            {booksThisYear > 0 && <span className="level-pill">▤ {t('friends.booksThisYear', { count: booksThisYear, year: thisYear })}</span>}
-            {library.length > 0 && <span className="level-pill">◈ {t('friends.totalBooks', { count: library.length })}</span>}
+            {booksThisYear > 0 && <span className="bp-pill">▤ {t('friends.booksThisYear', { count: booksThisYear, year: thisYear })}</span>}
+            {library.length > 0 && <span className="bp-pill">◈ {t('friends.totalBooks', { count: library.length })}</span>}
             {reading.length > 0 && (
-              <span className="level-pill" className="bp-pill">
+              <span className="bp-pill">
                 ❧ {t('friends.currentlyReading', { count: reading.length })}
               </span>
             )}
@@ -400,17 +383,17 @@ export default function FriendProfile() {
 
       {/* Currently Reading */}
       {reading.length > 0 && (
-        <section className="friend-profile__section">
-          <div className="page-eyebrow">{t('friends.sectionReading')}</div>
-          <div className="db-cr__grid">
+        <section>
+          <div className="pf-overline">{t('friends.sectionReading')}</div>
+          <div className="db-cr-grid">
             {reading.map((cr, i) => {
               const b = cr.book || cr;
               return (
-                <div key={i} className="db-cr__card" onClick={() => openBookTab({ t: b.title || b.t, a: b.author || b.a, coverUrl: b.cover_url || b.coverUrl }, 'friend-profile')}>
+                <div key={i} className="db-cr-card" onClick={() => openBookTab({ t: b.title || b.t, a: b.author || b.a, coverUrl: b.cover_url || b.coverUrl }, 'friend-profile')}>
                   <Cover book={{ t: b.title || b.t, a: b.author || b.a, coverUrl: b.cover_url || b.coverUrl }} size={72} />
-                  <div className="db-cr__meta">
-                    <div className="db-cr__title">{b.title || b.t}</div>
-                    <div className="db-cr__author">{b.author || b.a}</div>
+                  <div className="db-cr-body">
+                    <div className="db-cr-title">{b.title || b.t}</div>
+                    <div className="db-cr-author">{b.author || b.a}</div>
                   </div>
                 </div>
               );
@@ -420,8 +403,8 @@ export default function FriendProfile() {
       )}
 
       {/* Full library with filters */}
-      <section className="friend-profile__section">
-        <div className="page-eyebrow">
+      <section>
+        <div className="pf-overline">
           {t('friends.sectionLibrary')}
         </div>
         {!showLibrary ? (
@@ -439,9 +422,9 @@ export default function FriendProfile() {
 
       {/* Share own profile link */}
       {isSelf && profile.username && (
-        <section className="friend-profile__section">
-          <div className="page-eyebrow">{t('friends.shareProfile')}</div>
-          <div className="panel" style={{ display: "flex", gap: "0.75rem", padding: "0.85rem 1rem", alignItems: "center", flexWrap: "wrap" }}>
+        <section>
+          <div className="pf-overline">{t('friends.shareProfile')}</div>
+          <div className="panel pf-value-row">
             <code className="pf-username-url" style={{ flex: 1, wordBreak: "break-all" }}>
               {window.location.origin}/u/{profile.username}
             </code>

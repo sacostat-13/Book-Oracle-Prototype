@@ -232,21 +232,20 @@ export default function BookModal({ book, onClose, onOpenBook }) {
         const isCurrent = bookKey(entry) === bookKey(display);
         const read = state.library.some((l) => bookKey(l) === bookKey(entry));
         const queued = state.readNext.some((l) => bookKey(l) === bookKey(entry));
-        const cls = isCurrent ? 'current' : read ? 'read' : queued ? 'queued' : '';
+        const cls = isCurrent ? ' bp-series__dot--current' : read ? ' bp-series__dot--read' : queued ? ' bp-series__dot--queued' : '';
         dots.push(
           <div
             key={i}
-            className={`series-dot ${cls}`}
+            className={`bp-series__dot${cls}`}
             title={`${entry.t}${read ? ' — read' : queued ? ' — queued' : ''}`}
             onClick={() => isCurrent ? null : onOpenBook?.(entry)}
-
           >
             {i}
           </div>
         );
       } else {
         dots.push(
-          <div key={i} className="series-dot" title={`Book ${i} (not in your wishlist)`}>
+          <div key={i} className="bp-series__dot" title={`Book ${i} (not in your wishlist)`}>
             {i}
           </div>
         );
@@ -291,15 +290,15 @@ export default function BookModal({ book, onClose, onOpenBook }) {
   }
 
   return (
-    <div className="modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className="book-modal">
-        <button className="book-modal-close" onClick={onClose} aria-label="Close">×</button>
+    <div className="overlay" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="modal modal--wide">
+        <button className="modal__close" onClick={onClose} aria-label="Close">×</button>
 
-        <div className="book-modal-hero">
-          <div className="book-modal-cover">
+        <div className="bp-hero">
+          <div className="bp-cover-col">
             <BookCover title={display.t} author={display.a} coverUrl={display.coverUrl} eager />
           </div>
-          <div className="book-modal-info">
+          <div className="bp-info">
             {(() => {
               const oracleGenres = state.genresByBookId?.[display.bookId];
               const genres = (oracleGenres && oracleGenres.length > 0)
@@ -307,43 +306,42 @@ export default function BookModal({ book, onClose, onOpenBook }) {
                 : (display.g ? [{ name: display.g, description: null }] : []);
               if (genres.length === 0) return null;
               return (
-                <div className="book-modal-genres">
+                <div className="bp-meta">
                   {genres.map((g) => (
-                    <span key={g.name} className="book-modal-genre" title={g.description || undefined}>
+                    <span key={g.name} className="chip" title={g.description || undefined}>
                       {g.name}
                     </span>
                   ))}
                 </div>
               );
             })()}
-            <h2 className="book-modal-title">{display.t}</h2>
-            <div className="book-modal-author">{display.a}</div>
+            <h2 className="bp-title">{display.t}</h2>
+            <div className="bp-author">{display.a}</div>
             <button
-              className="book-modal-see-more"
+              className="btn-text"
               onClick={() => { onClose(); go('book-page', { bookKey: k, from: 'wishlist', fromLabel: t('bookModal.fromWishlist') }); }}
             >
               {t('bookModal.seeMore')}
             </button>
             {liveRating > 0 && (
-              <div className="book-modal-rating">
+              <div className="bp-stars">
                 {'★'.repeat(Math.max(1, Math.min(5, parseInt(liveRating, 10))))}
-                <span className="empty-stars">{'★'.repeat(5 - Math.max(1, Math.min(5, parseInt(liveRating, 10))))}</span>
-                <span className="rating-label">
+                <span className="bp-stars__empty">{'★'.repeat(5 - Math.max(1, Math.min(5, parseInt(liveRating, 10))))}</span>
+                <span className="bp-no-rating">
                   {display.fromGoodreads && !libraryRow?.rating ? 'Goodreads rating' : 'Your rating'}
                 </span>
               </div>
             )}
-            <div className="book-modal-meta">
+            <div className="bp-meta">
               {display.c && (
-                <span className="level-pill">prose {'●'.repeat(display.c)}{'○'.repeat(5 - display.c)}</span>
+                <span className="bp-pill">prose {'●'.repeat(display.c)}{'○'.repeat(5 - display.c)}</span>
               )}
               {display.p && (
-                <span className="level-pill">depth {'●'.repeat(display.p)}{'○'.repeat(5 - display.p)}</span>
+                <span className="bp-pill">depth {'●'.repeat(display.p)}{'○'.repeat(5 - display.p)}</span>
               )}
-              {display.pp && <span className="level-pill">📄 {display.pp} pages</span>}
+              {display.pp && <span className="bp-pill">📄 {display.pp} pages</span>}
               {(display.status === 'verified' || display.status === 'oracle_categorized') && (
                 <span
-                  className="level-pill"
                   className="bp-pill bp-pill--ro-gold"
                   title="Curated · verified by our editors"
                 >
@@ -351,19 +349,19 @@ export default function BookModal({ book, onClose, onOpenBook }) {
                 </span>
               )}
               {inLib && (
-                <span className="level-pill" className="bp-pill bp-pill--moss">
+                <span className="bp-pill bp-pill--moss">
                   ✓ Read
                 </span>
               )}
-              {inNext && <span className="level-pill">{t('bookPage.inNext')}</span>}
+              {inNext && <span className="bp-pill">{t('bookPage.inNext')}</span>}
             </div>
           </div>
         </div>
 
-        <div className="book-modal-body">
+        <div className="bp-section">
           {display.d && (
-            <div className="book-modal-section">
-              <div className="book-modal-section-title">
+            <div className="bp-section">
+              <div className="bp-section__label">
                 {t('bookModal.description')}
                 {display.descriptionSource === 'wikipedia' && display.wikipediaUrl && (
                   <>
@@ -380,16 +378,14 @@ export default function BookModal({ book, onClose, onOpenBook }) {
                   </>
                 )}
               </div>
-              <div className="book-modal-description">{display.d}</div>
+              <div className="bp-description">{display.d}</div>
             </div>
           )}
 
           {/* v0.12: Categories — live pills with add/remove */}
-          <div className="book-modal-section">
-            <div
-              className="bp-section__head"
-            >
-              <span>
+          <div className="bp-section">
+            <div className="bp-section__head">
+              <span className="bp-section__label">
                 {t('bookModal.categories')}
                 {categories.length > 0 && (
                   <span className="bp-section__count">
@@ -399,9 +395,8 @@ export default function BookModal({ book, onClose, onOpenBook }) {
               </span>
               {canAddCategories && !atCategoryCap && (
                 <button
-                  className="li-action"
+                  className="btn-text"
                   onClick={() => setAdderOpen((v) => !v)}
-
                 >
                   {adderOpen
                     ? t('bookModal.done')
@@ -411,9 +406,7 @@ export default function BookModal({ book, onClose, onOpenBook }) {
             </div>
 
             {categories.length === 0 && !adderOpen ? (
-              <div
-                className="bp-no-rating"
-              >
+              <div className="bp-no-rating">
                 {t('categories.noCategories')}
               </div>
             ) : (
@@ -431,15 +424,13 @@ export default function BookModal({ book, onClose, onOpenBook }) {
             )}
 
             {adderOpen && canAddCategories && (
-              <div >
+              <div>
                 <CategoryAutocomplete
                   book={display}
                   existingIds={existingCategoryIds}
                   onCapHit={() => setAdderOpen(false)}
                 />
-                <div
-                  className="bp-cat-help"
-                >
+                <div className="bp-cat-help">
                   {t('categories.removeHelp')}
                 </div>
               </div>
@@ -447,16 +438,12 @@ export default function BookModal({ book, onClose, onOpenBook }) {
           </div>
 
           {inLib && (
-            <div className="book-modal-section">
-              <div
-                className="book-modal-section-title"
-                className="bp-section__head"
-              >
-                <span>{t('rating.eyebrowEdit')}</span>
+            <div className="bp-section">
+              <div className="bp-section__head">
+                <span className="bp-section__label">{t('rating.eyebrowEdit')}</span>
                 <button
-                  className="li-action"
+                  className="btn-text"
                   onClick={() => setRatingEditorOpen(true)}
-
                 >
                   {liveRating > 0 || liveNotes
                     ? (t('common.edit'))
@@ -464,9 +451,7 @@ export default function BookModal({ book, onClose, onOpenBook }) {
                 </button>
               </div>
               {liveRating > 0 ? (
-                <div
-                  className="bp-stars"
-                >
+                <div className="bp-stars">
                   {'★'.repeat(liveRating)}
                   <span className="bp-stars__empty">{'★'.repeat(5 - liveRating)}</span>
                 </div>
@@ -490,30 +475,28 @@ export default function BookModal({ book, onClose, onOpenBook }) {
           )}
 
           {seriesBlock && (
-            <div className="book-modal-section">
-              <div className="book-modal-section-title">
+            <div className="bp-section">
+              <div className="bp-section__label">
                 {t('bookModal.partOfSeries')} ·{' '}
                 {seriesBlock.verified ? (
-                  <span className="bp-pill bp-pill--ro-gold" style={{ fontSize: "0.65rem" }}>
+                  <span className="bp-pill bp-pill--ro-gold">
                     {t('bookModal.seriesVerifiedBadge')}
                   </span>
                 ) : seriesBlock.needsReview ? (
                   <span
-                    className="t-accent" style={{ fontSize: "0.65rem" }}
+                    className="t-accent"
                     title="This series is in our catalog but hasn't been editor-verified yet."
                   >
                     {t('bookModal.seriesNeedsReviewBadge')}
                   </span>
                 ) : (
-                  <span className="lv-hl-muted" style={{ fontSize: "0.65rem" }}>{seriesBlock.sourceLabel}</span>
+                  <span className="lv-hl-muted">{seriesBlock.sourceLabel}</span>
                 )}
               </div>
-              <div className="series-name">{seriesBlock.name}</div>
+              <div className="bp-series__name" onClick={() => go('series-page', { seriesName: seriesBlock.name })}>{seriesBlock.name}</div>
               {/* v0.12: Wikipedia-sourced series description, when available */}
               {seriesDescription && (
-                <div
-                  className="bp-notes bp-notes--quote"
-                >
+                <div className="bp-notes bp-notes--quote">
                   {seriesDescription.description}
                   {seriesDescription.wikipediaUrl && (
                     <>
@@ -522,9 +505,7 @@ export default function BookModal({ book, onClose, onOpenBook }) {
                         href={seriesDescription.wikipediaUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="bp-wiki-link" style={{
-                          marginLeft: "0.3rem",
-                        }}
+                        className="bp-wiki-link"
                         title="From Wikipedia"
                       >
                         wikipedia ↗
@@ -533,12 +514,12 @@ export default function BookModal({ book, onClose, onOpenBook }) {
                   )}
                 </div>
               )}
-              <div className="series-progress">
+              <div className="bp-series__dots">
                 {seriesBlock.dots}
-                <span className="series-progress-text">{seriesBlock.readCount}/{seriesBlock.totalBooks} read</span>
               </div>
-              <div >
-                <button className="li-action success" onClick={() => { onClose(); go('plan-create', { seriesName: seriesBlock.name }); }}>
+              <span className="bp-series__progress-text">{seriesBlock.readCount}/{seriesBlock.totalBooks} read</span>
+              <div className="bp-actions">
+                <button className="btn-primary btn--sm" onClick={() => { onClose(); go('plan-create', { seriesName: seriesBlock.name }); }}>
                   {t('bookModal.createSeriesPlan')}
                 </button>
               </div>
@@ -546,25 +527,25 @@ export default function BookModal({ book, onClose, onOpenBook }) {
           )}
 
           {similar.length > 0 && (
-            <div className="book-modal-section">
-              <div className="book-modal-section-title">{t('bookModal.similarBooks')}</div>
-              <div className="similar-mini">
+            <div className="bp-section">
+              <div className="bp-section__label">{t('bookModal.similarBooks')}</div>
+              <div className="bp-similar-grid">
                 {similar.map((s, i) => {
                   const sk = bookKey(s);
                   const sRead = state.library.some((l) => bookKey(l) === sk);
                   const sQueued = state.readNext.some((l) => bookKey(l) === sk);
                   return (
-                    <div className="similar-mini-item" key={`${sk}-${i}`} onClick={() => onOpenBook?.(s)}>
+                    <div className="bp-similar-item" key={`${sk}-${i}`} onClick={() => onOpenBook?.(s)}>
                       <div>
-                        <div className="similar-mini-title">{s.t}</div>
-                        <div className="similar-mini-author">{s.a}{s.g ? ` · ${s.g}` : ''}</div>
+                        <div className="bp-similar-title">{s.t}</div>
+                        <div className="bp-similar-author">{s.a}{s.g ? ` · ${s.g}` : ''}</div>
                       </div>
                       {sRead ? (
-                        <span className="sp-read-label" style={{ fontSize: "0.8rem" }}>✓ READ</span>
+                        <span className="bp-pill bp-pill--moss">✓ READ</span>
                       ) : sQueued ? (
-                        <span className="lv-hl" style={{ fontSize: "0.8rem" }}>✓ QUEUED</span>
+                        <span className="lv-hl">✓ QUEUED</span>
                       ) : (
-                        <span className="lv-hl-muted" style={{ fontSize: "0.8rem" }}>→</span>
+                        <span className="lv-hl-muted">→</span>
                       )}
                     </div>
                   );
@@ -574,46 +555,47 @@ export default function BookModal({ book, onClose, onOpenBook }) {
           )}
         </div>
 
-        <div className="book-modal-purchase">
-          <div className="book-modal-purchase-label">{t('bookModal.acquireLabel')}</div>
-          <div className="book-modal-purchase-buttons">
-            {purchaseLinks(display).map((link) => (
-              <a
-                key={link.url}
-                href={link.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="btn btn-secondary"
-                className="bp-link"
-                title={link.kind === 'search' ? 'Opens a search — no direct product link available' : null}
-              >
-                ↗ {link.label}
-              </a>
-            ))}
+        {purchaseLinks(display).length > 0 && (
+          <div className="bp-section">
+            <div className="bp-section__label">{t('bookModal.acquireLabel')}</div>
+            <div className="bp-links">
+              {purchaseLinks(display).map((link) => (
+                <a
+                  key={link.url}
+                  href={link.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="bp-link"
+                  title={link.kind === 'search' ? 'Opens a search — no direct product link available' : null}
+                >
+                  ↗ {link.label}
+                </a>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
 
-        <div className="book-modal-actions">
+        <div className="bp-actions">
           {inLib ? (
-            <button className="btn btn-secondary" onClick={() => { removeFromLibrary(display); onClose(); }}>
+            <button className="btn-secondary" onClick={() => { removeFromLibrary(display); onClose(); }}>
               Remove from library
             </button>
           ) : inNext ? (
             <>
-              <button className="btn" onClick={() => { markAsRead(display); onClose(); }}>✓ Mark as read</button>
-              <button className="btn btn-secondary" onClick={() => { removeFromReadNext(display); onClose(); }}>
+              <button className="btn-primary" onClick={() => { markAsRead(display); onClose(); }}>✓ Mark as read</button>
+              <button className="btn-secondary" onClick={() => { removeFromReadNext(display); onClose(); }}>
                 Remove from queue
               </button>
             </>
           ) : (
             <>
-              <button className="btn" onClick={() => { addToReadNext(display); onClose(); }}>+ Add to Read Next</button>
+              <button className="btn-primary" onClick={() => { addToReadNext(display); onClose(); }}>+ Add to Read Next</button>
               {!inWish && (
-                <button className="btn btn-gilt" onClick={() => { addToWishlist(display); onClose(); }}>
+                <button className="btn-tertiary" onClick={() => { addToWishlist(display); onClose(); }}>
                   + Add to Wishlist
                 </button>
               )}
-              <button className="btn btn-secondary" onClick={() => { markAsRead(display); onClose(); }}>✓ Mark as read</button>
+              <button className="btn-secondary" onClick={() => { markAsRead(display); onClose(); }}>✓ Mark as read</button>
             </>
           )}
         </div>
@@ -644,27 +626,17 @@ export default function BookModal({ book, onClose, onOpenBook }) {
 // `canRemove` is set when the user is in edit mode (clicked "Add" to open
 // the input). Verified pills ignore canRemove — they can never be removed
 // from the client.
+// Previously this built inline styles from --gilt/--paper-aged (tokens that
+// don't exist post theme-rename) and had a duplicate `className` prop that
+// silently dropped everything but "bp-cat". Now uses the real .bp-cat /
+// .bp-cat--unverified modifier (see pages/_bookpage-extensions.scss).
 function CategoryPill({ category, removing, canRemove, onRemove }) {
   const { name, verified } = category;
-  const baseStyle = verified
-    ? {
-      background: 'rgba(176, 140, 63, 0.18)',
-      borderColor: 'var(--gilt)',
-      color: 'var(--gilt-bright)',
-    }
-    : {
-      background: 'rgba(176, 140, 63, 0.04)',
-      borderColor: 'rgba(176, 140, 63, 0.3)',
-      color: 'var(--paper-aged)',
-      opacity: 0.9,
-    };
-
   const showRemove = canRemove && !verified;
 
   return (
     <span
-      className="level-pill"
-      className="bp-cat" style={{ ...baseStyle, opacity: removing ? 0.4 : 1 }}
+      className={`bp-cat${verified ? '' : ' bp-cat--unverified'}${removing ? ' bp-cat--removing' : ''}`}
       title={verified
         ? 'Verified by our editors — global to all readers'
         : 'Your private category — only you see this'}

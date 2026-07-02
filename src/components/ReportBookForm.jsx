@@ -76,10 +76,10 @@ export default function ReportBookForm({ book }) {
             rows={3}
           />
           <div className="report-book-actions">
-            <button className="btn btn-secondary" onClick={handleCancel} disabled={submitting}>
+            <button className="btn-secondary" onClick={handleCancel} disabled={submitting}>
               {t('report.cancel')}
             </button>
-            <button className="btn" onClick={handleSubmit} disabled={submitting || fields.length === 0}>
+            <button className="btn-primary" onClick={handleSubmit} disabled={submitting || fields.length === 0}>
               {submitting ? t('report.submitting') : t('report.submit')}
             </button>
           </div>

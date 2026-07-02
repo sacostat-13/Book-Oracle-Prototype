@@ -4,7 +4,7 @@ A reading companion — wishlist, library, reading plans, book clubs, and an AI-
 for book discovery. Built with React + Vite + SCSS, backed by Supabase for auth
 and cross-device sync, and Netlify Functions for API proxying.
 
-> Current version: **v0.37** — see [Releases](#releases) below for changelog.
+> Current version: **v0.37.1** — see [Releases](#releases) below for changelog.
 > Upgrading from an earlier version? Check the matching `MIGRATION_*.md` / `UPDATE_*.md`.
 
 ---
@@ -326,6 +326,35 @@ and forward requests. Locally you need `netlify dev` to make them work.
 ---
 
 ## Releases
+
+### v0.37.1 — Design system audit: sign-in, forms, Oracle, clubs, profile
+
+**No DB migrations required.** Pure front-end (JSX + SCSS) pass, plus one JS logic fix in `I18nContext.jsx`.
+
+This release is a design-system alignment pass across several views that had drifted from `main.scss` — either using class names with no matching CSS rule (rendering as unstyled browser defaults), or inline `style` objects referencing pre-rename theme variables like `--gilt`/`--paper`/`--paper-aged`/`--ink` that no longer exist since the `--ro-` token rename.
+
+**Fixed — crash in club sessions.** `MemberProgressRow` in `SessionDetail.jsx` called `t()` without ever calling `useT()` in its own scope, throwing `ReferenceError: t is not defined` for any session where a member had page-count progress to render. Same bug, same fix, also existed in `EditSessionModal` in the same file.
+
+**Fixed — i18n interpolation swallowed React elements.** `I18nContext.jsx`'s `t()`/`tNode()` interpolation coerced every `{var}` substitution with `String(value)`, so a translation call that embeds a live element (e.g. `t('signIn.guestPrompt', { link: <a>...</a> })`) rendered the literal text `[object Object]` instead of a clickable link. Added `interpolateNode()` for the plain-string path and reworked `htmlToReact()`'s substitution step to splice element vars in as real child nodes via a sentinel-split instead of stringifying them. No call sites needed to change other than switching `SignInGate` and `Onboarding`'s guest-link prompts from `t()` to `tNode()`.
+
+**Sign-in & onboarding.** `.onboarding-wrap`, `.onboarding-card`, `.onb-eyebrow/-title/-desc/-actions`, `.choice-grid/.choice/-title/-sub`, and `.upload-zone/-icon/-text/-sub/-help` had zero CSS behind them anywhere in the stylesheet — the sign-in gate and the whole 3-step onboarding flow rendered as plain unstyled text. Added `src/styles/components/_onboarding.scss` implementing the DS "Login & Onboarding" pattern (bracketed card, step segments, option cards, CSV dropzone), registered in `main.scss`.
+
+**Corner brackets on modals/cards.** `.rating-modal` and `.pf-account-card` drew their top-left/top-right corner brackets via `::before`/`::after` (automatic), but the bottom-left/bottom-right corners were defined as `.rating-modal__bl`/`.rating-modal__br` (resp. `pf-account-card__bl`/`__br`) — classes that require literal child `<div>`s no component ever rendered. Every modal and the profile account card has therefore only ever shown two of its four corners. Replaced with a single `ro-corner-brackets()` mixin (new, in `_tokens.scss`) that draws all four corners as one layered `background-image` on `::before` — no markup changes needed in any consuming component.
+
+**Book Club page.** `.page-header/-eyebrow/-title` → `.page-head/-head__eyebrow/-head__title` (matches `_global.scss`). `.li-genre-pill` → `.chip`. All `.li-action` buttons (a class with only a `--disabled` modifier defined, no base rule) replaced with the real button system: `.btn-tertiary`/`.btn-secondary` for toolbar actions, `.btn-text` for small inline row actions (promote/remove member), `.btn-danger` for the delete-club flow.
+
+**Oracle pages.** `OracleFork.jsx`, `OracleCategories.jsx`, `OracleSimilar.jsx`: same `.page-header` → `.page-head` fix, plus `.oracle-fork`/`.cta-card`/`.cta-title`/`.cta-desc` (undefined) → the real `.oracle-fork-grid`/`.oracle-fork-card`/`__label`/`__sub` classes already defined in `_book-pages.scss`. Added `.oracle-mode-toggle`, `.toggle-group`/`.toggle-btn`/`.toggle-sub`, `.controls`/`.field`, `.oracle-results-grid`, `.selection-tray`/`.tray-chip`/`.chip-title`/`.chip-remove`, and `.book-tile`/`.book-tile-grid` to `_book-pages.scss` — none of these existed. `BookCard.jsx` (used for every Oracle recommendation) was rebuilt on the real `.book-card` component from `_cards.scss`, including `.book-card__quote` for the AI's "why this book" line — previously an inline-styled `<em>` referencing `var(--gilt)`. `SelectableCard` in `OracleSimilar.jsx` now reuses the shared `BookCover` component instead of duplicating placeholder logic inline.
+
+**Forms.** `ReportBookForm.jsx`'s classes (`report-book*`) had no CSS at all — added a full definition to `_book-pages.scss` reusing `.btn-text`/`.bp-section__label`/`.textarea`. The "new list" modal (`Lists.jsx`) and `AddToListModal.jsx` now use `.field-label`/`.input`/`.textarea`/`.overlay` instead of `.form-label`/`.search-input`/`.modal-backdrop` (none of which exist). `EditSessionModal` in `SessionDetail.jsx` had its `inputStyle`/`labelStyle` objects (built from `--paper`/`--gilt`) removed in favor of `.field-label`/`.input`.
+
+**Profile page layout.** Per the DS profile pattern, Reading Stats / Pace / Top Genres / Most Read Author / Series in Progress are meant to be free-standing sections directly on the page (each already has its own bordered cards/rows) — not nested inside one shared panel. Un-wrapped them from the enclosing `.panel` into a new `.profile-stats` flex column (36px rhythm via `--ro-space-8`); the Account/Username/Privacy/Reading Challenge/Subscription block below remains a single bordered card, matching the DS spec exactly.
+
+**Codebase-wide cleanup.** Swept every `.jsx` file for two recurring anti-patterns: (1) a dead `"btn "` prefix in front of a real `.btn-primary`/`-secondary`/etc. class (`.btn` bare never existed), found in 23 files; (2) duplicate `className` attributes on a single element — invalid JSX where only the second value is ever applied, silently dropping the first. Fixed the instances directly tied to the views above (`BookModal.jsx` in `components/`, `ReleaseNotesModal.jsx`). A handful of duplicate-`className` instances remain in files not in scope for this pass — see **Known issues** below.
+
+**Known issues (flagged, not fixed this round):**
+- `CommentThread.jsx`, `PlanCreate.jsx`, `BookClubs.jsx`, `FriendProfile.jsx`, `ListDetail.jsx` each have one duplicate-`className` element (same pattern fixed elsewhere this round).
+- `ProgressUpdateModal.jsx`, `BulkImport.jsx`, `SessionDiscussion.jsx`, `SessionCreate.jsx`, `BookClubCreate.jsx`, `CategoryAutocomplete.jsx`, `FriendProfile.jsx` still build inline styles from the dead `--gilt`/`--paper`/`--paper-aged` tokens.
+- `src/views/BookModal.jsx` is dead code — a stale duplicate of `src/components/BookModal.jsx` with incorrect relative import paths (`from './ReportBookForm'`, which doesn't exist under `views/`). Neither `BookModal` component is currently imported anywhere; the app now opens `BookPage` directly via `openBookTab()`. Recommend deleting `src/views/BookModal.jsx` outright and confirming whether `src/components/BookModal.jsx` is still needed as a future modal-based quick-view, or can also be removed.
 
 ### v0.37 — Extended notifications, preferences & footer
 

@@ -1,12 +1,13 @@
 import { useState, useMemo } from 'react';
 import { useData } from '../lib/DataContext';
 import { useRouter } from '../lib/RouterContext';
-import { ALL_BOOKS, bookKey, PALETTES, ORNAMENTS, hashStr } from '../lib/bookHelpers';
+import { ALL_BOOKS, bookKey } from '../lib/bookHelpers';
 import { callClaude, parseJSONResponse, QuotaExceededError } from '../lib/claudeApi';
 import { useOracleQuota } from '../lib/OracleQuotaContext';
 import { OracleQuotaWall } from '../components/OracleQuotaBadge';
 import { useT, useI18n, langDirective } from '../lib/I18nContext';
 import BookCard from '../components/BookCard';
+import BookCover from '../components/BookCover';
 
 function fallbackSimilar(selection, candidates) {
   const scored = candidates.map((c) => {
@@ -27,21 +28,14 @@ function fallbackSimilar(selection, candidates) {
 }
 
 function SelectableCard({ book, selected, onClick }) {
-  const palette = PALETTES[hashStr(book.t) % PALETTES.length];
-  const orn = ORNAMENTS[hashStr(book.a || '') % ORNAMENTS.length];
   return (
-    <div className={`card selectable ${selected ? 'selected' : ''}`} onClick={onClick}>
-      <div className="cover">
-        <div className="placeholder" style={{ '--ph-bg': palette.bg, background: 'var(--ph-bg)' }}>
-          <div className="ph-ornament">{orn}</div>
-          <div className="ph-title">{book.t}</div>
-          <div className="ph-author">{book.a || ''}</div>
-          <div className="ph-ornament">{orn}</div>
-        </div>
+    <div className={`book-tile${selected ? ' selected' : ''}`} onClick={onClick}>
+      <div className="book-tile__cover">
+        <BookCover title={book.t} author={book.a} coverUrl={book.coverUrl} />
       </div>
-      <div className="card-title">{book.t}</div>
-      <div className="card-author">{book.a}</div>
-      {book.g && <div className="card-tag">{book.g}</div>}
+      <div className="book-tile__title">{book.t}</div>
+      <div className="book-tile__author">{book.a}</div>
+      {book.g && <span className="chip">{book.g}</span>}
     </div>
   );
 }
@@ -171,10 +165,10 @@ Return ONLY valid JSON in this exact format:
       <div className="breadcrumb">
         <a onClick={() => go('dashboard')}>Dashboard</a> · <a onClick={() => go('oracle')}>Oracle</a> · Similar Books
       </div>
-      <div className="page-header">
-        <div className="page-eyebrow">Based on other books</div>
-        <h1 className="page-title">Pick <span className="accent">1–3 books</span> you've loved</h1>
-        <p className="page-subtitle">
+      <div className="page-head">
+        <div className="page-head__eyebrow">Based on other books</div>
+        <h1 className="page-head__title">Pick <span className="accent">1–3 books</span> you've loved</h1>
+        <p className="page-head__lead">
           {mode === 'wishlist'
             ? "We'll find kindred books from your wishlist."
             : "We'll ask the AI to suggest kindred books (may go beyond your wishlist)."}
@@ -208,10 +202,11 @@ Return ONLY valid JSON in this exact format:
         )}
       </div>
 
-      <div className="search-box">
+      <div className="search">
+        <svg className="search__icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
         <input
           type="text"
-          className="search-input"
+          className="search__input"
           placeholder="Search books to add…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
@@ -219,7 +214,7 @@ Return ONLY valid JSON in this exact format:
       </div>
 
       <div className="oracle-results-head">
-        <button className="btn" onClick={findSimilar} disabled={selection.length === 0 || loading || (mode === 'ai' && quota && quota.calls_remaining === 0)}>
+        <button className="btn-primary" onClick={findSimilar} disabled={selection.length === 0 || loading || (mode === 'ai' && quota && quota.calls_remaining === 0)}>
           {loading ? t('oracle.similarDivining') : t('oracle.similarFind')}
         </button>
         {mode === 'ai' && quota && quota.calls_remaining === 0 && (
@@ -235,13 +230,13 @@ Return ONLY valid JSON in this exact format:
           </div>
         ) : results ? (
           <>
-            <h2 >
-              Found <span className="t-gold">{results.books.length}</span> kindred books
+            <h2 className="oracle-results-title">
+              Found <em>{results.books.length}</em> kindred books
               <span className="oracle-results-sub">
                 {results.source === 'ai' ? '· AI-divined' : '· tag-matched from wishlist'}
               </span>
             </h2>
-            <div className="cards">
+            <div className="oracle-results-grid">
               {results.books.map((b, i) => (
                 <BookCard
                   key={`${bookKey(b)}-${i}`}
@@ -255,10 +250,10 @@ Return ONLY valid JSON in this exact format:
         ) : null}
       </div>
 
-      <h2 className="oracle-title" style={{ margin: '2rem 0 1rem' }}>
+      <h2 className="legal-section__title">
         {state.library.length > 0 ? 'From your library and wishlist' : 'From your wishlist'}
       </h2>
-      <div className="cards">
+      <div className="book-tile-grid">
         {filteredPicker.map((b, i) => (
           <SelectableCard
             key={`${bookKey(b)}-${i}`}

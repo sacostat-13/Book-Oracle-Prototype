@@ -6,7 +6,7 @@
 
 import {
   createContext, useContext, useEffect, useState, useCallback,
-  createElement, Fragment,
+  createElement, Fragment, isValidElement,
 } from 'react';
 import en from '../i18n/en.json';
 import es from '../i18n/es.json';
@@ -61,6 +61,21 @@ function interpolatePlain(template, vars) {
   );
 }
 
+// Same as interpolatePlain, but if any var is a real React element (e.g. an
+// <a> passed in for a "click here" link), it's spliced in as an actual child
+// node instead of being coerced to the string "[object Object]".
+function interpolateNode(template, vars) {
+  if (!vars) return template;
+  const hasElementVar = Object.values(vars).some((v) => isValidElement(v));
+  if (!hasElementVar) return interpolatePlain(template, vars);
+
+  const parts = template.split(/\{([a-zA-Z0-9_]+)\}/g);
+  const nodes = parts.map((part, i) => (
+    i % 2 === 0 ? part : (part in vars ? vars[part] : `{${part}}`)
+  ));
+  return createElement(Fragment, null, ...nodes);
+}
+
 // ── Safe HTML renderer ────────────────────────────────────────────────────────
 // Parses a string that may contain simple HTML tags into React nodes.
 // Allowed tags: b, strong, em, i, span, br, code, small.
@@ -70,10 +85,26 @@ function interpolatePlain(template, vars) {
 const ALLOWED_TAGS = new Set(['b','strong','em','i','span','br','code','small','u']);
 
 function htmlToReact(html, vars) {
-  // First substitute vars in the raw string
-  const substituted = vars
-    ? html.replace(/\{([a-zA-Z0-9_]+)\}/g, (_, k) => k in vars ? String(vars[k]) : `{${k}}`)
-    : html;
+  // Substitute vars in the raw string. Primitive values (strings/numbers)
+  // are inlined directly, same as before. A React element passed as a var
+  // (e.g. a clickable <a>{...}</a> built by the caller) is swapped in via a
+  // unique sentinel instead of String(v) — otherwise it silently rendered
+  // as the text "[object Object]" once the surrounding HTML was parsed.
+  const elementVars = {};
+  let substituted = html;
+  if (vars) {
+    substituted = html.replace(/\{([a-zA-Z0-9_]+)\}/g, (match, k) => {
+      if (!(k in vars)) return match;
+      const v = vars[k];
+      if (isValidElement(v)) {
+        const sentinel = `\u0000${k}\u0000`;
+        elementVars[sentinel] = v;
+        return sentinel;
+      }
+      return String(v);
+    });
+  }
+  const hasElementVars = Object.keys(elementVars).length > 0;
 
   // Tokenize into text + tag segments
   const tokens = substituted.split(/(<[^>]+>)/g);
@@ -99,6 +130,15 @@ function htmlToReact(html, vars) {
         const { tag, attrs, children } = stack.pop();
         const el = createElement(tag, { key: Math.random(), ...attrs }, ...children);
         stack[stack.length - 1].children.push(el);
+      }
+    } else if (hasElementVars && token.includes('\u0000')) {
+      // Text segment containing one or more element-var sentinels — split
+      // it apart so the real element gets pushed as a child, not text.
+      const bits = token.split(/(\u0000[a-zA-Z0-9_]+\u0000)/g);
+      for (const bit of bits) {
+        if (bit === '') continue;
+        if (elementVars[bit] !== undefined) stack[stack.length - 1].children.push(elementVars[bit]);
+        else stack[stack.length - 1].children.push(bit);
       }
     } else {
       // Plain text (may contain unrecognised tags — render as-is)
@@ -159,7 +199,7 @@ export function I18nProvider({ children }) {
   const tNode = useCallback((key, vars) => {
     const catalog  = CATALOGS[lang] || CATALOGS.en;
     const resolved = resolveKey(catalog, key) ?? resolveKey(CATALOGS.en, key) ?? key;
-    if (!containsHTML(resolved)) return interpolatePlain(resolved, vars);
+    if (!containsHTML(resolved)) return interpolateNode(resolved, vars);
     return htmlToReact(resolved, vars);
   }, [lang]);
 

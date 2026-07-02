@@ -148,11 +148,11 @@ function PollCard({ poll, isAdmin, onVote, onClose, onDelete, onCreateSession })
         {isAdmin && (
           <div className="friend-row__actions">
             {!poll.closed && (
-              <button className="li-action" onClick={() => onClose(poll.id)}>
+              <button className="btn tn-accent" onClick={() => onClose(poll.id)}>
                 {t('polls.closePoll')}
               </button>
             )}
-            <button className="li-action" onClick={() => onDelete(poll.id)}>
+            <button className="btn btn-danger" onClick={() => onDelete(poll.id)}>
               {t('polls.deletePoll')}
             </button>
           </div>
@@ -179,7 +179,7 @@ function PollCard({ poll, isAdmin, onVote, onClose, onDelete, onCreateSession })
           <div className="session-section-label">
             Winner: {winner.label}
           </div>
-          <button className="li-action" onClick={() => onCreateSession(winner)}>
+          <button className="btn btn-primary" onClick={() => onCreateSession(winner)}>
             {t('polls.createSessionFromWinner')}
           </button>
         </div>
@@ -197,14 +197,14 @@ function CreatePollForm({ onAdd, onCancel }) {
   const [saving, setSaving] = useState(false);
 
   function setOptionLabel(i, val) {
-  const t = useT();
+    const t = useT();
     setOptions((opts) => opts.map((o, idx) => idx === i ? { ...o, label: val } : o));
   }
 
   const validOptions = options.filter((o) => o.label.trim()).length >= 2;
 
   async function handleAdd() {
-  const t = useT();
+    const t = useT();
     if (!question.trim() || !validOptions || saving) return;
     setSaving(true);
     await onAdd({
@@ -222,7 +222,7 @@ function CreatePollForm({ onAdd, onCancel }) {
       </div>
       <div >
         <input
-          {...{placeholder: t('polls.oraclePollQuestion')}}
+          {...{ placeholder: t('polls.oraclePollQuestion') }}
           value={question}
           onChange={(e) => setQuestion(e.target.value)}
           autoFocus
@@ -232,18 +232,18 @@ function CreatePollForm({ onAdd, onCancel }) {
       {options.map((opt, i) => (
         <div key={i} className="club-form__actions">
           <input
-            {...{placeholder: t('polls.optionPlaceholder', { n: i + 1 })}}
+            {...{ placeholder: t('polls.optionPlaceholder', { n: i + 1 }) }}
             value={opt.label}
             onChange={(e) => setOptionLabel(i, e.target.value)}
             className="input"
           />
           {options.length > 2 && (
-            <button className="li-action" onClick={() => setOptions((o) => o.filter((_, idx) => idx !== i))}>✕</button>
+            <button className="btn-secondary" onClick={() => setOptions((o) => o.filter((_, idx) => idx !== i))}>✕</button>
           )}
         </div>
       ))}
       {options.length < 5 && (
-        <button className="li-action" onClick={() => setOptions((o) => [...o, { label: '' }])}>
+        <button className="btn btn-secondary" onClick={() => setOptions((o) => [...o, { label: '' }])}>
           {t('polls.addOption')}
         </button>
       )}
@@ -277,7 +277,7 @@ export default function ClubPolls({ clubId, clubName, clubGenres = [], isAdmin, 
   useEffect(() => { loadPolls(); }, [loadPolls]);
 
   async function handleVote(pollId, optionId) {
-  const t = useT();
+    const t = useT();
     const updatedCounts = await castVote(pollId, optionId);
     if (!updatedCounts) return;
     // Optimistically update vote counts + my_vote
@@ -295,26 +295,26 @@ export default function ClubPolls({ clubId, clubName, clubGenres = [], isAdmin, 
   }
 
   async function handleClose(pollId) {
-  const t = useT();
+    const t = useT();
     await closePoll(pollId);
     setPolls((ps) => ps.map((p) => p.id === pollId ? { ...p, closed: true } : p));
   }
 
   async function handleDelete(pollId) {
-  const t = useT();
+    const t = useT();
     if (!confirm(t('polls.confirmDeletePoll'))) return;
     await deletePoll(pollId);
     setPolls((ps) => ps.filter((p) => p.id !== pollId));
   }
 
   async function handleCreate({ question, options, isOraclePick }) {
-  const t = useT();
+    const t = useT();
     const poll = await createPoll({ clubId, question, options, isOraclePick });
     if (poll) { setShowCreate(false); await loadPolls(); }
   }
 
   async function handleOracleSuggest() {
-  const t = useT();
+    const t = useT();
     setOracleLoading(true);
     setOracleError(null);
     try {
@@ -342,24 +342,24 @@ export default function ClubPolls({ clubId, clubName, clubGenres = [], isAdmin, 
   const closedPolls = polls.filter((p) => p.closed);
 
   return (
-    <section className="db-section">
+    <section className="db-section" style={{ marginTop: '32px' }}>
       {/* Header */}
       <div className="club-card__head">
         <div className="session-section-label">
           Polls
         </div>
         {isAdmin && (
-          <div className="friend-row__actions">
+          <div className="friend-row__actions" style={{ marginTop: '16px' }}>
             <button
-              className="li-action"
+              className="btn btn-accent"
               onClick={handleOracleSuggest}
               disabled={oracleLoading}
-              
+
             >
               {oracleLoading ? t('polls.oracleThinking') : t('polls.oracleSuggestsBtn')}
             </button>
             {!showCreate && (
-              <button className="li-action" onClick={() => setShowCreate(true)}>
+              <button className="btn btn-secondary" onClick={() => setShowCreate(true)}>
                 {t('polls.newPoll')}
               </button>
             )}

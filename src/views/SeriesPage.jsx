@@ -199,14 +199,14 @@ export default function SeriesPage() {
         {/* CTAs */}
         <div className="series-page-ctas">
           <button
-            className="btn"
+            className="btn-primary"
             onClick={() => go('plan-create', { seriesName, from: 'series-page', fromLabel: seriesName })}
           >
             {t('seriesPage.createPlan')}
           </button>
           {readCount === 0 && entries.length > 0 && (
             <button
-              className="btn btn-gilt"
+              className="btn-gilt"
               onClick={() => handleAction(entries[0], 'wishlist')}
               disabled={actionLoading === bookKey(entries[0])}
             >

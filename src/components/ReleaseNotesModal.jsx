@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useI18n, useT } from '../lib/I18nContext';
 import { publishedReleases, CURRENT_VERSION } from '../lib/releases';
+import CornerBrackets from './CornerBrackets';
 
 export default function ReleaseNotesModal({ onClose }) {
   const { lang } = useI18n();
@@ -21,11 +22,11 @@ export default function ReleaseNotesModal({ onClose }) {
 
   return (
     <div
-      className="modal-backdrop"
-      onClick={(e) => { if (e.target === e.currentTarget) onClose?.(); }}
       className="rating-modal-overlay"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose?.(); }}
     >
       <div className="rating-modal modal-wide">
+        <CornerBrackets />
         {/* Header */}
         <div className="modal-head">
           <div>
@@ -75,17 +76,17 @@ function ReleaseEntry({ release, isCurrent, isLast, isSpanish, t }) {
           </span>
         )}
         {release.date && (
-          <span className="pf-overline" style={{ marginBottom: 0 }}>
+          <span className="pf-overline pf-overline--inline">
             {release.date}
           </span>
         )}
       </div>
-      <h3 className="rn-title" style={{ fontSize: "1.2rem" }}>
+      <h3 className="pf-account-card__section-title">
         {title}
       </h3>
-      <ul className="legal-list" style={{ paddingLeft: "1.1rem", listStyle: "disc" }}>
+      <ul className="legal-list">
         {body.map((line, i) => (
-          <li key={i} className="legal-section__body" style={{ marginBottom: "0.4rem" }}>{line}</li>
+          <li key={i} className="legal-list__item">{line}</li>
         ))}
       </ul>
     </div>

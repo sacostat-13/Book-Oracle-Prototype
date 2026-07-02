@@ -6,6 +6,7 @@ import { useData } from '../lib/DataContext';
 import { useRouter } from '../lib/RouterContext';
 import { useT } from '../lib/I18nContext';
 import { openBookTab, bookKey } from '../lib/bookHelpers';
+import CornerBrackets from '../components/CornerBrackets';
 import { useSelection } from '../lib/useSelection';
 import SelectionBar from '../components/SelectionBar';
 import BookCover from '../components/BookCover';
@@ -33,19 +34,19 @@ function AddBookPicker({ list, onClose }) {
   }
 
   return (
-    <div className="modal-backdrop" onClick={onClose}>
+    <div className="overlay" onClick={onClose}>
       <div className="modal" onClick={e => e.stopPropagation()}>
+        <CornerBrackets />
         <button className="modal__close" onClick={onClose}>✕</button>
         <div className="bp-section__label">
           {t('listDetail.addBook')}
         </div>
         <input
-          className="search-input"
+          className="input"
           placeholder={t('listDetail.searchPlaceholder')}
           value={query}
           onChange={e => setQuery(e.target.value)}
           autoFocus
-
         />
         <div className="ldetail-scroll">
           {candidates.length === 0 && (
@@ -67,7 +68,7 @@ function AddBookPicker({ list, onClose }) {
                 <div className="ldetail-pick-title">{b.t}</div>
                 <div className="ldetail-pick-author">{b.a}</div>
               </div>
-              <span className="li-action">
+              <span className="btn-text">
                 {adding === b.bookId ? '…' : '+ Add'}
               </span>
             </div>
@@ -137,22 +138,22 @@ export default function ListDetail() {
       </div>
 
       <div className="lv-chips">
-        <button className="btn" onClick={() => setAddingBook(true)}>
+        <button className="btn-primary" onClick={() => setAddingBook(true)}>
           {t('listDetail.addBook')}
         </button>
-        <button className="btn btn-secondary" onClick={togglePublic}>
+        <button className="btn-secondary" onClick={togglePublic}>
           {list.is_public
             ? (t('lists.makePrivate'))
             : (t('lists.makePublic'))}
         </button>
         {list.is_public && (
-          <button className="btn btn-gilt" onClick={copyLink}>
+          <button className="btn-gilt" onClick={copyLink}>
             {copied ? '✓ Copied!' : (t('listDetail.copyLink'))}
           </button>
         )}
         {books.length > 0 && (
           <button
-            className={`btn btn-secondary${sel.active ? ' active' : ''}`}
+            className={`btn-secondary${sel.active ? ' active' : ''}`}
             onClick={() => sel.active ? sel.exit() : sel.enter()}
           >
             {sel.active ? (t('common.cancel')) : (t('lists.selectMode'))}
@@ -191,8 +192,7 @@ export default function ListDetail() {
                     <div className="cover-grid-hover-title">{b.t}</div>
                     <div className="cover-grid-hover-author">{b.a}</div>
                     <button
-                      className="li-action"
-                      className="pf-error"
+                      className="btn-text"
                       onClick={e => { e.stopPropagation(); removeBookFromList(list.id, b.bookId); }}
                     >
                       {t('common.remove')}

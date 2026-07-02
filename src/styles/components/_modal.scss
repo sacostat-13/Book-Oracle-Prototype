@@ -26,6 +26,7 @@
 }
 
 .modal {
+  position: relative;
   background: var(--ro-surface);
   border: 1px solid var(--ro-border-strong);
   border-radius: var(--ro-radius-xl);
@@ -35,6 +36,10 @@
   overflow-y: auto;
   box-shadow: var(--ro-shadow);
   animation: ov-scale .2s ease;
+  // Default padding for content placed directly inside .modal (no
+  // __head/__body/__actions structure). Those three each set a complete
+  // padding shorthand of their own, so this has no effect when they're used.
+  padding: 26px;
 }
 .modal--wide { width: 660px; }
 .modal--narrow { width: 420px; }

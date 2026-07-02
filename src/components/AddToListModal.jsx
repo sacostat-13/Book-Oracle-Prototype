@@ -6,6 +6,7 @@ import { useState } from 'react';
 import { useData } from '../lib/DataContext';
 import { useRouter } from '../lib/RouterContext';
 import { useT } from '../lib/I18nContext';
+import CornerBrackets from './CornerBrackets';
 
 export default function AddToListModal({ books = [], onClose }) {
   // books can be a single book object or an array
@@ -52,10 +53,10 @@ export default function AddToListModal({ books = [], onClose }) {
   }
 
   return (
-    <div className="modal-backdrop" onClick={onClose}>
+    <div className="overlay" onClick={onClose}>
       <div className="modal" onClick={e => e.stopPropagation()}>
-        <button className="book-modal-close" onClick={onClose}
-          className="modal__close">✕</button>
+        <CornerBrackets />
+        <button className="modal__close" onClick={onClose}>✕</button>
 
         <div className="bp-section__label">
           {isSingle
@@ -122,7 +123,7 @@ export default function AddToListModal({ books = [], onClose }) {
         {creating ? (
           <div className="lists-modal-form">
             <input
-              className="search-input"
+              className="input"
               placeholder={t('addToList.listNamePlaceholder')}
               value={newTitle}
               onChange={e => setNewTitle(e.target.value)}
@@ -140,10 +141,10 @@ export default function AddToListModal({ books = [], onClose }) {
           </div>
         ) : (
           <div className="modal-foot">
-            <button className="btn" onClick={() => setCreating(true)}>
+            <button className="btn-tertiary" onClick={() => setCreating(true)}>
               + {t('lists.newListBtn')}
             </button>
-            <button className="btn btn-secondary" onClick={() => { onClose(); go('lists'); }}
+            <button className="btn-secondary" onClick={() => { onClose(); go('lists'); }}
             >
               {t('addToList.manageLists')}
             </button>

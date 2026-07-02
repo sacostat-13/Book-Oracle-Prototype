@@ -30,6 +30,13 @@
     opacity: .5;
     cursor: not-allowed;
   }
+
+  // The reset strips the native border but not the native focus outline,
+  // which otherwise falls back to whatever color the browser/OS picks.
+  &:focus-visible {
+    outline: 2px solid var(--ro-gold);
+    outline-offset: 2px;
+  }
 }
 
 // Primary — filled brass

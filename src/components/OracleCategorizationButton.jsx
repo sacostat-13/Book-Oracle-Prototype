@@ -67,7 +67,7 @@ export default function OracleCategorizationButton({ books }) {
     <div className="oracle-categorization-button">
       {!running ? (
         <button
-          className="btn btn-oracle oracle-btn"
+          className="btn-oracle oracle-btn"
           onClick={handleRun}
           title={`${count} book${count !== 1 ? 's' : ''} without genre assignments`}
         >

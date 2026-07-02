@@ -29,12 +29,14 @@
   min-width: 240px;
   max-width: 340px;
 
-  svg {
+  svg,
+  &__icon {
     color: var(--ro-gold-text);
     flex-shrink: 0;
   }
 
-  input {
+  input,
+  &__input {
     flex: 1;
     border: 0;
     background: transparent;
@@ -1021,6 +1023,62 @@
   margin-top: 8px;
 }
 
+// ── "Report a problem" form (ReportBookForm) ─────────────────────────────────
+.report-book {
+  margin-top: var(--ro-space-6);
+  border-top: 1px solid var(--ro-border);
+  padding-top: var(--ro-space-4);
+}
+
+.report-book-trigger {
+  @extend .btn-text;
+}
+
+.report-book-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ro-space-4);
+  outline: none;
+}
+
+.report-book-form-title {
+  @extend .bp-section__label;
+}
+
+.report-book-fields {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ro-space-2) var(--ro-space-5);
+}
+
+.report-book-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--ro-font-body);
+  font-size: 14px;
+  color: var(--ro-text-2);
+  cursor: pointer;
+
+  input[type="checkbox"] {
+    accent-color: var(--ro-gold);
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+  }
+}
+
+.report-book-comment {
+  @extend .textarea;
+  min-height: 80px;
+}
+
+.report-book-actions {
+  display: flex;
+  gap: var(--ro-space-3);
+  justify-content: flex-end;
+}
+
 // ── Similar / "You might also like" grid ─────────────────────────────────────
 .bp-similar-grid {
   display: grid;
@@ -1430,6 +1488,187 @@
   font-size: 11px;
   letter-spacing: .1em;
   text-transform: uppercase;
+  color: var(--ro-muted);
+}
+
+// Grid of drawn/recommended .book-card results (OracleCategories, OracleSimilar)
+.oracle-results-grid {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ro-space-4);
+}
+
+// Source-mode switch (wishlist / vault / AI) — a labeled row of toggle buttons
+.oracle-mode-toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--ro-space-3);
+  flex-wrap: wrap;
+  margin-bottom: var(--ro-space-5);
+}
+
+.oracle-mode-label {
+  @include ro-type(overline);
+  color: var(--ro-muted);
+}
+
+.toggle-group {
+  display: flex;
+  gap: var(--ro-space-2);
+  flex-wrap: wrap;
+}
+
+.toggle-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  border: 1px solid var(--ro-border-strong);
+  background: transparent;
+  border-radius: var(--ro-radius-md);
+  padding: 10px 16px;
+  font-family: var(--ro-font-body);
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--ro-text-2);
+  cursor: pointer;
+  transition: border-color .15s, background .15s, color .15s;
+
+  &:hover { border-color: var(--ro-gold); }
+
+  &.active {
+    border-color: var(--ro-gold);
+    background: color-mix(in srgb, var(--ro-gold) 10%, transparent);
+    color: var(--ro-gold-text);
+  }
+}
+
+.toggle-sub {
+  font-family: var(--ro-font-mono);
+  font-size: 10px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--ro-muted);
+}
+
+// Inline controls row (temperament dropdown + draw button)
+.controls {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--ro-space-4);
+  flex-wrap: wrap;
+  margin-bottom: var(--ro-space-6);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 220px;
+
+  > label {
+    @include ro-type(label);
+    color: var(--ro-text-2);
+  }
+
+  > select {
+    @extend .select;
+  }
+
+  > input {
+    @extend .input;
+  }
+}
+
+// ── Seed-book picker (OracleSimilar) ─────────────────────────────────────────
+// Selection tray: chips for the 1-3 books picked as "seeds"
+.selection-tray {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ro-space-2);
+  min-height: 44px;
+  align-items: center;
+  padding: var(--ro-space-3) 0;
+  border-bottom: 1px solid var(--ro-border);
+  margin-bottom: var(--ro-space-5);
+}
+
+.tray-empty {
+  font-family: var(--ro-font-body);
+  font-style: italic;
+  font-size: 14px;
+  color: var(--ro-muted);
+}
+
+.tray-chip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: color-mix(in srgb, var(--ro-gold) 12%, transparent);
+  border: 1px solid var(--ro-gold);
+  border-radius: var(--ro-radius-pill);
+  padding: 6px 8px 6px 14px;
+}
+
+.chip-title {
+  font-family: var(--ro-font-body);
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--ro-gold-text);
+}
+
+.chip-remove {
+  background: none;
+  border: 0;
+  color: var(--ro-gold-text);
+  cursor: pointer;
+  font-size: 15px;
+  line-height: 1;
+  padding: 2px 4px;
+  &:hover { color: var(--ro-text); }
+}
+
+// Compact grid of selectable book tiles
+.book-tile-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: var(--ro-space-4);
+}
+
+.book-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  cursor: pointer;
+  border-radius: var(--ro-radius-md);
+  padding: 6px;
+  border: 1px solid transparent;
+  transition: border-color .15s, background .15s;
+
+  &:hover { border-color: var(--ro-border-strong); }
+
+  &.selected {
+    border-color: var(--ro-gold);
+    background: color-mix(in srgb, var(--ro-gold) 8%, transparent);
+  }
+}
+
+.book-tile__cover {
+  aspect-ratio: 3 / 4.4;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.book-tile__title {
+  font-family: var(--ro-font-display);
+  font-size: 15px;
+  line-height: 1.2;
+  color: var(--ro-text);
+}
+
+.book-tile__author {
+  font-family: var(--ro-font-body);
+  font-size: 12px;
   color: var(--ro-muted);
 }
 

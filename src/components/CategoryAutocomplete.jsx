@@ -109,14 +109,13 @@ export default function CategoryAutocomplete({
       <input
         ref={inputRef}
         type="text"
-        className="search-input"
+        className="input"
         value={query}
         onChange={(e) => { setQuery(e.target.value); if (!open) setOpen(true); }}
         onFocus={() => { if (!atCap) setOpen(true); }}
         onKeyDown={onKeyDown}
         placeholder={atCap ? t('categories.maxCategories') : (placeholder || t('categories.addPlaceholder'))}
         disabled={disabled || atCap || committing}
-        className="input" style={{ opacity: atCap ? 0.5 : 1 }}
       />
       {open && !atCap && (
         <Dropdown

@@ -58,6 +58,7 @@
 
   &::placeholder { color: var(--ro-muted); }
   &:focus { border-color: var(--ro-gold); }
+  &:disabled { opacity: .5; cursor: not-allowed; }
 }
 
 // Italic display input (used for username/display name in the DS)

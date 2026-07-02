@@ -3,9 +3,10 @@ import { bookKey, openBookTab } from './lib/bookHelpers';
 import { useAuth } from './lib/AuthContext';
 import { useData } from './lib/DataContext';
 import { useRouter } from './lib/RouterContext';
-import { useT } from './lib/I18nContext';
+import { useT, useTNode } from './lib/I18nContext';
 
 import Nav from './components/Nav';
+import CornerBrackets from './components/CornerBrackets';
 import Toast from './components/Toast';
 
 import Onboarding from './views/Onboarding';
@@ -43,22 +44,24 @@ import Footer from './components/Footer';
 function SignInGate({ onGuest }) {
   const { signInWithGoogle } = useAuth();
   const t = useT();
+  const tNode = useTNode();
   return (
     <div className="onboarding-wrap">
-      <div className="onboarding-card" style={{ maxWidth: 520 }}>
+      <div className="onboarding-card">
+        <CornerBrackets />
         <div className="onb-eyebrow">{t('signIn.eyebrow')}</div>
         <h1 className="onb-title">
-          {t('app.brand', { wishlist: <span className="accent">{t('app.brandAccent')}</span> })}
+          {tNode('app.brand', { wishlist: <span className="accent">{t('app.brandAccent')}</span> })}
         </h1>
         <p className="onb-desc">{t('signIn.desc')}</p>
         <div className="onb-actions">
           <div></div>
-          <button className="btn" onClick={signInWithGoogle}>
+          <button className="btn-primary" onClick={signInWithGoogle}>
             {t('signIn.continueGoogle')}
           </button>
         </div>
-        <p style={{ marginTop: '1.5rem', color: 'var(--paper-aged)', opacity: 0.6, fontSize: '0.85rem' }}>
-          {t('signIn.guestPrompt', {
+        <p className="onb-desc" style={{ marginTop: '1.5rem' }}>
+          {tNode('signIn.guestPrompt', {
             link: (
               <a href="#" onClick={(e) => { e.preventDefault(); onGuest(); }}>
                 {t('signIn.guestLink')}
