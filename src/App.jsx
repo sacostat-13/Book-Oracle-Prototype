@@ -41,10 +41,26 @@ import SessionDetail from './views/SessionDetail';
 import JoinClub from './views/JoinClub';
 import Footer from './components/Footer';
 
-function SignInGate({ onGuest }) {
-  const { signInWithGoogle } = useAuth();
+function SignInGate() {
+  const { signInWithGoogle, signInWithApple, signInWithFacebook, signInWithEmail } = useAuth();
   const t = useT();
   const tNode = useTNode();
+  const [email, setEmail] = useState('');
+  const [sending, setSending] = useState(false);
+  const [sentTo, setSentTo] = useState(null);
+  const [error, setError] = useState(null);
+
+  async function handleEmailSubmit(e) {
+    e.preventDefault();
+    if (!email.trim() || sending) return;
+    setSending(true);
+    setError(null);
+    const { error: err } = await signInWithEmail(email.trim());
+    setSending(false);
+    if (err) setError(t('signIn.emailErrorGeneric'));
+    else setSentTo(email.trim());
+  }
+
   return (
     <div className="onboarding-wrap">
       <div className="onboarding-card">
@@ -54,21 +70,47 @@ function SignInGate({ onGuest }) {
           {tNode('app.brand', { wishlist: <span className="accent">{t('app.brandAccent')}</span> })}
         </h1>
         <p className="onb-desc">{t('signIn.desc')}</p>
-        <div className="onb-actions">
-          <div></div>
-          <button className="btn-primary" onClick={signInWithGoogle}>
-            {t('signIn.continueGoogle')}
-          </button>
-        </div>
-        <p className="onb-desc" style={{ marginTop: '1.5rem' }}>
-          {tNode('signIn.guestPrompt', {
-            link: (
-              <a href="#" onClick={(e) => { e.preventDefault(); onGuest(); }}>
-                {t('signIn.guestLink')}
-              </a>
-            ),
-          })}
-        </p>
+
+        {sentTo ? (
+          <div className="sign-in-confirm">
+            <div className="pf-account-card__section-title">{t('signIn.checkInboxTitle')}</div>
+            <p className="onb-desc">{t('signIn.checkInboxText', { email: sentTo })}</p>
+            <button className="btn-text" onClick={() => setSentTo(null)}>
+              {t('signIn.useAnotherEmail')}
+            </button>
+          </div>
+        ) : (
+          <>
+            <div className="sso-stack">
+              <button className="btn-secondary btn--block" onClick={signInWithGoogle}>
+                {t('signIn.continueGoogle')}
+              </button>
+              <button className="btn-secondary btn--block" onClick={signInWithApple}>
+                {t('signIn.continueApple')}
+              </button>
+              <button className="btn-secondary btn--block" onClick={signInWithFacebook}>
+                {t('signIn.continueFacebook')}
+              </button>
+            </div>
+
+            <div className="sso-divider"><span>{t('signIn.orDivider')}</span></div>
+
+            <form className="sso-email-form" onSubmit={handleEmailSubmit}>
+              <input
+                type="email"
+                required
+                className="input"
+                placeholder={t('signIn.emailPlaceholder')}
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
+              <button type="submit" className="btn-primary btn--block" disabled={sending || !email.trim()}>
+                {sending ? t('signIn.sendingLink') : t('signIn.sendLink')}
+              </button>
+              {error && <div className="pf-error">{error}</div>}
+            </form>
+          </>
+        )}
       </div>
     </div>
   );
@@ -79,7 +121,6 @@ export default function App() {
   const { route } = useRouter();
   const { user, loading: authLoading } = useAuth();
   const t = useT();
-  const [allowGuest, setAllowGuest] = useState(false);
   // previewBook holds a book from search results that isn't in the collection yet.
   // BookPage reads this ref when route.params.preview === 'true'.
   const previewBookRef = useRef(null);
@@ -147,18 +188,19 @@ export default function App() {
     );
   }
 
-  // No session and not browsing as guest → show sign-in gate immediately.
+  // No session → show the sign-in gate. Sign-in is required; there is no
+  // longer a guest/offline bypass.
   // Don't wait on DataContext loading here — there's no user data to load yet.
-  if (!user && !allowGuest) {
+  if (!user) {
     return (
       <div className="app">
-        <SignInGate onGuest={() => setAllowGuest(true)} />
+        <SignInGate />
         <Toast />
       </div>
     );
   }
 
-  // Authenticated (or guest) — now wait for DataContext to finish loading user data
+  // Authenticated — now wait for DataContext to finish loading user data
   if (loading) {
     return (
       <div className="app">

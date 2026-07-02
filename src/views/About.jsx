@@ -5,7 +5,8 @@ import CurrentReleaseFooter from '../components/CurrentReleaseFooter';
 // Reusable section heading + body block, styled to match Profile.jsx voice
 function Section({ title, children }) {
   return (
-    <section className="about-section"><h2 className="about-section__title">{title}</h2>
+    <section className="about-section">
+      <h2 className="about-section__title">{title}</h2>
       {children}
     </section>
   );
@@ -21,50 +22,45 @@ function Paragraph({ children }) {
 
 function VersionEntry({ title, body }) {
   return (
-    <div className="about-section">
-      <div
-        className="about-section__title" style={{ fontSize: "1.05rem" }}
-      >
-        {title}
-      </div>
+    <div className="about-version">
+      <div className="about-version__title">{title}</div>
       <div className="about-section__body">{body}</div>
     </div>
   );
 }
 
+// A feature block (Wishlist, Library, Oracle, etc). Dedicated classes —
+// not .session-prompt — so this page's typography can't drift when that
+// component changes for its real home in club session discussions.
 function Feature({ title, children }) {
   return (
-    <div className="session-prompt">
-      <div
-        className="session-prompt__label" style={{ fontSize: "1.15rem", fontFamily: "var(--ro-font-display)", fontStyle: "italic" }}
-      >
-        {title}
-      </div>
-      <div className="session-prompt__text">{children}</div>
+    <div className="about-feature">
+      <div className="about-feature__title">{title}</div>
+      <div className="about-feature__body">{children}</div>
+    </div>
+  );
+}
+
+// A labeled sub-point inside a Feature (Oracle's "By genres" / "By similar
+// books"). Dedicated — not .plan-step-eyebrow, a wizard-step spacing
+// utility from PlanCreate that doesn't belong here.
+function FeatureSub({ label, children }) {
+  return (
+    <div className="about-feature__sub">
+      <div className="about-feature__sub-label">{label}</div>
+      <div className="about-feature__sub-body">{children}</div>
     </div>
   );
 }
 
 function RoadmapTier({ heading, items }) {
   return (
-    <div className="about-section">
-      <div
-        className="pf-overline pf-overline--gold" style={{ opacity: .7 }}
-      >
-        {heading}
-      </div>
+    <div className="about-roadmap-tier">
+      <div className="about-roadmap-tier__heading">{heading}</div>
       {items.map(({ title, body }, i) => (
-        <div
-          key={i} className="legal-list__item" style={{ flexDirection: "column" }}
-        >
-          <div
-            className="session-card__title"
-          >
-            {title}
-          </div>
-          <div className="about-section__body" style={{ fontSize: "0.93rem" }}>
-            {body}
-          </div>
+        <div key={i} className="about-roadmap-item">
+          <div className="about-roadmap-item__title">{title}</div>
+          <div className="about-roadmap-item__body">{body}</div>
         </div>
       ))}
     </div>
@@ -78,9 +74,7 @@ export default function About() {
 
   return (
     <>
-
-
-      <div className="page-header">
+      <div className="page-head">
         <div className="page-head__eyebrow">
           <a onClick={() => go('dashboard')}>{t('about.breadcrumb')}</a> · {t('about.eyebrow')}
         </div>
@@ -134,20 +128,16 @@ export default function About() {
           </Feature>
 
           <Feature title={t('about.featureOracleTitle')}>
-            <div className="about-section__body">{t('about.featureOracleBody')}</div>
-            <div className="plan-step-eyebrow">
-              <div className="session-section-label">
-                {t('about.featureOracleCategoriesTitle')}
-              </div>
-              <div>{t('about.featureOracleCategoriesBody')}</div>
-            </div>
-            <div className="plan-step-eyebrow">
-              <div className="session-section-label">
-                {t('about.featureOracleSimilarTitle')}
-              </div>
-              <div>{t('about.featureOracleSimilarBody')}</div>
-            </div>
-            <div >{t('about.featureOracleModes')}</div>
+            {t('about.featureOracleBody')}
+            <FeatureSub label={t('about.featureOracleCategoriesTitle')}>
+              {t('about.featureOracleCategoriesBody')}
+            </FeatureSub>
+            <FeatureSub label={t('about.featureOracleSimilarTitle')}>
+              {t('about.featureOracleSimilarBody')}
+            </FeatureSub>
+            <p className="about-feature__body" style={{ marginTop: 'var(--ro-space-4)' }}>
+              {t('about.featureOracleModes')}
+            </p>
           </Feature>
 
           <Feature title={t('about.featurePlansTitle')}>
@@ -207,9 +197,9 @@ export default function About() {
         </Section>
 
         {/* ── Pricing ────────────────────────────────────────────────────── */}
-        <div id="pricing" style={{ scrollMarginTop: "5rem" }}>
+        <div id="pricing" style={{ scrollMarginTop: '5rem' }}>
           <Section title={t('about.pricingHeading')}>
-            <div className="pf-overline pf-overline--gold" style={{ opacity: .8 }}>
+            <div className="pf-overline pf-overline--gold">
               {t('about.pricingEyebrow')}
             </div>
             <div className="about-credits-grid">
@@ -217,37 +207,37 @@ export default function About() {
               <div className="about-credit-card">
                 <div className="pf-overline">{t('about.pricingFreeTitle')}</div>
                 <div className="pf-author-line">
-                  <span className="pf-stat-value" style={{ fontSize: "2.4rem" }}>{t('about.pricingFreePrice')}</span>
+                  <span className="pf-stat-value pf-stat-value--lg">{t('about.pricingFreePrice')}</span>
                   <span className="pf-author-count">{t('about.pricingFreePeriod')}</span>
                 </div>
                 <ul className="legal-list">
                   {['pricingFreeFeature1', 'pricingFreeFeature2', 'pricingFreeFeature3', 'pricingFreeFeature4', 'pricingFreeFeature5'].map((k) => (
                     <li key={k} className="legal-list__item">
-                      <span className="lv-hl" style={{ flexShrink: 0 }}>·</span>{t(`about.${k}`)}
+                      <span className="lv-hl">·</span>{t(`about.${k}`)}
                     </li>
                   ))}
                 </ul>
               </div>
               {/* Pro */}
-              <div className="about-credit-card" style={{ borderColor: "var(--ro-gold)" }}>
+              <div className="about-credit-card about-credit-card--gold">
                 <div className="pf-overline pf-overline--gold">✦ {t('about.pricingProTitle')}</div>
                 <div className="pf-author-line">
-                  <span className="pf-stat-value" style={{ fontSize: "2.4rem" }}>{t('about.pricingProPrice')}</span>
+                  <span className="pf-stat-value pf-stat-value--lg">{t('about.pricingProPrice')}</span>
                   <span className="pf-author-count">{t('about.pricingProPeriod')}</span>
                 </div>
                 <ul className="legal-list">
                   {['pricingProFeature1', 'pricingProFeature2', 'pricingProFeature3', 'pricingProFeature4', 'pricingProFeature5'].map((k) => (
                     <li key={k} className="legal-list__item">
-                      <span className="lv-hl" style={{ flexShrink: 0 }}>❦</span>{t(`about.${k}`)}
+                      <span className="lv-hl">❦</span>{t(`about.${k}`)}
                     </li>
                   ))}
                 </ul>
-                <button className="btn-primary" style={{ marginTop: "0.5rem" }} onClick={() => go('profile')}>
+                <button className="btn-primary about-credit-card__cta" onClick={() => go('profile')}>
                   {t('about.pricingProCta')}
                 </button>
               </div>
             </div>
-            <div className="about-section__body" style={{ fontSize: "0.78rem", opacity: .5 }}>
+            <div className="about-section__body about-pricing-note">
               {t('about.pricingNote')}
             </div>
           </Section>

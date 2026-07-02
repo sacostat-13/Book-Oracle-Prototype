@@ -1079,6 +1079,153 @@
   justify-content: flex-end;
 }
 
+// ── Reading Plan (PlanView) ───────────────────────────────────────────────────
+.plan-hero {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ro-space-3);
+}
+
+.plan-hero__eyebrow {
+  @include ro-type(overline);
+  color: var(--ro-gold-text);
+}
+
+.plan-hero__title {
+  font-family: var(--ro-font-display);
+  font-style: italic;
+  font-size: 34px;
+  line-height: 1.15;
+  color: var(--ro-text);
+  max-width: 780px;
+
+  @include ro-down(mobile) {
+    font-size: 26px;
+  }
+}
+
+.plan-hero__desc {
+  font-family: var(--ro-font-body);
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--ro-muted);
+  max-width: 720px;
+}
+
+.plan-hero__badges {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 6px;
+}
+
+.plan-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--ro-gold);
+  color: var(--ro-gold-text);
+  border-radius: var(--ro-radius-pill);
+  padding: 8px 15px;
+  font-family: var(--ro-font-mono);
+  font-weight: 600;
+  font-size: 10px;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+}
+
+// Ornamental divider — a hairline with a centered diamond glyph
+.plan-divider {
+  position: relative;
+  height: 1px;
+  background: var(--ro-border-strong);
+  margin: var(--ro-space-6) 0;
+
+  &__glyph {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: var(--ro-bg-deep);
+    border: 1px solid var(--ro-border);
+    border-radius: 8px;
+    padding: 5px 11px;
+    color: var(--ro-gold-text);
+    font-size: 15px;
+    line-height: 1;
+  }
+}
+
+.plan-months {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ro-space-4);
+}
+
+.plan-month-card {
+  background: var(--ro-surface);
+  border: 1px solid var(--ro-border);
+  border-radius: var(--ro-radius-lg);
+  padding: 26px 30px;
+  display: grid;
+  grid-template-columns: 110px 1fr;
+  gap: var(--ro-space-6);
+  align-items: start;
+
+  @include ro-down(mobile) {
+    grid-template-columns: 1fr;
+    gap: var(--ro-space-3);
+  }
+}
+
+.plan-month-card__label {
+  @include ro-type(overline);
+  color: var(--ro-gold-text);
+  padding-top: 5px;
+}
+
+.plan-month-card__content {
+  border-left: 2px solid var(--ro-border-strong);
+  padding-left: var(--ro-space-6);
+
+  @include ro-down(mobile) {
+    border-left: 0;
+    padding-left: 0;
+  }
+}
+
+.plan-month-card__title {
+  font-family: var(--ro-font-body);
+  font-weight: 700;
+  font-size: 20px;
+  line-height: 1.2;
+  color: var(--ro-text);
+}
+
+.plan-month-card__author {
+  font-family: var(--ro-font-display);
+  font-style: italic;
+  font-size: 16px;
+  color: var(--ro-gold-text);
+  margin-top: 5px;
+}
+
+.plan-month-card__blurb {
+  font-family: var(--ro-font-body);
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--ro-text-2);
+  margin-top: 12px;
+}
+
+.plan-month-card__genres {
+  margin-top: 12px;
+}
+
+.plan-month-card__actions {
+  margin-top: 16px;
+}
+
 // ── Similar / "You might also like" grid ─────────────────────────────────────
 .bp-similar-grid {
   display: grid;
@@ -1498,57 +1645,76 @@
   gap: var(--ro-space-4);
 }
 
-// Source-mode switch (wishlist / vault / AI) — a labeled row of toggle buttons
-.oracle-mode-toggle {
+// Segmented card tabs — source selector (DS "Tabs" pattern). Selected tab
+// gets the raised surface-2 fill, a stronger border, and a brass title;
+// inactive tabs stay flat with a muted title.
+.source-tabs {
   display: flex;
-  align-items: center;
-  gap: var(--ro-space-3);
+  align-items: stretch;
+  gap: 10px;
   flex-wrap: wrap;
   margin-bottom: var(--ro-space-5);
 }
 
-.oracle-mode-label {
+.source-tabs__label {
+  align-self: center;
   @include ro-type(overline);
   color: var(--ro-muted);
+  padding-right: 4px;
 }
 
-.toggle-group {
-  display: flex;
-  gap: var(--ro-space-2);
-  flex-wrap: wrap;
-}
-
-.toggle-btn {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 4px;
-  border: 1px solid var(--ro-border-strong);
-  background: transparent;
-  border-radius: var(--ro-radius-md);
-  padding: 10px 16px;
-  font-family: var(--ro-font-body);
-  font-weight: 600;
-  font-size: 14px;
-  color: var(--ro-text-2);
+.source-tab {
+  text-align: left;
   cursor: pointer;
-  transition: border-color .15s, background .15s, color .15s;
+  background: transparent;
+  border: 1px solid var(--ro-border);
+  border-radius: var(--ro-radius-md);
+  padding: 12px 18px;
+  min-width: 150px;
+  transition: background .15s, border-color .15s;
 
-  &:hover { border-color: var(--ro-gold); }
+  &:hover {
+    border-color: var(--ro-border-strong);
+  }
+
+  &__head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  &__glyph {
+    font-size: 15px;
+    color: var(--ro-muted);
+  }
+
+  &__title {
+    font-family: var(--ro-font-body);
+    font-weight: 600;
+    font-size: 15px;
+    line-height: 1.1;
+    color: var(--ro-muted);
+  }
+
+  &__sub {
+    @include ro-type(overline);
+    font-size: 10px;
+    color: var(--ro-muted);
+    margin-top: 8px;
+  }
 
   &.active {
-    border-color: var(--ro-gold);
-    background: color-mix(in srgb, var(--ro-gold) 10%, transparent);
-    color: var(--ro-gold-text);
-  }
-}
+    background: var(--ro-surface-2);
+    border-color: var(--ro-border-strong);
 
-.toggle-sub {
-  font-family: var(--ro-font-mono);
-  font-size: 10px;
-  letter-spacing: .08em;
-  text-transform: uppercase;
-  color: var(--ro-muted);
+    .source-tab__glyph {
+      color: var(--ro-gold-text);
+    }
+
+    .source-tab__title {
+      color: var(--ro-gold-text);
+    }
+  }
 }
 
 // Inline controls row (temperament dropdown + draw button)
@@ -1558,6 +1724,8 @@
   gap: var(--ro-space-4);
   flex-wrap: wrap;
   margin-bottom: var(--ro-space-6);
+  margin-top: var(--ro-space-6);
+
 }
 
 .field {
@@ -1566,16 +1734,23 @@
   gap: 8px;
   min-width: 220px;
 
-  > label {
+  &-full {
+    width: 100%;
+    min-width: 0;
+  }
+
+  // Only styles a plain, class-less label — call sites with their own
+  // label class (e.g. .rating-modal__notes-label) keep full control.
+  >label:not([class]) {
     @include ro-type(label);
     color: var(--ro-text-2);
   }
 
-  > select {
+  >select {
     @extend .select;
   }
 
-  > input {
+  >input {
     @extend .input;
   }
 }
@@ -1625,7 +1800,10 @@
   font-size: 15px;
   line-height: 1;
   padding: 2px 4px;
-  &:hover { color: var(--ro-text); }
+
+  &:hover {
+    color: var(--ro-text);
+  }
 }
 
 // Compact grid of selectable book tiles
@@ -1645,7 +1823,9 @@
   border: 1px solid transparent;
   transition: border-color .15s, background .15s;
 
-  &:hover { border-color: var(--ro-border-strong); }
+  &:hover {
+    border-color: var(--ro-border-strong);
+  }
 
   &.selected {
     border-color: var(--ro-gold);

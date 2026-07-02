@@ -29,7 +29,11 @@
   border-radius: var(--ro-radius-pill);
   padding: 16px 22px;
 
-  &__icon { color: var(--ro-muted); flex-shrink: 0; }
+  &__icon {
+    color: var(--ro-muted);
+    flex-shrink: 0;
+  }
+
   &__input {
     flex: 1;
     border: 0;
@@ -38,9 +42,15 @@
     color: var(--ro-text);
     font-family: var(--ro-font-body);
     font-size: 15px;
-    &::placeholder { color: var(--ro-muted); }
+
+    &::placeholder {
+      color: var(--ro-muted);
+    }
   }
-  &--sm { padding: 11px 16px; }
+
+  &--sm {
+    padding: 11px 16px;
+  }
 }
 
 // ── Text input ────────────────────────────────────────────────────────────────
@@ -56,9 +66,18 @@
   color: var(--ro-text);
   transition: border-color .15s;
 
-  &::placeholder { color: var(--ro-muted); }
-  &:focus { border-color: var(--ro-gold); }
-  &:disabled { opacity: .5; cursor: not-allowed; }
+  &::placeholder {
+    color: var(--ro-muted);
+  }
+
+  &:focus {
+    border-color: var(--ro-gold);
+  }
+
+  &:disabled {
+    opacity: .5;
+    cursor: not-allowed;
+  }
 }
 
 // Italic display input (used for username/display name in the DS)
@@ -75,7 +94,7 @@
   border: 1px solid var(--ro-border-strong);
   background: var(--ro-field);
   border-radius: var(--ro-radius-md);
-  padding: 13px 40px 13px 16px;
+  padding: 8px 40px 8px 16px;
   outline: none;
   font-family: var(--ro-font-body);
   font-size: 15px;
@@ -86,7 +105,10 @@
   background-repeat: no-repeat;
   background-position: right 16px center;
   transition: border-color .15s;
-  &:focus { border-color: var(--ro-gold); }
+
+  &:focus {
+    border-color: var(--ro-gold);
+  }
 }
 
 // ── Textarea ──────────────────────────────────────────────────────────────────
@@ -104,9 +126,16 @@
   line-height: 1.6;
   color: var(--ro-text);
   transition: border-color .15s;
-  &::placeholder { color: var(--ro-muted); }
-  &:focus { border-color: var(--ro-gold); }
+
+  &::placeholder {
+    color: var(--ro-muted);
+  }
+
+  &:focus {
+    border-color: var(--ro-gold);
+  }
 }
+
 .textarea-meta {
   display: flex;
   justify-content: space-between;
@@ -114,5 +143,8 @@
   font-size: 12px;
   color: var(--ro-muted);
   margin-top: 8px;
-  .count { font-family: var(--ro-font-mono); }
+
+  .count {
+    font-family: var(--ro-font-mono);
+  }
 }

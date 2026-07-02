@@ -206,7 +206,7 @@ export default function SeriesPage() {
           </button>
           {readCount === 0 && entries.length > 0 && (
             <button
-              className="btn-gilt"
+              className="btn-primary"
               onClick={() => handleAction(entries[0], 'wishlist')}
               disabled={actionLoading === bookKey(entries[0])}
             >

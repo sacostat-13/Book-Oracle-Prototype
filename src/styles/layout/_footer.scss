@@ -3,11 +3,12 @@
 // Inset card treatment (bg-deep, border, border-radius 20px) matching the DS spec.
 
 .site-footer {
-  margin-top: 5rem;
   padding-inline: var(--ro-gutter-desktop);
   padding-bottom: 2rem;
 
-  @include ro-down(tablet) { padding-inline: var(--ro-gutter-mobile); }
+  @include ro-down(tablet) {
+    padding-inline: var(--ro-gutter-mobile);
+  }
 }
 
 .footer-card {
@@ -43,7 +44,11 @@
     font-family: var(--ro-font-display);
     font-size: 22px;
     color: var(--ro-gold-text);
-    span { font-style: italic; color: var(--ro-burgundy); }
+
+    span {
+      font-style: italic;
+      color: var(--ro-burgundy);
+    }
   }
 
   &__tagline {
@@ -76,9 +81,16 @@
   text-decoration: none;
   transition: border-color .15s, color .15s;
 
-  &:hover { border-color: var(--ro-gold); color: var(--ro-gold-text); }
+  &:hover {
+    border-color: var(--ro-gold);
+    color: var(--ro-gold-text);
+  }
 
-  svg { width: 17px; height: 17px; fill: currentColor; }
+  svg {
+    width: 17px;
+    height: 17px;
+    fill: currentColor;
+  }
 }
 
 // ── Link columns (Product · Legal) ────────────────────────────────────────────
@@ -113,7 +125,9 @@
   text-decoration: none;
   transition: color .15s;
 
-  &:hover { color: var(--ro-gold-text); }
+  &:hover {
+    color: var(--ro-gold-text);
+  }
 }
 
 // ── Bottom bar ────────────────────────────────────────────────────────────────
@@ -126,8 +140,13 @@
   border-top: 1px solid var(--ro-border);
   flex-wrap: wrap;
 
-  @include ro-down(tablet) { padding: 16px 28px; }
-  @include ro-down(mobile) { padding: 14px 24px; }
+  @include ro-down(tablet) {
+    padding: 16px 28px;
+  }
+
+  @include ro-down(mobile) {
+    padding: 14px 24px;
+  }
 }
 
 .footer-copy {

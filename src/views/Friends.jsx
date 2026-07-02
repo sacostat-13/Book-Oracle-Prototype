@@ -57,7 +57,7 @@ function RequestRow({ req, onAccept, onDecline }) {
       </div>
       <div className="friend-row__actions">
         <button
-          className="btn btn-sm"
+          className="btn-sm"
           onClick={() => handle(onAccept)}
           disabled={busy}
         >
@@ -124,7 +124,7 @@ function SearchResultRow({ profile, onSend, relationStatus }) {
   const [busy, setBusy] = useState(false);
 
   let actionLabel = 'Add friend';
-  let actionClass = 'btn btn-secondary btn-sm';
+  let actionClass = 'btn-primary btn--sm';
   let disabled = false;
   if (relationStatus === 'friends') { actionLabel = 'Friends ✓'; disabled = true; }
   if (relationStatus === 'pending_out') { actionLabel = 'Request sent'; disabled = true; }

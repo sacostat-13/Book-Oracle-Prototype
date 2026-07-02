@@ -47,6 +47,7 @@
     "viewProfile": "View profile",
     "someone": "Someone",
     "myBooks": "My Books",
+    "plans": "Reading Plans",
     "social": "Social",
     "parchmentMode": "Parchment"
   },
@@ -54,8 +55,16 @@
     "eyebrow": "Welcome",
     "desc": "Sign in to keep your library, wishlist, and reading plans synced across all your devices.",
     "continueGoogle": "Continue with Google ❦",
-    "guestPrompt": "Prefer to try it offline first? You can also <em class=\"accent\">{link}</em> (your data will live in this browser only).",
-    "guestLink": "continue as guest"
+    "continueApple": "Continue with Apple",
+    "continueFacebook": "Continue with Facebook",
+    "orDivider": "or",
+    "emailPlaceholder": "you@example.com",
+    "sendLink": "Send me a link",
+    "sendingLink": "Sending…",
+    "checkInboxTitle": "Check your inbox",
+    "checkInboxText": "We sent a sign-in link to {email}. Open it on this device to continue.",
+    "emailErrorGeneric": "Couldn't send that link — check the address and try again.",
+    "useAnotherEmail": "Use a different email"
   },
   "dashboard": {
     "eyebrow": "Your Library",

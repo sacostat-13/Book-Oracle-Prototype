@@ -156,11 +156,11 @@ function PaceChart({ books, onOpenBook }) {
 
 // ── Username section ──────────────────────────────────────────────────────────
 function UsernameSection({ profile, user, updateUsername, t }) {
-  const [editing,      setEditing]      = useState(false);
-  const [input,        setInput]        = useState('');
+  const [editing, setEditing] = useState(false);
+  const [input, setInput] = useState('');
   const [availability, setAvailability] = useState(null); // 'available'|'taken'|'invalid'|null
-  const [saving,       setSaving]       = useState(false);
-  const [error,        setError]        = useState(null);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState(null);
   const debounceRef = useRef(null);
 
   function onInputChange(val) {
@@ -192,11 +192,11 @@ function UsernameSection({ profile, user, updateUsername, t }) {
   const availLabel = availability === 'available' ? t('profile.usernameAvailable') : availability === 'taken' ? t('profile.usernameTaken') : availability === 'invalid' ? t('profile.usernameInvalid') : null;
 
   return (
-    <div className="bp-section">
-      <h2 className="pf-account-card__section-title">
+    <div className="pf-section">
+      <h2 className="pf-section__title">
         {t('profile.labelUsername')}
       </h2>
-      <p className="pf-account-card__hint">
+      <p className="pf-section__hint">
         {t('profile.usernameClaimSub')}
       </p>
 
@@ -257,8 +257,8 @@ function UsernameSection({ profile, user, updateUsername, t }) {
 // ── Display name section ──────────────────────────────────────────────────────
 function DisplayNameSection({ profile, updateDisplayName, t }) {
   const [editing, setEditing] = useState(false);
-  const [input,   setInput]   = useState('');
-  const [saving,  setSaving]  = useState(false);
+  const [input, setInput] = useState('');
+  const [saving, setSaving] = useState(false);
 
   async function save() {
     setSaving(true);
@@ -268,11 +268,11 @@ function DisplayNameSection({ profile, updateDisplayName, t }) {
   }
 
   return (
-    <div className="bp-section">
-      <h2 className="pf-account-card__section-title">
+    <div className="pf-section">
+      <h2 className="pf-section__title">
         {t('profile.labelDisplayName')}
       </h2>
-      <p className="pf-account-card__hint">
+      <p className="pf-section__hint">
         {t('profile.displayNameSub')}
       </p>
       {editing ? (
@@ -321,8 +321,8 @@ function PrivacySection({ profile, updatePrivacyPrefs, t }) {
   );
 
   return (
-    <div className="bp-section">
-      <h2 className="pf-account-card__section-title">
+    <div className="pf-section">
+      <h2 className="pf-section__title">
         {t('profile.labelPrivacy')}
       </h2>
       <Toggle label={t('profile.privacyDiscoverable')} value={profile.isDiscoverable} onToggle={() => toggle('isDiscoverable', profile.isDiscoverable)} />
@@ -359,9 +359,9 @@ function ReadingChallenge({ library, readingGoalCount, setReadingGoalCount, t })
   const [editing, setEditing] = useState(false);
   const [inputVal, setInputVal] = useState('');
 
-  const now      = new Date();
-  const year     = now.getFullYear();
-  const target   = readingGoalCount;
+  const now = new Date();
+  const year = now.getFullYear();
+  const target = readingGoalCount;
 
   // Books finished this calendar year
   const done = library.filter((b) => {
@@ -370,14 +370,14 @@ function ReadingChallenge({ library, readingGoalCount, setReadingGoalCount, t })
   }).length;
 
   // Pace calculation: days elapsed / days in year × target = expected by now
-  const dayOfYear    = Math.floor((now - new Date(year, 0, 1)) / 86400000) + 1;
-  const daysInYear   = ((year % 4 === 0 && year % 100 !== 0) || year % 400 === 0) ? 366 : 365;
+  const dayOfYear = Math.floor((now - new Date(year, 0, 1)) / 86400000) + 1;
+  const daysInYear = ((year % 4 === 0 && year % 100 !== 0) || year % 400 === 0) ? 366 : 365;
   const yearFraction = dayOfYear / daysInYear;
-  const expected     = target ? Math.round(target * yearFraction) : 0;
-  const projected    = target ? Math.round(done / Math.max(yearFraction, 0.01)) : 0;
-  const delta        = target ? done - expected : 0; // positive = ahead, negative = behind
-  const pct          = target ? Math.min(100, Math.round((done / target) * 100)) : 0;
-  const reached      = target && done >= target;
+  const expected = target ? Math.round(target * yearFraction) : 0;
+  const projected = target ? Math.round(done / Math.max(yearFraction, 0.01)) : 0;
+  const delta = target ? done - expected : 0; // positive = ahead, negative = behind
+  const pct = target ? Math.min(100, Math.round((done / target) * 100)) : 0;
+  const reached = target && done >= target;
 
   function save() {
     const n = parseInt(inputVal, 10);
@@ -392,7 +392,7 @@ function ReadingChallenge({ library, readingGoalCount, setReadingGoalCount, t })
 
   if (editing) {
     return (
-      <div className="bp-section">
+      <div className="pf-section">
         <p className="pf-prompt">
           {t('profile.challengeSubtitle')}
         </p>
@@ -423,7 +423,7 @@ function ReadingChallenge({ library, readingGoalCount, setReadingGoalCount, t })
 
   if (!target) {
     return (
-      <div className="bp-section">
+      <div className="pf-section">
         <p className="pf-prompt">
           {t('profile.challengeSubtitle')}
         </p>
@@ -435,7 +435,7 @@ function ReadingChallenge({ library, readingGoalCount, setReadingGoalCount, t })
   }
 
   return (
-    <div className="bp-section">
+    <div className="pf-section">
       {/* Year label */}
       <div className="pf-challenge__year">
         {t('profile.challengeYear', { year })}
@@ -781,7 +781,7 @@ export default function Profile() {
           {stats.topGenres.length > 0 && (
             <section>
               {sectionTitle(t('profile.sectionTopGenres'))}
-              <div>
+              <div className="pf-pace-panel">
                 {stats.topGenres.map((g) => (
                   <GenreBar key={g.name} name={g.name} count={g.count} max={stats.topGenres[0].count} />
                 ))}
@@ -825,9 +825,9 @@ export default function Profile() {
                         {t('profile.openLink')}
                       </span>
                       <div className="pf-pips">
-                      {Array.from({ length: s.total }).map((_, i) => (
-                        <div key={i} className={`pf-pip${i < s.read ? ' pf-pip--filled' : ''}`} />
-                      ))}
+                        {Array.from({ length: s.total }).map((_, i) => (
+                          <div key={i} className={`pf-pip${i < s.read ? ' pf-pip--filled' : ''}`} />
+                        ))}
                       </div>
                     </div>
                   </div>
@@ -850,7 +850,7 @@ export default function Profile() {
         <CornerBrackets />
         {user && (
           <>
-            <h2 className="pf-account-card__section-title">
+            <h2 className="pf-section__title">
               {t('profile.sectionAccount')}
             </h2>
             <p className="pf-text">
@@ -866,16 +866,15 @@ export default function Profile() {
         <UsernameSection profile={state.profile} user={user} updateUsername={updateUsername} t={t} />
         <DisplayNameSection profile={state.profile} updateDisplayName={updateDisplayName} t={t} />
         <PrivacySection profile={state.profile} updatePrivacyPrefs={updatePrivacyPrefs} t={t} />
-        <FriendsCallout go={go} t={t} />
 
-        <h2 className="pf-account-card__section-title" style={user ? undefined : { marginTop: 0 }}>
+        <h2 className="pf-section__title" style={user ? undefined : { marginTop: 0 }}>
           {t('profile.labelReadingLevel')}
         </h2>
         <p className="pf-text">
           {LEVEL_NAMES[state.profile.readingLevel] || t('profile.notSet')}
         </p>
 
-        <h2 className="pf-account-card__section-title">
+        <h2 className="pf-section__title">
           {t('profile.labelReadingChallenge')}
         </h2>
         <ReadingChallenge
@@ -885,7 +884,7 @@ export default function Profile() {
           t={t}
         />
 
-        <h2 className="pf-account-card__section-title">
+        <h2 className="pf-section__title">
           {t('profile.labelLibrary')}
         </h2>
         <p className="pf-text pf-text--gap-lg">
@@ -914,29 +913,29 @@ export default function Profile() {
 
         {/* ── Subscription section ──────────────────────────────────────────── */}
         {user && (
-          <div className="bp-section">
-            <h2 className="pf-account-card__section-title">
+          <div className="pf-section">
+            <h2 className="pf-section__title">
               {t('subscription.sectionTitle')}
             </h2>
 
             {/* Tier badge — reuses the global .status pill system */}
             {(() => {
               const status = quota?.subscription_status || 'free';
-              const isPro     = status === 'active';
+              const isPro = status === 'active';
               const isPastDue = status === 'past_due';
               return (
                 <div className="pf-tier-row">
                   <span className={`status${isPro ? ' status--success' : isPastDue ? ' status--warn' : ''}`}>
                     {isPro ? `✦ ${t('subscription.tierPro')}` : isPastDue ? `⚠ ${t('subscription.tierPastDue')}` : t('subscription.tierFree')}
                   </span>
-                  <span className="pf-account-card__hint">
+                  <span className="pf-section__hint">
                     {isPro
                       ? t('subscription.proDesc')
                       : isPastDue
-                      ? t('subscription.pastDueDesc')
-                      : t('subscription.freeDesc', {
+                        ? t('subscription.pastDueDesc')
+                        : t('subscription.freeDesc', {
                           remaining: quota?.calls_remaining ?? 5,
-                          limit:     quota?.calls_limit ?? 5,
+                          limit: quota?.calls_limit ?? 5,
                         })}
                   </span>
                 </div>
@@ -990,7 +989,7 @@ export default function Profile() {
         )}
 
         {/* ── Danger zone ───────────────────────────────────────────────────── */}
-        <div className="bp-section">
+        <div className="pf-section">
           <button
             className="btn-danger"
             onClick={() => {
@@ -1011,10 +1010,10 @@ export default function Profile() {
 // ── NotificationPreferences ───────────────────────────────────────────────────
 
 const DEFAULT_PREFS = {
-  book_club:     true,
-  friends:       true,
+  book_club: true,
+  friends: true,
   announcements: true,
-  email:         true,
+  email: true,
 };
 
 function NotificationPreferences({ t, user, showToast }) {
@@ -1044,15 +1043,15 @@ function NotificationPreferences({ t, user, showToast }) {
   if (!prefs) return null;
 
   const rows = [
-    { key: 'book_club',     label: t('notifications.prefBookClub'),     desc: t('notifications.prefBookClubDesc'),     locked: false },
-    { key: 'friends',       label: t('notifications.prefFriends'),       desc: t('notifications.prefFriendsDesc'),      locked: false },
-    { key: 'announcements', label: t('notifications.prefAnnouncements'), desc: t('notifications.prefAnnouncementsDesc'),locked: true  },
-    { key: 'email',         label: t('notifications.prefEmail'),         desc: t('notifications.prefEmailDesc'),        locked: false },
+    { key: 'book_club', label: t('notifications.prefBookClub'), desc: t('notifications.prefBookClubDesc'), locked: false },
+    { key: 'friends', label: t('notifications.prefFriends'), desc: t('notifications.prefFriendsDesc'), locked: false },
+    { key: 'announcements', label: t('notifications.prefAnnouncements'), desc: t('notifications.prefAnnouncementsDesc'), locked: true },
+    { key: 'email', label: t('notifications.prefEmail'), desc: t('notifications.prefEmailDesc'), locked: false },
   ];
 
   return (
-    <div className="bp-section">
-      <h2 className="pf-account-card__section-title">
+    <div className="pf-section">
+      <h2 className="pf-section__title">
         {t('notifications.prefTitle')}
       </h2>
       <div>

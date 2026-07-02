@@ -25,10 +25,11 @@
 }
 
 .clubs-list {
-  display: flex;
+  // display: flex;
   flex-direction: column;
   gap: 1rem;
   margin-bottom: 2rem;
+  margin-top: 1rem;
 }
 
 .club-card {
@@ -51,6 +52,7 @@
   align-items: baseline;
   justify-content: space-between;
   gap: 1rem;
+  margin-top: var(--ro-space-6);
 
   .btn-tertiary {
     margin-top: var(--ro-space-2)
@@ -421,6 +423,8 @@
   text-transform: uppercase;
   color: var(--ro-gold);
   margin-bottom: 0.5rem;
+  margin-top: var(--ro-space-6);
+
 }
 
 .session-section-text {

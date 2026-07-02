@@ -61,13 +61,11 @@ export default function PlanView() {
         <div className="breadcrumb">
           <a onClick={() => go('dashboard')}>{t('nav.dashboard')}</a> · {t('plans.readingPlanBreadcrumb')}
         </div>
-        <div className="empty-state">
-          <div className="ornament">❦</div>
-          <div className="empty-state-title">{t('plans.noActivePlan')}</div>
-          <div className="empty-state-text">{t('plans.noActivePlanText')}</div>
-          <div >
-            <button className="btn-primary" onClick={() => go('plan-create')}>{t('plans.createOwnPlan')}</button>
-          </div>
+        <div className="lv-empty">
+          <div className="lv-empty-icon">❦</div>
+          <div className="lv-empty-title">{t('plans.noActivePlan')}</div>
+          <div className="lv-empty-text">{t('plans.noActivePlanText')}</div>
+          <button className="btn-primary" onClick={() => go('plan-create')}>{t('plans.createOwnPlan')}</button>
         </div>
       </>
     );
@@ -112,19 +110,27 @@ export default function PlanView() {
       <div className="breadcrumb">
         <a onClick={() => go('dashboard')}>Dashboard</a> · Reading Plan
       </div>
-      <div className="page-header">
-        <div className="page-eyebrow">
+      <div className="plan-hero">
+        <div className="plan-hero__eyebrow">
           {isSharedView && remoteOwner ? (
             <>Reading plan by <strong className="lv-curator-name">{remoteOwner.display_name}</strong></>
           ) : (
             t('plans.yourPlan')
           )}
         </div>
-        <h1 className="page-title">{plan.title}</h1>
-        <p className="page-subtitle">{plan.intro || ''}</p>
+        <h1 className="plan-hero__title">{plan.title}</h1>
+        {plan.intro && <p className="plan-hero__desc">{plan.intro}</p>}
+        <div className="plan-hero__badges">
+          <span className="plan-badge">📚 {plan.books.length} {plan.books.length === 1 ? 'Book' : 'Books'}</span>
+          {plan.books.some((b) => b.month) && (
+            <span className="plan-badge">◔ {Math.max(...plan.books.map((b) => b.month || 1))} Months</span>
+          )}
+        </div>
       </div>
 
-      <div className="plan-actions">
+      <div className="plan-divider"><span className="plan-divider__glyph">✦</span></div>
+
+      <div className="bp-actions">
         {plan.type === 'series' && plan.seriesName && (
           <button
             className="btn-primary"
@@ -133,7 +139,7 @@ export default function PlanView() {
             {t('plans.openSeries')}
           </button>
         )}
-        <button className="btn-gilt" onClick={addAllToQueue}>
+        <button className="btn-primary" onClick={addAllToQueue}>
           {t('plans.addAllToQueue')}
         </button>
         {!isSharedView && (
@@ -148,7 +154,7 @@ export default function PlanView() {
         )}
         {isSharedView && (
           <>
-            <button className="btn-gilt" onClick={handleCopyPlan}>
+            <button className="btn-primary" onClick={handleCopyPlan}>
               {t('plans.copyPlan')}
             </button>
             <button className="btn-secondary" onClick={() => go('plan-create')}>
@@ -158,7 +164,7 @@ export default function PlanView() {
         )}
       </div>
 
-      <div>
+      <div className="plan-months">
         {plan.books.map((b, i) => {
           const found = findBookByTitle(b.title || b.t, state.wishlist) ||
             { t: b.title || b.t, a: b.author || b.a, d: b.description || '' };
@@ -167,42 +173,38 @@ export default function PlanView() {
           const isRead = state.library.some((l) => bookKey(l) === k);
           const isQueued = state.readNext.some((l) => bookKey(l) === k);
           return (
-            <div className="plan-step" key={i}>
-              <div className="plan-month">Month {b.month || i + 1}</div>
-              <div>
-                <div className="plan-book">{found.t}</div>
-                <div className="plan-author">
+            <div className="plan-month-card" key={i}>
+              <div className="plan-month-card__label">Month {b.month || i + 1}</div>
+              <div className="plan-month-card__content">
+                <div className="plan-month-card__title">{found.t}</div>
+                <div className="plan-month-card__author">
                   {found.a}
-                  {pages && (
-                    <> · <span className="plan-book-author">
-                      ~{pages} pages
-                    </span></>
-                  )}
+                  {pages && <span className="lv-hl-muted"> · ~{pages} pages</span>}
                 </div>
-                <div className="plan-reason">{b.reason || found.d || ''}</div>
+                {(b.reason || found.d) && (
+                  <div className="plan-month-card__blurb">{b.reason || found.d}</div>
+                )}
                 {(() => {
                   const genres = genresByBookId[found.bookId];
                   return genres && genres.length > 0 ? (
-                    <div className="li-genres cr-genres">
+                    <div className="plan-month-card__genres bp-meta">
                       {genres.map((g) => (
-                        <span key={g.genreId} className="li-genre-pill" title={g.description || undefined}>
+                        <span key={g.genreId} className="chip" title={g.description || undefined}>
                           {g.name}
                         </span>
                       ))}
                     </div>
                   ) : null;
                 })()}
-                <div className="bp-actions">
+                <div className="plan-month-card__actions bp-actions">
                   {isRead ? (
-                    <span className="level-pill bp-pill--moss">
-                      ✓ Read
-                    </span>
+                    <span className="bp-pill bp-pill--moss">✓ Read</span>
                   ) : isQueued ? (
-                    <span className="level-pill">✓ Queued</span>
+                    <span className="bp-pill">✓ Queued</span>
                   ) : (
                     <>
-                      <button className="li-action" onClick={() => addToReadNext(found)}>+ Add to Read Next</button>
-                      <button className="li-action success" onClick={() => markAsRead(found)}>✓ Mark as Read</button>
+                      <button className="btn-tertiary" onClick={() => addToReadNext(found)}>+ Add to Read Next</button>
+                      <button className="btn-secondary" onClick={() => markAsRead(found)}>✓ Mark as Read</button>
                     </>
                   )}
                 </div>

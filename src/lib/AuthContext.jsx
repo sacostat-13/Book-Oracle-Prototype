@@ -47,6 +47,27 @@ export function AuthProvider({ children }) {
       options: { redirectTo: window.location.origin },
     });
 
+  const signInWithApple = () =>
+    supabase.auth.signInWithOAuth({
+      provider: 'apple',
+      options: { redirectTo: window.location.origin },
+    });
+
+  const signInWithFacebook = () =>
+    supabase.auth.signInWithOAuth({
+      provider: 'facebook',
+      options: { redirectTo: window.location.origin },
+    });
+
+  // Passwordless email sign-in — sends a one-time magic link rather than
+  // requiring a password. Resolves { error } so the caller can show a
+  // "check your inbox" state or surface the error inline.
+  const signInWithEmail = (email) =>
+    supabase.auth.signInWithOtp({
+      email,
+      options: { emailRedirectTo: window.location.origin },
+    });
+
   const signOut = () => supabase.auth.signOut();
 
   return (
@@ -56,6 +77,9 @@ export function AuthProvider({ children }) {
         user: session?.user || null,
         loading,
         signInWithGoogle,
+        signInWithApple,
+        signInWithFacebook,
+        signInWithEmail,
         signOut,
       }}
     >

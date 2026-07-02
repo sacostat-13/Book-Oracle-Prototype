@@ -47,6 +47,7 @@
     "viewProfile": "Ver perfil",
     "someone": "Alguien",
     "myBooks": "Mis Libros",
+    "plans": "Planes de lectura",
     "social": "Social",
     "parchmentMode": "Pergamino"
   },
@@ -54,8 +55,16 @@
     "eyebrow": "Bienvenida",
     "desc": "Entrá para mantener tu biblioteca, tu lista y tus planes de lectura sincronizados en todos tus dispositivos.",
     "continueGoogle": "Continuar con Google ❦",
-    "guestPrompt": "¿Preferís probarlo sin conexión primero? También podés <em class=\"accent\">{link}</em> (tus datos solo vivirán en este navegador).",
-    "guestLink": "continuar como invitada"
+    "continueApple": "Continuar con Apple",
+    "continueFacebook": "Continuar con Facebook",
+    "orDivider": "o",
+    "emailPlaceholder": "tu@ejemplo.com",
+    "sendLink": "Enviarme un link",
+    "sendingLink": "Enviando…",
+    "checkInboxTitle": "Revisá tu correo",
+    "checkInboxText": "Te enviamos un link de acceso a {email}. Abrilo desde este dispositivo para continuar.",
+    "emailErrorGeneric": "No pudimos enviar el link — revisá la dirección e intentá de nuevo.",
+    "useAnotherEmail": "Usar otro correo"
   },
   "dashboard": {
     "eyebrow": "Tu Biblioteca",

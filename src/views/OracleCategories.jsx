@@ -197,22 +197,29 @@ Return ONLY valid JSON in this format:
         </p>
       </div>
 
-      <div className="oracle-mode-toggle">
-        <span className="oracle-mode-label">Source:</span>
-        <div className="toggle-group">
-          <button className={`toggle-btn ${mode === 'wishlist' ? 'active' : ''}`} onClick={() => setMode('wishlist')}>
-            ❦ My wishlist
-            <span className="toggle-sub">{state.wishlist.length} books</span>
-          </button>
-          <button className={`toggle-btn ${mode === 'vault' ? 'active' : ''}`} onClick={() => setMode('vault')}>
-            ☩ The Vault
-            <span className="toggle-sub">{vault ? `${vault.length} curated` : 'curated catalog'}</span>
-          </button>
-          <button className={`toggle-btn ${mode === 'ai' ? 'active' : ''}`} onClick={() => setMode('ai')}>
-            ✦ AI recommends
-            <span className="toggle-sub">may go beyond catalogs</span>
-          </button>
-        </div>
+      <div className="source-tabs">
+        <span className="source-tabs__label">Source:</span>
+        <button className={`source-tab${mode === 'wishlist' ? ' active' : ''}`} onClick={() => setMode('wishlist')}>
+          <div className="source-tab__head">
+            <span className="source-tab__glyph">❦</span>
+            <span className="source-tab__title">My wishlist</span>
+          </div>
+          <div className="source-tab__sub">{state.wishlist.length} books</div>
+        </button>
+        <button className={`source-tab${mode === 'vault' ? ' active' : ''}`} onClick={() => setMode('vault')}>
+          <div className="source-tab__head">
+            <span className="source-tab__glyph">☩</span>
+            <span className="source-tab__title">The Vault</span>
+          </div>
+          <div className="source-tab__sub">{vault ? `${vault.length} curated` : 'curated catalog'}</div>
+        </button>
+        <button className={`source-tab${mode === 'ai' ? ' active' : ''}`} onClick={() => setMode('ai')}>
+          <div className="source-tab__head">
+            <span className="source-tab__glyph">✦</span>
+            <span className="source-tab__title">AI recommends</span>
+          </div>
+          <div className="source-tab__sub">may go beyond catalogs</div>
+        </button>
       </div>
 
       <section className="controls">

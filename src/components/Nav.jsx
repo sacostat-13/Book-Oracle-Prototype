@@ -4,42 +4,43 @@
 // Zero inline styles — all classes from layout/_nav.scss.
 
 import { useState, useEffect, useRef } from 'react';
-import { useData }          from '../lib/DataContext';
-import { useRouter }        from '../lib/RouterContext';
-import { useAuth }          from '../lib/AuthContext';
-import { useI18n }          from '../lib/I18nContext';
-import { useTheme }         from '../lib/ThemeContext';
+import { useData } from '../lib/DataContext';
+import { useRouter } from '../lib/RouterContext';
+import { useAuth } from '../lib/AuthContext';
+import { useI18n } from '../lib/I18nContext';
+import { useTheme } from '../lib/ThemeContext';
 import { useNotifications, notificationLabel, notificationRoute } from '../lib/useNotifications';
-import { useFriends }       from '../lib/useFriends';
-import AnnouncementModal    from './AnnouncementModal';
-import NavSearch            from './NavSearch';
+import { useFriends } from '../lib/useFriends';
+import AnnouncementModal from './AnnouncementModal';
+import NavSearch from './NavSearch';
 
 // ── SVG icons ─────────────────────────────────────────────────────────────────
 const IconBell = () => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
-    <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
-    <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+    <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+    <path d="M13.73 21a2 2 0 0 1-3.46 0" />
   </svg>
 );
 const IconChevron = () => (
   <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden>
-    <path d="m6 9 6 6 6-6"/>
+    <path d="m6 9 6 6 6-6" />
   </svg>
 );
 const IconOracle = () => (
   // 4-pointed sparkle — the Oracle's sigil
   <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-    <path d="M12 0 L14.5 9.5 L24 12 L14.5 14.5 L12 24 L9.5 14.5 L0 12 L9.5 9.5Z"/>
+    <path d="M12 0 L14.5 9.5 L24 12 L14.5 14.5 L12 24 L9.5 14.5 L0 12 L9.5 9.5Z" />
   </svg>
 );
 
-// ── Logo sigil (book + sparkle) ───────────────────────────────────────────────
+// ── Logo mark (theme-aware raster logo) ──────────────────────────────────────
+// Both images are always in the DOM; CSS shows only the one matching the
+// current theme via the `theme-dark` / `theme-parchment` class Body carries
+// (see ThemeContext.jsx). No re-render needed when the theme toggles.
 const LogoMark = () => (
   <div className="nav-logo__mark" aria-hidden>
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
-      <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
-      <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
-    </svg>
+    <img src="/logo-dark-mode.png" alt="" className="nav-logo__img nav-logo__img--dark" />
+    <img src="/logo-light-mode.png" alt="" className="nav-logo__img nav-logo__img--light" />
   </div>
 );
 
@@ -56,10 +57,10 @@ function useClickOutside(ref, onClose) {
 
 // ── Notification item ─────────────────────────────────────────────────────────
 function NotifItem({ n, t, onClose, go, markOneRead, onAnnouncement, handleAccept, handleDecline }) {
-  const actor   = n.actor;
-  const label   = notificationLabel(n, t);
-  const dest    = notificationRoute(n);
-  const fId     = n.data?.friendship_id;
+  const actor = n.actor;
+  const label = notificationLabel(n, t);
+  const dest = notificationRoute(n);
+  const fId = n.data?.friendship_id;
   const clickable = n.type === 'announcement' || !!dest;
 
   function handleClick() {
@@ -103,35 +104,35 @@ function NotifItem({ n, t, onClose, go, markOneRead, onAnnouncement, handleAccep
 
 // ── Main component ─────────────────────────────────────────────────────────────
 export default function Nav({ onPreviewBook }) {
-  const { state }    = useData();
+  const { state } = useData();
   const { route, go } = useRouter();
   const { user, signInWithGoogle, signOut } = useAuth();
-  const { lang, toggleLang, t, tNode }     = useI18n();
-  const { theme, toggleTheme }             = useTheme();
+  const { lang, toggleLang, t, tNode } = useI18n();
+  const { theme, toggleTheme } = useTheme();
   const { notifications, unreadCount, markAllRead, markOneRead } = useNotifications();
-  const { acceptRequest, declineRequest }  = useFriends();
+  const { acceptRequest, declineRequest } = useFriends();
 
-  const [menuOpen,  setMenuOpen]  = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   const [booksOpen, setBooksOpen] = useState(false);
-  const [socialOpen,setSocialOpen]= useState(false);
-  const [bellOpen,  setBellOpen]  = useState(false);
-  const [userOpen,  setUserOpen]  = useState(false);
+  const [socialOpen, setSocialOpen] = useState(false);
+  const [bellOpen, setBellOpen] = useState(false);
+  const [userOpen, setUserOpen] = useState(false);
   const [activeAnnouncement, setActiveAnnouncement] = useState(null);
 
-  const booksRef  = useRef(null);
+  const booksRef = useRef(null);
   const socialRef = useRef(null);
-  const bellRef   = useRef(null);
-  const userRef   = useRef(null);
+  const bellRef = useRef(null);
+  const userRef = useRef(null);
 
-  useClickOutside(booksRef,  () => setBooksOpen(false));
+  useClickOutside(booksRef, () => setBooksOpen(false));
   useClickOutside(socialRef, () => setSocialOpen(false));
-  useClickOutside(bellRef,   () => setBellOpen(false));
-  useClickOutside(userRef,   () => setUserOpen(false));
+  useClickOutside(bellRef, () => setBellOpen(false));
+  useClickOutside(userRef, () => setUserOpen(false));
 
   // Close all dropdowns on route change, unlock scroll
   useEffect(() => {
     setBooksOpen(false); setSocialOpen(false);
-    setBellOpen(false);  setUserOpen(false);
+    setBellOpen(false); setUserOpen(false);
     setMenuOpen(false);
   }, [route.name]);
 
@@ -154,22 +155,22 @@ export default function Nav({ onPreviewBook }) {
   }
 
   async function handleAccept(fId, nId) { await acceptRequest(fId); markOneRead(nId); }
-  async function handleDecline(fId, nId){ await declineRequest(fId); markOneRead(nId); }
+  async function handleDecline(fId, nId) { await declineRequest(fId); markOneRead(nId); }
 
   // Counts
   const readingCount = (state.currentlyReading?.length || 0) + (state.readNext?.length || 0);
-  const listsCount   = (state.lists  || []).length;
-  const clubsCount   = (state.clubs  || []).length;
+  const listsCount = (state.lists || []).length;
+  const clubsCount = (state.clubs || []).length;
 
   // Active-state helpers
-  const booksActive = ['wishlist','library','currently-reading','read-next'].includes(route.name);
-  const socialActive= ['lists','book-clubs','book-club-create','book-club-detail',
-                        'session-create','session-detail','friends','friend-profile'].includes(route.name);
+  const booksActive = ['wishlist', 'library', 'currently-reading', 'read-next', 'plan-create', 'plan-view'].includes(route.name);
+  const socialActive = ['lists', 'book-clubs', 'book-club-create', 'book-club-detail',
+    'session-create', 'session-detail', 'friends', 'friend-profile'].includes(route.name);
 
   // User display
-  const userLabel  = state.profile?.displayName || user?.email?.split('@')[0] || '';
+  const userLabel = state.profile?.displayName || user?.email?.split('@')[0] || '';
   const userAvatar = state.profile?.avatar_url;
-  const userInitial= userLabel?.[0]?.toUpperCase() || '?';
+  const userInitial = userLabel?.[0]?.toUpperCase() || '?';
   const toggleLangLabel = lang === 'en' ? t('nav.switchToSpanish') : t('nav.switchToEnglish');
 
   return (
@@ -180,9 +181,6 @@ export default function Nav({ onPreviewBook }) {
         {/* Logo */}
         <button className="nav-logo" onClick={() => nav('dashboard')} aria-label="The Books Oracle — Home">
           <LogoMark />
-          <span className="nav-logo__wordmark">
-            The <span>Books</span> Oracle
-          </span>
         </button>
 
         {/* ── Desktop nav groups ── */}
@@ -203,22 +201,26 @@ export default function Nav({ onPreviewBook }) {
 
             {booksOpen && (
               <div className="nav-group__menu">
-                <button className={`nav-group__item${route.name==='wishlist'?' is-active':''}`}   onClick={() => nav('wishlist')}>
+                <button className={`nav-group__item${route.name === 'wishlist' ? ' is-active' : ''}`} onClick={() => nav('wishlist')}>
                   {t('nav.wishlist')}
                   {state.wishlist?.length > 0 && <span className="nav-group__badge">{state.wishlist.length}</span>}
                 </button>
-                <button className={`nav-group__item${route.name==='library'?' is-active':''}`}    onClick={() => nav('library')}>
+                <button className={`nav-group__item${route.name === 'library' ? ' is-active' : ''}`} onClick={() => nav('library')}>
                   {t('nav.library')}
                   {state.library?.length > 0 && <span className="nav-group__badge">{state.library.length}</span>}
                 </button>
                 <div className="nav-group__divider" />
-                <button className={`nav-group__item${route.name==='currently-reading'?' is-active':''}`} onClick={() => nav('currently-reading')}>
+                <button className={`nav-group__item${route.name === 'currently-reading' ? ' is-active' : ''}`} onClick={() => nav('currently-reading')}>
                   {t('nav.currentlyReadingFull')}
                   {state.currentlyReading?.length > 0 && <span className="nav-group__badge">{state.currentlyReading.length}</span>}
                 </button>
-                <button className={`nav-group__item${route.name==='read-next'?' is-active':''}`}  onClick={() => nav('read-next')}>
+                <button className={`nav-group__item${route.name === 'read-next' ? ' is-active' : ''}`} onClick={() => nav('read-next')}>
                   {t('nav.readNext')}
                   {state.readNext?.length > 0 && <span className="nav-group__badge">{state.readNext.length}</span>}
+                </button>
+                <div className="nav-group__divider" />
+                <button className={`nav-group__item${(route.name === 'plan-create' || route.name === 'plan-view') ? ' is-active' : ''}`} onClick={() => nav('plan-create')}>
+                  {t('nav.plans')}
                 </button>
               </div>
             )}
@@ -238,15 +240,15 @@ export default function Nav({ onPreviewBook }) {
 
             {socialOpen && (
               <div className="nav-group__menu">
-                <button className={`nav-group__item${route.name==='lists'?' is-active':''}`} onClick={() => nav('lists')}>
+                <button className={`nav-group__item${route.name === 'lists' ? ' is-active' : ''}`} onClick={() => nav('lists')}>
                   {t('nav.lists')}
                   {listsCount > 0 && <span className="nav-group__badge">{listsCount}</span>}
                 </button>
-                <button className={`nav-group__item${['book-clubs','book-club-detail','book-club-create'].includes(route.name)?' is-active':''}`} onClick={() => nav('book-clubs')}>
+                <button className={`nav-group__item${['book-clubs', 'book-club-detail', 'book-club-create'].includes(route.name) ? ' is-active' : ''}`} onClick={() => nav('book-clubs')}>
                   {t('nav.bookClubs')}
                   {clubsCount > 0 && <span className="nav-group__badge">{clubsCount}</span>}
                 </button>
-                <button className={`nav-group__item${['friends','friend-profile'].includes(route.name)?' is-active':''}`} onClick={() => nav('friends')}>
+                <button className={`nav-group__item${['friends', 'friend-profile'].includes(route.name) ? ' is-active' : ''}`} onClick={() => nav('friends')}>
                   {t('nav.friends') || 'Friends'}
                 </button>
               </div>
@@ -255,7 +257,7 @@ export default function Nav({ onPreviewBook }) {
 
           {/* Oracle pill — distinct accent CTA */}
           <button
-            className={`nav-oracle${route.name==='oracle'?' is-active':''}`}
+            className={`nav-oracle${route.name === 'oracle' ? ' is-active' : ''}`}
             onClick={() => nav('oracle')}
             aria-label="The Oracle"
           >
@@ -333,10 +335,10 @@ export default function Nav({ onPreviewBook }) {
 
             {userOpen && (
               <div className="nav-group__menu nav-group__menu--right">
-                <button className={`nav-group__item${route.name==='profile'?' is-active':''}`} onClick={() => nav('profile')}>
+                <button className={`nav-group__item${route.name === 'profile' ? ' is-active' : ''}`} onClick={() => nav('profile')}>
                   {t('nav.profile')}
                 </button>
-                <button className={`nav-group__item${route.name==='about'?' is-active':''}`} onClick={() => nav('about')}>
+                <button className={`nav-group__item${route.name === 'about' ? ' is-active' : ''}`} onClick={() => nav('about')}>
                   {t('nav.about')}
                 </button>
                 <div className="nav-group__divider" />
@@ -372,9 +374,7 @@ export default function Nav({ onPreviewBook }) {
       {menuOpen && (
         <div id="mobile-menu" className="mobile-menu" role="dialog" aria-modal="true" aria-label={t('nav.menuLabel')}>
           <div className="mobile-menu__head">
-            <span className="nav-logo__wordmark">
-              The <span>Books</span> Oracle
-            </span>
+            <LogoMark />
             <div className="mobile-menu__search">
               <NavSearch onPreviewBook={onPreviewBook} compact />
             </div>
@@ -388,31 +388,34 @@ export default function Nav({ onPreviewBook }) {
           <div className="mobile-menu__body">
             <div className="mobile-menu__section-label">{t('nav.myBooks') || 'My Books'}</div>
             {[
-              { name: 'wishlist',          label: t('nav.wishlist'),            count: state.wishlist?.length },
-              { name: 'library',           label: t('nav.library'),             count: state.library?.length },
+              { name: 'wishlist', label: t('nav.wishlist'), count: state.wishlist?.length },
+              { name: 'library', label: t('nav.library'), count: state.library?.length },
               { name: 'currently-reading', label: t('nav.currentlyReadingFull'), count: state.currentlyReading?.length },
-              { name: 'read-next',         label: t('nav.readNext'),            count: state.readNext?.length },
+              { name: 'read-next', label: t('nav.readNext'), count: state.readNext?.length },
             ].map(({ name, label, count }) => (
-              <button key={name} className={`mobile-menu__item${route.name===name?' is-active':''}`} onClick={() => nav(name)}>
+              <button key={name} className={`mobile-menu__item${route.name === name ? ' is-active' : ''}`} onClick={() => nav(name)}>
                 {label}
                 {count > 0 && <span className="mobile-menu__badge">{count}</span>}
               </button>
             ))}
+            <button className={`mobile-menu__item${(route.name === 'plan-create' || route.name === 'plan-view') ? ' is-active' : ''}`} onClick={() => nav('plan-create')}>
+              {t('nav.plans')}
+            </button>
 
             <div className="mobile-menu__section-label">Social</div>
             {[
-              { name: 'lists',      label: t('nav.lists'),      count: listsCount },
-              { name: 'book-clubs', label: t('nav.bookClubs'),  count: clubsCount },
-              { name: 'friends',    label: t('nav.friends') || 'Friends', count: 0 },
+              { name: 'lists', label: t('nav.lists'), count: listsCount },
+              { name: 'book-clubs', label: t('nav.bookClubs'), count: clubsCount },
+              { name: 'friends', label: t('nav.friends') || 'Friends', count: 0 },
             ].map(({ name, label, count }) => (
-              <button key={name} className={`mobile-menu__item${route.name===name?' is-active':''}`} onClick={() => nav(name)}>
+              <button key={name} className={`mobile-menu__item${route.name === name ? ' is-active' : ''}`} onClick={() => nav(name)}>
                 {label}
                 {count > 0 && <span className="mobile-menu__badge">{count}</span>}
               </button>
             ))}
 
             <div className="mobile-menu__section-label">Oracle</div>
-            <button className={`mobile-menu__item${route.name==='oracle'?' is-active':''}`} onClick={() => nav('oracle')}>
+            <button className={`mobile-menu__item${route.name === 'oracle' ? ' is-active' : ''}`} onClick={() => nav('oracle')}>
               ✦ {t('nav.oracle')}
             </button>
           </div>

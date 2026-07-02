@@ -175,18 +175,22 @@ Return ONLY valid JSON in this exact format:
         </p>
       </div>
 
-      <div className="oracle-mode-toggle">
-        <span className="oracle-mode-label">Source:</span>
-        <div className="toggle-group">
-          <button className={`toggle-btn ${mode === 'wishlist' ? 'active' : ''}`} onClick={() => setMode('wishlist')}>
-            ❦ My wishlist
-            <span className="toggle-sub">tag-matched, instant</span>
-          </button>
-          <button className={`toggle-btn ${mode === 'ai' ? 'active' : ''}`} onClick={() => setMode('ai')}>
-            ✦ AI recommends
-            <span className="toggle-sub">may go beyond wishlist</span>
-          </button>
-        </div>
+      <div className="source-tabs">
+        <span className="source-tabs__label">Source:</span>
+        <button className={`source-tab${mode === 'wishlist' ? ' active' : ''}`} onClick={() => setMode('wishlist')}>
+          <div className="source-tab__head">
+            <span className="source-tab__glyph">❦</span>
+            <span className="source-tab__title">My wishlist</span>
+          </div>
+          <div className="source-tab__sub">tag-matched, instant</div>
+        </button>
+        <button className={`source-tab${mode === 'ai' ? ' active' : ''}`} onClick={() => setMode('ai')}>
+          <div className="source-tab__head">
+            <span className="source-tab__glyph">✦</span>
+            <span className="source-tab__title">AI recommends</span>
+          </div>
+          <div className="source-tab__sub">may go beyond wishlist</div>
+        </button>
       </div>
 
       <div className="selection-tray">

@@ -34,44 +34,41 @@
 .nav-logo {
   display: flex;
   align-items: center;
-  gap: 9px;
   cursor: pointer;
   flex-shrink: 0;
   text-decoration: none;
   color: inherit;
   margin-right: 6px;
+  background: transparent;
+  border: 0;
+  padding: 0;
+  margin-left: -5%;
 
   &__mark {
-    // The sigil/icon mark — 32×32 rounded square
-    width: 32px;
-    height: 32px;
-    border-radius: 9px;
-    background: var(--ro-accent);
+    // The full raster logo (already includes the site name) — sized to the
+    // topbar's 64px height with some breathing room.
+    height: 88px;
     display: flex;
     align-items: center;
-    justify-content: center;
-    color: var(--ro-accent-on);
-    font-size: 17px;
-    line-height: 1;
-    flex-shrink: 0;
-    box-shadow: inset 0 0 0 2px var(--ro-accent), inset 0 0 0 2.8px var(--ro-accent-line);
   }
 
-  &__wordmark {
-    font-family: var(--ro-font-display);
-    font-size: 18px;
-    color: var(--ro-gold-text);
-    white-space: nowrap;
-
-    span {
-      font-style: italic;
-      color: var(--ro-burgundy);
-    }
-
-    @include ro-down(mobile) {
-      display: none;
-    }
+  // Both images render at all times; only the one matching the current
+  // theme (theme-dark / theme-parchment on <body>, see ThemeContext.jsx)
+  // is shown. No JS re-render needed when the theme toggles.
+  &__img {
+    height: 100%;
+    width: auto;
+    display: none;
+    object-fit: contain;
   }
+}
+
+body.theme-dark .nav-logo__img--dark {
+  display: block;
+}
+
+body.theme-parchment .nav-logo__img--light {
+  display: block;
 }
 
 // ── Spacer ────────────────────────────────────────────────────────────────────

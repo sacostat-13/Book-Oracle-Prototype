@@ -273,6 +273,7 @@
   font-size: 14px;
   line-height: 1.6;
   color: var(--ro-text-2);
+  padding-bottom: var(--ro-space-2);
 
   &--gap-lg {
     margin-top: var(--ro-space-4);
@@ -293,6 +294,32 @@
   gap: var(--ro-space-8);
 }
 
-.panel {
-  margin-top: var(--ro-space-4);
+.pf-section {
+  border-top: 1px solid var(--ro-border);
+  padding-top: var(--ro-space-6);
+  padding-bottom: var(--ro-space-2);
+
+  &:first-child {
+    border-top: 0;
+    padding-top: 0;
+    margin-top: 0;
+  }
+}
+
+.pf-section__title {
+  font-family: var(--ro-font-display);
+  font-style: italic;
+  font-size: 21px;
+  color: var(--ro-text);
+  margin-bottom: var(--ro-space-2);
+  margin-top: var(--ro-space-6);
+
+}
+
+.pf-section__hint {
+  font-family: var(--ro-font-body);
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--ro-muted);
+  margin-bottom: var(--ro-space-4);
 }

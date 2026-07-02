@@ -91,7 +91,7 @@ export default function ListView() {
 
         {user && (
           <div className="lv-list-entries">
-            <button className="btn btn-secondary" onClick={() => go('lists')}>{t('lists.saveToMyLists')}</button>
+            <button className="btn-secondary" onClick={() => go('lists')}>{t('lists.saveToMyLists')}</button>
           </div>
         )}
 
@@ -146,7 +146,7 @@ export default function ListView() {
 
       {user && (
         <div className="lv-list-entries">
-          <button className="btn btn-gilt" onClick={() => go('plan-view', { planId: plan.id })}>
+          <button className="btn-primary" onClick={() => go('plan-view', { planId: plan.id })}>
             {t('plans.savePlan')}
           </button>
         </div>

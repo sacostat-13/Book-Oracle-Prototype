@@ -183,3 +183,46 @@
 
   a { color: var(--ro-gold-text); cursor: pointer; }
 }
+
+// ── Sign-in — SSO stack, divider, email form ─────────────────────────────────
+.sso-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 26px;
+}
+
+.sso-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 22px 0;
+  color: var(--ro-muted);
+  font-family: var(--ro-font-mono);
+  font-size: 11px;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+
+  &::before,
+  &::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--ro-border);
+  }
+}
+
+.sso-email-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.sign-in-confirm {
+  margin-top: 26px;
+  text-align: center;
+
+  .btn-text {
+    margin-top: 8px;
+  }
+}

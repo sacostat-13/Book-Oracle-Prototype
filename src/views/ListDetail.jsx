@@ -147,7 +147,7 @@ export default function ListDetail() {
             : (t('lists.makePublic'))}
         </button>
         {list.is_public && (
-          <button className="btn-gilt" onClick={copyLink}>
+          <button className="btn-primary" onClick={copyLink}>
             {copied ? '✓ Copied!' : (t('listDetail.copyLink'))}
           </button>
         )}
