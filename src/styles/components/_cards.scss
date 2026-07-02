@@ -12,31 +12,48 @@
   padding: var(--ro-space-6);
   box-shadow: var(--ro-shadow);
 }
-.book-card__row { display: flex; gap: var(--ro-space-6); }
+
+.book-card__row {
+  display: flex;
+  gap: var(--ro-space-6);
+
+  @include ro-down(tablet) {
+    flex-flow: column;
+  }
+}
+
 .book-card__cover {
   width: 96px;
   height: 140px;
   border-radius: 10px;
   flex-shrink: 0;
   object-fit: cover;
-  box-shadow: 0 10px 22px rgba(0,0,0,.4);
+  box-shadow: 0 10px 22px rgba(0, 0, 0, .4);
 }
-.book-card__body { flex: 1; min-width: 0; }
+
+.book-card__body {
+  flex: 1;
+  min-width: 0;
+}
+
 .book-card__head {
   display: flex;
   justify-content: space-between;
   gap: var(--ro-space-3);
 }
+
 .book-card__title {
   @include ro-type(section);
   color: var(--ro-text);
 }
+
 .book-card__author {
   @include ro-type(body);
   font-weight: 600;
   color: var(--ro-gold-text);
   margin-top: 6px;
 }
+
 .book-card__quote {
   font-family: var(--ro-font-display);
   font-style: italic;
@@ -45,6 +62,7 @@
   color: var(--ro-text-2);
   margin-top: 14px;
 }
+
 .book-card__actions {
   display: flex;
   gap: var(--ro-space-3);
@@ -59,7 +77,11 @@
   border-radius: var(--ro-radius-lg);
   padding: 18px;
 }
-.stat-card__icon { color: var(--ro-gold-text); }
+
+.stat-card__icon {
+  color: var(--ro-gold-text);
+}
+
 .stat-card__value {
   font-family: var(--ro-font-body);
   font-weight: 700;
@@ -68,6 +90,7 @@
   color: var(--ro-text);
   margin-top: 14px;
 }
+
 .stat-card__label {
   font-family: var(--ro-font-mono);
   font-weight: 600;
@@ -86,14 +109,19 @@
   border-radius: var(--ro-radius-lg);
   overflow: hidden;
 }
+
 .list-row {
   display: flex;
   align-items: center;
   gap: 18px;
   padding: 18px 20px;
   border-bottom: 1px solid var(--ro-border);
-  &:last-child { border-bottom: 0; }
+
+  &:last-child {
+    border-bottom: 0;
+  }
 }
+
 .list-row__cover {
   width: 48px;
   height: 70px;
@@ -101,17 +129,24 @@
   flex-shrink: 0;
   object-fit: cover;
 }
-.list-row__body { flex: 1; min-width: 0; }
+
+.list-row__body {
+  flex: 1;
+  min-width: 0;
+}
+
 .list-row__title {
   font-family: var(--ro-font-display);
   font-size: 19px;
   color: var(--ro-text);
 }
+
 .list-row__meta {
   @include ro-type(caption);
   color: var(--ro-muted);
   margin-top: 3px;
 }
+
 .list-row__rating {
   display: flex;
   align-items: center;

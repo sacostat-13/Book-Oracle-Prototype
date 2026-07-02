@@ -1,12 +1,15 @@
-// src/views/Lists.jsx — v0.27
+// src/views/Lists.jsx — List Dashboard (DS Patterns / Lists)
 
 import { useState } from 'react';
 import { useData } from '../lib/DataContext';
 import { useRouter } from '../lib/RouterContext';
-import { useT } from '../lib/I18nContext';
+import { useT, useTNode, useI18n } from '../lib/I18nContext';
 import { openBookTab } from '../lib/bookHelpers';
 import BookCover from '../components/BookCover';
 import CornerBrackets from '../components/CornerBrackets';
+
+// How many covers to show per list before collapsing into a "+N more" box.
+const COVER_PREVIEW = 6;
 
 function CreateListModal({ onSave, onClose }) {
   const [title, setTitle] = useState('');
@@ -71,9 +74,12 @@ export default function Lists() {
   const { state, createList, updateList, deleteList } = useData();
   const { go } = useRouter();
   const t = useT();
+  const tNode = useTNode();
+  const { lang } = useI18n();
   const [creating, setCreating] = useState(false);
 
   const lists = state.lists || [];
+  const { genresByBookId } = state;
 
   async function handleCreate(title, description) {
     const newList = await createList(title, description);
@@ -100,78 +106,70 @@ export default function Lists() {
 
   return (
     <>
-      <div className="page-head">
-        <div className="page-head__eyebrow"><span>Dashboard</span> · {t('lists.eyebrow')}</div>
-        <h1 className="page-head__title">
-          <span className="accent">{t('about.featureListsTitle')}</span>
-        </h1>
-        <p className="page-head__lead">
-          {t('lists')}
-        </p>
+      <div className="ls-dash-head">
+        <div className="page-head__eyebrow"><span>{t('lists.myListsEyebrow')}</span></div>
+        <h1 className="page-head__title">{tNode('lists.pageTitle')}</h1>
+        <p className="page-head__lead">{t('lists.listsSubtitle')}</p>
       </div>
 
-      <div className="lists-grid">
+      <div className="plan-divider"><span className="plan-divider__glyph">✦</span></div>
+
+      <div className="bp-actions">
         <button className="btn-primary" onClick={() => setCreating(true)}>
           + {t('lists.newListBtn')}
         </button>
       </div>
 
       {lists.length === 0 ? (
-        <div className="empty-state">
-          <div className="ornament">❦</div>
-          <div className="empty-state-title">{t('lists.emptyTitle')}</div>
-          <div className="empty-state-text">
-            {t('lists.emptyText')}
-          </div>
+        <div className="lv-empty">
+          <div className="lv-empty-icon">❦</div>
+          <div className="lv-empty-title">{t('lists.emptyTitle')}</div>
+          <div className="lv-empty-text">{t('lists.emptyText')}</div>
         </div>
       ) : (
-        <div className="cover-grid-shelves">
+        <div className="ls-dash-lists">
           {lists.map(list => {
             const books = list.books || [];
+            const preview = books.slice(0, COVER_PREVIEW);
+            const overflow = books.length - preview.length;
             return (
-              <div key={list.id} className="cover-shelf">
-                {/* Shelf header */}
-                <div className="cover-shelf-label lists-shelf-label">
-                  <span
-
+              <div key={list.id} className="ls-dash-list">
+                {/* Shelf header — name · count, spacer, actions */}
+                <div className="ls-dash-list__head">
+                  <button
+                    className="ls-dash-list__name"
                     onClick={() => go('list-detail', { listId: list.id })}
                   >
                     {list.title}
-                    <span className="count"> · {books.length} {t('common.books')}</span>
+                    <span className="ls-dash-list__count"> · {t('lists.bookCount', { count: books.length })}</span>
                     {list.is_public && (
-                      <span className="lists-shelf-badge">
-                        ✦ {t('lists.publicBadge')}
-                      </span>
+                      <span className="lists-shelf-badge">✦ {t('lists.publicBadge')}</span>
                     )}
-                  </span>
-                  <div className="bp-actions">
-                    <button className="btn-secondary" onClick={e => togglePublic(list, e)}>
-                      {list.is_public
-                        ? (t('lists.makePrivate'))
-                        : (t('lists.makePublic'))}
+                  </button>
+                  <span className="ls-dash-list__spacer" />
+                  <button className="ls-dash-list__action" onClick={e => togglePublic(list, e)}>
+                    {list.is_public ? t('lists.makePrivate') : t('lists.makePublic')}
+                  </button>
+                  {list.is_public && (
+                    <button className="ls-dash-list__action" onClick={e => copyLink(list, e)}>
+                      {t('lists.copyLink')}
                     </button>
-                    {list.is_public && (
-                      <button className="btn-secondary" onClick={e => copyLink(list, e)}>
-                        {t('lists.copyLink')}
-                      </button>
-                    )}
-                    <button className="btn-secondary"
-                      onClick={e => handleDelete(list, e)}>
-                      {t('common.delete')}
-                    </button>
-                  </div>
+                  )}
+                  <button className="ls-dash-list__action ls-dash-list__action--danger" onClick={e => handleDelete(list, e)}>
+                    {t('common.delete')}
+                  </button>
                 </div>
 
                 {books.length === 0 ? (
-                  <div
-                    className="lv-empty" style={{ cursor: "pointer", border: "1px dashed var(--ro-border)" }}
+                  <button
+                    className="ls-dash-list__empty"
                     onClick={() => go('list-detail', { listId: list.id })}
                   >
                     {t('lists.emptyList')}
-                  </div>
+                  </button>
                 ) : (
                   <div className="cover-shelf-grid">
-                    {books.map((b, i) => (
+                    {preview.map((b, i) => (
                       <div
                         key={b.bookId || i}
                         className="cover-grid-item"
@@ -184,11 +182,28 @@ export default function Lists() {
                         <div className="cover-grid-hover">
                           <div className="cover-grid-hover-title">{b.t}</div>
                           <div className="cover-grid-hover-author">{b.a}</div>
+                          {(() => {
+                            const genres = genresByBookId[b.bookId];
+                            return genres && genres.length > 0 ? (
+                              <div className="cover-grid-hover-genres">
+                                {genres.slice(0, 3).map((g) => (
+                                  <span key={g.genreId} className="li-genre-pill">{g.name}</span>
+                                ))}
+                              </div>
+                            ) : null;
+                          })()}
                         </div>
                       </div>
                     ))}
-                    {/* Manage shelf button */}
-
+                    {overflow > 0 && (
+                      <button
+                        className="cover-grid-more"
+                        onClick={() => go('list-detail', { listId: list.id })}
+                        title={t('lists.openList')}
+                      >
+                        {t('lists.moreBooks', { count: overflow })}
+                      </button>
+                    )}
                   </div>
                 )}
               </div>

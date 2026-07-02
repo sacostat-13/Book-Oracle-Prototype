@@ -241,6 +241,12 @@
   .cover-grid-item {
     position: relative;
     cursor: pointer;
+    // DS v5: the whole card lifts on hover.
+    transition: transform .16s ease;
+
+    &:hover {
+      transform: translateY(-3px);
+    }
 
     .cover-grid-checkbox {
       position: absolute;
@@ -266,45 +272,100 @@
       aspect-ratio: 2 / 3;
       width: 100%;
       overflow: hidden;
-      border-radius: 2px;
-      box-shadow: 0 2px 8px #00000073;
-      transition: opacity .18s;
-      aspect-ratio: 2 / 3;
       border-radius: 10px;
-      border: 1px solid var(--border-strong);
+      border: 1px solid var(--ro-border-strong);
       box-shadow: rgba(0, 0, 0, 0.38) 0px 10px 22px;
+      transition: opacity .18s;
       display: flex;
       align-items: flex-start;
     }
 
+    // Info overlay — a fixed dark scrim (top→bottom) keeps text legible over
+    // any cover color, revealing on hover. Matches DS v5 .lcov-ov.
     .cover-grid-hover {
       position: absolute;
-      top: 0;
-      right: 0;
-      bottom: 0;
-      left: 0;
+      inset: 0;
       display: flex;
       flex-direction: column;
       justify-content: flex-end;
-      padding: .6rem .5rem;
-      background: linear-gradient(to top, rgba(10, 8, 6, .92) 0%, rgba(10, 8, 6, .3) 60%, transparent 100%);
+      gap: 8px;
+      padding: 15px;
+      background: linear-gradient(180deg,
+          rgba(18, 10, 12, .5) 0%,
+          rgba(18, 10, 12, .84) 52%,
+          rgba(18, 10, 12, .96) 100%);
       opacity: 0;
-      transition: opacity .18s;
+      transition: opacity .16s ease;
       pointer-events: none;
-      border-radius: 2px;
+      border-radius: 10px;
+
+      // Gold accent bar above the title
+      &::before {
+        content: '';
+        width: 22px;
+        height: 2px;
+        background: var(--ro-gold);
+      }
 
       .cover-grid-hover-title {
-        font-family: --var(--ro-font-display);
-        font-style: italic;
-        font-size: 15px;
-        color: var(--ro-text);
+        font-family: var(--ro-font-body);
+        font-weight: 700;
+        font-size: 16px;
+        line-height: 1.1;
+        color: #F4EBD8;
       }
 
       .cover-grid-hover-author {
-        font-family: --var(--ro-font-body);
+        font-family: var(--ro-font-display);
+        font-style: italic;
         font-size: 13px;
-        color: var(--ro-muted);
+        line-height: 1.1;
+        color: var(--ro-gold-text);
       }
+
+      .cover-grid-hover-genres {
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+        margin-top: 2px;
+
+        .li-genre-pill {
+          font-family: var(--ro-font-mono);
+          font-weight: 600;
+          font-size: 8px;
+          line-height: 1.25;
+          letter-spacing: .13em;
+          text-transform: uppercase;
+          color: rgba(233, 222, 198, .82);
+          // strip any pill chrome inherited elsewhere — DS shows plain
+          // stacked labels here, not chips.
+          background: none;
+          border: 0;
+          padding: 0;
+        }
+      }
+
+      // Remove-from-list action (ListDetail only). The overlay is
+      // pointer-events:none so the cover click still registers; the button
+      // opts itself back into pointer events.
+      .cover-grid-hover__remove {
+        pointer-events: auto;
+        align-self: flex-start;
+        margin-top: 6px;
+        color: #F4EBD8;
+
+        &:hover {
+          color: var(--ro-gold-text);
+        }
+      }
+    }
+
+    // Reveal the overlay on hover (and on keyboard focus). Without this the
+    // overlay stays permanently at opacity:0 — the reason hovering covers did
+    // nothing anywhere in the app.
+    &:hover .cover-grid-hover,
+    &:focus-visible .cover-grid-hover {
+      opacity: 1;
     }
 
     .cover-grid-rating {

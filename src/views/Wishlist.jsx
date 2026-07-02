@@ -152,20 +152,20 @@ export default function Wishlist({ onOpenBook }) {
             <input
               type="text"
               className="lv-search__input"
-              placeholder="Search title or author…"
+              placeholder={t('wishlist.searchPlaceholder')}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
           </div>
           <select className="select" value={genreFilter} onChange={(e) => setGenreFilter(e.target.value)}>
-            <option value="all">— All genres —</option>
+            <option value="all"> {t('wishlist.allGenres')} </option>
             {genreOptions.map((o) => (
               <option key={o.normalizedName} value={o.normalizedName}>☩ {o.name}</option>
             ))}
           </select>
           {hasCategoryFilter && (
             <select className="select" value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)}>
-              <option value="all">— All categories —</option>
+              <option value="all">{t('wishlist.allCategories')}</option>
               {categoryOptions.map((o) => (
                 <option key={o.name} value={o.name}>
                   {o.verified ? `☩ ${o.name}` : o.name}
@@ -184,7 +184,7 @@ export default function Wishlist({ onOpenBook }) {
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01" />
               </svg>
-              List
+              {t('wishlist.viewList')}
             </button>
             <button
               className={`lv-view-toggle__btn${viewMode === 'covers' ? ' is-active' : ''}`}
@@ -195,11 +195,11 @@ export default function Wishlist({ onOpenBook }) {
                 <rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" />
                 <rect x="3" y="14" width="7" height="7" rx="1" /><rect x="14" y="14" width="7" height="7" rx="1" />
               </svg>
-              Covers
+              {t('wishlist.viewCovers')}
             </button>
           </div>
           <button className="btn btn-tertiary" onClick={() => setBulkOpen((v) => !v)}>
-            <span className="btn btn__plus">+</span> Bulk import
+            <span className="btn btn__plus">+</span> {t('wishlist.bulkImport')}
           </button>
           <button
             className={`btn btn-tertiary${sel.active ? ' is-active' : ''}`}
@@ -225,12 +225,12 @@ export default function Wishlist({ onOpenBook }) {
       {wl.length === 0 ? (
         <div className="lv-empty">
           <div className="lv-empty-icon">❦</div>
-          <div className="lv-empty-title">Your wishlist is empty</div>
+          <div className="lv-empty-title">{t('wishlist.subtitleEmpty')}</div>
           <div className="lv-empty-text">
-            Start building it your way. You can add books one at a time, import in bulk from Goodreads or Amazon, or browse our curated library of horror, gothic, and literary fiction.
+            {t('wishlist.emptyText')}
           </div>
           <div className="lv-load-more">
-            <button className="btn btn-secondary" onClick={() => setBulkOpen(true)}>+ Bulk import</button>
+            <button className="btn btn-secondary" onClick={() => setBulkOpen(true)}>+ {t('wishlist.bulkImport')}</button>
             <button
               className="btn btn-tertiary"
               onClick={() => {

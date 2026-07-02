@@ -155,20 +155,20 @@ export default function Library({ onOpenBook }) {
               <input
                 type="text"
                 className="lv-search__input"
-                placeholder="Search title or author…"
+                placeholder={t('library.searchPlaceholder')}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
               />
             </div>
             <select className="select" value={genreFilter} onChange={(e) => setGenreFilter(e.target.value)}>
-              <option value="all">— All genres —</option>
+              <option value="all">{t('library.allGenres')}</option>
               {genreOptions.map((o) => (
                 <option key={o.normalizedName} value={o.normalizedName}>☩ {o.name}</option>
               ))}
             </select>
             {hasCategoryFilter && (
               <select className="select" value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)}>
-                <option value="all">— All categories —</option>
+                <option value="all">{t('library.allCategories')}</option>
                 {categoryOptions.map((o) => (
                   <option key={o.name} value={o.name}>
                     {o.verified ? `☩ ${o.name}` : o.name}
@@ -194,7 +194,7 @@ export default function Library({ onOpenBook }) {
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01" />
                 </svg>
-                List
+                {t('library.viewList')}
               </button>
               <button
                 className={`lv-view-toggle__btn${viewMode === 'covers' ? ' is-active' : ''}`}
@@ -206,11 +206,11 @@ export default function Library({ onOpenBook }) {
                   <rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" />
                   <rect x="3" y="14" width="7" height="7" rx="1" /><rect x="14" y="14" width="7" height="7" rx="1" />
                 </svg>
-                Covers
+                {t('library.viewCovers')}
               </button>
             </div>
             <button className="btn btn-tertiary" onClick={() => setBulkOpen((v) => !v)}>
-              <span className="btn btn__plus">+</span> Bulk add
+              <span className="btn btn__plus">+</span> {t('library.bulkImport')}
             </button>
           </div>
         </div>
@@ -324,7 +324,7 @@ export default function Library({ onOpenBook }) {
                             className="btn btn-tertiary btn--sm"
                             onClick={(e) => { e.stopPropagation(); setEditing(b); }}
                           >
-                            {b.rating ? 'Edit rating' : '+ Rate'}
+                            {b.rating ? t('library.buttonRatingUpdate') : t('library.buttonRatingNew')}
                           </button>
                           <button
                             className="btn btn-danger btn--sm"
@@ -333,7 +333,7 @@ export default function Library({ onOpenBook }) {
                               if (confirm(`Remove "${b.t}" from your library?`)) removeFromLibrary(b);
                             }}
                           >
-                            Remove
+                            {t('library.buttonRemove')}
                           </button>
                         </div>
                       )}

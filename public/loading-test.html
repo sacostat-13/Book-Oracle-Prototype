@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Literary Loading Screen</title>
+    <style>
+        :root {
+            --bg-color: #fcf9f2; /* Warm, paper-like background */
+            --text-color: #2c2c2c;
+            --accent-color: #8b5a2b; /* Bookish brown/gold */
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Georgia', serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+        }
+
+        /* Loading Screen Overlay */
+        #loader-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background-color: var(--bg-color);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            transition: opacity 0.5s ease;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        /* --- CSS BOOK FLIPPING ANIMATION --- */
+        .book-animation {
+            width: 60px;
+            height: 45px;
+            position: relative;
+            perspective: 150px;
+            margin-bottom: 40px;
+        }
+
+        .book-page {
+            width: 30px;
+            height: 45px;
+            background-color: var(--accent-color);
+            position: absolute;
+            top: 0;
+            right: 0;
+            transform-origin: left center;
+            border-radius: 0 4px 4px 0;
+            box-shadow: inset -2px 0 5px rgba(0,0,0,0.1);
+            animation: flip 1.5s infinite linear;
+        }
+
+        /* Static back cover of the book for depth */
+        .book-animation::before {
+            content: '';
+            width: 30px;
+            height: 45px;
+            background-color: #b8860b;
+            position: absolute;
+            left: 0;
+            top: 0;
+            border-radius: 4px 0 0 4px;
+            opacity: 0.7;
+        }
+
+        @keyframes flip {
+            0% {
+                transform: rotateY(0deg);
+                z-index: 1;
+            }
+            50% {
+                transform: rotateY(-180deg);
+                z-index: 1;
+            }
+            100% {
+                transform: rotateY(-180deg);
+                z-index: 0;
+            }
+        }
+
+        /* --- QUOTE CONTAINER --- */
+        .quote-wrapper {
+            max-width: 600px;
+            text-align: center;
+            animation: fadeIn 0.8s ease-in-out;
+        }
+
+        .quote-text {
+            font-size: 1.4rem;
+            font-style: italic;
+            line-height: 1.6;
+            margin-bottom: 15px;
+        }
+
+        .quote-metadata {
+            font-size: 1rem;
+            color: #666;
+            font-weight: bold;
+        }
+
+        .book-title {
+            font-style: italic;
+            color: var(--accent-color);
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Main Content (Hidden initially) */
+        #main-content {
+            padding: 40px;
+            text-align: center;
+            opacity: 0;
+            transition: opacity 0.5s ease;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="loader-container">
+        <div class="book-animation">
+            <div class="book-page"></div>
+        </div>
+        
+        <div class="quote-wrapper">
+            <p class="quote-text" id="quote">"Loading..."</p>
+            <p class="quote-metadata" id="metadata"></p>
+        </div>
+    </div>
+
+    <div id="main-content">
+        <h1>Welcome to the Library</h1>
+        <p>Your actual website content has successfully loaded!</p>
+    </div>
+
+    <script>
+        // Array of literary quotes
+        const quotes = [
+            {
+                text: "Not all those who wander are lost.",
+                author: "J.R.R. Tolkien",
+                book: "The Fellowship of the Ring"
+            },
+            {
+                text: "It is a truth universally acknowledged, that a single man in possession of a good fortune, must be in want of a wife.",
+                author: "Jane Austen",
+                book: "Pride and Prejudice"
+            },
+            {
+                text: "Whatever our souls are made of, his and mine are the same.",
+                author: "Emily Brontë",
+                book: "Wuthering Heights"
+            },
+            {
+                text: "So we beat on, boats against the current, borne back ceaselessly into the past.",
+                author: "F. Scott Fitzgerald",
+                book: "The Great Gatsby"
+            }
+        ];
+
+        // 1. Pick a random quote on load
+        function displayRandomQuote() {
+            const randomIndex = Math.floor(Math.random() * quotes.length);
+            const selectedQuote = quotes[randomIndex];
+            
+            document.getElementById('quote').innerText = `"${selectedQuote.text}"`;
+            document.getElementById('metadata').innerHTML = `— ${selectedQuote.author}, <span class="book-title">${selectedQuote.book}</span>`;
+        }
+
+        // Run quote selector immediately
+        displayRandomQuote();
+
+        // 2. Simulate site loading (e.g., waiting 3.5 seconds to let them read the quote)
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                const loader = document.getElementById('loader-container');
+                const content = document.getElementById('main-content');
+                
+                // Fade out loader, fade in content
+                loader.style.opacity = '0';
+                content.style.opacity = '1';
+                
+                // Remove loader from DOM after transition
+                setTimeout(() => {
+                    loader.style.display = 'none';
+                }, 500);
+                
+            }, 3500); // Adjust time based on reading speed vs actual load time
+        });
+    </script>
+</body>
+</html>

@@ -4,7 +4,7 @@
 import { useState } from 'react';
 import { useData } from '../lib/DataContext';
 import { useRouter } from '../lib/RouterContext';
-import { useT } from '../lib/I18nContext';
+import { useT, useI18n } from '../lib/I18nContext';
 import { openBookTab, bookKey } from '../lib/bookHelpers';
 import CornerBrackets from '../components/CornerBrackets';
 import { useSelection } from '../lib/useSelection';
@@ -83,17 +83,19 @@ export default function ListDetail() {
   const { state, updateList, removeBookFromList } = useData();
   const { route, go } = useRouter();
   const t = useT();
+  const { lang } = useI18n();
   const [addingBook, setAddingBook] = useState(false);
   const [copied, setCopied] = useState(false);
 
   const listId = route.params?.listId;
   const list = (state.lists || []).find(l => l.id === listId);
+  const { genresByBookId } = state;
 
   if (!list) return (
-    <div className="empty-state">
-      <div className="ornament">❦</div>
-      <div className="empty-state-title">{t('listDetail.notFound')}</div>
-      <button className="btn-primary">
+    <div className="lv-empty">
+      <div className="lv-empty-icon">❦</div>
+      <div className="lv-empty-title">{t('listDetail.notFound')}</div>
+      <button className="btn-primary" onClick={() => go('lists')}>
         {t('listDetail.backToLists')}
       </button>
     </div>
@@ -121,23 +123,26 @@ export default function ListDetail() {
         {' · '}{list.title}
       </div>
 
-      <div className="page-header">
-        <div className="page-eyebrow">{t('listDetail.eyebrow')}</div>
-        <h1 className="page-title">{list.title}</h1>
+      <div className="ls-page-head">
+        <div className="page-head__eyebrow">
+          <span>{t('about.featureListsTitle')}</span> · {list.title}
+        </div>
+        <div className="ls-page-head__label">{t('lists.curated')}</div>
+        <h1 className="ls-page-title">{list.title}</h1>
         {list.description && (
-          <p className="lv-description">{list.description}</p>
+          <p className="ls-page-desc">{list.description}</p>
         )}
-        <div className="lv-action-row">
-          <span className="level-pill">▤ {books.length} {t('common.books')}</span>
+        <div className="ls-page-head__meta">
+          <span className="plan-badge">▤ {t('lists.bookCount', { count: books.length })}</span>
           {list.is_public && (
-            <span className="level-pill bp-pill--ro-gold">
-              ✦ {t('lists.publicBadge')}
-            </span>
+            <span className="plan-badge">✦ {t('lists.publicBadge')}</span>
           )}
         </div>
       </div>
 
-      <div className="lv-chips">
+      <div className="plan-divider"><span className="plan-divider__glyph">✦</span></div>
+
+      <div className="bp-actions">
         <button className="btn-primary" onClick={() => setAddingBook(true)}>
           {t('listDetail.addBook')}
         </button>
@@ -162,12 +167,10 @@ export default function ListDetail() {
       </div>
 
       {books.length === 0 ? (
-        <div className="empty-state">
-          <div className="ornament">❦</div>
-          <div className="empty-state-title">{t('listDetail.emptyTitle')}</div>
-          <div className="empty-state-text">
-            {t('listDetail.emptyText')}
-          </div>
+        <div className="lv-empty">
+          <div className="lv-empty-icon">❦</div>
+          <div className="lv-empty-title">{t('listDetail.emptyTitle')}</div>
+          <div className="lv-empty-text">{t('listDetail.emptyText')}</div>
         </div>
       ) : (
         <div className="cover-grid-shelves">
@@ -191,8 +194,18 @@ export default function ListDetail() {
                   <div className="cover-grid-hover">
                     <div className="cover-grid-hover-title">{b.t}</div>
                     <div className="cover-grid-hover-author">{b.a}</div>
+                    {(() => {
+                      const genres = genresByBookId[b.bookId];
+                      return genres && genres.length > 0 ? (
+                        <div className="cover-grid-hover-genres">
+                          {genres.slice(0, 3).map((g) => (
+                            <span key={g.genreId} className="li-genre-pill">{g.name}</span>
+                          ))}
+                        </div>
+                      ) : null;
+                    })()}
                     <button
-                      className="btn-text"
+                      className="btn-text cover-grid-hover__remove"
                       onClick={e => { e.stopPropagation(); removeBookFromList(list.id, b.bookId); }}
                     >
                       {t('common.remove')}

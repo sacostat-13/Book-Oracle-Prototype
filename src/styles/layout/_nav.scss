@@ -42,7 +42,6 @@
   background: transparent;
   border: 0;
   padding: 0;
-  margin-left: -5%;
 
   &__mark {
     // The full raster logo (already includes the site name) — sized to the
@@ -535,7 +534,7 @@ body.theme-parchment .nav-logo__img--light {
 .mobile-menu {
   position: fixed;
   inset: 0;
-  z-index: 99;
+  z-index: 100;
   background: var(--ro-bg-deep);
   display: flex;
   flex-direction: column;

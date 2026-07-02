@@ -206,15 +206,15 @@ export default function Friends() {
 
       {/* ── Page header ── */}
       <div>
-        <div className="page-eyebrow">
+        <div className="page-head__eyebrow">
           <span class="t-gold">Dashboard</span>
           <span className="sep"> · </span>
           Friends
         </div>
-        <h1 className="page-title">
+        <h1 className="page-head__title">
           Reading <span className="accent">friends</span>
         </h1>
-        <p className="page-subtitle">Follow readers and see what they finish.</p>
+        <p className="page-head__lead">Follow readers and see what they finish.</p>
       </div>
 
       {/* ── Search & invite ── */}

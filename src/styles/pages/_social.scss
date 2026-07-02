@@ -768,6 +768,200 @@
   margin-bottom: 2rem;
 }
 
+// ── List Dashboard (DS Patterns / Lists) ─────────────────────────────────────
+.ls-dash-head {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.ls-dash-title {
+  font-family: var(--ro-font-display);
+  font-style: italic;
+  font-size: 46px;
+  line-height: 1.02;
+  color: var(--ro-text);
+
+  em,
+  .accent {
+    color: var(--ro-burgundy);
+    font-style: italic;
+  }
+
+  @include ro-down(mobile) {
+    font-size: 34px;
+  }
+}
+
+.ls-dash-sub {
+  font-family: var(--ro-font-body);
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--ro-muted);
+  max-width: 640px;
+}
+
+.ls-dash-lists {
+  display: flex;
+  flex-direction: column;
+  gap: 34px;
+  margin-top: var(--ro-space-5);
+}
+
+.ls-dash-list {
+  display: block;
+}
+
+// ── List Page (single list — DS List Page pattern) ───────────────────────────
+.ls-page-head {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ls-page-head__label {
+  @include ro-type(overline);
+  color: var(--ro-muted);
+}
+
+.ls-page-title {
+  font-family: var(--ro-font-display);
+  font-style: italic;
+  font-size: 44px;
+  line-height: 1.02;
+  color: var(--ro-text);
+
+  @include ro-down(mobile) {
+    font-size: 32px;
+  }
+}
+
+.ls-page-desc {
+  font-family: var(--ro-font-body);
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--ro-muted);
+  max-width: 680px;
+}
+
+.ls-page-head__meta {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+
+.ls-dash-list__head {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  flex-wrap: wrap;
+  border-bottom: 1px solid var(--ro-border);
+  padding-bottom: 16px;
+  margin-bottom: 18px;
+}
+
+.ls-dash-list__name {
+  background: transparent;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  text-align: left;
+  font-family: var(--ro-font-body);
+  font-weight: 700;
+  font-size: 18px;
+  color: var(--ro-text);
+
+  &:hover {
+    color: var(--ro-gold-text);
+  }
+}
+
+.ls-dash-list__count {
+  font-family: var(--ro-font-body);
+  font-weight: 400;
+  font-size: 13px;
+  color: var(--ro-muted);
+}
+
+.ls-dash-list__spacer {
+  flex: 1;
+}
+
+.ls-dash-list__action {
+  border: 1px solid var(--ro-border-strong);
+  background: transparent;
+  color: var(--ro-text-2);
+  font-family: var(--ro-font-mono);
+  font-weight: 600;
+  font-size: 10px;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  padding: 9px 13px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: border-color .15s, color .15s;
+
+  &:hover {
+    border-color: var(--ro-gold);
+    color: var(--ro-gold-text);
+  }
+
+  &--danger {
+    border-color: var(--ro-burgundy);
+    color: var(--ro-burgundy);
+
+    &:hover {
+      border-color: var(--ro-burgundy);
+      color: var(--ro-burgundy);
+      opacity: .8;
+    }
+  }
+}
+
+.ls-dash-list__empty {
+  width: 100%;
+  text-align: center;
+  cursor: pointer;
+  border: 1px dashed var(--ro-border);
+  border-radius: var(--ro-radius-md);
+  background: transparent;
+  color: var(--ro-muted);
+  font-family: var(--ro-font-body);
+  font-style: italic;
+  font-size: 14px;
+  padding: 28px;
+
+  &:hover {
+    border-color: var(--ro-border-strong);
+    color: var(--ro-text-2);
+  }
+}
+
+// "+N more" overflow box in a cover grid — mirrors the dashboard feed-bulk box
+.cover-grid-more {
+  aspect-ratio: 2 / 3;
+  width: 100%;
+  border-radius: 10px;
+  background: var(--ro-surface-2);
+  border: 1px solid var(--ro-border-strong);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--ro-font-mono);
+  font-weight: 600;
+  font-size: 13px;
+  letter-spacing: .04em;
+  color: var(--ro-muted);
+  cursor: pointer;
+  transition: border-color .15s, color .15s;
+
+  &:hover {
+    border-color: var(--ro-gold);
+    color: var(--ro-gold-text);
+  }
+}
+
 .lists-shelf-label {
   display: flex;
   align-items: baseline;

@@ -1,6 +1,6 @@
 // src/views/Refund.jsx — v0.37
 import { useRouter } from '../lib/RouterContext';
-import { useT } from '../lib/I18nContext';
+import { useT, useTNode, useI18n } from '../lib/I18nContext';
 
 function S({ title, children }) {
   return (
@@ -15,37 +15,43 @@ function P({ children }) { return <p >{children}</p>; }
 export default function Refund() {
   const { go } = useRouter();
   const t = useT();
+  const tNode = useTNode();
+
+
   return (
     <>
-      <div className="breadcrumb"><a onClick={() => go('about')}>{t('nav.about')}</a> · Refund Policy</div>
+      <div className="breadcrumb"><a onClick={() => go('about')}>{t('nav.about')}</a> · {t('refunds.breadcrumbs')}</div>
       <div className="page-header">
         <div className="page-eyebrow">Legal</div>
-        <h1 className="page-title">Refund <span className="accent">Policy</span></h1>
-        <p className="legal-updated">Last updated: June 25, 2026</p>
+        <h1 className="page-head__title">{tNode('refunds.title')}</h1>
+        <p className="page-head__lead">{t('refunds.lastUpdated')}</p>
       </div>
       <div className="legal-page">
-        <S title="Our approach">
-          <P>We want you to be happy with The Books Oracle Pro. If you subscribed and feel it isn't right for you, we will make it right.</P>
+        <S title={t('refunds.ourApproachTitle')}>
+          <p>{tNode('refunds.ourApproachPara1')}</p>
         </S>
-        <S title="14-day money-back guarantee">
-          <P>If you subscribe to The Books Oracle Pro and are not satisfied for any reason, you can request a full refund within 14 days of your initial purchase — no questions asked.</P>
-          <P>Email support@thebooksoracle.com with subject "Refund request" and the email address on your account. We will process the refund within 5 business days.</P>
+        <S title={t('refunds.day14MoneyBackGuaranteeTitle')}>
+          <p>{tNode('refunds.day14MoneyBackGuaranteePara1')}</p>
+          <p>{tNode('refunds.day14MoneyBackGuaranteePara2')}</p>
         </S>
-        <S title="Renewals">
-          <P>Monthly renewals are not automatically refundable after they are charged. Cancel before the renewal date from your Profile page to avoid the next charge. If a renewal charge occurred due to a technical error on our part, contact us within 7 days for a full refund.</P>
+        <S title={t('refunds.renewalsTitle')}>
+          <p>{tNode('refunds.renewalsPara1')}</p>
         </S>
-        <S title="Service outages">
-          <P>If The Books Oracle experiences a significant outage affecting AI features for more than 48 consecutive hours, subscribers may request a prorated credit or refund for the affected period.</P>
+        <S title={t('refunds.serviceOutagesTitle')}>
+          <p>{tNode('refunds.serviceOutagesPara1')}</p>
         </S>
-        <S title="How refunds are processed">
-          <P>Payments are processed by Paddle. Refunds return to the original payment method and typically take 5–10 business days to appear. After a refund, your subscription downgrades to the free tier. Your reading data is retained.</P>
+        <S title={t('refunds.howRefundsAreProcessedTitle')}>
+          <p>{tNode('refunds.howRefundsAreProcessedPara1')}</p>
+          <p>{tNode('refunds.howRefundsAreProcessedPara2')}</p>
+
         </S>
-        <S title="Exceptions">
-          <P>We reserve the right to decline refund requests in cases of clear abuse, such as repeatedly subscribing and refunding or using multiple accounts to circumvent limits.</P>
+        <S title={t('refunds.exceptionsTitle')}>
+          <p>{tNode('refunds.exceptionsPara1')}</p>
         </S>
-        <S title="Contact">
-          <P>For refunds or billing questions: support@thebooksoracle.com — we typically respond within 1–2 business days.</P>
+        <S title={t('refunds.contactTitle')}>
+          <p>{tNode('refunds.contactPara1')}</p>
         </S>
+
       </div>
     </>
   );
