@@ -960,7 +960,7 @@
   },
   "about": {
     "breadcrumb": "Inicio",
-    "eyebrow": "Acerca",
+    "eyebrow": "Acerca de <em class=\"accent\">The Books Oracle</em>",
     "subtitle": "Por qué existe, qué hace y hacia dónde va.",
     "originHeading": "Por qué existe el Oráculo",
     "originBody1": "Casi todo lector que conozco tiene una lista en Amazon, una pila en Goodreads, una nota llena de títulos, una torre en la mesita de noche. Cientos de libros en cola — y aun así, cada viernes en la noche, seguimos pasando veinte minutos decidiendo qué leer.",

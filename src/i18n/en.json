@@ -960,7 +960,7 @@
   },
   "about": {
     "breadcrumb": "Dashboard",
-    "eyebrow": "About",
+    "eyebrow": "About <em class=\"accent\">The Books Oracle</em>",
     "subtitle": "Why this exists, what it does, and where it's going.",
     "originHeading": "Why the Oracle exists",
     "originBody1": "Most readers I know have an Amazon wishlist, a Goodreads pile, a Notes app full of titles, a stack on the nightstand. Hundreds of books in queue — and somehow, every Friday night, we still spend twenty minutes deciding what to read next.",

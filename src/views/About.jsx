@@ -78,21 +78,21 @@ export default function About() {
 
   return (
     <>
-      <div className="breadcrumb">
-        <a onClick={() => go('dashboard')}>{t('about.breadcrumb')}</a> · {t('about.eyebrow')}
-      </div>
+
 
       <div className="page-header">
-        <div className="page-eyebrow">{t('about.eyebrow')}</div>
-        <h1 className="page-title">
-          {t('about.title', {
+        <div className="page-head__eyebrow">
+          <a onClick={() => go('dashboard')}>{t('about.breadcrumb')}</a> · {t('about.eyebrow')}
+        </div>
+        <h1 className="page-head__title">
+          {t('about.eyebrow', {
             accent: <span className="accent">{t('about.titleAccent')}</span>,
           })}
         </h1>
-        <p className="page-subtitle">{t('about.subtitle')}</p>
+        <p className="page-head__lead">{t('about.subtitle')}</p>
       </div>
 
-      <div className="onboarding-card">
+      <div className="about-container">
         <Section title={t('about.originHeading')}>
           <Paragraph>{t('about.originBody1')}</Paragraph>
           <Paragraph>{t('about.originBody2')}</Paragraph>
