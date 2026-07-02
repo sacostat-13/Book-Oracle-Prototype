@@ -871,7 +871,7 @@
   display: flex;
   gap: 12px;
   flex-wrap: wrap;
-  margin-top: 22px;
+  margin: var(--ro-space-4) 0px;
 }
 
 .bp-loading-note {
@@ -1077,6 +1077,93 @@
   display: flex;
   gap: var(--ro-space-3);
   justify-content: flex-end;
+}
+
+// ── Reading Plans list (PlanList) ────────────────────────────────────────────
+.plan-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ro-space-4);
+  margin-top: var(--ro-space-5);
+}
+
+.plan-list-card {
+  text-align: left;
+  width: 100%;
+  cursor: pointer;
+  background: var(--ro-surface);
+  border: 1px solid var(--ro-border);
+  border-radius: var(--ro-radius-lg);
+  padding: 24px 28px;
+  transition: border-color .15s, background .15s;
+
+  &:hover {
+    border-color: var(--ro-border-strong);
+    background: var(--ro-surface-2);
+  }
+
+  &__head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--ro-space-4);
+  }
+
+  &__title {
+    font-family: var(--ro-font-display);
+    font-style: italic;
+    font-size: 24px;
+    line-height: 1.15;
+    color: var(--ro-text);
+  }
+
+  &__date {
+    @include ro-type(overline);
+    color: var(--ro-muted);
+    flex-shrink: 0;
+    white-space: nowrap;
+  }
+
+  &__desc {
+    font-family: var(--ro-font-body);
+    font-size: 14px;
+    line-height: 1.55;
+    color: var(--ro-muted);
+    margin-top: 10px;
+    max-width: 720px;
+  }
+
+  &__meta {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-top: 16px;
+  }
+
+  &__progress {
+    margin-top: 16px;
+  }
+}
+
+.plan-progress-track {
+  height: 6px;
+  border-radius: var(--ro-radius-pill);
+  background: var(--ro-ring-track);
+  overflow: hidden;
+}
+
+.plan-progress-fill {
+  height: 100%;
+  width: var(--plan-pct, 0%);
+  background: var(--ro-gold);
+  border-radius: var(--ro-radius-pill);
+  transition: width .3s ease;
+}
+
+.plan-progress-label {
+  @include ro-type(overline);
+  color: var(--ro-muted);
+  margin-top: 8px;
 }
 
 // ── Reading Plan (PlanView) ───────────────────────────────────────────────────
@@ -1724,8 +1811,6 @@
   gap: var(--ro-space-4);
   flex-wrap: wrap;
   margin-bottom: var(--ro-space-6);
-  margin-top: var(--ro-space-6);
-
 }
 
 .field {

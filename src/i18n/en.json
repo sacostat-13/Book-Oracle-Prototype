@@ -346,7 +346,18 @@
     "createOwnPlan": "Create my own plan",
     "yourPlanBreadcrumb": "Your Reading Plan",
     "createPlanBreadcrumb": "Create Reading Plan",
-    "createPageTitle": "Chart a <em class=\"accent\">path</em>"
+    "createPageTitle": "Chart a <em class=\"accent\">path</em>",
+    "listEyebrow": "Reading Plans",
+    "listTitle": "Your {accent}",
+    "listTitleAccent": "reading plans",
+    "listSubtitle": "Every path you've charted with the Oracle. Pick one up where you left off.",
+    "noPlansTitle": "No plans yet",
+    "noPlansText": "Ask the Oracle to chart a paced, curated reading journey — from where you are to where you want to go.",
+    "bookSingular": "Book",
+    "bookPlural": "Books",
+    "monthSingular": "Month",
+    "monthPlural": "Months",
+    "progressRead": "{read} of {total} read"
   },
   "lists": {
     "eyebrow": "My Lists",
@@ -969,7 +980,7 @@
   },
   "about": {
     "breadcrumb": "Dashboard",
-    "eyebrow": "About <em class=\"accent\">The Books Oracle</em>",
+    "eyebrow": "About",
     "subtitle": "Why this exists, what it does, and where it's going.",
     "originHeading": "Why the Oracle exists",
     "originBody1": "Most readers I know have an Amazon wishlist, a Goodreads pile, a Notes app full of titles, a stack on the nightstand. Hundreds of books in queue — and somehow, every Friday night, we still spend twenty minutes deciding what to read next.",

@@ -163,7 +163,7 @@ export default function Nav({ onPreviewBook }) {
   const clubsCount = (state.clubs || []).length;
 
   // Active-state helpers
-  const booksActive = ['wishlist', 'library', 'currently-reading', 'read-next', 'plan-create', 'plan-view'].includes(route.name);
+  const booksActive = ['wishlist', 'library', 'currently-reading', 'read-next', 'plan-create', 'plan-list', 'plan-view'].includes(route.name);
   const socialActive = ['lists', 'book-clubs', 'book-club-create', 'book-club-detail',
     'session-create', 'session-detail', 'friends', 'friend-profile'].includes(route.name);
 
@@ -219,7 +219,7 @@ export default function Nav({ onPreviewBook }) {
                   {state.readNext?.length > 0 && <span className="nav-group__badge">{state.readNext.length}</span>}
                 </button>
                 <div className="nav-group__divider" />
-                <button className={`nav-group__item${(route.name === 'plan-create' || route.name === 'plan-view') ? ' is-active' : ''}`} onClick={() => nav('plan-create')}>
+                <button className={`nav-group__item${(route.name === 'plan-list' || route.name === 'plan-create' || route.name === 'plan-view') ? ' is-active' : ''}`} onClick={() => nav('plan-list')}>
                   {t('nav.plans')}
                 </button>
               </div>
@@ -398,7 +398,7 @@ export default function Nav({ onPreviewBook }) {
                 {count > 0 && <span className="mobile-menu__badge">{count}</span>}
               </button>
             ))}
-            <button className={`mobile-menu__item${(route.name === 'plan-create' || route.name === 'plan-view') ? ' is-active' : ''}`} onClick={() => nav('plan-create')}>
+            <button className={`mobile-menu__item${(route.name === 'plan-list' || route.name === 'plan-create' || route.name === 'plan-view') ? ' is-active' : ''}`} onClick={() => nav('plan-list')}>
               {t('nav.plans')}
             </button>
 

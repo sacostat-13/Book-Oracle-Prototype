@@ -45,6 +45,10 @@ export default function PlanView() {
 
   const plan = localPlan || remotePlan;
   const isSharedView = !localPlan && remotePlan;
+  const cameFromList = route.params?.from === 'plan-list';
+  // On a shared plan link, a logged-out visitor has no library/queue to act
+  // on. Only offer per-book actions when we have a signed-in user's data.
+  const canAct = !isSharedView;
 
   const { genresByBookId } = state;
 
@@ -108,7 +112,11 @@ export default function PlanView() {
   return (
     <>
       <div className="breadcrumb">
-        <a onClick={() => go('dashboard')}>Dashboard</a> · Reading Plan
+        {cameFromList ? (
+          <><a onClick={() => go('plan-list')}>{t('plans.listEyebrow')}</a> · {t('plans.readingPlanBreadcrumb')}</>
+        ) : (
+          <><a onClick={() => go('dashboard')}>{t('nav.dashboard')}</a> · {t('plans.readingPlanBreadcrumb')}</>
+        )}
       </div>
       <div className="plan-hero">
         <div className="plan-hero__eyebrow">
@@ -139,9 +147,11 @@ export default function PlanView() {
             {t('plans.openSeries')}
           </button>
         )}
-        <button className="btn-primary" onClick={addAllToQueue}>
-          {t('plans.addAllToQueue')}
-        </button>
+        {canAct && (
+          <button className="btn-primary" onClick={addAllToQueue}>
+            {t('plans.addAllToQueue')}
+          </button>
+        )}
         {!isSharedView && (
           <>
             <button className="btn-secondary" onClick={() => go('plan-create')}>
@@ -201,12 +211,12 @@ export default function PlanView() {
                     <span className="bp-pill bp-pill--moss">✓ Read</span>
                   ) : isQueued ? (
                     <span className="bp-pill">✓ Queued</span>
-                  ) : (
+                  ) : canAct ? (
                     <>
                       <button className="btn-tertiary" onClick={() => addToReadNext(found)}>+ Add to Read Next</button>
                       <button className="btn-secondary" onClick={() => markAsRead(found)}>✓ Mark as Read</button>
                     </>
-                  )}
+                  ) : null}
                 </div>
               </div>
             </div>

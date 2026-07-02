@@ -346,7 +346,18 @@
     "createOwnPlan": "Crear mi propio plan",
     "yourPlanBreadcrumb": "Tu plan de lectura",
     "createPlanBreadcrumb": "Crear plan de lectura",
-    "createPageTitle": "Trazar un <em class=\"accent\">camino</em>"
+    "createPageTitle": "Trazar un <em class=\"accent\">camino</em>",
+    "listEyebrow": "Planes de lectura",
+    "listTitle": "Tus {accent}",
+    "listTitleAccent": "planes de lectura",
+    "listSubtitle": "Cada recorrido que trazaste con el Oráculo. Retomá uno donde lo dejaste.",
+    "noPlansTitle": "Todavía no hay planes",
+    "noPlansText": "Pedile al Oráculo que trace un recorrido de lectura pausado y curado — desde donde estás hasta donde querés llegar.",
+    "bookSingular": "Libro",
+    "bookPlural": "Libros",
+    "monthSingular": "Mes",
+    "monthPlural": "Meses",
+    "progressRead": "{read} de {total} leídos"
   },
   "lists": {
     "eyebrow": "Mis Listas",
@@ -969,7 +980,7 @@
   },
   "about": {
     "breadcrumb": "Inicio",
-    "eyebrow": "Acerca de <em class=\"accent\">The Books Oracle</em>",
+    "eyebrow": "Acerca",
     "subtitle": "Por qué existe, qué hace y hacia dónde va.",
     "originHeading": "Por qué existe el Oráculo",
     "originBody1": "Casi todo lector que conozco tiene una lista en Amazon, una pila en Goodreads, una nota llena de títulos, una torre en la mesita de noche. Cientos de libros en cola — y aun así, cada viernes en la noche, seguimos pasando veinte minutos decidiendo qué leer.",

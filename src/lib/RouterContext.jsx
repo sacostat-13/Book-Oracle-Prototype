@@ -16,6 +16,7 @@ const KNOWN_ROUTES = new Set([
   'oracle-categories',
   'oracle-similar',
   'plan-create',
+  'plan-list',
   'plan-view',
   'book-page',
   'series-page',

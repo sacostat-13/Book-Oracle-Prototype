@@ -26,6 +26,7 @@ import OracleFork from './views/OracleFork';
 import OracleCategories from './views/OracleCategories';
 import OracleSimilar from './views/OracleSimilar';
 import PlanCreate from './views/PlanCreate';
+import PlanList from './views/PlanList';
 import PlanView from './views/PlanView';
 import BookPage from './views/BookPage';
 import ListView from './views/ListView';
@@ -152,12 +153,23 @@ export default function App() {
         </div>
       );
     }
-    if (route.name === 'list-view' || route.name === 'plan-view') {
+    if (route.name === 'list-view') {
       return (
         <div className="app">
           {isAuthed && <Nav onPreviewBook={setPreviewBook} />}
           <div className="container">
             <ListView isAuthed={isAuthed} dataReady={dataReady} />
+          </div>
+          <Toast />
+        </div>
+      );
+    }
+    if (route.name === 'plan-view') {
+      return (
+        <div className="app">
+          {isAuthed && <Nav onPreviewBook={setPreviewBook} />}
+          <div className="container">
+            <PlanView isAuthed={isAuthed} dataReady={dataReady} />
           </div>
           <Toast />
         </div>
@@ -243,7 +255,9 @@ export default function App() {
     case 'oracle-categories': page = <OracleCategories onOpenBook={openBook} />; break;
     case 'oracle-similar': page = <OracleSimilar onOpenBook={openBook} />; break;
     case 'plan-create': page = <PlanCreate />; break;
-    case 'plan-view': page = <PlanView />; break;
+    case 'plan-list': page = <PlanList />; break;
+    // 'plan-view' is handled earlier in the public-routes branch (it renders
+    // for shared links without auth), so it never reaches this switch.
     case 'book-page': page = <BookPage previewBookRef={previewBookRef} />; break;
     case 'series-page': page = <SeriesPage />; break;
     case 'lists': page = <Lists />; break;
