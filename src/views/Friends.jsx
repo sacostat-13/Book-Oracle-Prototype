@@ -119,6 +119,40 @@ function FriendRow({ friend, onRemove, onView }) {
   );
 }
 
+// ── Pending (sent) request row ────────────────────────────────────────────────
+function PendingRow({ req, onCancel }) {
+  const [busy, setBusy] = useState(false);
+  const other = req.other;
+
+  return (
+    <div className="friend-row">
+      <Avatar url={other?.avatar_url} name={other?.display_name || other?.username || '?'} size={44} />
+      <div className="friend-row__body">
+        <div className="friend-row__name">
+          {other?.display_name || other?.username || 'Unknown reader'}
+        </div>
+        {other?.username && (
+          <div className="friend-row__meta">
+            @{other.username}
+          </div>
+        )}
+      </div>
+      <div className="friend-row__actions">
+        <span className="pf-overline" style={{ flexShrink: 0, marginBottom: 0 }}>
+          Pending
+        </span>
+        <button
+          className="btn-secondary btn-sm"
+          onClick={async () => { setBusy(true); await onCancel(req.id); setBusy(false); }}
+          disabled={busy}
+        >
+          Cancel
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ── Search result row ─────────────────────────────────────────────────────────
 function SearchResultRow({ profile, onSend, relationStatus }) {
   const [busy, setBusy] = useState(false);
@@ -160,7 +194,7 @@ export default function Friends() {
   const t = useT();
   const { user } = useAuth();
   const { go } = useRouter();
-  const { friends, incoming, pending, loading, acceptRequest, declineRequest, removeFriend, sendRequest } = useFriends();
+  const { friends, incoming, pending, loading, acceptRequest, declineRequest, removeFriend, sendRequest, cancelRequest } = useFriends();
 
   const [query, setQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
@@ -329,22 +363,11 @@ export default function Friends() {
           </div>
           <div className="pf-series-list">
             {pending.map(p => (
-              <div key={p.id} className="friend-row">
-                <Avatar url={p.other?.avatar_url} name={p.other?.display_name || p.other?.username} size={44} />
-                <div className="friend-row__body">
-                  <div className="friend-row__name">
-                    {p.other?.display_name || p.other?.username || 'Unknown reader'}
-                  </div>
-                  {p.other?.username && (
-                    <div className="friend-row__meta">
-                      @{p.other.username}
-                    </div>
-                  )}
-                </div>
-                <span className="pf-overline" style={{ flexShrink: 0, marginBottom: 0 }}>
-                  Pending
-                </span>
-              </div>
+              <PendingRow
+                key={p.id}
+                req={p}
+                onCancel={cancelRequest}
+              />
             ))}
           </div>
         </div>

@@ -2,8 +2,14 @@
 // Hook for all friend-related actions and state.
 // Keeps friendship logic out of the monolithic DataContext.
 
-import { useState, useEffect, useCallback } from 'react';
-import { useAuth } from './AuthContext';
+import {
+  useState,
+  useEffect,
+  useCallback
+} from 'react';
+import {
+  useAuth
+} from './AuthContext';
 import {
   supabase
 } from './supabase';
@@ -14,7 +20,7 @@ export const USERNAME_RE = /^[a-z0-9_-]{3,24}$/;
 
 export function validateUsername(raw) {
   const u = raw.toLowerCase().trim();
-  if (u.length < 3)  return 'too_short';
+  if (u.length < 3) return 'too_short';
   if (u.length > 24) return 'too_long';
   if (!USERNAME_RE.test(u)) return 'invalid_chars';
   return 'ok';
@@ -24,7 +30,10 @@ export function validateUsername(raw) {
 export async function checkUsernameAvailability(username, currentUserId) {
   const u = username.toLowerCase().trim();
   if (validateUsername(u) !== 'ok') return 'invalid';
-  const { data, error } = await supabase
+  const {
+    data,
+    error
+  } = await supabase
     .from('profiles')
     .select('id')
     .eq('username', u)
@@ -37,11 +46,13 @@ export async function checkUsernameAvailability(username, currentUserId) {
 // ── useFriends hook ───────────────────────────────────────────────────────────
 
 export function useFriends() {
-  const { user } = useAuth();
-  const [friends,  setFriends]  = useState([]);   // accepted friends with profile data
-  const [pending,  setPending]  = useState([]);   // outgoing pending requests
-  const [incoming, setIncoming] = useState([]);   // incoming pending requests (for display only — notifications handle actions)
-  const [loading,  setLoading]  = useState(false);
+  const {
+    user
+  } = useAuth();
+  const [friends, setFriends] = useState([]); // accepted friends with profile data
+  const [pending, setPending] = useState([]); // outgoing pending requests
+  const [incoming, setIncoming] = useState([]); // incoming pending requests (for display only — notifications handle actions)
+  const [loading, setLoading] = useState(false);
 
   const load = useCallback(async () => {
     if (!user) return;
@@ -49,14 +60,20 @@ export function useFriends() {
     try {
       // Fetch friendship rows without profile joins — FK ambiguity between
       // auth.users and profiles causes PostgREST to silently drop rows.
-      const { data: rows } = await supabase
+      const {
+        data: rows
+      } = await supabase
         .from('friendships')
         .select('id, status, requester, addressee, created_at')
         .or(`requester.eq.${user.id},addressee.eq.${user.id}`)
-        .order('created_at', { ascending: false });
+        .order('created_at', {
+          ascending: false
+        });
 
       if (!rows || rows.length === 0) {
-        setFriends([]); setPending([]); setIncoming([]);
+        setFriends([]);
+        setPending([]);
+        setIncoming([]);
         return;
       }
 
@@ -64,7 +81,9 @@ export function useFriends() {
       const otherIds = [...new Set(rows.map((r) =>
         r.requester === user.id ? r.addressee : r.requester
       ))];
-      const { data: profileRows } = await supabase
+      const {
+        data: profileRows
+      } = await supabase
         .from('profiles')
         .select('id, username, display_name, avatar_url')
         .in('id', otherIds);
@@ -72,17 +91,22 @@ export function useFriends() {
 
       const accepted = [];
       const outgoing = [];
-      const recv     = [];
+      const recv = [];
 
       for (const row of rows) {
         const iAmRequester = row.requester === user.id;
         const otherId = iAmRequester ? row.addressee : row.requester;
-        const other   = profileMap[otherId] || null;
-        const entry   = { id: row.id, status: row.status, createdAt: row.created_at, other };
+        const other = profileMap[otherId] || null;
+        const entry = {
+          id: row.id,
+          status: row.status,
+          createdAt: row.created_at,
+          other
+        };
 
-        if (row.status === 'accepted')                        accepted.push(entry);
-        else if (row.status === 'pending' && iAmRequester)   outgoing.push(entry);
-        else if (row.status === 'pending' && !iAmRequester)  recv.push(entry);
+        if (row.status === 'accepted') accepted.push(entry);
+        else if (row.status === 'pending' && iAmRequester) outgoing.push(entry);
+        else if (row.status === 'pending' && !iAmRequester) recv.push(entry);
       }
 
       setFriends(accepted);
@@ -93,7 +117,9 @@ export function useFriends() {
     }
   }, [user]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    load();
+  }, [load]);
 
   // Re-fetch when tab becomes visible or when another useFriends instance
   // dispatches 'friendships-changed' (e.g. after accepting in Nav bell).
@@ -101,7 +127,10 @@ export function useFriends() {
     function onVisible() {
       if (document.visibilityState === 'visible') load();
     }
-    function onChanged() { load(); }
+
+    function onChanged() {
+      load();
+    }
     document.addEventListener('visibilitychange', onVisible);
     window.addEventListener('friendships-changed', onChanged);
     return () => {
@@ -114,11 +143,17 @@ export function useFriends() {
 
   // Send a friend request to a user by their Supabase user ID
   const sendRequest = useCallback(async (addresseeId) => {
-    if (!user) return { error: 'not_authed' };
-    if (addresseeId === user.id) return { error: 'self' };
+    if (!user) return {
+      error: 'not_authed'
+    };
+    if (addresseeId === user.id) return {
+      error: 'self'
+    };
 
     // Check for existing row in either direction
-    const { data: existing } = await supabase
+    const {
+      data: existing
+    } = await supabase
       .from('friendships')
       .select('id, status')
       .or(
@@ -128,18 +163,34 @@ export function useFriends() {
       .maybeSingle();
 
     if (existing) {
-      if (existing.status === 'accepted') return { error: 'already_friends' };
-      if (existing.status === 'pending')  return { error: 'already_pending' };
-      if (existing.status === 'blocked')  return { error: 'blocked' };
+      if (existing.status === 'accepted') return {
+        error: 'already_friends'
+      };
+      if (existing.status === 'pending') return {
+        error: 'already_pending'
+      };
+      if (existing.status === 'blocked') return {
+        error: 'blocked'
+      };
     }
 
-    const { error } = await supabase
+    const {
+      error
+    } = await supabase
       .from('friendships')
-      .insert({ requester: user.id, addressee: addresseeId, status: 'pending' });
+      .insert({
+        requester: user.id,
+        addressee: addresseeId,
+        status: 'pending'
+      });
 
-    if (error) return { error: error.message };
+    if (error) return {
+      error: error.message
+    };
     await load();
-    return { ok: true };
+    return {
+      ok: true
+    };
   }, [user, load]);
 
   // Accept an incoming friend request by friendship ID
@@ -147,7 +198,10 @@ export function useFriends() {
     if (!user) return;
     await supabase
       .from('friendships')
-      .update({ status: 'accepted', updated_at: new Date().toISOString() })
+      .update({
+        status: 'accepted',
+        updated_at: new Date().toISOString()
+      })
       .eq('id', friendshipId)
       .eq('addressee', user.id);
     await load();
@@ -178,8 +232,15 @@ export function useFriends() {
   }, [user, load]);
 
   return {
-    friends, pending, incoming, loading,
-    sendRequest, acceptRequest, declineRequest, removeFriend,
+    friends,
+    pending,
+    incoming,
+    loading,
+    sendRequest,
+    acceptRequest,
+    declineRequest,
+    removeFriend,
+    cancelRequest: declineRequest, // same delete-by-id logic works for outgoing (sent) requests
     reload: load,
   };
 }
@@ -187,7 +248,10 @@ export function useFriends() {
 // ── Look up a public profile by username ──────────────────────────────────────
 
 export async function getProfileByUsername(username) {
-  const { data, error } = await supabase
+  const {
+    data,
+    error
+  } = await supabase
     .from('profiles')
     .select('id, username, display_name, avatar_url, is_discoverable, preferences')
     .eq('username', username.toLowerCase())
@@ -200,11 +264,16 @@ export async function getProfileByUsername(username) {
 // RLS on read_books allows this for accepted friends (schema_v20).
 // Matches the same join shape DataContext uses for the current user's library.
 export async function getFriendLibrary(userId) {
-  const { data } = await supabase
+  const {
+    data
+  } = await supabase
     .from('read_books')
     .select('id, rating, notes, read_at, source, book:books(*, position_in_series, series:series(*))')
     .eq('user_id', userId)
-    .order('read_at', { ascending: false, nullsFirst: false });
+    .order('read_at', {
+      ascending: false,
+      nullsFirst: false
+    });
 
   if (!data) return [];
 
@@ -217,7 +286,9 @@ export async function getFriendLibrary(userId) {
   const bookIds = [...new Set(validRows.map((r) => r.book.id).filter(Boolean))];
   let genresByBookId = {};
   if (bookIds.length > 0) {
-    const { data: genreRows } = await supabase
+    const {
+      data: genreRows
+    } = await supabase
       .from('book_genres')
       .select('book_id, genre:genres(id, name, normalized_name)')
       .in('book_id', bookIds);
@@ -232,17 +303,21 @@ export async function getFriendLibrary(userId) {
   // Attach genres to each row so normalizeBook can access them
   return validRows.map((r) => ({
     ...r,
-    _genres: genresByBookId[r.book?.id] || [],
+    _genres: genresByBookId[r.book ?.id] || [],
   }));
 }
 
 // Fetch currently_reading for a friend
 export async function getFriendCurrentlyReading(userId) {
-  const { data } = await supabase
+  const {
+    data
+  } = await supabase
     .from('currently_reading')
     .select('*, book:books(*)')
     .eq('user_id', userId)
-    .order('started_at', { ascending: false });
+    .order('started_at', {
+      ascending: false
+    });
   return data || [];
 }
 
@@ -252,7 +327,9 @@ export async function getFriendCurrentlyReading(userId) {
 
 export async function getFriendsFeedEvents(userId, limit = 40) {
   // Get accepted friend IDs via the friend_pairs view
-  const { data: pairs } = await supabase
+  const {
+    data: pairs
+  } = await supabase
     .from('friend_pairs')
     .select('user_b')
     .eq('user_a', userId);
@@ -262,7 +339,9 @@ export async function getFriendsFeedEvents(userId, limit = 40) {
   const friendIds = pairs.map((p) => p.user_b);
 
   // Fetch friend profiles for display name / avatar / privacy prefs
-  const { data: profiles } = await supabase
+  const {
+    data: profiles
+  } = await supabase
     .from('profiles')
     .select('id, username, display_name, avatar_url, preferences')
     .in('id', friendIds);
@@ -271,7 +350,7 @@ export async function getFriendsFeedEvents(userId, limit = 40) {
 
   // Friends whose library is visible (default true unless explicitly opted out)
   const visibleIds = friendIds.filter((id) => {
-    const prefs = profileMap[id]?.preferences || {};
+    const prefs = profileMap[id] ?.preferences || {};
     return prefs.friendsCanSeeLibrary !== false;
   });
 
@@ -280,12 +359,16 @@ export async function getFriendsFeedEvents(userId, limit = 40) {
 
   // Finished books — only from friends who allow library visibility
   if (visibleIds.length > 0) {
-    const { data: readRows } = await supabase
+    const {
+      data: readRows
+    } = await supabase
       .from('read_books')
       .select('user_id, read_at, rating, book:books(title, author, cover_url)')
       .in('user_id', visibleIds)
       .gte('read_at', cutoff)
-      .order('read_at', { ascending: false })
+      .order('read_at', {
+        ascending: false
+      })
       .limit(limit);
 
     for (const row of readRows || []) {
@@ -293,19 +376,28 @@ export async function getFriendsFeedEvents(userId, limit = 40) {
         type: 'finished',
         date: row.read_at,
         friend: profileMap[row.user_id],
-        book: { t: row.book?.title, a: row.book?.author, coverUrl: row.book?.cover_url, rating: row.rating },
+        book: {
+          t: row.book ?.title,
+          a: row.book ?.author,
+          coverUrl: row.book ?.cover_url,
+          rating: row.rating
+        },
         key: `fin-${row.user_id}-${row.read_at}`,
       });
     }
   }
 
   // Currently reading (started events) — visible to all friends
-  const { data: crRows } = await supabase
+  const {
+    data: crRows
+  } = await supabase
     .from('currently_reading')
     .select('user_id, started_at, book:books(title, author, cover_url)')
     .in('user_id', friendIds)
     .gte('started_at', cutoff)
-    .order('started_at', { ascending: false })
+    .order('started_at', {
+      ascending: false
+    })
     .limit(limit);
 
   for (const row of crRows || []) {
@@ -313,7 +405,11 @@ export async function getFriendsFeedEvents(userId, limit = 40) {
       type: 'started',
       date: row.started_at,
       friend: profileMap[row.user_id],
-      book: { t: row.book?.title, a: row.book?.author, coverUrl: row.book?.cover_url },
+      book: {
+        t: row.book ?.title,
+        a: row.book ?.author,
+        coverUrl: row.book ?.cover_url
+      },
       key: `cr-${row.user_id}-${row.started_at}`,
     });
   }
