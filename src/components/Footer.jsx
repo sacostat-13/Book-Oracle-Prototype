@@ -3,7 +3,7 @@
 // Zero inline styles — all classes from layout/_footer.scss.
 
 import { useRouter } from '../lib/RouterContext';
-import { useT } from '../lib/I18nContext';
+import { useI18n } from '../lib/I18nContext';
 import { useTheme } from '../lib/ThemeContext';
 
 const IconFacebook = () => (
@@ -16,9 +16,9 @@ const IconX = () => (
   <svg viewBox="0 0 24 24" aria-hidden><path d="M22 5.9c-.7.3-1.5.5-2.3.6a4 4 0 0 0 1.8-2.2c-.8.5-1.7.8-2.6 1a4 4 0 0 0-6.8 3.6A11.3 11.3 0 0 1 3.7 4.6a4 4 0 0 0 1.2 5.3c-.6 0-1.2-.2-1.8-.5a4 4 0 0 0 3.2 4 4 4 0 0 1-1.8.1 4 4 0 0 0 3.7 2.8A8 8 0 0 1 2 18a11.3 11.3 0 0 0 6.1 1.8c7.3 0 11.4-6.1 11.4-11.4v-.5c.8-.6 1.5-1.3 2-2z" /></svg>
 );
 
-export default function Footer() {
+export default function Footer({ guestMode = false }) {
   const { go } = useRouter();
-  const t = useT();
+  const { lang, toggleLang, t } = useI18n();
   const { theme, toggleTheme } = useTheme();
   const year = new Date().getFullYear();
 
@@ -72,17 +72,19 @@ export default function Footer() {
             </div>
           </div>
 
-          {/* Col 2: Product */}
-          <div className="footer-col">
-            <div className="footer-col__heading">{t('footer.product') || 'Product'}</div>
-            <div className="footer-col__links">
-              {productLinks.map(({ label, route }) => (
-                <button key={route} className="footer-link" onClick={() => go(route)}>
-                  {label}
-                </button>
-              ))}
+          {/* Col 2: Product — hidden in guest mode (unauthenticated legal pages) */}
+          {!guestMode && (
+            <div className="footer-col">
+              <div className="footer-col__heading">{t('footer.product') || 'Product'}</div>
+              <div className="footer-col__links">
+                {productLinks.map(({ label, route }) => (
+                  <button key={route} className="footer-link" onClick={() => go(route)}>
+                    {label}
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Col 3: Legal */}
           <div className="footer-col">
@@ -111,6 +113,9 @@ export default function Footer() {
             ))}
             <button className="footer-link" onClick={toggleTheme}>
               {theme === 'dark' ? '☀ Parchment' : '☾ Dark'}
+            </button>
+            <button className="footer-link" onClick={toggleLang}>
+              {lang === 'en' ? t('nav.switchToSpanish') : t('nav.switchToEnglish')}
             </button>
           </div>
         </div>

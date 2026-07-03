@@ -1271,5 +1271,131 @@
     "prefEmail": "Email notifications",
     "prefEmailDesc": "Receive emails for the above categories",
     "prefSaved": "Preferences saved"
-  }
+  },
+  "privacy": {
+
+    "breadcrumbs": "Privacy Policy",
+
+    "title": "Privacy <em class=\"accent\">Policy</em>",
+
+    "lastUpdated": "Last updated: June 25, 2026",
+
+    "whoWeAreTitle": "Who we are",
+
+    "whoWeArePara1": "The Books Oracle (accessible at thebooksoracle.com) is a personal reading companion application operated by an individual developer based in Costa Rica. ",
+
+    "whoWeArePara2": "For privacy - related questions: support @thebooksoracle.com",
+
+    "whatDataWeCollectTitle": "What data we collect",
+
+    "whatDataWeCollectPara1": "<strong >Account data.</strong> When you sign in with Google, we receive your name, email address, and profile photo. We store these to identify your account.",
+
+    "whatDataWeCollectPara2": "<strong >Reading data.</strong> Your library, wishlist, read-next queue, ratings, notes, reading dates, and progress belong to you and are stored in your account.",
+
+    "whatDataWeCollectPara3": "<strong >Usage data.</strong> We track how many times you use AI features per month to enforce free-tier quotas and monitor infrastructure costs. This counter resets monthly.",
+
+    "whatDataWeCollectPara4": "<strong >Subscription data.</strong> If you subscribe to Pro, we store your Paddle customer ID and subscription ID. We never store card numbers or payment details — all payment processing is handled by Paddle.",
+
+    "whatDataWeCollectPara5": "<strong >Club data.</strong> Your display name, reading activity, and any posts or discussion contributions in book clubs are visible to other club members.",
+
+    "whatDataWeDoNotCollectTitle": "What we do not collect",
+
+    "whatDataWeDoNotCollectPara1": "We do not collect your location, device identifiers, browsing history outside the app, or biometric data. We do not run advertising and have no advertising partners. We do not sell your data to any third party.",
+
+    "howDoWeUseYourDataTitle": "How we use your data",
+
+    "howDoWeUseYourDataPara1": "Your reading data powers app features — displaying your library, generating Oracle recommendations, building reading plans, and tracking progress. Your email may be used for transactional notifications if you opt in. We do not send marketing emails without explicit consent.",
+
+    "howDoWeUseYourDataPara2": "AI features send prompts to Anthropic 's Claude API. These include book titles and genre preferences but not your name, email, or any personally identifying information.",
+
+    "dataStorageTitle": "Data storage and security",
+
+    "dataStoragePara1": "Your data is stored in Supabase (PostgreSQL on AWS) with row-level security policies ensuring users can only access their own data. All data is transmitted over HTTPS. Service role credentials are stored only in server-side environment variables and are never exposed to the client.",
+
+    "thirdPartyTitle": "Third-party services",
+
+    "thirdPartyPara1": "We use: Google OAuth (sign-in only), Supabase (database), Anthropic Claude (AI features), Paddle (payments — Merchant of Record), Netlify (hosting), Hardcover / OpenLibrary (book metadata).",
+
+    "yourRightsTitle": "Your rights",
+
+    "yourRightsPara1": "You can delete your account and all data at any time from Profile → Reset profile. You can request a copy of your data or ask us to delete specific records by emailing support@thebooksoracle.com. We respond within 30 days. EEA users have GDPR rights including access, rectification, erasure, and portability.",
+
+    "cookiesTitle": "Cookies",
+
+    "cookiesPara1": "The app uses browser localStorage and sessionStorage to cache reading data locally for performance. These are not advertising cookies and do not track you across other sites. No third-party tracking cookies are set.",
+
+    "childrenTitle": "Children",
+
+    "childrenPara1": "The Books Oracle is not directed at children under 13. If you believe a child has provided personal data, contact us and we will delete it promptly.",
+
+    "changesTitle": "Changes",
+
+    "changesPara1": "We may update this policy from time to time. Significant changes will be noted in the in-app release notes."
+
+  },
+  "terms": {
+    "breadcrumbs": "Terms & Conditions",
+
+    "title": "<em class=\"accent\">Terms</em> & Conditions",
+
+    "lastUpdated": "Last updated: June 25, 2026",
+    "acceptanceTitle": "Acceptance",
+    "acceptancePara1": "By creating an account or using The Books Oracle (thebooksoracle.com), you agree to these Terms. If you do not agree, please do not use the service. These terms form a binding agreement between you and the operator of The Books Oracle, an individual developer based in Costa Rica.",
+
+    "theServiceTitle": "The service",
+    "theServicePara1": "The Books Oracle is a personal reading companion providing library tracking, AI-powered book recommendations, reading plans, and book clubs. We provide the service on a best-effort basis and reserve the right to modify or discontinue any part of it with reasonable notice via in-app release notes.",
+
+    "yourAccountTitle": "Your account",
+    "yourAccountPara1": "You must sign in with a valid Google account and be at least 13 years old. One account per person — creating multiple accounts to circumvent quota limits or other restrictions may result in account termination.",
+
+    "acceptableUseTitle": "Acceptable use",
+    "acceptableUsePara1": "You agree not to: circumvent AI quotas via multiple accounts; reverse engineer or scrape the service at scale; use the service unlawfully; post harmful content in clubs; or attempt to access other users' data.",
+
+    "yourContentTitle": "Your content",
+    "yourContentPara1": "Your reading data belongs to you. You grant us a limited license to store and process it solely to provide the service. Content you share in book clubs is visible to other club members and is your responsibility. You can delete your account and all content at any time from Profile.",
+
+    "aiFeaturesAndAccuracyTitle": "AI features and accuracy",
+    "aiFeaturesAndAccuracyPara1": "Oracle recommendations, reading plans, and categorizations are AI-generated and provided for entertainment and discovery. They may contain inaccuracies. We do not guarantee accuracy, completeness, or suitability of AI-generated content.",
+
+    "subscriptionsAndPaymentTitle": "Subscriptions and payment",
+    "subscriptionsAndPaymentPara1": "The Pro plan is billed monthly at $5 USD via Paddle, who acts as Merchant of Record. Subscriptions renew automatically until cancelled. You can cancel from Profile at any time; access continues through the current billing period. We reserve the right to change pricing with 30 days notice to active subscribers.",
+
+    "intellectualPropertyTitle": "Intellectual property",
+    "intellectualPropertyPara1": "The The Books Oracle application, design, and original content are owned by the operator. Book metadata is sourced from third-party catalogs and subject to their respective licenses.",
+
+    "disclaimerAndLimitationOfLiabilityTitle": "Disclaimer and limitation of liability",
+    "disclaimerAndLimitationOfLiabilityPara1": "The Books Oracle is provided \"as is\" without warranties. We are not responsible for data loss, service interruptions, or inaccuracies in AI-generated content. Our total liability for any claim shall not exceed the amount you paid us in the preceding 12 months.",
+
+    "governingLawTitle": "Governing law",
+    "governingLawPara1": "These terms are governed by the laws of Costa Rica. Questions: support@thebooksoracle.com"
+  },
+    "refunds": {
+      "breadcrumbs": "Refund Policy",
+
+      "title": "<em class=\"accent\">Refund</em> Policy",
+
+      "lastUpdated": "Last updated: June 25, 2026",
+      "ourApproachTitle": "Our approach",
+      "ourApproachPara1": "We want you to be happy with The Books Oracle Pro. If you subscribed and feel it isn't right for you, we will make it right.",
+
+      "day14MoneyBackGuaranteeTitle": "14-day money-back guarantee",
+      "day14MoneyBackGuaranteePara1": "If you subscribe to The Books Oracle Pro and are not satisfied for any reason, you can request a full refund within 14 days of your initial purchase — no questions asked.",
+      "day14MoneyBackGuaranteePara2": "Email support@thebooksoracle.com with subject \"Refund request\" and the email address on your account. We will process the refund within 5 business days.",
+
+      "renewalsTitle": "Renewals",
+      "renewalsPara1": "Monthly renewals are not automatically refundable after they are charged. Cancel before the renewal date from your Profile page to avoid the next charge. If a renewal charge occurred due to a technical error on our part, contact us within 7 days for a full refund.",
+
+      "serviceOutagesTitle": "Service outages",
+      "serviceOutagesPara1": "If The Books Oracle experiences a significant outage affecting AI features for more than 48 consecutive hours, subscribers may request a prorated credit or refund for the affected period.",
+
+      "howRefundsAreProcessedTitle": "How refunds are processed",
+      "howRefundsAreProcessedPara1": "Payments are processed by LemonSqueezy. Refunds return to the original payment method and typically take 5–10 business days to appear. After a refund, your subscription downgrades to the free tier. Your reading data is retained.",
+      "howRefundsAreProcessedPara2": "After a refund, your subscription downgrades to the free tier. Your reading data is retained.",
+
+      "exceptionsTitle": "Exceptions",
+      "exceptionsPara1": "We reserve the right to decline refund requests in cases of clear abuse, such as repeatedly subscribing and refunding or using multiple accounts to circumvent limits.",
+
+      "contactTitle": "Contact",
+      "contactPara1": "For refunds or billing questions: support@thebooksoracle.com — we typically respond within 1–2 business days."
+    }
 }

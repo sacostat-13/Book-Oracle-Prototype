@@ -120,10 +120,15 @@ function buildEmail({
           ctaUrl: sessionLink, ctaLabel: 'View reply →',
       };
     case 'announcement':
+      const raw = data ?.body || data ?.preview || 'There is a new announcement from the The Books Oracle team.';
+      const htmlBody = String(raw)
+        .replace(/\\n/g, '\n') // unescape literal "\n" if stored that way
+        .replace(/\n/g, '<br>'); // real newlines → <br> for the email HTML
       return {
         subject: data ?.title || 'Announcement from The Books Oracle',
-          body : data ?.preview || 'There is a new announcement from the The Books Oracle team.',
-          ctaUrl : appUrl, ctaLabel: 'Open app →',
+        body: htmlBody,
+        ctaUrl: appUrl,
+        ctaLabel: 'Open app →',
       };
     default:
       return null;

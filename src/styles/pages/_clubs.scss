@@ -42,8 +42,28 @@
   gap: 0.5rem;
   transition: border-color .15s;
 
+
+
   &:hover {
     border-color: var(--ro-gold);
+  }
+}
+
+.club-card__actions {
+  display: flex;
+  gap: var(--ro-space-2);
+  margin-top: 0px;
+}
+
+.clubs-empty {
+  font-family: var(--ro-font-body);
+  font-style: italic;
+  font-size: 15px;
+  color: var(--ro-muted);
+  padding: 2rem 0;
+
+  @include ro-down(tablet) {
+    padding-top: 0px;
   }
 }
 
@@ -53,6 +73,11 @@
   justify-content: space-between;
   gap: 1rem;
   margin-top: var(--ro-space-6);
+
+  @include ro-down(tablet) {
+    flex-flow: column;
+    gap: 0;
+  }
 
   .btn-tertiary {
     margin-top: var(--ro-space-2)
@@ -692,6 +717,10 @@
   .textarea {
     flex: 1;
     resize: none;
+  }
+
+  @include ro-down(tablet) {
+    flex-flow: column;
   }
 }
 

@@ -229,7 +229,7 @@ export default function BookClubDetail() {
                   {m.role === 'admin' ? t('clubs.roleAdmin') : t('clubs.roleMember')}
                 </span>
                 {isAdmin && !isSelf && (
-                  <div className="friend-row__actions">
+                  <div className="club-card__actions">
                     {m.role === 'member' && <button className="btn-text" onClick={() => handlePromoteMember(m.user_id)}>{t('clubs.makeAdmin')}</button>}
                     <button className="btn-text" onClick={() => handleRemoveMember(m.user_id, m.display_name)}>{t('clubs.removeMember')}</button>
                   </div>

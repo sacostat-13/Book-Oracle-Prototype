@@ -358,7 +358,7 @@ Return ONLY valid JSON in this exact format:
           <>
             <div className="onb-eyebrow plan-step-eyebrow">2 · Which genre?</div>
             <h2 className="onb-title">Explore:</h2>
-            <select value={target || ''} onChange={(e) => setTarget(e.target.value || null)} >
+            <select className="select" value={target || ''} onChange={(e) => setTarget(e.target.value || null)} >
               <option value="">— Choose a genre —</option>
               {(state.genres || []).slice().sort((a, b) => a.name.localeCompare(b.name)).map((g) => (
                 <option key={g.id} value={g.name} title={g.description || undefined}>{g.name}</option>

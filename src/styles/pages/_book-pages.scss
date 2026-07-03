@@ -411,6 +411,16 @@
     width: auto;
     flex: 0 1 220px;
   }
+
+  @include ro-down(tablet) {
+    .lv-search {
+      min-width: 100%;
+    }
+
+    .select {
+      min-width: 100%;
+    }
+  }
 }
 
 // Segmented List/Covers toggle (matches DS Action Bar reference)
@@ -781,6 +791,10 @@
     display: flex;
     flex-direction: column;
     justify-content: space-between;
+
+    @include ro-down(tablet) {
+      max-width: 168px;
+    }
   }
 }
 
@@ -809,6 +823,10 @@
   font-size: 24px;
   color: var(--ro-text-2);
   margin-top: 10px;
+
+  @include ro-down(tablet) {
+    margin-bottom: var(--ro-space-4);
+  }
 }
 
 // ── Book Page — meta pills row ────────────────────────────────────────────────
@@ -816,7 +834,7 @@
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
-  margin-top: 22px;
+  margin-bottom: var(--ro-space-4);
 
   .chip {
     font-size: 11px;
@@ -826,6 +844,10 @@
     color: var(--ro-text-2);
     transition: all 0.15s;
     margin-bottom: 5px;
+  }
+
+  @include ro-down(tablet) {
+    margin-bottom: var(--ro-space-4);
   }
 }
 
@@ -1411,10 +1433,14 @@
   position: relative;
   transition: border-color .15s;
 
+
+
   img {
     width: 100%;
     height: 100%;
     object-fit: cover;
+
+
   }
 }
 
@@ -1812,6 +1838,24 @@
   gap: 10px;
   flex-wrap: wrap;
   margin-bottom: var(--ro-space-5);
+
+  @include ro-down(tablet) {
+    flex-flow: column;
+
+    .source-tab__label {
+      display: flex;
+      text-align: left;
+      justify-content: flex-start;
+      align-self: flex-start;
+      /* font-size: 13px; */
+      font-size: 13px;
+      line-height: 1.2;
+      font-weight: 600;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--ro-text-2);
+    }
+  }
 }
 
 .source-tabs__label {
@@ -1882,6 +1926,8 @@
   gap: var(--ro-space-4);
   flex-wrap: wrap;
   margin-bottom: var(--ro-space-6);
+  margin-top: var(--ro-space-6);
+
 }
 
 .field {

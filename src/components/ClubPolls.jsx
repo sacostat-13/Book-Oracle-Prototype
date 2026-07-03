@@ -146,7 +146,7 @@ function PollCard({ poll, isAdmin, onVote, onClose, onDelete, onCreateSession })
           </div>
         </div>
         {isAdmin && (
-          <div className="friend-row__actions">
+          <div className="poll-card__actions">
             {!poll.closed && (
               <button className="btn tn-accent" onClick={() => onClose(poll.id)}>
                 {t('polls.closePoll')}
@@ -349,7 +349,7 @@ export default function ClubPolls({ clubId, clubName, clubGenres = [], isAdmin, 
           Polls
         </div>
         {isAdmin && (
-          <div className="friend-row__actions" style={{ marginTop: '16px' }}>
+          <div className="club-card__actions">
             <button
               className="btn btn-accent"
               onClick={handleOracleSuggest}
@@ -378,7 +378,7 @@ export default function ClubPolls({ clubId, clubName, clubGenres = [], isAdmin, 
       )}
 
       {polls.length === 0 && !showCreate && (
-        <div className="friends-empty">
+        <div className="clubs-empty">
           {isAdmin ? t('polls.noPollsAdmin') : t('polls.noPolls')}
         </div>
       )}

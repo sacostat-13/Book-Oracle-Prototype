@@ -279,7 +279,7 @@ export default function SessionDiscussion({ sessionId, clubId, isAdmin, book = {
           <div className="club-card__head">
             <div className="pf-overline">{t('discussion.questionsLabel')}</div>
             {isAdmin && (
-              <div className="friend-row__actions">
+              <div className="club-card__actions">
                 <button
                   className="btn-text"
                   onClick={handleOracleSuggest}

@@ -40,6 +40,19 @@
   display: flex;
   justify-content: space-between;
   gap: var(--ro-space-3);
+
+  @include ro-down(tablet) {
+    flex-flow: column;
+
+    .bp-pill {
+      width: max-content;
+      order: 1;
+    }
+
+    h3 {
+      order: 2;
+    }
+  }
 }
 
 .book-card__title {
@@ -68,6 +81,8 @@
   gap: var(--ro-space-3);
   margin-top: 18px;
   flex-wrap: wrap;
+  margin-bottom: var(--ro-space-3);
+
 }
 
 // ── Stat card ─────────────────────────────────────────────────────────────────

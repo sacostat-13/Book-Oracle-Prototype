@@ -113,6 +113,13 @@ function SignInGate() {
             </form>
           </>
         )}
+        <div className="sign-in-legal">
+          <a className="btn btn-text" href="#privacy" target="_blank" rel="noopener noreferrer">{t('footer.privacy') || 'Privacy Policy'}</a>
+          <span className="sign-in-legal__sep">·</span>
+          <a className="btn btn-text" href="#terms" target="_blank" rel="noopener noreferrer">{t('footer.terms') || 'Terms of Service'}</a>
+          <span className="sign-in-legal__sep">·</span>
+          <a className="btn btn-text" href="#refund" target="_blank" rel="noopener noreferrer">{t('footer.refund') || 'Refund Policy'}</a>
+        </div>
       </div>
     </div>
   );
@@ -131,7 +138,7 @@ export default function App() {
   // ── Public routes — render immediately, no auth or data required ────────────
   // These pages read content from the URL snapshot and progressively enhance
   // with auth-dependent actions once the user is signed in and data is loaded.
-  const PUBLIC_ROUTES = new Set(['book-page', 'list-view', 'plan-view', 'join-club']);
+  const PUBLIC_ROUTES = new Set(['book-page', 'list-view', 'plan-view', 'join-club', 'privacy', 'terms', 'refund']);
   if (PUBLIC_ROUTES.has(route.name)) {
     // During the brief auth check (~100ms), treat as loading not signed-out.
     // This prevents the sign-in prompt flashing before the session is confirmed.
@@ -183,6 +190,23 @@ export default function App() {
           <div className="container">
             <JoinClub />
           </div>
+          <Toast />
+        </div>
+      );
+    }
+
+    // Legal pages — public, no auth required.
+    // Nav is always visible; Footer and Nav switch to guest mode for unauthenticated viewers.
+    const legalViews = { privacy: Privacy, terms: Terms, refund: Refund };
+    if (legalViews[route.name]) {
+      const View = legalViews[route.name];
+      return (
+        <div className="app">
+          <Nav onPreviewBook={setPreviewBook} guestMode={!isAuthed} />
+          <div className="container">
+            <View />
+          </div>
+          <Footer guestMode={!isAuthed} />
           <Toast />
         </div>
       );

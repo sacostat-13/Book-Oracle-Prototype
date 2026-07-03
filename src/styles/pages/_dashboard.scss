@@ -1331,6 +1331,8 @@
   display: flex;
   flex-direction: column;
   gap: 40px;
+  padding-top: var(--ro-space-6);
+  position: relative;
 }
 
 // ── Feed stars (inline rating) ────────────────────────────────────────────────

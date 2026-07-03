@@ -103,7 +103,7 @@ function NotifItem({ n, t, onClose, go, markOneRead, onAnnouncement, handleAccep
 }
 
 // ── Main component ─────────────────────────────────────────────────────────────
-export default function Nav({ onPreviewBook }) {
+export default function Nav({ onPreviewBook, guestMode = false }) {
   const { state } = useData();
   const { route, go } = useRouter();
   const { user, signInWithGoogle, signOut } = useAuth();
@@ -172,6 +172,18 @@ export default function Nav({ onPreviewBook }) {
   const userAvatar = state.profile?.avatar_url;
   const userInitial = userLabel?.[0]?.toUpperCase() || '?';
   const toggleLangLabel = lang === 'en' ? t('nav.switchToSpanish') : t('nav.switchToEnglish');
+
+  // ── Guest mode: logo-only nav for unauthenticated public pages ─────────────
+  // Clicking the logo sends the user back to '/' which renders the sign-in gate.
+  if (guestMode) {
+    return (
+      <nav className="topnav" role="navigation" aria-label="Main navigation">
+        <button className="nav-logo" onClick={() => go('dashboard')} aria-label="The Books Oracle — Home">
+          <LogoMark />
+        </button>
+      </nav>
+    );
+  }
 
   return (
     <>
