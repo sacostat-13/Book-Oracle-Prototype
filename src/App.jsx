@@ -193,7 +193,7 @@ export default function App() {
   if (authLoading) {
     return (
       <div className="app">
-        <BookLoader text={t('app.loading')} />
+        <BookLoader text={t('app.loading')} fullHeight />
       </div>
     );
   }
@@ -214,7 +214,7 @@ export default function App() {
   if (loading) {
     return (
       <div className="app">
-        <BookLoader text={t('app.loading')} />
+        <BookLoader text={t('app.loading')} fullHeight />
       </div>
     );
   }
