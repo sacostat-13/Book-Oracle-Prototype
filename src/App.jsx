@@ -87,12 +87,12 @@ function SignInGate() {
               <button className="btn-secondary btn--block" onClick={signInWithGoogle}>
                 {t('signIn.continueGoogle')}
               </button>
-              <button className="btn-secondary btn--block" onClick={signInWithApple}>
+              {/* <button className="btn-secondary btn--block" onClick={signInWithApple}>
                 {t('signIn.continueApple')}
               </button>
               <button className="btn-secondary btn--block" onClick={signInWithFacebook}>
                 {t('signIn.continueFacebook')}
-              </button>
+              </button> */}
             </div>
 
             <div className="sso-divider"><span>{t('signIn.orDivider')}</span></div>
