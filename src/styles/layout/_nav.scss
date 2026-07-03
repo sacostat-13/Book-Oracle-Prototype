@@ -46,9 +46,14 @@
   &__mark {
     // The full raster logo (already includes the site name) — sized to the
     // topbar's 64px height with some breathing room.
-    height: 88px;
+    height: 50px;
     display: flex;
     align-items: center;
+
+    .nav-logo__text {
+      font-family: var(--ro-font-display);
+      font-size: 1.2rem;
+    }
   }
 
   // Both images render at all times; only the one matching the current

@@ -13,6 +13,8 @@ import { useNotifications, notificationLabel, notificationRoute } from '../lib/u
 import { useFriends } from '../lib/useFriends';
 import AnnouncementModal from './AnnouncementModal';
 import NavSearch from './NavSearch';
+import { useT } from '../lib/I18nContext';
+
 
 // ── SVG icons ─────────────────────────────────────────────────────────────────
 const IconBell = () => (
@@ -37,12 +39,17 @@ const IconOracle = () => (
 // Both images are always in the DOM; CSS shows only the one matching the
 // current theme via the `theme-dark` / `theme-parchment` class Body carries
 // (see ThemeContext.jsx). No re-render needed when the theme toggles.
-const LogoMark = () => (
-  <div className="nav-logo__mark" aria-hidden>
-    <img src="/logo-dark-mode.png" alt="" className="nav-logo__img nav-logo__img--dark" />
-    <img src="/logo-light-mode.png" alt="" className="nav-logo__img nav-logo__img--light" />
-  </div>
-);
+const LogoMark = () => {
+  const t = useT();
+
+  return (
+    <div className="nav-logo__mark btn" aria-hidden>
+      <img src="/logo-dark-mode.png" alt="" className="nav-logo__img nav-logo__img--dark" />
+      <img src="/logo-light-mode.png" alt="" className="nav-logo__img nav-logo__img--light" />
+      <span className='nav-logo__text'>{t('app.brand')}</span>
+    </div>
+  )
+};
 
 // ── Utility: close-on-outside-click hook ──────────────────────────────────────
 function useClickOutside(ref, onClose) {
