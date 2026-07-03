@@ -508,6 +508,8 @@
   border: 1px solid var(--ro-border);
   border-radius: 12px;
   padding: 14px 18px;
+  position: relative;
+
 }
 
 .friend-bar__body {
@@ -564,6 +566,8 @@
   right: 18px;
   display: flex;
   gap: 8px;
+      align-items: center;
+
 
   @media (max-width: 767px) {
     bottom: var(--ro-space-2);
