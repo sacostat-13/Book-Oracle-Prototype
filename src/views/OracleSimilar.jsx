@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import BookLoader from '../components/BookLoader';
 import { useData } from '../lib/DataContext';
 import { useRouter } from '../lib/RouterContext';
 import { ALL_BOOKS, bookKey } from '../lib/bookHelpers';
@@ -228,10 +229,7 @@ Return ONLY valid JSON in this exact format:
 
       <div>
         {loading ? (
-          <div className="loading">
-            <div className="loading-spinner"></div>
-            <div className="loading-text">Consulting the oracle…</div>
-          </div>
+          <BookLoader text="Consulting the oracle…" />
         ) : results ? (
           <>
             <h2 className="oracle-results-title">

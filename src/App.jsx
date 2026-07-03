@@ -7,6 +7,7 @@ import { useT, useTNode } from './lib/I18nContext';
 
 import Nav from './components/Nav';
 import CornerBrackets from './components/CornerBrackets';
+import BookLoader from './components/BookLoader';
 import Toast from './components/Toast';
 
 import Onboarding from './views/Onboarding';
@@ -192,10 +193,7 @@ export default function App() {
   if (authLoading) {
     return (
       <div className="app">
-        <div className="loading" style={{ paddingTop: '6rem' }}>
-          <div className="loading-spinner"></div>
-          <div className="loading-text">{t('app.loading')}</div>
-        </div>
+        <BookLoader text={t('app.loading')} />
       </div>
     );
   }
@@ -216,10 +214,7 @@ export default function App() {
   if (loading) {
     return (
       <div className="app">
-        <div className="loading" style={{ paddingTop: '6rem' }}>
-          <div className="loading-spinner"></div>
-          <div className="loading-text">{t('app.loading')}</div>
-        </div>
+        <BookLoader text={t('app.loading')} />
       </div>
     );
   }

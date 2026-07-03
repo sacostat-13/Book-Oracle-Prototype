@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
+import BookLoader from '../components/BookLoader';
 import { useData } from '../lib/DataContext';
 import { useRouter } from '../lib/RouterContext';
 import { ALL_BOOKS, bookKey } from '../lib/bookHelpers';
@@ -244,10 +245,7 @@ Return ONLY valid JSON in this format:
 
       <section className="oracle-results-grid">
         {loading ? (
-          <div className="loading">
-            <div className="loading-spinner"></div>
-            <div className="loading-text">The oracle is divining…</div>
-          </div>
+          <BookLoader text="The oracle is divining…" />
         ) : draw.length === 0 ? (
           <div className="empty-state">
             <div className="ornament">❦</div>

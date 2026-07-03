@@ -47,17 +47,17 @@ export function AuthProvider({ children }) {
       options: { redirectTo: window.location.origin },
     });
 
-  const signInWithApple = () =>
-    supabase.auth.signInWithOAuth({
-      provider: 'apple',
-      options: { redirectTo: window.location.origin },
-    });
+  // const signInWithApple = () =>
+  //   supabase.auth.signInWithOAuth({
+  //     provider: 'apple',
+  //     options: { redirectTo: window.location.origin },
+  //   });
 
-  const signInWithFacebook = () =>
-    supabase.auth.signInWithOAuth({
-      provider: 'facebook',
-      options: { redirectTo: window.location.origin },
-    });
+  // const signInWithFacebook = () =>
+  //   supabase.auth.signInWithOAuth({
+  //     provider: 'facebook',
+  //     options: { redirectTo: window.location.origin },
+  //   });
 
   // Passwordless email sign-in — sends a one-time magic link rather than
   // requiring a password. Resolves { error } so the caller can show a
@@ -77,8 +77,8 @@ export function AuthProvider({ children }) {
         user: session?.user || null,
         loading,
         signInWithGoogle,
-        signInWithApple,
-        signInWithFacebook,
+        // signInWithApple,
+        // signInWithFacebook,
         signInWithEmail,
         signOut,
       }}

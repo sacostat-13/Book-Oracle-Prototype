@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useRouter } from '../lib/RouterContext';
 import { useT, useTNode } from '../lib/I18nContext';
 import CurrentReleaseFooter from '../components/CurrentReleaseFooter';
@@ -68,9 +69,21 @@ function RoadmapTier({ heading, items }) {
 }
 
 export default function About() {
-  const { go } = useRouter();
+  const { go, route } = useRouter();
   const t = useT();
   const tNode = useTNode();
+
+  // Deep-link support: #about&pricing scrolls to the pricing section.
+  useEffect(() => {
+    const anchor = route.params?.anchor;
+    if (!anchor) return;
+    // Wait a tick for the page to render before scrolling.
+    const id = setTimeout(() => {
+      const el = document.getElementById(anchor);
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 100);
+    return () => clearTimeout(id);
+  }, [route.params?.anchor]);
 
   return (
     <>

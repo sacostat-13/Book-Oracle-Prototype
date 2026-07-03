@@ -4,7 +4,7 @@ A reading companion — wishlist, library, reading plans, book clubs, and an AI-
 for book discovery. Built with React + Vite + SCSS, backed by Supabase for auth
 and cross-device sync, and Netlify Functions for API proxying.
 
-> Current version: **v0.37.1** — see [Releases](#releases) below for changelog.
+> Current version: **v0.37.2** — see [Releases](#releases) below for changelog.
 > Upgrading from an earlier version? Check the matching `MIGRATION_*.md` / `UPDATE_*.md`.
 
 ---
@@ -327,9 +327,9 @@ and forward requests. Locally you need `netlify dev` to make them work.
 
 ## Releases
 
-### v0.37.1 — Design system audit: sign-in, forms, Oracle, clubs, profile
+### v0.37.1 — Design System redesign: sign-in, forms, Oracle, clubs, profile
 
-**No DB migrations required.** Pure front-end (JSX + SCSS) pass, plus one JS logic fix in `I18nContext.jsx`.
+**Major redesign, no DB migrations required.** This is the first full pass powered by the Books Oracle Design System — sign-in/onboarding, both Oracle recommendation flows, the book club page, several forms, and the Profile page were rebuilt end-to-end to match the design system's components (corner-bracketed cards, the real button/input system, `.book-card`/`.oracle-fork-*`/`.bp-*` families) instead of a patchwork of styled and unstyled screens.
 
 This release is a design-system alignment pass across several views that had drifted from `main.scss` — either using class names with no matching CSS rule (rendering as unstyled browser defaults), or inline `style` objects referencing pre-rename theme variables like `--gilt`/`--paper`/`--paper-aged`/`--ink` that no longer exist since the `--ro-` token rename.
 
@@ -349,12 +349,52 @@ This release is a design-system alignment pass across several views that had dri
 
 **Profile page layout.** Per the DS profile pattern, Reading Stats / Pace / Top Genres / Most Read Author / Series in Progress are meant to be free-standing sections directly on the page (each already has its own bordered cards/rows) — not nested inside one shared panel. Un-wrapped them from the enclosing `.panel` into a new `.profile-stats` flex column (36px rhythm via `--ro-space-8`); the Account/Username/Privacy/Reading Challenge/Subscription block below remains a single bordered card, matching the DS spec exactly.
 
-**Codebase-wide cleanup.** Swept every `.jsx` file for two recurring anti-patterns: (1) a dead `"btn "` prefix in front of a real `.btn-primary`/`-secondary`/etc. class (`.btn` bare never existed), found in 23 files; (2) duplicate `className` attributes on a single element — invalid JSX where only the second value is ever applied, silently dropping the first. Fixed the instances directly tied to the views above (`BookModal.jsx` in `components/`, `ReleaseNotesModal.jsx`). A handful of duplicate-`className` instances remain in files not in scope for this pass — see **Known issues** below.
+**Codebase-wide cleanup.** Swept every `.jsx` file for two recurring anti-patterns: (1) a dead `"btn "` prefix in front of a real `.btn-primary`/`-secondary`/etc. class (`.btn` bare never existed), found in 23 files; (2) duplicate `className` attributes on a single element — invalid JSX where only the second value is ever applied, silently dropping the first. Fixed the instances directly tied to the views above (`BookModal.jsx` in `components/`, `ReleaseNotesModal.jsx`). Several more duplicate-`className` instances were found after this release shipped — see **v0.37.2** below for the full sweep.
+
+### v0.37.2 — List pages, cover hover, email sign-in & fixes
+
+**No DB migrations required** (but see *Supabase configuration* at the end for the new email sign-in and sender-domain setup).
+
+**Lists redesign (DS Patterns / Lists).** `Lists.jsx` (List Dashboard) and `ListDetail.jsx` (List Page) rebuilt to the design system: DS headers (eyebrow, big italic serif title, ornament divider), `.plan-badge` count pills, and DS action rows. The dashboard now shows each list as a stacked section with a capped cover preview — `COVER_PREVIEW` (6) real covers, then a `.cover-grid-more` "+N more" box that mirrors the dashboard feed's overflow tile. Make Public / Copy link / Delete stay inline on each dashboard row per request. New CSS: `.ls-dash-*` and `.ls-page-*` families in `_social.scss`.
+
+**Cover hover — fixed globally + restyled to DS v5.** The `.cover-grid-hover` overlay had `opacity: 0` with no `:hover` rule anywhere to reveal it, so hovering any cover did nothing app-wide (Library, Wishlist, Lists, ListDetail — all use `.cover-shelf-grid`). Added the `&:hover`/`&:focus-visible` trigger and restyled to the DS v5 List hover: the card lifts (`translateY(-3px)`), a fixed top-to-bottom scrim keeps text legible over any cover color, a gold accent bar sits above a bold-serif title, italic-gold author, and stacked mono-uppercase genre tags. Also fixed invalid `--var(...)` typos and a duplicated `aspect-ratio`/`border-radius` in that block. Genre tags were wired into the `Lists`/`ListDetail` overlays (they were only in `LibraryCoverGrid` before), and `ListDetail`'s in-overlay Remove button — previously unclickable because the overlay is `pointer-events: none` — now opts back into pointer events.
+
+**New "My Plans" page + PlanView fix.** New `plan-list` route and `PlanList.jsx` view listing every saved plan with title, description, badges, book-count progress bar and created date; clicking opens `plan-view` with a `from: 'plan-list'` breadcrumb. The nav "My Plans" item now points here instead of the creator. Separately, `plan-view` was being rendered by `ListView` (both routes shared one early-return branch in `App.jsx`), so the real `PlanView` was dead code and plans rendered with old `plan-step`/`plan-month` classes — split them so `plan-view` renders the dedicated, DS-styled `PlanView`.
+
+**Email sign-in; guest removed.** `AuthContext.jsx` gained `signInWithEmail` (Supabase `signInWithOtp` magic link) alongside Google. `SignInGate` in `App.jsx` was rewritten: guest/offline bypass removed (`allowGuest` state gone, gate condition simplified to `if (!user)`), email magic-link form + "check your inbox" state added. **Apple/Facebook OAuth were removed at the user's request** — only Google + email remain.
+
+**Withdraw a pending friend request.** `FriendProfile.jsx` showed a static "Request sent" pill for outgoing pending requests; it's now a `.friend-withdraw-btn` that swaps to "Withdraw request" on hover and calls `declineRequest(pendingEntry.id)` (the existing decline/cancel path). New `friends.withdrawRequest` i18n key.
+
+**Routing fixes.** `privacy`/`terms`/`refund` had render cases in `App.jsx` but were missing from `KNOWN_ROUTES`, so direct hash links like `#privacy` failed the known-route check and fell back to dashboard (the footer buttons worked only because they call `go()` directly). Registered them. Also added `&anchor` parsing to `parseHash` so `#about&pricing` resolves to About with `params.anchor = 'pricing'`, and `About.jsx` now scrolls that section into view — this is the URL LemonSqueezy links to.
+
+**About / Profile.** `About.jsx` moved off shared `.session-prompt`/`.plan-step-eyebrow` classes (whose base styles were fighting inline overrides and hurting readability) onto a dedicated `.about-feature`/`.about-roadmap-*` family. Profile sections moved off the shared `.bp-section` onto a dedicated `.pf-section` family with DS spacing, so Profile spacing can change without affecting BookPage/BookModal.
+
+---
+
+*The remainder of v0.37.2 covers earlier fixes from the same cycle:*
+
+**Crash — club session discussion.** `SessionDiscussion.jsx` called `t()` in its render body but never called `useT()` at the component's top level; a previous edit had instead scattered `const t = useT()` inside several nested `async` event handlers — itself a Rules-of-Hooks violation, since hooks can only be called during a component's render, not from a detached callback. A separate free-standing helper, `fetchOracleQuestions`, called `useT()` and `useOracleQuota()` directly, which would throw "Invalid hook call" the moment an admin clicked "Oracle suggests". Fixed by declaring `t` and the quota handlers once at the top of `SessionDiscussion`, removing every erroneous nested hook call, and passing `t`/`handleQuotaError`/`onCallSucceeded` into `fetchOracleQuestions` as plain parameters.
+
+**Corner brackets, take two.** The `ro-corner-brackets()` mixin introduced in v0.37.1 drew all four corners as a single layered `background-image` on `::before`. That couldn't be visually verified in the environment it was built in and shipped looking wrong. Replaced with the exact technique the design system's own reference mockup uses: four plain bordered `<span>`s via a new shared `<CornerBrackets />` component (`src/components/CornerBrackets.jsx`) and `.corner-bracket` CSS (`components/_corner-brackets.scss`). Wired into every bracketed card: `BookModal`, `AddToListModal`, `Lists`' new-list modal, `ListDetail`'s add-book modal, `RatingModal`, `AnnouncementModal`, `ReleaseNotesModal`, `ProgressUpdateModal`, `SessionDetail`'s edit-session modal, the sign-in card, the onboarding flow, and the profile account card (which was upgraded from a plain `.panel` to the real bracketed `.pf-account-card`, matching the design system reference exactly).
+
+**Modal consistency.** `.modal` (the `overlay`/`modal__head`/`__body`/`__actions` family) was missing `position: relative`, which meant `.modal__close` — an absolutely-positioned × button — was anchoring to the nearest positioned ancestor (`.overlay`, fixed to the full viewport) instead of the modal card itself. Also added a default `padding: 26px` to `.modal` for the several consumers (`AddToListModal`, the new-list modal, `ListDetail`'s add-book modal) that drop content directly into `.modal` without the `__head`/`__body`/`__actions` structure — those three each set a complete padding shorthand of their own, so this has no effect where they're used.
+
+**Oracle recommendation cards — broken covers.** `BookCard.jsx` passed its cover-sizing class directly to the shared `<BookCover />` component: `<BookCover className="book-card__cover" />`. `BookCover` renders an `<img>` with a hardcoded inline `style={{ width: '100%', height: '100%' }}`, which always wins over a class by CSS specificity — with no sized container, the image rendered at its full intrinsic size, breaking the whole card layout. Every other usage in the codebase correctly wraps `<BookCover />` in a sized container div instead; fixed to match. Also moved the primary action button (add to Read Next, etc.) to appear right under the title/author instead of after the genre tags, description, and the Oracle's "why this book" line.
+
+**Duplicate `className` sweep, round 2.** Found and fixed 8 more instances of the v0.37.1 duplicate-attribute bug: `BookClubs.jsx`, `ListDetail.jsx`, `FriendProfile.jsx` (plus 3 more `.level-pill`/`.page-eyebrow` instances and a regressed `.wishlist-toolbar`/`.search-input` pair in the same file — restored to the current `.lv-toolbar`/`.lv-search` classes), `PlanCreate.jsx`, `AnnouncementModal.jsx`, `RatingModal.jsx`, `CategoryAutocomplete.jsx`, and `CommentThread.jsx`. Zero duplicate-`className` elements remain anywhere in `src/`.
+
+**Remaining forms cleanup.** `ProgressUpdateModal.jsx` and `SessionDiscussion.jsx` had inline `fieldStyle`/`labelStyle`/`inputStyle` objects referencing dead `--gilt`/`--paper` tokens — replaced with `.field-label`/`.input`/`.pf-input--narrow`. Added a `.corner-bracket--sm` size variant, a `.plan-step-title--tight` spacing modifier, and `.session-prompt--question`/`--answers` modifiers to close out the remaining inline-style overrides in the discussion thread.
+
+---
+
+**Supabase configuration for v0.37.2:**
+- **Email (magic link) sign-in:** In the Supabase dashboard → Authentication → Providers, ensure **Email** is enabled. For passwordless links specifically, no password is required from the user — Supabase emails a one-time link. (See *"Password vs. magic link"* note below if you want to also offer email+password.)
+- **Sender identity / domain:** By default auth emails come from Supabase's own address. To send as **The Books Oracle / support@thebooksoracle.com**, configure Custom SMTP in Authentication → Emails → SMTP Settings (point it at Resend's SMTP, or your provider), and set the sender name to "The Books Oracle" and sender email to support@thebooksoracle.com. You must verify the `thebooksoracle.com` domain with the sending provider (Resend) first.
 
 **Known issues (flagged, not fixed this round):**
-- `CommentThread.jsx`, `PlanCreate.jsx`, `BookClubs.jsx`, `FriendProfile.jsx`, `ListDetail.jsx` each have one duplicate-`className` element (same pattern fixed elsewhere this round).
-- `ProgressUpdateModal.jsx`, `BulkImport.jsx`, `SessionDiscussion.jsx`, `SessionCreate.jsx`, `BookClubCreate.jsx`, `CategoryAutocomplete.jsx`, `FriendProfile.jsx` still build inline styles from the dead `--gilt`/`--paper`/`--paper-aged` tokens.
-- `src/views/BookModal.jsx` is dead code — a stale duplicate of `src/components/BookModal.jsx` with incorrect relative import paths (`from './ReportBookForm'`, which doesn't exist under `views/`). Neither `BookModal` component is currently imported anywhere; the app now opens `BookPage` directly via `openBookTab()`. Recommend deleting `src/views/BookModal.jsx` outright and confirming whether `src/components/BookModal.jsx` is still needed as a future modal-based quick-view, or can also be removed.
+- `BulkImport.jsx`, `SessionCreate.jsx`, `BookClubCreate.jsx` still build inline styles from the dead `--gilt`/`--paper`/`--paper-aged` tokens.
+- `src/views/BookModal.jsx` and `src/views/Nav.jsx` are dead code (unused duplicates) — recommend deleting them.
+- Transactional emails (friend requests, etc.) send via Resend from a Supabase Database Webhook / Edge Function, which is separate from the Supabase Auth sender config above — see *"Why the friend-request email didn't arrive"* in the deployment notes.
 
 ### v0.37 — Extended notifications, preferences & footer
 

@@ -30,6 +30,9 @@ const KNOWN_ROUTES = new Set([
   'session-create',
   'session-detail',
   'join-club',
+  'privacy',
+  'terms',
+  'refund',
 ]);
 
 function parseHash() {
@@ -45,14 +48,18 @@ function parseHash() {
   const raw = window.location.hash.replace(/^#/, '').trim();
   if (!raw) return { name: 'dashboard', params: {} };
   const [name, qs] = raw.split('?');
+  // A trailing "&anchor" on the route name marks a section to scroll to,
+  // e.g. #about&pricing → { name: 'about', params: { anchor: 'pricing' } }.
+  const [routeName, anchor] = name.split('&');
   const params = {};
+  if (anchor) params.anchor = anchor;
   if (qs) {
     for (const pair of qs.split('&')) {
       const [k, v] = pair.split('=');
       if (k) params[decodeURIComponent(k)] = v ? decodeURIComponent(v) : '';
     }
   }
-  return { name: KNOWN_ROUTES.has(name) ? name : 'dashboard', params };
+  return { name: KNOWN_ROUTES.has(routeName) ? routeName : 'dashboard', params };
 }
 
 // push=true creates a real browser history entry (back button works).

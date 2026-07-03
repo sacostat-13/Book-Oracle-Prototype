@@ -16,15 +16,38 @@
 
 // The version label shown as "current" — keep in sync with package.json and
 // the README version line.
-export const CURRENT_VERSION = 'v0.37.1';
+export const CURRENT_VERSION = 'v0.37.2';
 
 export const RELEASES = [
   {
+    version: 'v0.37.2',
+    date: '2026-07-02',
+    titleEn: 'List pages, cover hover, email sign-in & fixes',
+    titleEs: 'Páginas de listas, hover de portadas, acceso por correo y correcciones',
+    bodyEn: [
+      'Redesigned the Lists experience: the List Dashboard now previews each list\'s covers with a "+N more" overflow, and both the dashboard and individual list pages follow the design system with proper headers, badges and spacing.',
+      'Fixed the cover hover everywhere in the app — hovering a book cover now lifts it and reveals a richer overlay with the title, author and genres. Previously hovering did nothing at all.',
+      'Added a new "My Plans" page that lists every reading plan you\'ve created with its progress, and fixed the plan view that was rendering unstyled.',
+      'You can now sign in with a passwordless email link, in addition to Google. Removed the guest option.',
+      'You can now withdraw a friend request while it\'s still pending — hover the "Request sent" button to cancel it.',
+      'Cleaned up the About page (pricing deep-links now work) and the Profile page spacing, and fixed a couple of crashes and corner-bracket / modal consistency issues carried over from the design-system pass.',
+    ],
+    bodyEs: [
+      'Se rediseñó la experiencia de Listas: el panel de Listas ahora muestra una vista previa de las portadas de cada lista con un indicador "+N más", y tanto el panel como las páginas de lista individuales siguen el sistema de diseño con encabezados, distintivos y espaciado correctos.',
+      'Se corrigió el hover de las portadas en toda la app — al pasar el cursor sobre la portada de un libro ahora se eleva y muestra una capa con título, autora y géneros. Antes el hover no hacía nada.',
+      'Se agregó una nueva página "Mis Planes" que lista todos los planes de lectura que creaste con su progreso, y se corrigió la vista de plan que se mostraba sin estilo.',
+      'Ahora podés entrar con un link por correo sin contraseña, además de Google. Se quitó la opción de invitada.',
+      'Ahora podés retirar una solicitud de amistad mientras está pendiente — pasá el cursor sobre "Solicitud enviada" para cancelarla.',
+      'Se ordenó la página Acerca de (los enlaces directos a precios ya funcionan) y el espaciado del Perfil, y se corrigieron un par de fallas y problemas de consistencia de esquinas doradas y modales heredados del rediseño.',
+    ],
+  },
+  {
     version: 'v0.37.1',
     date: '2026-07-01',
-    titleEn: 'Design system pass — sign-in, forms, Oracle, clubs, profile',
-    titleEs: 'Repaso del sistema de diseño — inicio de sesión, formularios, Oráculo, clubs, perfil',
+    titleEn: 'Design System redesign — sign-in, forms, Oracle, clubs, profile',
+    titleEs: 'Rediseño con el Sistema de Diseño — inicio de sesión, formularios, Oráculo, clubs, perfil',
     bodyEn: [
+      'A major redesign pass powered by the Books Oracle Design System: sign-in and onboarding, both Oracle recommendation flows, the book club page, several forms, and the Profile page have all been rebuilt to match the design system\'s look and components — brackets, buttons, cards, and typography now consistent across the app instead of a mix of styled and unstyled screens.',
       'Fixed a crash on club session pages: the member progress row called a translation function that was never loaded, so any session with a page-count goal could fail to render.',
       'Fixed a bug where the guest sign-in prompt showed the literal text "[object Object]" instead of a clickable link — the translation system now correctly embeds links and other elements into sentences, not just plain text.',
       'The sign-in screen and the three-step onboarding flow (reading level, Goodreads import, goal) had no styling behind them at all and rendered as plain unformatted text. They now use the same bracketed card, step indicator, and button styling as the rest of the app.',
@@ -34,6 +57,7 @@ export const RELEASES = [
       'Your reading stats, pace chart, top genres, favourite author, and series in progress now sit as their own sections on the Profile page instead of inside one shared box, matching the design system; your account settings remain grouped together in a single card below.',
     ],
     bodyEs: [
+      'Un rediseño importante impulsado por el Sistema de Diseño de The Books Oracle: el inicio de sesión y la bienvenida, los dos flujos de recomendación del Oráculo, la página de clubs de lectura, varios formularios y la página de Perfil se reconstruyeron para coincidir con el look y los componentes del sistema de diseño — esquinas doradas, botones, tarjetas y tipografía ahora consistentes en toda la app en vez de una mezcla de pantallas con y sin estilo.',
       'Se corrigió un error que rompía la página de sesión del club: la fila de progreso de cada miembro llamaba a una función de traducción que nunca se había cargado, por lo que cualquier sesión con una meta de páginas podía fallar al mostrarse.',
       'Se corrigió un error donde la invitación a probar como invitada mostraba el texto literal "[object Object]" en vez de un link — el sistema de traducciones ahora puede insertar links y otros elementos dentro de una oración, no solo texto plano.',
       'La pantalla de inicio de sesión y el flujo de bienvenida de tres pasos (nivel de lectura, importar Goodreads, meta) no tenían ningún estilo y se mostraban como texto plano sin formato. Ahora usan la misma tarjeta con esquinas doradas, indicador de pasos y botones que el resto de la app.',

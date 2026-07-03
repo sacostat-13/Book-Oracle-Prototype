@@ -343,7 +343,6 @@
   border-radius: 18px;
   padding: 34px;
   box-shadow: var(--ro-shadow);
-  margin-top: var(--ro-space-4);
 }
 
 .pf-account-card__title {
@@ -691,6 +690,8 @@
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
   gap: 1rem;
+  margin-top: var(--ro-space-6);
+
 }
 
 .fp-book-item {
@@ -1303,4 +1304,26 @@
 .ldetail-pick-body {
   flex: 1;
   min-width: 0;
+}
+
+// Withdraw-pending-request button: reads "Request sent" until hovered, then
+// swaps to "Withdraw request" with a danger tint. Lets a user take back a
+// pending outgoing friend invite.
+.friend-withdraw-btn {
+  &__cancel {
+    display: none;
+  }
+
+  &:hover {
+    border-color: var(--ro-burgundy);
+    color: var(--ro-burgundy);
+
+    .friend-withdraw-btn__sent {
+      display: none;
+    }
+
+    .friend-withdraw-btn__cancel {
+      display: inline;
+    }
+  }
 }

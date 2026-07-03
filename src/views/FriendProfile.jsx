@@ -251,7 +251,7 @@ export default function FriendProfile() {
   const { user } = useAuth();
   const { state } = useData();
   const t = useT();
-  const { friends, sendRequest, pending } = useFriends();
+  const { friends, sendRequest, declineRequest, pending } = useFriends();
 
   const username = route.params?.username;
 
@@ -264,7 +264,8 @@ export default function FriendProfile() {
   const [reqError, setReqError] = useState(null);
 
   const isFriend = friends.some((f) => f.other?.username === username);
-  const hasPending = pending.some((p) => p.other?.username === username);
+  const pendingEntry = pending.find((p) => p.other?.username === username);
+  const hasPending = !!pendingEntry;
   const isSelf = state.profile?.username === username;
 
   useEffect(() => {
@@ -299,6 +300,13 @@ export default function FriendProfile() {
     else { setReqError(result?.error || 'error'); }
   }
 
+  async function handleWithdrawRequest() {
+    if (!pendingEntry) { setReqSent(false); return; }
+    await declineRequest(pendingEntry.id);
+    setReqSent(false);
+    setReqError(null);
+  }
+
   if (loading) return (
     <div className="loading">
       <div className="loading-spinner" />
@@ -327,7 +335,14 @@ export default function FriendProfile() {
   if (!isSelf && user) {
     if (isFriend) {
       friendBtn = <span className="status status--read">{t('friends.alreadyFriends')}</span>;
-    } else if (hasPending || reqSent) {
+    } else if (hasPending) {
+      friendBtn = (
+        <button className="btn-secondary friend-withdraw-btn" onClick={handleWithdrawRequest}>
+          <span className="friend-withdraw-btn__sent">{t('friends.requestSent')}</span>
+          <span className="friend-withdraw-btn__cancel">{t('friends.withdrawRequest')}</span>
+        </button>
+      );
+    } else if (reqSent) {
       friendBtn = <span className="status status--reading">{t('friends.requestSent')}</span>;
     } else {
       friendBtn = <button className="btn-primary" onClick={handleSendRequest}>{t('friends.sendRequest')}</button>;
