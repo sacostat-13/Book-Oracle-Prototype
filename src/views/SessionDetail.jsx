@@ -30,8 +30,9 @@ function Avatar({ displayName, avatarUrl, size = 28 }) {
   );
 }
 
-function MemberProgressRow({ member, totalPages }) {
+function MemberProgressRow({ member }) {
   const t = useT();
+  const totalPages = member.user_page_count ?? member.catalog_pages;
   const pct = totalPages && member.pages_read > 0
     ? Math.min(100, Math.round((member.pages_read / totalPages) * 100))
     : null;
@@ -312,6 +313,7 @@ export default function SessionDetail() {
     t: book.title, a: book.author, pp: book.pages,
     bookId: myProgress?.cr_book_id || book.id,
     pagesRead: myProgress?.pages_read ?? 0,
+    userPageCount: myProgress?.user_page_count ?? null,
   };
 
   const sortedProgress = [...(progress || [])].sort((a, b) => {
@@ -320,8 +322,8 @@ export default function SessionDetail() {
     return (b.pages_read || 0) - (a.pages_read || 0);
   });
 
-  async function handleProgressSave(pagesRead) {
-    await updateReadingProgress(bookForModal, pagesRead);
+  async function handleProgressSave(pagesRead, userPageCount) {
+    await updateReadingProgress(bookForModal, pagesRead, userPageCount);
     setShowProgressModal(false);
     await loadDetail();
   }
@@ -470,7 +472,7 @@ export default function SessionDetail() {
         ) : (
           <div>
             {sortedProgress.map((m) => (
-              <MemberProgressRow key={m.user_id} member={m} totalPages={book.pages} />
+              <MemberProgressRow key={m.user_id} member={{ ...m, catalog_pages: book.pages }} />
             ))}
           </div>
         )}

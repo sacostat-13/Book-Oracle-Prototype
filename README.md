@@ -4,7 +4,7 @@ A reading companion — wishlist, library, reading plans, book clubs, and an AI-
 for book discovery. Built with React + Vite + SCSS, backed by Supabase for auth
 and cross-device sync, and Netlify Functions for API proxying.
 
-> Current version: **v0.37.2** — see [Releases](#releases) below for changelog.
+> Current version: **v0.37.3** — see [Releases](#releases) below for changelog.
 > Upgrading from an earlier version? Check the matching `MIGRATION_*.md` / `UPDATE_*.md`.
 
 ---
@@ -350,6 +350,24 @@ This release is a design-system alignment pass across several views that had dri
 **Profile page layout.** Per the DS profile pattern, Reading Stats / Pace / Top Genres / Most Read Author / Series in Progress are meant to be free-standing sections directly on the page (each already has its own bordered cards/rows) — not nested inside one shared panel. Un-wrapped them from the enclosing `.panel` into a new `.profile-stats` flex column (36px rhythm via `--ro-space-8`); the Account/Username/Privacy/Reading Challenge/Subscription block below remains a single bordered card, matching the DS spec exactly.
 
 **Codebase-wide cleanup.** Swept every `.jsx` file for two recurring anti-patterns: (1) a dead `"btn "` prefix in front of a real `.btn-primary`/`-secondary`/etc. class (`.btn` bare never existed), found in 23 files; (2) duplicate `className` attributes on a single element — invalid JSX where only the second value is ever applied, silently dropping the first. Fixed the instances directly tied to the views above (`BookModal.jsx` in `components/`, `ReleaseNotesModal.jsx`). Several more duplicate-`className` instances were found after this release shipped — see **v0.37.2** below for the full sweep.
+
+### v0.37.3 — Custom page counts per edition
+
+**Migration required:** `schema_v37_3_migration.sql` — adds `currently_reading.user_page_count` (nullable integer). No backfill; `NULL` falls back to the catalog's `books.pages`.
+
+**What it does.** Readers whose physical/digital edition has a different page count than the catalog row can now set a personal override. It's stored per-`currently_reading` row and never mutates the shared `books` table. Per-user analytics (Reading Stats widget, library totals) intentionally continue to use the canonical catalog page count — the override only affects a reader's own progress bar and percentage, in `CurrentlyReading.jsx` and in Book Club session progress (`SessionDetail.jsx`).
+
+**`get_session_detail` RPC.** The `progress` lateral join now also selects `cr2.user_page_count`, returned per member as `user_page_count` alongside `pages_read`. Client-side, each member's effective total is `member.user_page_count ?? book.pages` rather than one club-wide total.
+
+**`DataContext.jsx`.** `updateReadingProgress(book, pagesRead, userPageCount)` gained a third, optional parameter: pass a positive integer to set the override, `null` to clear it back to the catalog value, or omit it entirely to leave whatever's stored untouched. The initial `currently_reading` load query and `bookRowToClient` mapping now also select and map `user_page_count` → `userPageCount`, so it's available on first load, not just after an in-session update.
+
+**`ProgressUpdateModal.jsx`.** Added a collapsed-by-default "My edition has a different page count" toggle. Expanding it reveals a number input seeded from the existing override (or blank); saving computes the effective total from whichever is active and passes `(pagesRead, userPageCount)` to `onSave`. Clearing the override field and saving writes `null`, not `0` or the catalog number.
+
+**`CurrentlyReading.jsx` and `SessionDetail.jsx`.** Both now compute `totalPages = member.user_page_count ?? book.pages` (or `b.userPageCount ?? b.pp` on the Currently Reading grid) wherever a progress bar, percentage, or "X / Y pages" label is rendered, instead of using the catalog total directly.
+
+**Dashboard — checked, no changes needed.** The `CurrentlyReadingWidget` doesn't render a page count or progress bar at all. The Reading Stats widget sums `b.pp` (catalog pages) across the finished library, which is correct as-is per the Option A decision above.
+
+New i18n keys (`progress.*` in `en.json`/`es.json`): `editionDifferLink`, `editionPagesLabel`, `editionOverrideNote`, `editionUseDefault`. Removed the now-unused `progress.editionNote` static string, superseded by the toggle UI.
 
 ### v0.37.2 — List pages, cover hover, email sign-in & fixes
 

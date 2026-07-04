@@ -655,7 +655,10 @@
     "title": "Actualizá tu progreso",
     "pagesLabel": "Páginas leídas",
     "pagesOf": "(de {total})",
-    "editionNote": "Recuento de páginas de nuestro catálogo — tu edición puede diferir",
+    "editionDifferLink": "Mi edición tiene un número de páginas diferente",
+    "editionPagesLabel": "Páginas de tu edición",
+    "editionOverrideNote": "Esto solo afecta tu progreso de lectura — los demás siguen viendo el recuento de páginas del catálogo",
+    "editionUseDefault": "Usar el recuento de páginas del catálogo",
     "cancel": "Cancelar",
     "save": "Guardar progreso ❦",
     "saveFinished": "Guardar — ¡terminaste! ❦",
@@ -1303,68 +1306,50 @@
     "changesTitle": "Cambios",
     "changesPara1": "Es posible que actualicemos esta política de vez en cuando. Los cambios significativos se indicarán en las notas de la versión dentro de la aplicación."
   },
-  
-    "terms": {
-      "breadcrumbs": "Términos y Condiciones",
-      "title": "<em class=\"accent\">Términos</em> y Condiciones",
-      "lastUpdated": "Última actualización: 25 de junio de 2026",
-      "acceptanceTitle": "Aceptación",
-      "acceptancePara1": "Al crear una cuenta o utilizar The Books Oracle (thebooksoracle.com), aceptas estas Condiciones. Si no estás de acuerdo, por favor no utilices el servicio. Estas condiciones constituyen un acuerdo vinculante entre tú y el operador de The Books Oracle, un desarrollador individual basado en Costa Rica.",
-
-      "theServiceTitle": "El servicio",
-      "theServicePara1": "The Books Oracle es un compañero de lectura personal que ofrece seguimiento de biblioteca, recomendaciones de libros impulsadas por IA, planes de lectura y clubes de lectura. Prestamos el servicio en la medida de lo posible y nos reservamos el derecho de modificar o suspender cualquier parte del mismo con un aviso previo razonable a través de las notas de la versión en la aplicación.",
-
-      "yourAccountTitle": "Tu cuenta",
-      "yourAccountPara1": "Debes iniciar sesión con una cuenta de Google válida y tener al menos 13 años. Solo se permite una cuenta por persona; la creación de múltiples cuentas para eludir los límites de cuota u otras restricciones puede dar lugar a la cancelación de la cuenta.",
-
-      "acceptableUseTitle": "Uso aceptable",
-      "acceptableUsePara1": "Aceptas no: eludir las cuotas de IA mediante el uso de múltiples cuentas; realizar ingeniería inversa o extraer datos del servicio a gran escala; utilizar el servicio de forma ilegal; publicar contenido dañino en los clubes; ni intentar acceder a los datos de otros usuarios.",
-
-      "yourContentTitle": "Tu contenido",
-      "yourContentPara1": "Tus datos de lectura te pertenecen. Nos otorgas una licencia limitada para almacenarlos y procesarlos únicamente con el fin de prestar el servicio. El contenido que compartas en los clubes de lectura es visible para los demás miembros del club y es de tu exclusiva responsabilidad. Puedes eliminar tu cuenta y todo tu contenido en cualquier momento desde Perfil.",
-
-      "aiFeaturesAndAccuracyTitle": "Funciones de IA y precisión",
-      "aiFeaturesAndAccuracyPara1": "Las recomendaciones de Oracle, los planes de lectura y las categorizaciones son generados por IA y se proporcionan con fines de entretenimiento y descubrimiento. Pueden contener imprecisiones. No garantizamos la precisión, integridad o idoneidad del contenido generado por IA.",
-
-      "subscriptionsAndPaymentTitle": "Suscripciones y pago",
-      "subscriptionsAndPaymentPara1": "El plan Pro se factura mensualmente a $5 USD a través de Paddle, quien actúa como Comerciante de Registro (Merchant of Record). Las suscripciones se renuevan automáticamente hasta que se cancelen. Puedes cancelarla desde Perfil en cualquier momento; el acceso continuará durante el periodo de facturación actual. Nos reservamos el derecho de cambiar los precios con un aviso de 30 días a los suscriptores activos.",
-
-      "intellectualPropertyTitle": "Propiedad intelectual",
-      "intellectualPropertyPara1": "La aplicación The Books Oracle, su diseño y el contenido original son propiedad del operador. Los metadatos de los libros proceden de catálogos de terceros y están sujetos a sus respectivas licencias.",
-
-      "disclaimerAndLimitationOfLiabilityTitle": "Exclusión de garantías y limitación de responsabilidad",
-      "disclaimerAndLimitationOfLiabilityPara1": "The Books Oracle se proporciona \"tal cual\" sin garantías de ningún tipo. No nos hacemos responsables de la pérdida de datos, interrupciones del servicio o imprecisiones en el contenido generado por IA. Nuestra responsabilidad total por cualquier reclamación no superará el importe que nos hayas pagado en los 12 meses anteriores.",
-
-      "governingLawTitle": "Legislación aplicable",
-      "governingLawPara1": "Estas condiciones se rigen por las leyes de Costa Rica. Preguntas: support@thebooksoracle.com"
-    },
-  
-    "refunds": {
-       "breadcrumbs": "Política de Reembolsos",
-       "title": "Política de <em class=\"accent\">Reembolsos</em>",
-       "lastUpdated": "Última actualización: 25 de junio de 2026",
-      "ourApproachTitle": "Nuestro enfoque",
-      "ourApproachPara1": "Queremos que estés conforme con The Books Oracle Pro. Si te has suscrito y sientes que no es para ti, buscaremos una solución.",
-
-      "day14MoneyBackGuaranteeTitle": "Garantía de reembolso de 14 días",
-      "day14MoneyBackGuaranteePara1": "Si te suscribes a The Books Oracle Pro y no estás satisfecho por cualquier motivo, puedes solicitar un reembolso completo dentro de los 14 días posteriores a tu compra inicial, sin preguntas.",
-      "day14MoneyBackGuaranteePara2": "Envía un correo electrónico a support@thebooksoracle.com con el asunto \"Solicitud de reembolso\" (Refund request) y la dirección de correo electrónico de tu cuenta. Procesaremos el reembolso en un plazo de 5 días hábiles.",
-
-      "renewalsTitle": "Renovaciones",
-      "renewalsPara1": "Las renovaciones mensuales no son reembolsables automáticamente una vez cobradas. Cancela antes de la fecha de renovación desde tu página de Perfil para evitar el siguiente cargo. Si se produjo un cargo de renovación debido a un error técnico por nuestra parte, contáctanos dentro de los 7 días para obtener un reembolso completo.",
-
-      "serviceOutagesTitle": "Interrupciones del servicio",
-      "serviceOutagesPara1": "Si The Books Oracle experimenta una interrupción significativa que afecte a las funciones de IA durante más de 48 horas consecutivas, los suscriptores podrán solicitar un crédito prorrateado o un reembolso por el periodo afectado.",
-
-      "howRefundsAreProcessedTitle": "Cómo se procesan los reembolsos",
-      "howRefundsAreProcessedPara1": "Los pagos son procesados por LemonSqueezy. Los reembolsos se devuelven al método de pago original y suelen tardar entre 5 y 10 días hábiles en aparecer. Después de un reembolso, tu suscripción pasará al plan gratuito. Tus datos de lectura se conservarán.",
-      "howRefundsAreProcessedPara2": "Después de un reembolso, tu suscripción se reduce al nivel gratuito. Tus datos de lectura se conservan.",
-
-      "exceptionsTitle": "Excepciones",
-      "exceptionsPara1": "Nos reservamos el derecho de rechazar solicitudes de reembolso en casos de abuso evidente, como suscribirse y solicitar reembolsos repetidamente o utilizar múltiples cuentas para eludir los límites.",
-
-      "contactTitle": "Contacto",
-      "contactPara1": "Para preguntas sobre reembolsos o facturación: support@thebooksoracle.com — normalmente respondemos en un plazo de 1 a 2 días hábiles."
-    }
-  
+  "terms": {
+    "breadcrumbs": "Términos y Condiciones",
+    "title": "<em class=\"accent\">Términos</em> y Condiciones",
+    "lastUpdated": "Última actualización: 25 de junio de 2026",
+    "acceptanceTitle": "Aceptación",
+    "acceptancePara1": "Al crear una cuenta o utilizar The Books Oracle (thebooksoracle.com), aceptas estas Condiciones. Si no estás de acuerdo, por favor no utilices el servicio. Estas condiciones constituyen un acuerdo vinculante entre tú y el operador de The Books Oracle, un desarrollador individual basado en Costa Rica.",
+    "theServiceTitle": "El servicio",
+    "theServicePara1": "The Books Oracle es un compañero de lectura personal que ofrece seguimiento de biblioteca, recomendaciones de libros impulsadas por IA, planes de lectura y clubes de lectura. Prestamos el servicio en la medida de lo posible y nos reservamos el derecho de modificar o suspender cualquier parte del mismo con un aviso previo razonable a través de las notas de la versión en la aplicación.",
+    "yourAccountTitle": "Tu cuenta",
+    "yourAccountPara1": "Debes iniciar sesión con una cuenta de Google válida y tener al menos 13 años. Solo se permite una cuenta por persona; la creación de múltiples cuentas para eludir los límites de cuota u otras restricciones puede dar lugar a la cancelación de la cuenta.",
+    "acceptableUseTitle": "Uso aceptable",
+    "acceptableUsePara1": "Aceptas no: eludir las cuotas de IA mediante el uso de múltiples cuentas; realizar ingeniería inversa o extraer datos del servicio a gran escala; utilizar el servicio de forma ilegal; publicar contenido dañino en los clubes; ni intentar acceder a los datos de otros usuarios.",
+    "yourContentTitle": "Tu contenido",
+    "yourContentPara1": "Tus datos de lectura te pertenecen. Nos otorgas una licencia limitada para almacenarlos y procesarlos únicamente con el fin de prestar el servicio. El contenido que compartas en los clubes de lectura es visible para los demás miembros del club y es de tu exclusiva responsabilidad. Puedes eliminar tu cuenta y todo tu contenido en cualquier momento desde Perfil.",
+    "aiFeaturesAndAccuracyTitle": "Funciones de IA y precisión",
+    "aiFeaturesAndAccuracyPara1": "Las recomendaciones de Oracle, los planes de lectura y las categorizaciones son generados por IA y se proporcionan con fines de entretenimiento y descubrimiento. Pueden contener imprecisiones. No garantizamos la precisión, integridad o idoneidad del contenido generado por IA.",
+    "subscriptionsAndPaymentTitle": "Suscripciones y pago",
+    "subscriptionsAndPaymentPara1": "El plan Pro se factura mensualmente a $5 USD a través de Paddle, quien actúa como Comerciante de Registro (Merchant of Record). Las suscripciones se renuevan automáticamente hasta que se cancelen. Puedes cancelarla desde Perfil en cualquier momento; el acceso continuará durante el periodo de facturación actual. Nos reservamos el derecho de cambiar los precios con un aviso de 30 días a los suscriptores activos.",
+    "intellectualPropertyTitle": "Propiedad intelectual",
+    "intellectualPropertyPara1": "La aplicación The Books Oracle, su diseño y el contenido original son propiedad del operador. Los metadatos de los libros proceden de catálogos de terceros y están sujetos a sus respectivas licencias.",
+    "disclaimerAndLimitationOfLiabilityTitle": "Exclusión de garantías y limitación de responsabilidad",
+    "disclaimerAndLimitationOfLiabilityPara1": "The Books Oracle se proporciona \"tal cual\" sin garantías de ningún tipo. No nos hacemos responsables de la pérdida de datos, interrupciones del servicio o imprecisiones en el contenido generado por IA. Nuestra responsabilidad total por cualquier reclamación no superará el importe que nos hayas pagado en los 12 meses anteriores.",
+    "governingLawTitle": "Legislación aplicable",
+    "governingLawPara1": "Estas condiciones se rigen por las leyes de Costa Rica. Preguntas: support@thebooksoracle.com"
+  },
+  "refunds": {
+    "breadcrumbs": "Política de Reembolsos",
+    "title": "Política de <em class=\"accent\">Reembolsos</em>",
+    "lastUpdated": "Última actualización: 25 de junio de 2026",
+    "ourApproachTitle": "Nuestro enfoque",
+    "ourApproachPara1": "Queremos que estés conforme con The Books Oracle Pro. Si te has suscrito y sientes que no es para ti, buscaremos una solución.",
+    "day14MoneyBackGuaranteeTitle": "Garantía de reembolso de 14 días",
+    "day14MoneyBackGuaranteePara1": "Si te suscribes a The Books Oracle Pro y no estás satisfecho por cualquier motivo, puedes solicitar un reembolso completo dentro de los 14 días posteriores a tu compra inicial, sin preguntas.",
+    "day14MoneyBackGuaranteePara2": "Envía un correo electrónico a support@thebooksoracle.com con el asunto \"Solicitud de reembolso\" (Refund request) y la dirección de correo electrónico de tu cuenta. Procesaremos el reembolso en un plazo de 5 días hábiles.",
+    "renewalsTitle": "Renovaciones",
+    "renewalsPara1": "Las renovaciones mensuales no son reembolsables automáticamente una vez cobradas. Cancela antes de la fecha de renovación desde tu página de Perfil para evitar el siguiente cargo. Si se produjo un cargo de renovación debido a un error técnico por nuestra parte, contáctanos dentro de los 7 días para obtener un reembolso completo.",
+    "serviceOutagesTitle": "Interrupciones del servicio",
+    "serviceOutagesPara1": "Si The Books Oracle experimenta una interrupción significativa que afecte a las funciones de IA durante más de 48 horas consecutivas, los suscriptores podrán solicitar un crédito prorrateado o un reembolso por el periodo afectado.",
+    "howRefundsAreProcessedTitle": "Cómo se procesan los reembolsos",
+    "howRefundsAreProcessedPara1": "Los pagos son procesados por LemonSqueezy. Los reembolsos se devuelven al método de pago original y suelen tardar entre 5 y 10 días hábiles en aparecer. Después de un reembolso, tu suscripción pasará al plan gratuito. Tus datos de lectura se conservarán.",
+    "howRefundsAreProcessedPara2": "Después de un reembolso, tu suscripción se reduce al nivel gratuito. Tus datos de lectura se conservan.",
+    "exceptionsTitle": "Excepciones",
+    "exceptionsPara1": "Nos reservamos el derecho de rechazar solicitudes de reembolso en casos de abuso evidente, como suscribirse y solicitar reembolsos repetidamente o utilizar múltiples cuentas para eludir los límites.",
+    "contactTitle": "Contacto",
+    "contactPara1": "Para preguntas sobre reembolsos o facturación: support@thebooksoracle.com — normalmente respondemos en un plazo de 1 a 2 días hábiles."
+  }
 }

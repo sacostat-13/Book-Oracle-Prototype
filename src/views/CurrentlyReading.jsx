@@ -32,9 +32,9 @@ export default function CurrentlyReading({ onOpenBook }) {
     setFinishing(null);
   }
 
-  async function handleProgressSave(pagesRead) {
+  async function handleProgressSave(pagesRead, userPageCount) {
     if (!updatingProgress) return;
-    await updateReadingProgress(updatingProgress, pagesRead);
+    await updateReadingProgress(updatingProgress, pagesRead, userPageCount);
     setUpdatingProgress(null);
   }
 
@@ -74,7 +74,8 @@ export default function CurrentlyReading({ onOpenBook }) {
             const days = daysReading(b.startedAt);
             const genres = state.genresByBookId?.[b.bookId];
             const pagesRead = b.pagesRead ?? 0;
-            const pct = b.pp && pagesRead > 0 ? Math.min(100, Math.round((pagesRead / b.pp) * 100)) : null;
+            const totalPages = b.userPageCount ?? b.pp;
+            const pct = totalPages && pagesRead > 0 ? Math.min(100, Math.round((pagesRead / totalPages) * 100)) : null;
             return (
               <div className="cr-card" key={bookKey(b)}>
                 <div
@@ -109,11 +110,11 @@ export default function CurrentlyReading({ onOpenBook }) {
                         {days && <> · <span className="cr-days">{days}</span></>}
                       </span>
                     )}
-                    {b.pp && <span className="cr-pages">{b.pp} pages</span>}
+                    {totalPages && <span className="cr-pages">{totalPages} pages</span>}
                   </div>
 
                   {/* Progress bar */}
-                  {b.pp ? (
+                  {totalPages ? (
                     <div className="cr-progress-wrap">
                       <div className="cr-progress-bar-track">
                         <div
@@ -123,8 +124,8 @@ export default function CurrentlyReading({ onOpenBook }) {
                       </div>
                       <div className="cr-progress-label">
                         {pagesRead > 0
-                          ? t('currentlyReading.pagesReadPct', { read: pagesRead, total: b.pp, pct: pct ?? 0 })
-                          : t('currentlyReading.pagesRead', { read: 0, total: b.pp })}
+                          ? t('currentlyReading.pagesReadPct', { read: pagesRead, total: totalPages, pct: pct ?? 0 })
+                          : t('currentlyReading.pagesRead', { read: 0, total: totalPages })}
                       </div>
                     </div>
                   ) : pagesRead > 0 ? (

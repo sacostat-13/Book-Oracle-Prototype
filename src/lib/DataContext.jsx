@@ -275,7 +275,7 @@ async function loadFromSupabase(userId) {
       .order('created_at', { ascending: false }),
     supabase
       .from('currently_reading')
-      .select('started_at, pages_read, book:books(*, position_in_series, series:series(*))')
+      .select('started_at, pages_read, user_page_count, book:books(*, position_in_series, series:series(*))')
       .eq('user_id', userId),
   ]);
 
@@ -346,7 +346,11 @@ async function loadFromSupabase(userId) {
   const currentlyReading = (currentlyReadingRes.data || [])
     .map((r) =>
       r.book
-        ? bookRowToClient(r.book, { startedAt: r.started_at, pagesRead: r.pages_read ?? 0 })
+        ? bookRowToClient(r.book, {
+            startedAt: r.started_at,
+            pagesRead: r.pages_read ?? 0,
+            userPageCount: r.user_page_count ?? null,
+          })
         : null
     )
     .filter(Boolean);
@@ -1017,21 +1021,32 @@ export function DataProvider({ children }) {
   // v0.28: update how many pages the user has read for a currently-reading book.
   // Optimistically updates local state; persists to currently_reading.pages_read.
   const updateReadingProgress = useCallback(
-    async (book, pagesRead) => {
+    // userPageCount: pass a positive integer to set a per-user page-count
+    // override for this book (e.g. a different edition), or null to clear
+    // the override and fall back to the catalog book.pages. Passing
+    // undefined leaves whatever override is already stored untouched.
+    async (book, pagesRead, userPageCount) => {
       const pages = Math.max(0, Math.floor(pagesRead));
+      const hasOverrideArg = userPageCount !== undefined;
+
       // Optimistic local update
       setState((s) => ({
         ...s,
         currentlyReading: s.currentlyReading.map((b) =>
-          b.bookId === book.bookId ? { ...b, pagesRead: pages } : b
+          b.bookId === book.bookId
+            ? { ...b, pagesRead: pages, ...(hasOverrideArg ? { userPageCount } : {}) }
+            : b
         ),
       }));
 
       if (!user || !book.bookId) return;
 
+      const update = { pages_read: pages };
+      if (hasOverrideArg) update.user_page_count = userPageCount;
+
       const { error } = await supabase
         .from('currently_reading')
-        .update({ pages_read: pages })
+        .update(update)
         .eq('user_id', user.id)
         .eq('book_id', book.bookId);
 

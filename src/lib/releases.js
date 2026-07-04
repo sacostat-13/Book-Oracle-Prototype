@@ -16,9 +16,22 @@
 
 // The version label shown as "current" — keep in sync with package.json and
 // the README version line.
-export const CURRENT_VERSION = 'v0.37.2';
+export const CURRENT_VERSION = 'v0.37.3';
 
-export const RELEASES = [
+export const RELEASES = [{
+    version: 'v0.37.3',
+    date: '2026-07-03',
+    titleEn: 'Custom page counts for your edition',
+    titleEs: 'Número de páginas personalizado para tu edición',
+    bodyEn: [
+      'When updating your reading progress, you can now tell the Oracle your edition has a different page count than our catalog — a paperback, a translation, whatever you\'re actually holding.',
+      'Your progress bar, percentage, and book club session progress now use your own page count once you\'ve set one. Everyone else in the club still sees the catalog page count.',
+    ],
+    bodyEs: [
+      'Al actualizar tu progreso de lectura, ahora podés decirle al Oráculo que tu edición tiene un número de páginas distinto al del catálogo — una edición de bolsillo, una traducción, lo que sea que tengas en mano.',
+      'Tu barra de progreso, el porcentaje y el progreso en las sesiones de club de lectura ahora usan tu propio número de páginas una vez que lo configurás. El resto del club sigue viendo el número de páginas del catálogo.',
+    ],
+  },
   {
     version: 'v0.37.2',
     date: '2026-07-02',
