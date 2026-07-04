@@ -16,9 +16,24 @@
 
 // The version label shown as "current" — keep in sync with package.json and
 // the README version line.
-export const CURRENT_VERSION = 'v0.37.3';
+export const CURRENT_VERSION = 'v0.38';
 
 export const RELEASES = [{
+    version: 'v0.38',
+    date: '2026-07-03',
+    titleEn: 'A richer onboarding, tuned to your taste',
+    titleEs: 'Una bienvenida m\u00e1s completa, ajustada a tu gusto',
+    bodyEn: [
+      'Onboarding now asks for your favorite genres and what you\'re in the mood for right now, alongside the reading level, Goodreads import, and goal steps you already know.',
+      'These new preferences show up on your Profile, where you can update them any time \u2014 no need to redo onboarding.',
+      'Oracle Spark now leans on your favorite genres and current mood when picking a surprise from your wishlist.',
+    ],
+    bodyEs: [
+      'La bienvenida ahora te pregunta tus g\u00e9neros favoritos y qu\u00e9 tipo de lectura busc\u00e1s en este momento, adem\u00e1s de los pasos de nivel lector, importaci\u00f3n de Goodreads y meta que ya conoc\u00e9s.',
+      'Estas nuevas preferencias aparecen en tu Perfil, donde pod\u00e9s actualizarlas cuando quieras \u2014 sin tener que repetir la bienvenida.',
+      'Oracle Spark ahora toma en cuenta tus g\u00e9neros favoritos y tu \u00e1nimo actual al elegir una sorpresa de tu lista de deseos.',
+    ],
+  }, {
     version: 'v0.37.3',
     date: '2026-07-03',
     titleEn: 'Custom page counts for your edition',

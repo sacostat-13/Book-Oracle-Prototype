@@ -569,18 +569,25 @@
     "friendsRemove": "Remove",
     "shareProfile": "Your profile link",
     "copyLink": "Copy",
-    "pageTitle": "Your <em class=\"accent\">reading profile</em>"
+    "pageTitle": "Your <em class=\"accent\">reading profile</em>",
+    "labelFavoriteGenres": "Favorite genres",
+    "labelCurrentMood": "Looking for right now",
+    "editFavoriteGenres": "Edit favorite genres",
+    "genresNotSet": "You haven't picked any favorite genres yet.",
+    "moodNotSet": "You haven't set a current mood yet.",
+    "genreMaxHint": "Up to {max} genres.",
+    "moodMaxHint": "Up to {max}."
   },
   "onboarding": {
-    "step1Eyebrow": "Step 1 of 3 · Reader profile",
+    "step1Eyebrow": "Step 1 of 5 · Reader profile",
     "step1Title": "What kind of reader are you, right now?",
     "step1Desc": "No judgment, no pressure. This just helps us calibrate suggestions and reading plans to where you actually are.",
-    "step2Eyebrow": "Step 2 of 3 · Your shelves",
-    "step2Title": "Bring your reading history with you.",
-    "step2Desc": "Export your Goodreads library and drop the CSV here. We'll fill your virtual library with what you've already read so suggestions can be smarter — and so the shelves don't start empty.",
-    "step3Eyebrow": "Step 3 of 3 · Your goal",
-    "step3Title": "What are you hoping to get from this?",
-    "step3Desc": "This shapes the kind of reading plans we'll suggest. You can change it anytime in your profile.",
+    "step2Eyebrow": "Step 2 of 5 · Favorite genres",
+    "step2Title": "What do you gravitate toward?",
+    "step2Desc": "Pick up to 5 genres you love. This tunes what the Oracle reaches for first — you can change these anytime in your profile.",
+    "step3Eyebrow": "Step 3 of 5 · Right now",
+    "step3Title": "What are you looking for at the moment?",
+    "step3Desc": "Pick up to 3. This is the mood we'll lean into for suggestions this week — it's easy to update later.",
     "continue": "Continue ❦",
     "back": "← Back",
     "enterLibrary": "Enter the library ❦",
@@ -627,6 +634,47 @@
       "random": {
         "title": "Just give me something to read",
         "sub": "I'm not trying to grow. I want a good book each month, suited to my taste. Surprise me."
+      }
+    },
+    "genreCount": "{count} of {max} selected",
+    "step4Eyebrow": "Step 4 of 5 · Your shelves",
+    "step4Title": "Bring your reading history with you.",
+    "step4Desc": "Export your Goodreads library and drop the CSV here. We'll fill your virtual library with what you've already read so suggestions can be smarter — and so the shelves don't start empty.",
+    "step5Eyebrow": "Step 5 of 5 · Your goal",
+    "step5Title": "What are you hoping to get from this?",
+    "step5Desc": "This shapes the kind of reading plans we'll suggest. You can change it anytime in your profile.",
+    "moods": {
+      "comfort": {
+        "title": "A comfort read",
+        "sub": "Familiar, gentle, low-stakes. Something to unwind into."
+      },
+      "challenge": {
+        "title": "A real challenge",
+        "sub": "Dense prose, big ideas. I want to work for it."
+      },
+      "escapism": {
+        "title": "Total escapism",
+        "sub": "Take me somewhere else entirely — plot, world, momentum."
+      },
+      "mind-bending": {
+        "title": "Something mind-bending",
+        "sub": "Structure, twist, or premise that rewires how I think."
+      },
+      "character-driven": {
+        "title": "Character-driven",
+        "sub": "I want to live inside someone else’s interior life."
+      },
+      "atmospheric": {
+        "title": "Atmosphere and mood",
+        "sub": "Heavy on tone and setting — gothic, eerie, immersive."
+      },
+      "fast-paced": {
+        "title": "Fast-paced",
+        "sub": "Propulsive. I want to tear through it."
+      },
+      "short-read": {
+        "title": "Something short",
+        "sub": "A slim volume or novella — I need a quick win."
       }
     }
   },

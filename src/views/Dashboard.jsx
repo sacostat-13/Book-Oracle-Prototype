@@ -159,7 +159,7 @@ function CurrentlyReadingWidget({ books, onOpenBook, t }) {
 }
 
 // ─── Oracle Spark ─────────────────────────────────────────────────────────────
-function OracleSparkWidget({ wishlist, go, t }) {
+function OracleSparkWidget({ wishlist, go, t, profile }) {
   const { quota, refresh: refreshQuota } = useOracleQuota();
   const [state,  setState]  = useState('idle');
   const [result, setResult] = useState(null);
@@ -174,8 +174,16 @@ function OracleSparkWidget({ wishlist, go, t }) {
       const titles = (wishlist || [])
         .sort(() => Math.random() - 0.5).slice(0, 20)
         .map((b) => `"${b.t}" by ${b.a}`).join('\n');
+      // v0.38: fold onboarding personalization into the Spark prompt when present —
+      // favorite genres bias the pick, current mood shapes the "reason" framing.
+      const favGenres = profile?.favoriteGenres || [];
+      const mood = profile?.currentMood || [];
+      const personalization = [
+        favGenres.length > 0 ? `Reader's favorite genres: ${favGenres.join(', ')}. Lean toward these when a good option exists, but don't force it.` : null,
+        mood.length > 0 ? `Reader says they're currently in the mood for: ${mood.join(', ')}. Frame the pick and reason with this in mind.` : null,
+      ].filter(Boolean).join(' ');
       const raw = await callClaude(
-        `From this wishlist, pick ONE book that would most pleasantly surprise me right now. Return ONLY JSON: { title, author, reason (max 20 words, evocative) }.\n\n${titles}`,
+        `${personalization ? personalization + '\n\n' : ''}From this wishlist, pick ONE book that would most pleasantly surprise me right now. Return ONLY JSON: { title, author, reason (max 20 words, evocative) }.\n\n${titles}`,
         'You are a literary oracle. Be bold. Return only valid JSON, no markdown.'
       );
       if (!raw) { setState('error'); return; }
@@ -937,7 +945,7 @@ export default function Dashboard({ onOpenBook }) {
   function renderWidget(id) {
     switch (id) {
       case 'currently-reading': return <CurrentlyReadingWidget key={id} books={state.currentlyReading || []} onOpenBook={onOpenBook} t={t} />;
-      case 'oracle-spark':      return <OracleSparkWidget      key={id} wishlist={state.wishlist} go={go} t={t} />;
+      case 'oracle-spark':      return <OracleSparkWidget      key={id} wishlist={state.wishlist} go={go} t={t} profile={state.profile} />;
       case 'quick-actions':     return <QuickActionsWidget      key={id} go={go} t={t} />;
       case 'reading-stats':     return <ReadingStatsWidget      key={id} library={state.library || []} go={go} t={t} />;
       case 'reading-goal':      return <ReadingGoalWidget       key={id} library={state.library || []} readingGoalCount={state.readingGoalCount} setReadingGoalCount={setReadingGoalCount} t={t} />;

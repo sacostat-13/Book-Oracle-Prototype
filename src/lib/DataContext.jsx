@@ -16,6 +16,8 @@ const defaultState = {
     readingLevel: null,
     goal: null,
     goodreadsImported: false,
+    favoriteGenres: [], // v0.38: onboarding — up to 5 genre names
+    currentMood: [],    // v0.38: onboarding — up to 3 mood/intent chip ids
     displayName: null,
     username: null,
     avatarUrl: null,
@@ -567,6 +569,9 @@ async function savePreferences(userId, state) {
         readingLevel: state.profile.readingLevel,
         goal: state.profile.goal,
         goodreadsImported: state.profile.goodreadsImported,
+        // v0.38: onboarding personalization — feeds Oracle prompts + editable from Profile
+        favoriteGenres: state.profile.favoriteGenres || [],
+        currentMood: state.profile.currentMood || [],
         readNext: state.readNext,
         shelfSortMode: state.shelfSortMode,
         oracleMode: state.oracleMode,

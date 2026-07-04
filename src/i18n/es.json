@@ -569,18 +569,25 @@
     "friendsRemove": "Eliminar",
     "shareProfile": "Tu link de perfil",
     "copyLink": "Copiar",
-    "pageTitle": "Tu <em class=\"accent\">perfil lector</em>"
+    "pageTitle": "Tu <em class=\"accent\">perfil lector</em>",
+    "labelFavoriteGenres": "Géneros favoritos",
+    "labelCurrentMood": "Buscando ahora mismo",
+    "editFavoriteGenres": "Editar géneros favoritos",
+    "genresNotSet": "Todavía no elegiste géneros favoritos.",
+    "moodNotSet": "Todavía no definiste un ánimo actual.",
+    "genreMaxHint": "Hasta {max} géneros.",
+    "moodMaxHint": "Hasta {max}."
   },
   "onboarding": {
-    "step1Eyebrow": "Paso 1 de 3 · Perfil lector",
+    "step1Eyebrow": "Paso 1 de 5 · Perfil lector",
     "step1Title": "¿Qué clase de lectora sos ahora mismo?",
     "step1Desc": "Sin juicios ni presiones. Esto solo ayuda a calibrar sugerencias y planes de lectura a donde realmente estás.",
-    "step2Eyebrow": "Paso 2 de 3 · Tus estantes",
-    "step2Title": "Traé tu historial de lectura.",
-    "step2Desc": "Exportá tu biblioteca de Goodreads y arrastrá el CSV acá. Vamos a llenar tu biblioteca virtual con lo que ya leíste para que las sugerencias sean más inteligentes — y los estantes no empiecen vacíos.",
-    "step3Eyebrow": "Paso 3 de 3 · Tu meta",
-    "step3Title": "¿Qué esperás conseguir con esto?",
-    "step3Desc": "Esto define qué tipo de planes de lectura te vamos a sugerir. Podés cambiarlo en cualquier momento desde tu perfil.",
+    "step2Eyebrow": "Paso 2 de 5 · Géneros favoritos",
+    "step2Title": "¿Hacia dónde te inclinás?",
+    "step2Desc": "Elegí hasta 5 géneros que te encanten. Esto ajusta lo que el Oráculo prioriza — podés cambiarlos cuando querás desde tu perfil.",
+    "step3Eyebrow": "Paso 3 de 5 · Ahora mismo",
+    "step3Title": "¿Qué estás buscando en este momento?",
+    "step3Desc": "Elegí hasta 3. Este es el ánimo que vamos a priorizar en las sugerencias de esta semana — fácil de actualizar después.",
     "continue": "Continuar ❦",
     "back": "← Atrás",
     "enterLibrary": "Entrar a la biblioteca ❦",
@@ -627,6 +634,47 @@
       "random": {
         "title": "Dame algo para leer",
         "sub": "No busco crecer. Quiero un buen libro cada mes, a mi gusto. Sorprendeme."
+      }
+    },
+    "genreCount": "{count} de {max} seleccionados",
+    "step4Eyebrow": "Paso 4 de 5 · Tus estantes",
+    "step4Title": "Traé tu historial de lectura.",
+    "step4Desc": "Exportá tu biblioteca de Goodreads y soltá el CSV acá. Vamos a llenar tu biblioteca virtual con lo que ya leíste para que las sugerencias sean más inteligentes — y para que los estantes no empiecen vacíos.",
+    "step5Eyebrow": "Paso 5 de 5 · Tu meta",
+    "step5Title": "¿Qué esperás sacar de esto?",
+    "step5Desc": "Esto define el tipo de planes de lectura que te vamos a sugerir. Podés cambiarlo cuando querás desde tu perfil.",
+    "moods": {
+      "comfort": {
+        "title": "Una lectura reconfortante",
+        "sub": "Familiar, suave, sin presión. Algo para relajarte."
+      },
+      "challenge": {
+        "title": "Un verdadero reto",
+        "sub": "Prosa densa, ideas grandes. Quiero esforzarme."
+      },
+      "escapism": {
+        "title": "Escapismo total",
+        "sub": "Llevame a otro lado por completo — trama, mundo, ritmo."
+      },
+      "mind-bending": {
+        "title": "Algo que te vuele la cabeza",
+        "sub": "Estructura, giro o premisa que me cambie la forma de pensar."
+      },
+      "character-driven": {
+        "title": "Centrado en personajes",
+        "sub": "Quiero meterme en la vida interior de alguien más."
+      },
+      "atmospheric": {
+        "title": "Atmósfera y ambiente",
+        "sub": "Fuerte en tono y ambientación — gótico, inquietante, inmersivo."
+      },
+      "fast-paced": {
+        "title": "Ritmo rápido",
+        "sub": "Que avance sin parar. Quiero devorarlo."
+      },
+      "short-read": {
+        "title": "Algo corto",
+        "sub": "Un volumen breve o novela corta — necesito una victoria rápida."
       }
     }
   },

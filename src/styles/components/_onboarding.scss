@@ -136,6 +136,52 @@
   margin-top: 4px;
 }
 
+.choice:disabled {
+  opacity: .4;
+  cursor: not-allowed;
+  &:hover { border-color: var(--ro-border-strong); }
+}
+
+// ── Genre chips (favorite genres picker, v0.38) ──────────────────────────────
+.chip-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 22px;
+}
+
+.chip {
+  border: 1px solid var(--ro-border-strong);
+  background: transparent;
+  border-radius: var(--ro-radius-pill);
+  padding: 8px 16px;
+  font-family: var(--ro-font-body);
+  font-size: 13px;
+  color: var(--ro-text);
+  cursor: pointer;
+  transition: border-color .15s, background .15s;
+
+  &:hover:not(:disabled) { border-color: var(--ro-gold); }
+
+  &.selected {
+    border-color: var(--ro-gold);
+    background: color-mix(in srgb, var(--ro-gold) 10%, transparent);
+    color: var(--ro-gold-text);
+  }
+
+  &:disabled {
+    opacity: .4;
+    cursor: not-allowed;
+  }
+}
+
+.onb-hint {
+  font-family: var(--ro-font-body);
+  font-size: 12px;
+  color: var(--ro-muted);
+  margin-top: 10px;
+}
+
 // ── Goodreads CSV dropzone ────────────────────────────────────────────────────
 .upload-zone {
   border: 1.5px dashed var(--ro-border-strong);

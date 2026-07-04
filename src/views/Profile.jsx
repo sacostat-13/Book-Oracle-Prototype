@@ -331,6 +331,87 @@ function PrivacySection({ profile, updatePrivacyPrefs, t }) {
   );
 }
 
+// ── Favorite genres + current mood (v0.38, editable from Profile) ────────────
+const MOODS = ['comfort', 'challenge', 'escapism', 'mind-bending', 'character-driven', 'atmospheric', 'fast-paced', 'short-read'];
+const GENRE_MAX = 5;
+const MOOD_MAX = 3;
+
+function ReaderPrefsSection({ state, setProfile, t }) {
+  const [editingGenres, setEditingGenres] = useState(false);
+  const [editingMood, setEditingMood] = useState(false);
+  const favoriteGenres = state.profile.favoriteGenres || [];
+  const currentMood = state.profile.currentMood || [];
+  const genreOptions = (state.genres || []).slice().sort((a, b) => a.name.localeCompare(b.name));
+
+  function toggleGenre(name) {
+    const has = favoriteGenres.includes(name);
+    if (!has && favoriteGenres.length >= GENRE_MAX) return;
+    setProfile({ favoriteGenres: has ? favoriteGenres.filter((g) => g !== name) : [...favoriteGenres, name] });
+  }
+
+  function toggleMood(id) {
+    const has = currentMood.includes(id);
+    if (!has && currentMood.length >= MOOD_MAX) return;
+    setProfile({ currentMood: has ? currentMood.filter((m) => m !== id) : [...currentMood, id] });
+  }
+
+  return (
+    <div className="pf-section">
+      <h2 className="pf-section__title">{t('profile.labelFavoriteGenres')}</h2>
+      {!editingGenres ? (
+        <p className="pf-text pf-text--gap-lg">
+          {favoriteGenres.length > 0 ? favoriteGenres.join(', ') : t('profile.genresNotSet')}
+          <br />
+          <button className="btn-secondary" onClick={() => setEditingGenres(true)}>{t('common.edit')}</button>
+        </p>
+      ) : (
+        <>
+          <div className="chip-grid">
+            {genreOptions.map((g) => (
+              <button
+                key={g.id}
+                className={`chip ${favoriteGenres.includes(g.name) ? 'selected' : ''}`}
+                disabled={!favoriteGenres.includes(g.name) && favoriteGenres.length >= GENRE_MAX}
+                onClick={() => toggleGenre(g.name)}
+              >
+                {g.name}
+              </button>
+            ))}
+          </div>
+          <p className="onb-hint">{t('profile.genreMaxHint', { max: GENRE_MAX })}</p>
+          <button className="btn-secondary" onClick={() => setEditingGenres(false)}>{t('common.done')}</button>
+        </>
+      )}
+
+      <h2 className="pf-section__title">{t('profile.labelCurrentMood')}</h2>
+      {!editingMood ? (
+        <p className="pf-text pf-text--gap-lg">
+          {currentMood.length > 0 ? currentMood.map((id) => t(`onboarding.moods.${id}.title`)).join(', ') : t('profile.moodNotSet')}
+          <br />
+          <button className="btn-secondary" onClick={() => setEditingMood(true)}>{t('common.edit')}</button>
+        </p>
+      ) : (
+        <>
+          <div className="chip-grid">
+            {MOODS.map((id) => (
+              <button
+                key={id}
+                className={`chip ${currentMood.includes(id) ? 'selected' : ''}`}
+                disabled={!currentMood.includes(id) && currentMood.length >= MOOD_MAX}
+                onClick={() => toggleMood(id)}
+              >
+                {t(`onboarding.moods.${id}.title`)}
+              </button>
+            ))}
+          </div>
+          <p className="onb-hint">{t('profile.moodMaxHint', { max: MOOD_MAX })}</p>
+          <button className="btn-secondary" onClick={() => setEditingMood(false)}>{t('common.done')}</button>
+        </>
+      )}
+    </div>
+  );
+}
+
 // ── Friends callout — now a dedicated page ────────────────────────────────────
 function FriendsCallout({ go, t }) {
   const { friends, incoming } = useFriends();
@@ -498,7 +579,7 @@ function ReadingChallenge({ library, readingGoalCount, setReadingGoalCount, t })
 }
 
 export default function Profile() {
-  const { state, resetAll, importGoodreads, showToast, setReadingGoalCount, updateUsername, updateDisplayName, updatePrivacyPrefs } = useData();
+  const { state, resetAll, importGoodreads, showToast, setReadingGoalCount, updateUsername, updateDisplayName, updatePrivacyPrefs, setProfile } = useData();
   const { user } = useAuth();
   const { go, route } = useRouter();
   const t = useT();
@@ -866,6 +947,7 @@ export default function Profile() {
         <UsernameSection profile={state.profile} user={user} updateUsername={updateUsername} t={t} />
         <DisplayNameSection profile={state.profile} updateDisplayName={updateDisplayName} t={t} />
         <PrivacySection profile={state.profile} updatePrivacyPrefs={updatePrivacyPrefs} t={t} />
+        <ReaderPrefsSection state={state} setProfile={setProfile} t={t} />
 
         <h2 className="pf-section__title" style={user ? undefined : { marginTop: 0 }}>
           {t('profile.labelReadingLevel')}

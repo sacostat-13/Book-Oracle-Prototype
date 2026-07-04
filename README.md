@@ -4,7 +4,7 @@ A reading companion — wishlist, library, reading plans, book clubs, and an AI-
 for book discovery. Built with React + Vite + SCSS, backed by Supabase for auth
 and cross-device sync, and Netlify Functions for API proxying.
 
-> Current version: **v0.37.3** — see [Releases](#releases) below for changelog.
+> Current version: **v0.38** — see [Releases](#releases) below for changelog.
 > Upgrading from an earlier version? Check the matching `MIGRATION_*.md` / `UPDATE_*.md`.
 
 ---
@@ -350,6 +350,26 @@ This release is a design-system alignment pass across several views that had dri
 **Profile page layout.** Per the DS profile pattern, Reading Stats / Pace / Top Genres / Most Read Author / Series in Progress are meant to be free-standing sections directly on the page (each already has its own bordered cards/rows) — not nested inside one shared panel. Un-wrapped them from the enclosing `.panel` into a new `.profile-stats` flex column (36px rhythm via `--ro-space-8`); the Account/Username/Privacy/Reading Challenge/Subscription block below remains a single bordered card, matching the DS spec exactly.
 
 **Codebase-wide cleanup.** Swept every `.jsx` file for two recurring anti-patterns: (1) a dead `"btn "` prefix in front of a real `.btn-primary`/`-secondary`/etc. class (`.btn` bare never existed), found in 23 files; (2) duplicate `className` attributes on a single element — invalid JSX where only the second value is ever applied, silently dropping the first. Fixed the instances directly tied to the views above (`BookModal.jsx` in `components/`, `ReleaseNotesModal.jsx`). Several more duplicate-`className` instances were found after this release shipped — see **v0.37.2** below for the full sweep.
+
+### v0.38 — Onboarding overhaul: favorite genres, current mood
+
+**No migration required.** New fields live under the existing `profiles.preferences` JSONB, same as `readingLevel`/`goal`/`goodreadsImported`. No new columns or tables.
+
+**What it does.** Onboarding is now 5 steps instead of 3: reading level → **favorite genres (new)** → **current mood (new)** → Goodreads import → goal. Favorite genres are picked from the existing seeded `genres` table (multi-select, up to 5). Current mood is a fixed set of 8 chips (comfort, challenge, escapism, mind-bending, character-driven, atmospheric, fast-paced, short-read), multi-select up to 3. Both are optional — no validation blocks `Continue`.
+
+**Existing users are not prompted.** Per product decision, only new signups go through the updated flow. Existing users see and set these fields from Profile whenever they like; there's no forced re-onboarding banner or modal.
+
+**`Onboarding.jsx`.** Reworked from 3 to 5 steps (`TOTAL_STEPS = 5`, step dots now render via a loop instead of 3 hardcoded divs). Added `favoriteGenres`/`currentMood` local state, `toggleGenre`/`toggleMood` handlers with `GENRE_MAX = 5` / `MOOD_MAX = 3` caps, and a `genreOptions` list sourced from `state.genres` (already loaded globally by `DataContext`). Both are written to the profile in `finish()` alongside the existing fields.
+
+**`Profile.jsx`.** New `ReaderPrefsSection` component, mounted below `PrivacySection`, mirrors the existing collapsed-summary-with-Edit pattern used elsewhere on the page. Shows the current selections as a comma-separated summary with an Edit button that expands into the same chip grid used in onboarding. Writes go through the existing generic `setProfile()` patch function — no new DataContext mutator was needed since `preferences` already persists arbitrary profile keys on every state change.
+
+**`DataContext.jsx`.** `favoriteGenres: []` and `currentMood: []` added to `defaultState.profile`, and both are now explicitly whitelisted in `savePreferences()`'s persisted JSONB (the profile object itself already spreads `preferences` generically on load, so no change was needed there).
+
+**Oracle Spark (`Dashboard.jsx`).** `OracleSparkWidget` now receives `profile` and folds `favoriteGenres`/`currentMood` into the prompt sent to `callClaude` as a short personalization preamble, when either is set. Reading level and goal were already available to other Oracle flows (`PlanCreate.jsx`); this is the first widget to consume the two new fields. Other Oracle surfaces (`OracleSimilar.jsx`, `OracleCategories.jsx`, `PlanCreate.jsx`'s "explore" mode) are good candidates for the same treatment but were left untouched this release to keep the diff focused — flag if you want those wired in too before 1.0.
+
+**`_onboarding.scss`.** Added `.chip-grid` / `.chip(.selected)(:disabled)` for the genre picker (pill-shaped, reuses `--ro-gold` tokens), `.onb-hint` for the small "X of 5 selected" caption, and a `:disabled` state on `.choice` for the mood grid once the 3-item cap is hit.
+
+New i18n keys: `onboarding.step2*`–`step5*` (renumbered/rewritten step copy), `onboarding.genreCount`, `onboarding.moods.*` (8 mood entries × title/sub, EN + ES CR vos), `profile.labelFavoriteGenres`, `profile.labelCurrentMood`, `profile.genresNotSet`, `profile.moodNotSet`, `profile.genreMaxHint`, `profile.moodMaxHint`.
 
 ### v0.37.3 — Custom page counts per edition
 
