@@ -13,6 +13,3 @@ https://www.thebooksoracle.net/* https://thebooksoracle.com/:splat  301!
 # Redirect reading.oracle.com subdomain
 http://reading.oracle.com/* https://thebooksoracle.com/:splat  301!
 https://reading.oracle.com/* https://thebooksoracle.com/:splat  301!
-
-# Ensure www of the primary domain also points to apex (Optional but good practice)
-https://www.thebooksoracle.com/* https://thebooksoracle.com/:splat  301!
