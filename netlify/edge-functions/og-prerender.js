@@ -111,32 +111,24 @@ export default async (request, context) => {
       const pureKeyString = bookMatch[1].split('?')[0];
       const wantedKey = decodeURIComponent(pureKeyString);
 
-      // Extract just the title part of the slug (everything before the '|')
+      // Extract the title part: "thehauntingofhillhouse"
       const titlePart = wantedKey.split('|')[0];
 
-      // Look up only the rows that match that title text case-insensitively
+      // Instead of guessing spaces, take the first 8 characters of the title 
+      // and search for any book containing that chunk case-insensitively.
+      const searchChunk = titlePart.slice(0, 8);
+
       const res = await fetch(
-        `${supabaseUrl}/rest/v1/books?select=title,author,description,cover_url&title=ilike.*${encodeURIComponent(titlePart)}*&limit=10`, {
+        `${supabaseUrl}/rest/v1/books?select=title,author,description,cover_url,status&title=ilike.*${searchChunk}*&limit=50`, {
           headers: restHeaders
         }
       );
-      if (!res.ok) return context.next();
 
+      if (!res.ok) return context.next();
       const rows = await res.json();
 
-      // Find the book row case-insensitively by title to examine it
-      const dbRow = rows.find(b => (b.title || '').toLowerCase() === "the haunting of hill house");
-
-      if (dbRow) {
-        console.log("--- DEBUGGING MATCH FOR: The Haunting of Hill House ---");
-        console.log(`Raw DB Title:  "${dbRow.title}"`);
-        console.log(`Raw DB Author: "${dbRow.author}"`);
-        console.log(`Generated Key from DB: "${bookKey(dbRow.title, dbRow.author)}"`);
-        console.log(`Expected Wanted Key:   "${wantedKey}"`);
-        console.log("-------------------------------------------------------");
-      } else {
-        console.log("The book 'The Haunting of Hill House' was still not found in the fetched rows payload.");
-      }
+      // LOG the raw titles we managed to pull back from the database to see what's happening
+      console.log(`Fetched ${rows.length} potential matches from DB using chunk "${searchChunk}". Titles:`, rows.map(r => r.title));
 
       const match = rows.find((b) => bookKey(b.title, b.author) === wantedKey);
 
