@@ -31,6 +31,10 @@
   to = "/.netlify/functions/sitemap"
   status = 200
 
+[[edge_functions]]
+  path = "/*" # The URL path you want to hit
+  function = "og-prerender"
+
 # SPA fallback: any unknown route returns index.html so client-side
 # routing (and the OAuth redirect after Google sign-in) works.
 # Note: /.netlify/functions/* is automatically excluded.
