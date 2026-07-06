@@ -16,9 +16,20 @@
 
 // The version label shown as "current" — keep in sync with package.json and
 // the README version line.
-export const CURRENT_VERSION = 'v0.39.7';
+export const CURRENT_VERSION = 'v0.39.8';
 
 export const RELEASES = [{
+    version: 'v0.39.8',
+    date: '2026-07-06',
+    titleEn: 'Fixed link previews not finding any books',
+    titleEs: 'Se corrigieron las vistas previas que no encontraban ningún libro',
+    bodyEn: [
+      'The link-preview feature from the last release never actually found a book, in any case \u2014 fixed the lookup logic, and widened it to also catch books the Oracle has categorized but that haven\u2019t been manually verified yet.',
+    ],
+    bodyEs: [
+      'La funci\u00f3n de vista previa de enlaces de la versi\u00f3n anterior nunca encontraba ning\u00fan libro, en ning\u00fan caso \u2014 se corrigi\u00f3 la l\u00f3gica de b\u00fasqueda, y se ampli\u00f3 para tambi\u00e9n incluir libros que el Or\u00e1culo categoriz\u00f3 pero que todav\u00eda no fueron verificados manualmente.',
+    ],
+  }, {
     version: 'v0.39.7',
     date: '2026-07-04',
     titleEn: 'Better link previews when books and series are shared',

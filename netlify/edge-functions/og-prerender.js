@@ -108,31 +108,27 @@ export default async (request, context) => {
     const seriesMatch = url.pathname.match(/^\/series\/([^/]+)$/);
 
     if (bookMatch) {
-      const pureKeyString = bookMatch[1].split('?')[0];
-      const wantedKey = decodeURIComponent(pureKeyString);
+      const wantedKey = decodeURIComponent(bookMatch[1]);
 
-      // Extract the title part: "thehauntingofhillhouse"
-      const titlePart = wantedKey.split('|')[0];
-
-      // Instead of guessing spaces, take the first 8 characters of the title 
-      // and search for any book containing that chunk case-insensitively.
-      const searchChunk = titlePart.slice(0, 8);
-
+      // No stored bookKey column to query by directly, so we fetch verified
+      // books and compute bookKey() per row to find the match — same
+      // tradeoff netlify/functions/sitemap.js already makes. (An earlier
+      // version of this tried an `ilike` search on a chunk of the
+      // space-stripped key, e.g. "thehaunt" — that can never match, since
+      // bookKey() strips spaces/punctuation but the `title` column still
+      // has them: "The Haunting of Hill House" never literally contains
+      // the substring "thehaunt".) Bounded to bot traffic only, which is a
+      // small fraction of requests, so the cost of scanning is acceptable.
       const res = await fetch(
-        `${supabaseUrl}/rest/v1/books?select=title,author,description,cover_url,status&title=ilike.*${searchChunk}*&limit=50`, {
-          headers: restHeaders
-        }
+        `${supabaseUrl}/rest/v1/books?select=title,author,description,cover_url&status=in.(verified,oracle_categorized)&limit=5000`,
+        { headers: restHeaders }
       );
 
       if (!res.ok) return context.next();
       const rows = await res.json();
-
-      // LOG the raw titles we managed to pull back from the database to see what's happening
-      console.log(`Fetched ${rows.length} potential matches from DB using chunk "${searchChunk}". Titles:`, rows.map(r => r.title));
-
       const match = rows.find((b) => bookKey(b.title, b.author) === wantedKey);
 
-      console.log(`Wanted Key: ${wantedKey} | Match Found: ${!!match}`);
+      console.log(`Fetched ${rows.length} verified books. Wanted key: ${wantedKey} | Match found: ${!!match}`);
 
       if (!match) return context.next();
 

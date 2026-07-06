@@ -66,7 +66,12 @@ export async function handler() {
     const { data: books, error } = await supabase
       .from('books')
       .select('title, author, series:series(name)')
-      .eq('status', 'verified')
+      // v0.39.8: widened from .eq('status', 'verified') — the app treats
+      // 'oracle_categorized' as equivalent to verified everywhere else (see
+      // DataContext.jsx's isVerified-style check), so books categorized by
+      // the Oracle but not yet manually verified were missing from the
+      // sitemap for no good reason. Same fix applied to og-prerender.js.
+      .in('status', ['verified', 'oracle_categorized'])
       .limit(5000);
 
     if (error) throw error;

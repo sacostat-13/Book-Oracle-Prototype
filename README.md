@@ -4,7 +4,7 @@ A reading companion — wishlist, library, reading plans, book clubs, and an AI-
 for book discovery. Built with React + Vite + SCSS, backed by Supabase for auth
 and cross-device sync, and Netlify Functions for API proxying.
 
-> Current version: **v0.39.7** — see [Releases](#releases) below for changelog.
+> Current version: **v0.39.8** — see [Releases](#releases) below for changelog.
 > Upgrading from an earlier version? Check the matching `MIGRATION_*.md` / `UPDATE_*.md`.
 
 ---
@@ -350,6 +350,16 @@ This release is a design-system alignment pass across several views that had dri
 **Profile page layout.** Per the DS profile pattern, Reading Stats / Pace / Top Genres / Most Read Author / Series in Progress are meant to be free-standing sections directly on the page (each already has its own bordered cards/rows) — not nested inside one shared panel. Un-wrapped them from the enclosing `.panel` into a new `.profile-stats` flex column (36px rhythm via `--ro-space-8`); the Account/Username/Privacy/Reading Challenge/Subscription block below remains a single bordered card, matching the DS spec exactly.
 
 **Codebase-wide cleanup.** Swept every `.jsx` file for two recurring anti-patterns: (1) a dead `"btn "` prefix in front of a real `.btn-primary`/`-secondary`/etc. class (`.btn` bare never existed), found in 23 files; (2) duplicate `className` attributes on a single element — invalid JSX where only the second value is ever applied, silently dropping the first. Fixed the instances directly tied to the views above (`BookModal.jsx` in `components/`, `ReleaseNotesModal.jsx`). Several more duplicate-`className` instances were found after this release shipped — see **v0.37.2** below for the full sweep.
+
+### v0.39.8 — Fixed og-prerender's book lookup (never matched anything)
+
+**No migration required.**
+
+**Root cause, found via Simon's own debug logging added to the deployed function:** a version of `og-prerender.js` had replaced the fetch-all-and-match approach with an `ilike` search on a chunk of the already-normalized `bookKey()` string (e.g. searching for `"thehaunt"`). That can never match anything: `bookKey()` strips spaces and punctuation before comparing, but the `ilike` search runs against the raw `title` column, which still has them — `"The Haunting of Hill House"` does not literally contain the substring `"thehaunt"` (there's a space between "The" and "Haunting"). Every lookup silently failed, for every book, regardless of what was in the database. Verified against the exact book from the bug report: `bookKey("The Haunting of Hill House", "Shirley Jackson")` computes to `thehauntingofhillhouse|shirleyjac`, matching the requested URL exactly once the fetch-and-compare-in-JS approach (same tradeoff `sitemap.js` already makes — there's no stored `book_key` column to query by directly) is restored.
+
+**Also widened the status filter** in both `og-prerender.js` and `sitemap.js` from `status = 'verified'` to `status IN ('verified', 'oracle_categorized')` — the app's own `DataContext.jsx` treats those two as equivalent everywhere else (Oracle-categorized books show the same "verified" pill in the UI), so both were silently excluding a real chunk of the catalog for no good reason.
+
+No i18n changes this release.
 
 ### v0.39.7 — OG-tag prerendering for social/link-preview bots
 
