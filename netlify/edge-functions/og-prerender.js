@@ -119,6 +119,19 @@ export default async (request, context) => {
       );
       if (!res.ok) return context.next();
       const rows = await res.json();
+
+      console.log(`Total rows fetched: ${rows.length}`);
+      const sampleKeys = rows.slice(0, 10).map(b => bookKey(b.title, b.author));
+      console.log("Sample keys in DB:", sampleKeys);
+
+      // Let's look for a partial match on the title to see what the author key looks like:
+      const partialMatch = rows.find(b => (b.title || '').toLowerCase().includes('haunting'));
+      if (partialMatch) {
+        console.log(`Found partial title match in DB! Generated key: "${bookKey(partialMatch.title, partialMatch.author)}" Status: verified`);
+      } else {
+        console.log("No book with 'haunting' found in the fetched rows. It might not be marked as 'verified'.");
+      }
+      
       const match = rows.find((b) => bookKey(b.title, b.author) === wantedKey);
 
       // For safety while debugging, add a temporary log here:
