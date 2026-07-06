@@ -111,23 +111,22 @@ export default async (request, context) => {
       const pureKeyString = bookMatch[1].split('?')[0];
       const wantedKey = decodeURIComponent(pureKeyString);
 
-      // Extract just the title portion of the key (everything before the '|')
+      // Extract just the title part of the slug (everything before the '|')
       const titlePart = wantedKey.split('|')[0];
 
-      // Query only for rows where the lowercase title matches our URL title letters
+      // Look up only the rows that match that title text case-insensitively
       const res = await fetch(
         `${supabaseUrl}/rest/v1/books?select=title,author,description,cover_url&title=ilike.*${encodeURIComponent(titlePart)}*&limit=10`, {
           headers: restHeaders
         }
       );
-
       if (!res.ok) return context.next();
       const rows = await res.json();
 
-      // Now we only look through a tiny handful of rows!
+      // Narrowly match the exact key against the small pool of title matches
       const match = rows.find((b) => bookKey(b.title, b.author) === wantedKey);
 
-      console.log(`Wanted Key: ${wantedKey} | Rows evaluated: ${rows.length} | Match Found: ${!!match}`);
+      console.log(`Wanted Key: ${wantedKey} | Match Found: ${!!match}`);
 
       if (!match) return context.next();
 
