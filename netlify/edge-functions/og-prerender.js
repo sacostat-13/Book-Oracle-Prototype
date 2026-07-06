@@ -22,8 +22,7 @@
 // it in production, and check Netlify's function logs for the first few
 // real bot hits.
 
-// This will print every single time the function triggers
-console.log("Edge function triggered! URL:", request.url);
+
 
 const BOT_UA_PATTERN = /bot|crawl|spider|slurp|facebookexternalhit|slackbot|twitterbot|whatsapp|telegrambot|discordbot|linkedinbot|pinterest|embedly|quora link preview|w3c_validator|redditbot|skypeuripreview|vkshare|outbrain|nuzzel|flipboard|tumblr|bitlybot|applebot|semrushbot|ahrefsbot/i;
 
@@ -84,6 +83,9 @@ function injectMeta(html, { title, description, image, url, jsonLd }) {
 export default async (request, context) => {
   const userAgent = request.headers.get('user-agent') || '';
   const isBot = BOT_UA_PATTERN.test(userAgent);
+
+  // This will print every single time the function triggers
+  console.log("Edge function triggered! URL:", request.url);
 
   console.log("User-Agent detected:", userAgent);
 
