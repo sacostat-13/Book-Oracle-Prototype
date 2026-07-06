@@ -16,31 +16,18 @@
 
 // The version label shown as "current" — keep in sync with package.json and
 // the README version line.
-export const CURRENT_VERSION = 'v0.39.10';
+export const CURRENT_VERSION = 'v0.39.9';
 
 export const RELEASES = [{
-    version: 'v0.39.10',
-    date: '2026-07-06',
-    titleEn: 'Fixed giant thumbnails in search results',
-    titleEs: 'Se corrigieron las miniaturas gigantes en los resultados de b\u00fasqueda',
-    bodyEn: [
-      'The search dropdown\u2019s book covers had no size constraint at all, so they rendered at full image size instead of as small thumbnails \u2014 fixed.',
-    ],
-    bodyEs: [
-      'Las portadas de libros en el desplegable de b\u00fasqueda no ten\u00edan ning\u00fan l\u00edmite de tama\u00f1o, as\u00ed que se mostraban a tama\u00f1o completo en vez de como miniaturas peque\u00f1as \u2014 corregido.',
-    ],
-  }, {
     version: 'v0.39.9',
     date: '2026-07-06',
-    titleEn: 'A clearer book page',
-    titleEs: 'Una p\u00e1gina de libro m\u00e1s clara',
+    titleEn: 'Fixed sitemap and link previews silently truncating the catalog',
+    titleEs: 'Se corrigi\u00f3 el truncamiento silencioso del cat\u00e1logo en el mapa del sitio y las vistas previas',
     bodyEn: [
-      'The book page now shows one clear next step depending on where you are with a book \u2014 Start reading, update your progress, or rate it once you\u2019re done \u2014 instead of a row of buttons all competing for attention.',
-      'Buying links (Amazon, Bookshop.org) now live in their own \u201cFind a copy\u201d section, separate from your library actions.',
+      'The sitemap and link-preview lookup were silently capped at the first 1,000 books in the catalog \u2014 both now page through the full catalog, so books further down the list are found correctly.',
     ],
     bodyEs: [
-      'La p\u00e1gina del libro ahora muestra un solo paso claro seg\u00fan d\u00f3nde est\u00e9s con ese libro \u2014 Empezar a leer, actualizar tu progreso, o calificarlo una vez que lo termin\u00e1s \u2014 en vez de una fila de botones compitiendo por tu atenci\u00f3n.',
-      'Los enlaces de compra (Amazon, Bookshop.org) ahora viven en su propia secci\u00f3n \u201cConseguir un ejemplar\u201d, separada de las acciones de tu biblioteca.',
+      'El mapa del sitio y la b\u00fasqueda de vistas previas de enlaces estaban limitados en silencio a los primeros 1000 libros del cat\u00e1logo \u2014 ambos ahora recorren el cat\u00e1logo completo, para que los libros m\u00e1s adelante en la lista se encuentren correctamente.',
     ],
   }, {
     version: 'v0.39.8',

@@ -119,16 +119,32 @@ export default async (request, context) => {
       // has them: "The Haunting of Hill House" never literally contains
       // the substring "thehaunt".) Bounded to bot traffic only, which is a
       // small fraction of requests, so the cost of scanning is acceptable.
-      const res = await fetch(
-        `${supabaseUrl}/rest/v1/books?select=title,author,description,cover_url&status=in.(verified,oracle_categorized)&limit=5000`,
-        { headers: restHeaders }
-      );
+      // No stored bookKey column to query by directly, so we fetch verified
+      // books and compute bookKey() per row to find the match — same
+      // tradeoff netlify/functions/sitemap.js already makes. PostgREST caps
+      // `limit` at the project's Max Rows setting (default 1000) regardless
+      // of what's requested here, so a single fetch silently truncates on
+      // any catalog bigger than that — paginate with `offset` until we
+      // either find a match or run out of rows, stopping early as soon as
+      // a match is found so most requests only cost one or two round trips.
+      const PAGE_SIZE = 1000;
+      const MAX_PAGES = 20; // hard ceiling so a bad/huge catalog can't hang the function
+      let match = null;
+      let totalFetched = 0;
 
-      if (!res.ok) return context.next();
-      const rows = await res.json();
-      const match = rows.find((b) => bookKey(b.title, b.author) === wantedKey);
+      for (let page = 0; page < MAX_PAGES; page++) {
+        const res = await fetch(
+          `${supabaseUrl}/rest/v1/books?select=title,author,description,cover_url&status=in.(verified,oracle_categorized)&limit=${PAGE_SIZE}&offset=${page * PAGE_SIZE}`,
+          { headers: restHeaders }
+        );
+        if (!res.ok) break;
+        const rows = await res.json();
+        totalFetched += rows.length;
+        match = rows.find((b) => bookKey(b.title, b.author) === wantedKey);
+        if (match || rows.length < PAGE_SIZE) break; // found it, or hit the last page
+      }
 
-      console.log(`Fetched ${rows.length} verified books. Wanted key: ${wantedKey} | Match found: ${!!match}`);
+      console.log(`Fetched ${totalFetched} verified books (paginated). Wanted key: ${wantedKey} | Match found: ${!!match}`);
 
       if (!match) return context.next();
 

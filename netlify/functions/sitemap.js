@@ -63,18 +63,30 @@ export async function handler() {
   try {
     const supabase = createClient(supabaseUrl, serviceKey);
 
-    const { data: books, error } = await supabase
-      .from('books')
-      .select('title, author, series:series(name)')
-      // v0.39.8: widened from .eq('status', 'verified') — the app treats
-      // 'oracle_categorized' as equivalent to verified everywhere else (see
-      // DataContext.jsx's isVerified-style check), so books categorized by
-      // the Oracle but not yet manually verified were missing from the
-      // sitemap for no good reason. Same fix applied to og-prerender.js.
-      .in('status', ['verified', 'oracle_categorized'])
-      .limit(5000);
+    // v0.39.8: PostgREST caps returned rows at the project's Max Rows
+    // setting (default 1000) regardless of .limit() — a single query
+    // silently truncates on any catalog bigger than that. Paginate with
+    // .range() until a page comes back short, same fix applied to
+    // og-prerender.js's book lookup.
+    const PAGE_SIZE = 1000;
+    const MAX_PAGES = 20; // hard ceiling so a runaway catalog can't hang the function
+    let books = [];
+    for (let page = 0; page < MAX_PAGES; page++) {
+      const { data, error } = await supabase
+        .from('books')
+        .select('title, author, series:series(name)')
+        // v0.39.8: widened from .eq('status', 'verified') — the app treats
+        // 'oracle_categorized' as equivalent to verified everywhere else (see
+        // DataContext.jsx's isVerified-style check), so books categorized by
+        // the Oracle but not yet manually verified were missing from the
+        // sitemap for no good reason. Same fix applied to og-prerender.js.
+        .in('status', ['verified', 'oracle_categorized'])
+        .range(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE - 1);
 
-    if (error) throw error;
+      if (error) throw error;
+      books = books.concat(data);
+      if (!data || data.length < PAGE_SIZE) break; // last page
+    }
 
     const bookEntries = [];
     const seriesNames = new Set();
