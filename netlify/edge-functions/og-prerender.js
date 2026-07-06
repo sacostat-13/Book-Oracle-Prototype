@@ -108,34 +108,26 @@ export default async (request, context) => {
     const seriesMatch = url.pathname.match(/^\/series\/([^/]+)$/);
 
     if (bookMatch) {
-      // Split by '?' to isolate the book key from any query strings (like ?from=app)
       const pureKeyString = bookMatch[1].split('?')[0];
       const wantedKey = decodeURIComponent(pureKeyString);
 
+      // Extract just the title portion of the key (everything before the '|')
+      const titlePart = wantedKey.split('|')[0];
+
+      // Query only for rows where the lowercase title matches our URL title letters
       const res = await fetch(
-        `${supabaseUrl}/rest/v1/books?select=title,author,description,cover_url&status=eq.verified&limit=5000`, {
+        `${supabaseUrl}/rest/v1/books?select=title,author,description,cover_url&title=ilike.*${encodeURIComponent(titlePart)}*&limit=10`, {
           headers: restHeaders
         }
       );
+
       if (!res.ok) return context.next();
       const rows = await res.json();
 
-      console.log(`Total rows fetched: ${rows.length}`);
-      const sampleKeys = rows.slice(0, 10).map(b => bookKey(b.title, b.author));
-      console.log("Sample keys in DB:", sampleKeys);
-
-      // Let's look for a partial match on the title to see what the author key looks like:
-      const partialMatch = rows.find(b => (b.title || '').toLowerCase().includes('haunting'));
-      if (partialMatch) {
-        console.log(`Found partial title match in DB! Generated key: "${bookKey(partialMatch.title, partialMatch.author)}" Status: verified`);
-      } else {
-        console.log("No book with 'haunting' found in the fetched rows. It might not be marked as 'verified'.");
-      }
-      
+      // Now we only look through a tiny handful of rows!
       const match = rows.find((b) => bookKey(b.title, b.author) === wantedKey);
 
-      // For safety while debugging, add a temporary log here:
-      console.log("Wanted Key:", wantedKey, "Match Found:", !!match);
+      console.log(`Wanted Key: ${wantedKey} | Rows evaluated: ${rows.length} | Match Found: ${!!match}`);
 
       if (!match) return context.next();
 
