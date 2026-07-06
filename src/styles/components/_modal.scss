@@ -32,7 +32,8 @@
   border-radius: var(--ro-radius-xl);
   width: 520px;
   max-width: 100%;
-  max-height: calc(100vh - 52px);
+  max-height: calc(100vh - 52px); // fallback for browsers without dvh support
+  max-height: calc(100dvh - 52px); // v0.39.4: matches the real visible viewport on mobile
   overflow-y: auto;
   box-shadow: var(--ro-shadow);
   animation: ov-scale .2s ease;

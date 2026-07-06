@@ -561,6 +561,13 @@
   }
 }
 
+.friend-row__request{
+  @media (max-width: 767px) {
+    padding-bottom: var(--ro-space-16);
+
+  }
+}
+
 .friend-row__actions {
   position: absolute;
   right: 18px;

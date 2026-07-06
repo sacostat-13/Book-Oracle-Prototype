@@ -16,9 +16,61 @@
 
 // The version label shown as "current" — keep in sync with package.json and
 // the README version line.
-export const CURRENT_VERSION = 'v0.38';
+export const CURRENT_VERSION = 'v0.39.4';
 
 export const RELEASES = [{
+    version: 'v0.39.4',
+    date: '2026-07-04',
+    titleEn: 'Fixed phantom scroll on mobile',
+    titleEs: 'Se corrigi\u00f3 el scroll fantasma en m\u00f3vil',
+    bodyEn: [
+      'Fixed a mobile bug where several full-screen pages (sign-in, onboarding, loading screen) had extra scroll space below the content \u2014 caused by how mobile browsers measure screen height around their address bar.',
+    ],
+    bodyEs: [
+      'Se corrigi\u00f3 un error en m\u00f3vil donde varias pantallas completas (inicio de sesi\u00f3n, bienvenida, pantalla de carga) ten\u00edan espacio de scroll de m\u00e1s debajo del contenido \u2014 causado por c\u00f3mo los navegadores m\u00f3viles miden el alto de pantalla alrededor de la barra de direcciones.',
+    ],
+  }, {
+    version: 'v0.39.3',
+    date: '2026-07-03',
+    titleEn: 'A proper 404 page, and a sitemap',
+    titleEs: 'Una p\u00e1gina 404 como corresponde, y un mapa del sitio',
+    bodyEn: [
+      "Broken or old links now land on a proper \u201cthe Oracle can't see where you're going\u201d page instead of silently opening your dashboard.",
+      'Added a Sitemap page (linked from the footer) mapping out every section of the app \u2014 wishlist, library, and profile stay private to you, so they\u2019re not listed there.',
+    ],
+    bodyEs: [
+      'Los enlaces rotos o antiguos ahora llevan a una p\u00e1gina propia \u2014\u201cel Or\u00e1culo no puede ver hacia d\u00f3nde vas\u201d\u2014 en vez de abrir tu panel silenciosamente.',
+      'Se agreg\u00f3 una p\u00e1gina de Mapa del sitio (enlazada desde el pie de p\u00e1gina) con cada secci\u00f3n de la app \u2014 lista de deseos, biblioteca y perfil siguen siendo privados, as\u00ed que no aparecen ah\u00ed.',
+    ],
+  }, {
+    version: 'v0.39.2',
+    date: '2026-07-03',
+    titleEn: 'Sitemap, page titles, and search previews',
+    titleEs: 'Mapa del sitio, t\u00edtulos de p\u00e1gina y vistas previas',
+    bodyEn: [
+      'Every page now has its own browser tab title and description instead of one generic title everywhere \u2014 book pages show the title and author, series pages show the series name.',
+      "A live sitemap now lists every book and series in the catalog, so search engines can discover pages they wouldn't otherwise find on their own.",
+    ],
+    bodyEs: [
+      'Cada p\u00e1gina ahora tiene su propio t\u00edtulo de pesta\u00f1a y descripci\u00f3n en vez de un t\u00edtulo gen\u00e9rico en todos lados \u2014 las p\u00e1ginas de libros muestran t\u00edtulo y autor, las de series muestran el nombre de la serie.',
+      'Un mapa del sitio en vivo ahora lista cada libro y serie del cat\u00e1logo, para que los motores de b\u00fasqueda descubran p\u00e1ginas que de otra forma no encontrar\u00edan.',
+    ],
+  }, {
+    version: 'v0.39.1',
+    date: '2026-07-03',
+    titleEn: 'Real, shareable URLs',
+    titleEs: 'URLs reales y f\u00e1ciles de compartir',
+    bodyEn: [
+      'Every page now has a real, clean URL instead of the old #hash links \u2014 book pages, shared lists, reading plans, and club invites all look like thebooksoracle.com/book/... now.',
+      'Old bookmarked or shared #hash links still work \u2014 they quietly redirect to the new URL format.',
+      'This is a behind-the-scenes step toward better SEO; more improvements (sitemap, page previews) are coming in the same release line.',
+    ],
+    bodyEs: [
+      'Cada p\u00e1gina ahora tiene una URL real y limpia en vez de los antiguos enlaces con #hash \u2014 p\u00e1ginas de libros, listas compartidas, planes de lectura e invitaciones a clubes ahora se ven como thebooksoracle.com/book/...',
+      'Los enlaces antiguos guardados o compartidos con #hash todav\u00eda funcionan \u2014 redirigen silenciosamente al nuevo formato.',
+      'Este es un paso t\u00e9cnico hacia mejor SEO; m\u00e1s mejoras (mapa del sitio, vistas previas de p\u00e1ginas) vienen en la misma l\u00ednea de versi\u00f3n.',
+    ],
+  }, {
     version: 'v0.38',
     date: '2026-07-03',
     titleEn: 'A richer onboarding, tuned to your taste',

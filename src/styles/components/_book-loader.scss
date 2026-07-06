@@ -15,7 +15,8 @@
   // the loader sits in the vertical middle of the viewport. Scoped to this
   // modifier so inline/section loaders keep their natural height.
   &--full {
-    min-height: 100vh;
+    min-height: 100vh; // fallback for browsers without dvh support
+    min-height: 100dvh; // v0.39.4: excludes mobile browser toolbar, fixes phantom scroll
     padding: 20px;
     box-sizing: border-box;
   }

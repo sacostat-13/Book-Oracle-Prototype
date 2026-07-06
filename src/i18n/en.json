@@ -1298,7 +1298,9 @@
     "copyright": "© {year} The Books Oracle",
     "madeIn": "Made in Costa Rica",
     "product": "Product",
-    "legal": "Legal"
+    "legal": "Legal",
+    "sitemap": "Sitemap",
+    "pricing": "Pricing"
   },
   "notifications": {
     "someone": "Someone",
@@ -1399,5 +1401,21 @@
     "exceptionsPara1": "We reserve the right to decline refund requests in cases of clear abuse, such as repeatedly subscribing and refunding or using multiple accounts to circumvent limits.",
     "contactTitle": "Contact",
     "contactPara1": "For refunds or billing questions: support@thebooksoracle.com — we typically respond within 1–2 business days."
+  },
+  "notFound": {
+    "eyebrow": "404 · Off the map",
+    "title": "The Oracle can't see where you're going.",
+    "desc": "This path leads nowhere the Oracle can find. The page may have moved, or never existed at all.",
+    "cta": "Return to the library ❦"
+  },
+  "sitemapPage": {
+    "title": "Sitemap — The Books Oracle",
+    "desc": "A map of every section of The Books Oracle.",
+    "heading": "Sitemap",
+    "intro": "Everything The Books Oracle has to offer. Wishlist, library, and profile pages are personal to each reader, so you won't find those listed here — sign in to see your own.",
+    "section": {
+      "explore": "Explore",
+      "legal": "Legal"
+    }
   }
 }

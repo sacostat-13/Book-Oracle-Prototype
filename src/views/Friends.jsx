@@ -125,7 +125,7 @@ function PendingRow({ req, onCancel }) {
   const other = req.other;
 
   return (
-    <div className="friend-row">
+    <div className="friend-row friend-row__request">
       <Avatar url={other?.avatar_url} name={other?.display_name || other?.username || '?'} size={44} />
       <div className="friend-row__body">
         <div className="friend-row__name">

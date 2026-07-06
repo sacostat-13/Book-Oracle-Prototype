@@ -100,7 +100,7 @@ export default function Lists() {
   function copyLink(list, e) {
     e.stopPropagation();
     navigator.clipboard.writeText(
-      `${window.location.origin}${window.location.pathname}?lang=${lang}#list-view?listId=${list.id}`
+      `${window.location.origin}/l/${list.id}?lang=${lang}`
     );
   }
 

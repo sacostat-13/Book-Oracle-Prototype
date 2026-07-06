@@ -4,7 +4,8 @@
 
 // ── App root ──────────────────────────────────────────────────────────────────
 .app {
-  min-height: 100vh;
+  min-height: 100vh; // fallback for browsers without dvh support
+  min-height: 100dvh; // v0.39.4: excludes mobile browser toolbar, fixes phantom scroll
   display: flex;
   flex-direction: column;
   background: var(--ro-bg);

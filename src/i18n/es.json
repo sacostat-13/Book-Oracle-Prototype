@@ -1298,7 +1298,9 @@
     "copyright": "© {year} The Books Oracle",
     "madeIn": "Hecho en Costa Rica",
     "product": "Producto",
-    "legal": "Legal"
+    "legal": "Legal",
+    "sitemap": "Mapa del sitio",
+    "pricing": "Precios"
   },
   "notifications": {
     "someone": "Alguien",
@@ -1399,5 +1401,21 @@
     "exceptionsPara1": "Nos reservamos el derecho de rechazar solicitudes de reembolso en casos de abuso evidente, como suscribirse y solicitar reembolsos repetidamente o utilizar múltiples cuentas para eludir los límites.",
     "contactTitle": "Contacto",
     "contactPara1": "Para preguntas sobre reembolsos o facturación: support@thebooksoracle.com — normalmente respondemos en un plazo de 1 a 2 días hábiles."
+  },
+  "notFound": {
+    "eyebrow": "404 · Fuera del mapa",
+    "title": "El Oráculo no puede ver hacia dónde vas.",
+    "desc": "Este camino no lleva a ningún lado que el Oráculo pueda encontrar. La página puede haberse movido, o nunca existió.",
+    "cta": "Volver a la biblioteca ❦"
+  },
+  "sitemapPage": {
+    "title": "Mapa del sitio — The Books Oracle",
+    "desc": "Un mapa de cada sección de The Books Oracle.",
+    "heading": "Mapa del sitio",
+    "intro": "Todo lo que The Books Oracle tiene para ofrecer. Las páginas de lista de deseos, biblioteca y perfil son personales de cada lector, así que no las vas a encontrar acá — iniciá sesión para ver las tuyas.",
+    "section": {
+      "explore": "Explorar",
+      "legal": "Legal"
+    }
   }
 }

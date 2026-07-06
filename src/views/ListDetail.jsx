@@ -110,7 +110,7 @@ export default function ListDetail() {
 
   async function copyLink() {
     await navigator.clipboard.writeText(
-      `${window.location.origin}${window.location.pathname}?lang=${lang}#list-view?listId=${list.id}`
+      `${window.location.origin}/l/${list.id}?lang=${lang}`
     );
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);

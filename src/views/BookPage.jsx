@@ -7,6 +7,7 @@ import { useEffect, useState } from 'react';
 import { useData } from '../lib/DataContext';
 import { useRouter } from '../lib/RouterContext';
 import { useT } from '../lib/I18nContext';
+import { useDocumentMeta } from '../lib/useDocumentMeta';
 import { bookKey, findBookByTitle, openBookTab, buildBookPageParams } from '../lib/bookHelpers';
 import { enrichBookFromOpenLibrary, fetchSeriesBooks } from '../lib/enrichmentService';
 import { hardcoverGetBook } from '../lib/hardcoverService';
@@ -154,6 +155,16 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
   const fromLabel = route.params?.fromLabel || 'Dashboard';
 
   const [book, setBook] = useState(null);
+
+  // v0.39: SEO/share title+description once the book resolves. Deliberately
+  // NOT set in App.jsx's generic route-title effect (see App.jsx) — this is
+  // the only place this page's title/description gets set.
+  useDocumentMeta({
+    title: book ? `${book.t} by ${book.a} — The Books Oracle` : 'Book — The Books Oracle',
+    description: book?.d ? book.d.slice(0, 200) : undefined,
+    image: book?.coverUrl || undefined,
+  });
+
   const [enrichment, setEnrichment] = useState(null);
   const [enrichedOverlay, setEnrichedOverlay] = useState({});
   const [seriesBooks, setSeriesBooks] = useState([]);
@@ -197,8 +208,9 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
         const qs = Object.entries(params)
           .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`)
           .join('&');
-        const next = '#book-page?' + qs;
-        if (window.location.hash !== next) {
+        // v0.39: patch the real path in place (was a hash rewrite pre-path-routing).
+        const next = '/book/' + encodeURIComponent(bookKey_) + '?' + qs;
+        if (window.location.pathname + window.location.search !== next) {
           history.replaceState(null, '', next);
         }
       }

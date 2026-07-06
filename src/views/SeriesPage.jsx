@@ -15,6 +15,7 @@ import { useEffect, useState, useMemo } from 'react';
 import { useData } from '../lib/DataContext';
 import { useRouter } from '../lib/RouterContext';
 import { useT } from '../lib/I18nContext';
+import { useDocumentMeta } from '../lib/useDocumentMeta';
 import { bookKey, buildBookPageParams } from '../lib/bookHelpers';
 import { fetchSeriesBooks } from '../lib/enrichmentService';
 import { fetchSeriesDescriptionFromWikipedia } from '../lib/seriesService';
@@ -34,6 +35,14 @@ export default function SeriesPage() {
   const [description,    setDescription]    = useState(null);
   const [loading,        setLoading]        = useState(true);
   const [actionLoading,  setActionLoading]  = useState(null); // bookKey being actioned
+
+  // v0.39: SEO/share title+description for this series. Not set in App.jsx's
+  // generic route-title effect — this is the only place this page's title
+  // /description gets set.
+  useDocumentMeta({
+    title: seriesName ? `${seriesName} series — The Books Oracle` : 'Series — The Books Oracle',
+    description: description ? description.slice(0, 200) : undefined,
+  });
 
   // ── Fetch series data ───────────────────────────────────────────────────────
   useEffect(() => {

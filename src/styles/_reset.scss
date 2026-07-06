@@ -8,7 +8,8 @@
 html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 
 body {
-  min-height: 100vh;
+  min-height: 100vh; // fallback for browsers without dvh support
+  min-height: 100dvh; // v0.39.4: excludes mobile browser toolbar, fixes phantom scroll
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }

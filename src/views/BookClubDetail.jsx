@@ -78,7 +78,7 @@ export default function BookClubDetail() {
 
   useEffect(() => { loadDetail(); }, [loadDetail]);
 
-  function joinUrl(token) { return `${window.location.origin}${window.location.pathname}#join-club?token=${token}`; }
+  function joinUrl(token) { return `${window.location.origin}/join/${token}`; }
 
   async function copyJoinLink() {
     const token = detail?.club?.join_token || stateClub?.joinToken;

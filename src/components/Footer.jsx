@@ -33,6 +33,7 @@ export default function Footer({ guestMode = false }) {
     { label: t('footer.privacy') || 'Privacy Policy', route: 'privacy' },
     { label: t('footer.terms') || 'Terms of Service', route: 'terms' },
     { label: t('footer.refund') || 'Refund Policy', route: 'refund' },
+    { label: t('footer.sitemap') || 'Sitemap', route: 'sitemap' },
   ];
 
   const socialLinks = [

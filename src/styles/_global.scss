@@ -9,7 +9,8 @@ body {
   font-family: var(--ro-font-body);
   font-size: 16px;
   line-height: 1.55;
-  min-height: 100vh;
+  min-height: 100vh; // fallback for browsers without dvh support
+  min-height: 100dvh; // v0.39.4: excludes mobile browser toolbar, fixes phantom scroll
   overflow-x: hidden;
   transition: background .25s ease, color .25s ease;
 }
@@ -19,7 +20,8 @@ body {
   padding: 4rem 2rem;
   height: 100%;
   display: flex;
-  min-height: 100vh;
+  min-height: 100vh; // fallback for browsers without dvh support
+  min-height: 100dvh; // v0.39.4: excludes mobile browser toolbar, fixes phantom scroll
   flex-flow: column;
   align-items: center;
   justify-content: center;
