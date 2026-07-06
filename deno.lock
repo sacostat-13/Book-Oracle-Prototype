@@ -19,7 +19,8 @@
         "npm:three@0.184",
         "npm:vite-plugin-pwa@0.20",
         "npm:vite@^5.3.0",
-        "npm:workbox-window@7"
+        "npm:workbox-window@7",
+        "npm:ws@^8.21.0"
       ]
     }
   }

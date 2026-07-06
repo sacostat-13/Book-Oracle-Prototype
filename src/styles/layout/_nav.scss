@@ -567,7 +567,7 @@ body.theme-parchment .nav-logo__img--light {
     left: 5px;
     width: 90%;
 
-    input{
+    input {
       width: 100%;
     }
   }
@@ -675,4 +675,170 @@ body.theme-parchment .nav-logo__img--light {
   display: block;
   flex: 1;
   max-width: none;
+}
+
+// v0.40: NavSearch's predictive-search dropdown (input wrap, spinner,
+// dropdown panel, result rows, cover thumbnail, badges, loading state).
+// None of this had ever been styled — only the bare `.nav-search { input {
+// ... } }` rule above existed — so BookCover's `<img style="width:100%;
+// height:100%">` had no sized parent to fill and rendered at its full
+// intrinsic size inside an unconstrained div, blowing up the whole dropdown.
+.nav-search-input-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.nav-search-spinner {
+  position: absolute;
+  right: 16px;
+  top: 50%;
+  width: 14px;
+  height: 14px;
+  margin-top: -7px;
+  border-radius: 50%;
+  border: 2px solid var(--ro-border-strong);
+  border-top-color: var(--ro-gold);
+  animation: nav-search-spin .7s linear infinite;
+  pointer-events: none;
+}
+
+@keyframes nav-search-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.nav-search-dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  right: 0;
+  z-index: 250;
+  margin: 0;
+  padding: 8px;
+  list-style: none;
+  max-height: 70vh;
+  overflow-y: auto;
+  background: var(--ro-surface);
+  border: 1px solid var(--ro-border-strong);
+  border-radius: var(--ro-radius-lg);
+  box-shadow: var(--ro-shadow);
+}
+
+.nav-search-result {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 10px;
+  border-radius: var(--ro-radius-md);
+  cursor: pointer;
+  transition: background .12s;
+
+  &:hover,
+  &.active {
+    background: var(--ro-surface-2);
+  }
+}
+
+// Fixed-size thumbnail — the missing piece. BookCover's <img> fills this
+// (width/height: 100%) instead of rendering at its native resolution.
+.nav-search-result-cover {
+  position: relative;
+  flex-shrink: 0;
+  width: 38px;
+  aspect-ratio: 2 / 3;
+  border-radius: 5px;
+  overflow: hidden;
+  border: 1px solid var(--ro-border-strong);
+  background: var(--ro-surface-3);
+
+  .placeholder {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 2px;
+
+    .ph-title,
+    .ph-author {
+      font-size: 6px;
+      line-height: 1.1;
+    }
+
+    .ph-ornament {
+      font-size: 8px;
+    }
+  }
+}
+
+.nav-search-result-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.nav-search-result-title {
+  font-family: var(--ro-font-body);
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--ro-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.nav-search-result-author {
+  font-family: var(--ro-font-display);
+  font-style: italic;
+  font-size: 13px;
+  color: var(--ro-text-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.nav-search-result-series {
+  font-family: var(--ro-font-mono);
+  font-weight: 600;
+  font-size: 9px;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--ro-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.nav-search-result-badge {
+  flex-shrink: 0;
+  font-family: var(--ro-font-mono);
+  font-weight: 600;
+  font-size: 9px;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--ro-muted);
+  padding: 4px 9px;
+  border: 1px solid var(--ro-border-strong);
+  border-radius: var(--ro-radius-pill);
+  white-space: nowrap;
+
+  &--oracle {
+    color: var(--ro-gold-text);
+    border-color: var(--ro-gold);
+  }
+}
+
+.nav-search-loading {
+  padding: 16px 10px;
+  text-align: center;
+  font-family: var(--ro-font-body);
+  font-style: italic;
+  font-size: 13px;
+  color: var(--ro-muted);
 }

@@ -137,7 +137,6 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
     state,
     addToWishlist,
     addToReadNext,
-    removeFromReadNext,
     markAsRead,
     removeFromLibrary,
     cacheBookFields,
@@ -148,6 +147,7 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
     finishReading,
     updateReadingProgress,
     removeFromCurrentlyReading,
+    startReading,
   } = useData();
   const { route, go } = useRouter();
   const t = useT();
@@ -650,12 +650,16 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
             );
           })()}
 
-          {/* Actions — .btn/.btn-secondary don't exist in the DS; mapped to the
-              actual six-variant button system (.btn-primary/-secondary/
-              -tertiary). Each duplicate `className` below (two attributes on
-              one element, invalid JSX) has been collapsed to one class,
-              since only the last of a duplicate pair was ever applied. */}
-          <div className="bp-actions">
+          {/* Actions — v0.40: replaces the old flat 6-button row with the
+              state-driven, grouped block from the Book Page Actions Redesign
+              DS spec. One primary action per reading state (want to read /
+              currently reading / finished), a demoted "remove" once the book
+              has been started, and buying pulled into its own "Find a copy"
+              zone below. Renamed container (.bp-action-block, not .bp-actions)
+              because .bp-actions is a shared flat-row class used by several
+              other views (BookModal, Lists, PlanView, etc.) — reusing it here
+              with a column layout would have reflowed all of those too. */}
+          <div className="bp-action-block">
             {authPending ? (
               // Auth check in progress — don't flash sign-in prompt
               <span className="bp-loading-note">
@@ -675,80 +679,133 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
                 {t('bookPage.loadingLibrary')}
               </span>
             ) : inLib ? (
-              <button className="btn-secondary" onClick={() => removeFromLibrary(display)}>
-                {t('bookPage.removeFromLibrary')}
-              </button>
-            ) : inCurrentlyReading ? (
+              // ── Finished — rating panel is the primary zone ──────────────
               <>
-                {totalPages ? (
-                  <div className="cr-progress-wrap">
-                    <div className="cr-progress-bar-track">
-                      <div className="cr-progress-bar-fill" style={{ '--cr-pct': `${progressPct ?? 0}%` }} />
-                    </div>
-                    <div className="cr-progress-label">
-                      {pagesRead > 0
-                        ? t('currentlyReading.pagesReadPct', { read: pagesRead, total: totalPages, pct: progressPct ?? 0 })
-                        : t('currentlyReading.pagesRead', { read: 0, total: totalPages })}
-                    </div>
+                <div className="bp-panel">
+                  <div className="bp-panel__head">
+                    <span className="bp-panel__label">{t('rating.eyebrowEdit')}</span>
                   </div>
-                ) : pagesRead > 0 ? (
-                  <div className="cr-progress-label">
-                    {t('currentlyReading.pagesReadOnly', { count: pagesRead })}
+                  {liveRating > 0 ? (
+                    <div className="bp-stars bp-panel__stars">
+                      {'★'.repeat(liveRating)}
+                      <span className="bp-stars__empty">{'★'.repeat(5 - liveRating)}</span>
+                    </div>
+                  ) : (
+                    <div className="bp-no-rating bp-panel__stars">
+                      {t('bookModal.notRatedYet')}
+                    </div>
+                  )}
+                  <div className="bp-panel__actions">
+                    <button className="btn-secondary" onClick={() => setRatingEditorOpen(true)}>
+                      {t('bookPage.writeReview')}
+                    </button>
+                    <button className="btn-secondary" onClick={() => startReading(display)}>
+                      {t('bookPage.readAgain')}
+                    </button>
                   </div>
-                ) : null}
-                <button className="btn-primary" onClick={() => setUpdatingProgress(true)}>
-                  {t('currentlyReading.updateProgress')}
-                </button>
-                <button className="btn-secondary" onClick={() => setFinishing(true)}>
-                  {t('currentlyReading.markFinished')}
-                </button>
-                <button className="btn-tertiary" onClick={() => removeFromCurrentlyReading(currentlyReadingRow)}>
-                  {t('wishlist.remove')}
-                </button>
+                </div>
+                <div className="bp-shelf-secondary">
+                  <button className="btn-text bp-remove-link" onClick={() => removeFromLibrary(display)}>
+                    {t('bookPage.removeFromLibrary')}
+                  </button>
+                </div>
               </>
-            ) : inNext ? (
+            ) : inCurrentlyReading ? (
+              // ── Currently reading — progress panel is the primary zone ───
               <>
-                <button className="btn-primary" onClick={async () => { await markAsRead(display); setRatingEditorOpen(true); }}>
-                  {t('bookPage.markAsRead')}
-                </button>
-                <button className="btn-secondary" onClick={() => removeFromReadNext(display)}>
-                  {t('wishlist.remove')}
-                </button>
+                <div className="bp-panel">
+                  <div className="bp-panel__head">
+                    <span className="bp-panel__label">{t('bookPage.yourProgress')}</span>
+                    {progressPct != null && (
+                      <span className="bp-panel__pct">{progressPct}%</span>
+                    )}
+                  </div>
+                  {totalPages ? (
+                    <>
+                      <div className="bp-panel__value">
+                        {pagesRead}
+                        <span className="bp-panel__value-muted"> / {totalPages} {t('profile.statPages')}</span>
+                      </div>
+                      <div className="bp-panel__bar-track">
+                        <div className="bp-panel__bar-fill" style={{ width: `${progressPct ?? 0}%` }} />
+                      </div>
+                    </>
+                  ) : pagesRead > 0 ? (
+                    <div className="bp-panel__value">
+                      {t('currentlyReading.pagesReadOnly', { count: pagesRead })}
+                    </div>
+                  ) : null}
+                  <div className="bp-panel__actions">
+                    <button className="btn-primary" onClick={() => setUpdatingProgress(true)}>
+                      {t('currentlyReading.updateProgress')}
+                    </button>
+                    <button className="btn-secondary" onClick={() => setFinishing(true)}>
+                      {t('currentlyReading.markFinished')}
+                    </button>
+                  </div>
+                </div>
+                <div className="bp-shelf-secondary">
+                  <button className="btn-text bp-remove-link" onClick={() => removeFromCurrentlyReading(currentlyReadingRow)}>
+                    {t('currentlyReading.remove')}
+                  </button>
+                </div>
               </>
             ) : (
-              <>
-                <button className="btn-primary" onClick={() => addToReadNext(display)}>
-                  {t('bookPage.addToNext')}
+              // ── Want to read — one primary CTA, then shelf actions ranked
+              // by how often they're reached for: Wishlist/Read Next (real
+              // collections) outrank the custom Lists feature, and marking a
+              // book read outright is the least common path here since bulk
+              // adds already cover that. ─────────────────────────────────────
+              <div className="bp-primary-zone">
+                <button className="btn-accent btn--block" onClick={() => startReading(display)}>
+                  {t('bookPage.startReading')}
                 </button>
-                {!inWish && (
-                  <button className="btn-tertiary" onClick={() => addToWishlist(display)}>
-                    {t('bookPage.addToWishlist')}
-                  </button>
+                {(!inWish || !inNext) && (
+                  <div className="bp-actions-row">
+                    {!inWish && (
+                      <button className="btn-secondary" onClick={() => addToWishlist(display)}>
+                        {t('bookPage.addToWishlist')}
+                      </button>
+                    )}
+                    {!inNext && (
+                      <button className="btn-secondary" onClick={() => addToReadNext(display)}>
+                        {t('bookPage.addToNext')}
+                      </button>
+                    )}
+                  </div>
                 )}
-                <button className="btn-secondary" onClick={async () => { await markAsRead(display); setRatingEditorOpen(true); }}>
-                  {t('bookPage.markAsRead')}
-                </button>
-              </>
+                <div className="bp-actions-row bp-actions-row--tertiary">
+                  <AddToListPicker book={display} className="btn-tertiary btn--sm" />
+                  <button
+                    className="btn-tertiary btn--sm"
+                    onClick={async () => { await markAsRead(display); setRatingEditorOpen(true); }}
+                  >
+                    {t('bookPage.markAsRead')}
+                  </button>
+                </div>
+              </div>
             )}
-            {isAuthed && !authPending && dataReady && <AddToListPicker book={display} />}
           </div>
 
-          {/* Purchase — .bp-link is the exact existing class for this row;
-              the previous duplicate className also carried a dead
-              "btn-secondary" pair that was never applied. */}
+          {/* Buy zone — separated from the shelf/reading actions above and
+              shown regardless of auth state (external links, nothing to
+              gate), same as the old .bp-links row it replaces. */}
           {links.length > 0 && (
-            <div className="bp-links">
-              {links.map((link) => (
-                <a
-                  key={link.url}
-                  href={link.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="bp-link"
-                >
-                  ↗ {link.label}
-                </a>
-              ))}
+            <div className="bp-buy">
+              <div className="bp-section__label bp-buy__label">{t('bookPage.findACopy')}</div>
+              <div className="bp-buy__links">
+                {links.map((link) => (
+                  <a
+                    key={link.url}
+                    href={link.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="bp-buy__link"
+                  >
+                    {link.label} <span className="bp-buy__icon">↗</span>
+                  </a>
+                ))}
+              </div>
             </div>
           )}
         </div>
@@ -789,40 +846,16 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
         </div>
       )} */}
 
-      {/* Rating & notes — only shown for books in library.
-          (The section head previously carried two `className` attributes —
-          invalid JSX — silently dropping "book-modal-section-title", which
-          doesn't exist in the DS anyway; ".bp-section__head" is correct.
-          "li-action" has no base rule in the DS, only a "--disabled"
-          modifier, so it's replaced with the equivalent ".btn-text".) */}
-      {inLib && (
+      {/* Notes — v0.40: the star display + edit trigger that used to live
+          here moved into the new "Your rating" panel in the actions block
+          above (finished state). This section now only surfaces the note
+          text itself, when there is one, so it isn't lost. */}
+      {inLib && liveNotes && (
         <div className="bp-section">
-          <div className="bp-section__head">
-            <span className="bp-section__label">{t('rating.eyebrowEdit')}</span>
-            <button
-              className="btn-text"
-              onClick={() => setRatingEditorOpen(true)}
-            >
-              {liveRating > 0 || liveNotes ? t('common.edit') : t('bookModal.addRating')}
-            </button>
+          <div className="bp-section__label">{t('bookPage.yourNotes')}</div>
+          <div className="bp-notes">
+            {liveNotes}
           </div>
-          {liveRating > 0 ? (
-            <div className="bp-stars">
-              {'★'.repeat(liveRating)}
-              <span className="bp-stars__empty">{'★'.repeat(5 - liveRating)}</span>
-            </div>
-          ) : (
-            !liveNotes && (
-              <div className="bp-no-rating">
-                {t('bookModal.notRatedYet')}
-              </div>
-            )
-          )}
-          {liveNotes && (
-            <div className="bp-notes">
-              {liveNotes}
-            </div>
-          )}
         </div>
       )}
 

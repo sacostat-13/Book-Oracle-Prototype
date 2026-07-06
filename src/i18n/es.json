@@ -432,7 +432,12 @@
     "partOfSeries": "PARTE DE UNA SERIE",
     "seriesRead": "{read}/{total} leídos",
     "removeFromLibrary": "Quitar de la biblioteca",
-    "notInCollection": "Este libro no está en tu lista, biblioteca o cola de lectura."
+    "notInCollection": "Este libro no está en tu lista, biblioteca o cola de lectura.",
+    "findACopy": "Conseguir un ejemplar",
+    "yourProgress": "Tu progreso",
+    "yourNotes": "Tus notas",
+    "writeReview": "Escribí una reseña",
+    "readAgain": "↻ Leer de nuevo"
   },
   "seriesPage": {
     "breadcrumb": "Volver",

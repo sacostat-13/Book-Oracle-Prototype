@@ -432,7 +432,12 @@
     "partOfSeries": "PART OF A SERIES",
     "seriesRead": "{read}/{total} read",
     "removeFromLibrary": "Remove from library",
-    "notInCollection": "This book isn't in your wishlist, library, or read queue."
+    "notInCollection": "This book isn't in your wishlist, library, or read queue.",
+    "findACopy": "Find a copy",
+    "yourProgress": "Your progress",
+    "yourNotes": "Your notes",
+    "writeReview": "Write a review",
+    "readAgain": "↻ Read again"
   },
   "seriesPage": {
     "breadcrumb": "Back",

@@ -4,7 +4,7 @@ A reading companion — wishlist, library, reading plans, book clubs, and an AI-
 for book discovery. Built with React + Vite + SCSS, backed by Supabase for auth
 and cross-device sync, and Netlify Functions for API proxying.
 
-> Current version: **v0.39.8** — see [Releases](#releases) below for changelog.
+> Current version: **v0.39.10** — see [Releases](#releases) below for changelog.
 > Upgrading from an earlier version? Check the matching `MIGRATION_*.md` / `UPDATE_*.md`.
 
 ---
@@ -350,6 +350,35 @@ This release is a design-system alignment pass across several views that had dri
 **Profile page layout.** Per the DS profile pattern, Reading Stats / Pace / Top Genres / Most Read Author / Series in Progress are meant to be free-standing sections directly on the page (each already has its own bordered cards/rows) — not nested inside one shared panel. Un-wrapped them from the enclosing `.panel` into a new `.profile-stats` flex column (36px rhythm via `--ro-space-8`); the Account/Username/Privacy/Reading Challenge/Subscription block below remains a single bordered card, matching the DS spec exactly.
 
 **Codebase-wide cleanup.** Swept every `.jsx` file for two recurring anti-patterns: (1) a dead `"btn "` prefix in front of a real `.btn-primary`/`-secondary`/etc. class (`.btn` bare never existed), found in 23 files; (2) duplicate `className` attributes on a single element — invalid JSX where only the second value is ever applied, silently dropping the first. Fixed the instances directly tied to the views above (`BookModal.jsx` in `components/`, `ReleaseNotesModal.jsx`). Several more duplicate-`className` instances were found after this release shipped — see **v0.37.2** below for the full sweep.
+
+### v0.39.10 — Fixed giant thumbnails in the search dropdown
+
+**No migration required.**
+
+`NavSearch.jsx`'s predictive-search dropdown had never actually been styled — only the bare `.nav-search { input { ... } }` rule existed in `layout/_nav.scss`, covering the input field itself. Every other element it renders (`.nav-search-dropdown`, `.nav-search-result`, `.nav-search-result-cover`, `-info`, `-title`, `-author`, `-series`, `-badge`, `.nav-search-loading`, `.nav-search-spinner`) had zero CSS anywhere in the codebase. `BookCover` renders its `<img>` with inline `width: 100%; height: 100%`, which fills whatever parent it's given — with `.nav-search-result-cover` completely unconstrained, the image had nothing to fill but its own intrinsic size, so covers rendered at full resolution instead of as small thumbnails, blowing up the whole list.
+
+**`layout/_nav.scss`** — added the full missing block: a fixed `38px`-wide, `2/3`-aspect-ratio cover thumbnail, a proper absolutely-positioned dropdown panel (surface background, border, shadow, scrollable), result rows with hover/active states, title/author/series text treatment, the status/Oracle badges, a loading row, and a real spinner (`.nav-search-spinner` previously had no keyframes to animate against either — added a scoped `nav-search-spin` keyframe rather than reusing the global `spin` one referenced by `.loading-spinner` elsewhere, since that one turns out not to be defined anywhere either; left that pre-existing gap alone since it's outside today's fix).
+
+No i18n changes this release.
+
+### v0.39.9 — Book Page actions redesign (state-driven, grouped block)
+
+**No migration required.**
+
+Replaced the old flat row of six equal-weight buttons on the Book Page with the state-driven, grouped actions block from the design system's "Book Page — Actions Redesign" spec. One primary action per reading state now, instead of a menu with no priority:
+
+- **Want to read** (not started, not finished): full-width wine CTA **Start reading** (newly wired to `startReading()`, which was already implemented in `DataContext.jsx` for Wishlist/Read Next/Session flows but had never been reachable from the Book Page itself). Below it, two ranked rows of secondary actions — **Add to wishlist** / **Add to Read Next** (each hidden once the book is already in that collection), then a visually quieter row for **Add to list** (the custom-lists feature) / **Mark as read**. This ordering is deliberate: Wishlist/Read Next are real collections and outrank the custom Lists feature, and marking a book read outright is the least common path here since bulk Goodreads-style adds already cover that case.
+- **Currently reading**: a `surface-2` progress panel — "YOUR PROGRESS" + percentage, big page count, gold progress bar, then **Update progress** (primary) / **Mark finished** (ghost). A small muted **Remove** link sits below, demoted and right-aligned rather than competing with the actions above it.
+- **Finished**: a matching rating panel — star display (or "Not rated yet"), then **Write a review** (opens the existing `RatingModal`) / **Read again** (new — calls `startReading()` again, which moves the book back into Currently Reading while leaving its existing library entry, rating, and notes untouched; re-read tracking as its own concept is a future consideration, not built here). Same demoted **Remove from library** link below.
+- **Find a copy**: Amazon/Bookshop.org links pulled out of the actions entirely into their own recessed, divider-separated zone at the bottom — shown regardless of auth state, matching the old behavior of `.bp-links`.
+
+The old "Rating & notes" section (star display + an "Edit"/"Add rating" trigger) is now just a notes display — the star row and edit trigger moved into the new finished-state panel above, so nothing on the page duplicated that control twice.
+
+**`AddToListPicker.jsx`** — added an optional `className` prop (defaults to `btn-secondary`, its previous hardcoded class) so the Book Page could render it as a smaller `btn-tertiary btn--sm` button in the demoted row without forking the component. Its only other call site (`AddToListModal.jsx`, which doesn't render it) is unaffected.
+
+**New SCSS** (`pages/_bookpage-extensions.scss`): `.bp-action-block`, `.bp-primary-zone`, `.bp-actions-row(--tertiary)`, `.bp-panel(__head/__label/__pct/__value(-muted)/__bar-track/__bar-fill/__stars/__actions)`, `.bp-shelf-secondary`, `.bp-remove-link`, `.bp-buy(__label/__links/__link/__icon)`. Deliberately **not** built on the existing `.bp-actions` class — that's a shared flat-row container used by several other views (`BookModal.jsx`, `Lists.jsx`, `PlanList.jsx`, `PlanView.jsx`, `BookClubDetail.jsx`, `ListDetail.jsx`, `SessionDetail.jsx`); giving it a column layout here would have reflowed all of those too. The Book Page's action container is now `.bp-action-block` instead. Mobile: the 2-up rows (`.bp-actions-row`, `.bp-panel__actions`, `.bp-buy__links`) stack to a single column under the existing `ro-down(mobile)` breakpoint, consistent with how the rest of the page already reflows — no new attribute-substring hacks needed, since this is a real React app rather than the design-system canvas file the spec itself was authored in.
+
+**i18n**: added `bookPage.findACopy`, `bookPage.yourProgress`, `bookPage.yourNotes`, `bookPage.writeReview`, `bookPage.readAgain` (EN + ES). Everything else in the new block reuses existing keys (`bookPage.startReading`, `.addToWishlist`, `.addToNext`, `.markAsRead`, `.removeFromLibrary`, `currentlyReading.updateProgress`/`.markFinished`/`.remove`, `rating.eyebrowEdit`, `bookModal.notRatedYet`, `addToListPicker.btn`) rather than introducing near-duplicate copy.
 
 ### v0.39.8 — Fixed og-prerender's book lookup (never matched anything)
 
