@@ -31,12 +31,27 @@ const SITE = 'https://thebooksoracle.com';
 // Mirrors src/lib/bookHelpers.js bookKey() and netlify/functions/sitemap.js's
 // copy of the same function — duplicated again here since Edge Functions run
 // in a separate Deno bundle and can't import client source directly.
-function bookKey(title, author) {
-  return (
-    (title || '').toLowerCase().replace(/[^a-z0-9]/g, '') +
-    '|' +
-    (author || '').toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 10)
-  );
+//
+// v0.39.10: matching against this key is deliberately NOT a strict string
+// equality check anymore (see matchesBookKey below). The client's author
+// truncation length has drifted from this copy at least once already
+// (was assumed to be 10 chars, production was actually generating 11) —
+// duplicating the exact algorithm server-side is inherently fragile to
+// that kind of drift, so the match is tolerant of it instead of exact.
+
+// Title must match exactly (titles aren't truncated, so no drift risk there).
+// Author is compared as a mutual prefix rather than an exact substring — this
+// tolerates the client using any truncation length (10, 11, or a future
+// change) without needing this file kept in perfect lockstep with it.
+function matchesBookKey(title, author, wantedKey) {
+  const [wantedTitle, wantedAuthor] = wantedKey.split('|');
+  const normTitle = (title || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+  const normAuthor = (author || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+  if (normTitle !== wantedTitle) return false;
+  if (!wantedAuthor || !normAuthor) return wantedAuthor === normAuthor;
+  const shorter = wantedAuthor.length <= normAuthor.length ? wantedAuthor : normAuthor;
+  const longer = wantedAuthor.length <= normAuthor.length ? normAuthor : wantedAuthor;
+  return longer.startsWith(shorter);
 }
 
 function normalizeSeriesName(name) {
@@ -54,7 +69,13 @@ function escapeHtml(s) {
     .replace(/"/g, '&quot;');
 }
 
-function injectMeta(html, { title, description, image, url, jsonLd }) {
+function injectMeta(html, {
+  title,
+  description,
+  image,
+  url,
+  jsonLd
+}) {
   const tags = [
     `<title>${escapeHtml(title)}</title>`,
     `<meta name="description" content="${escapeHtml(description || '')}">`,
@@ -134,13 +155,14 @@ export default async (request, context) => {
 
       for (let page = 0; page < MAX_PAGES; page++) {
         const res = await fetch(
-          `${supabaseUrl}/rest/v1/books?select=title,author,description,cover_url&status=in.(verified,oracle_categorized)&limit=${PAGE_SIZE}&offset=${page * PAGE_SIZE}`,
-          { headers: restHeaders }
+          `${supabaseUrl}/rest/v1/books?select=title,author,description,cover_url&status=in.(verified,oracle_categorized)&limit=${PAGE_SIZE}&offset=${page * PAGE_SIZE}`, {
+            headers: restHeaders
+          }
         );
         if (!res.ok) break;
         const rows = await res.json();
         totalFetched += rows.length;
-        match = rows.find((b) => bookKey(b.title, b.author) === wantedKey);
+        match = rows.find((b) => matchesBookKey(b.title, b.author, wantedKey));
         if (match || rows.length < PAGE_SIZE) break; // found it, or hit the last page
       }
 
@@ -159,9 +181,16 @@ export default async (request, context) => {
           '@context': 'https://schema.org',
           '@type': 'Book',
           name: match.title,
-          author: { '@type': 'Person', name: match.author },
-          ...(match.description ? { description: match.description.slice(0, 300) } : {}),
-          ...(match.cover_url ? { image: match.cover_url } : {}),
+          author: {
+            '@type': 'Person',
+            name: match.author
+          },
+          ...(match.description ? {
+            description: match.description.slice(0, 300)
+          } : {}),
+          ...(match.cover_url ? {
+            image: match.cover_url
+          } : {}),
         },
       });
       return new Response(injected, response);
@@ -171,8 +200,9 @@ export default async (request, context) => {
       const seriesName = decodeURIComponent(seriesMatch[1]);
       const normalized = normalizeSeriesName(seriesName);
       const res = await fetch(
-        `${supabaseUrl}/rest/v1/series?select=name,description&normalized_name=eq.${encodeURIComponent(normalized)}&limit=1`,
-        { headers: restHeaders }
+        `${supabaseUrl}/rest/v1/series?select=name,description&normalized_name=eq.${encodeURIComponent(normalized)}&limit=1`, {
+          headers: restHeaders
+        }
       );
       if (!res.ok) return context.next();
       const rows = await res.json();
@@ -189,7 +219,9 @@ export default async (request, context) => {
           '@context': 'https://schema.org',
           '@type': 'BookSeries',
           name: match.name,
-          ...(match.description ? { description: match.description.slice(0, 300) } : {}),
+          ...(match.description ? {
+            description: match.description.slice(0, 300)
+          } : {}),
         },
       });
       return new Response(injected, response);
