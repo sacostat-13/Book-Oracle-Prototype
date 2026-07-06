@@ -163,7 +163,7 @@ export default function SeriesPage() {
 
       {/* Hero */}
       <div className="series-page-hero">
-        <div className="page-eyebrow">
+        <div className="page-head__eyebrow">
           {t('seriesPage.seriesLabel')}
           {publicationStatus === 'ongoing' && (
             <span className="series-page-status-pill series-page-status-ongoing">
@@ -228,7 +228,7 @@ export default function SeriesPage() {
       {/* Description */}
       {description?.description && (
         <div className="series-page-description">
-          <div className="book-modal-section-title">
+          <div className="bp-section__label">
             {t('seriesPage.about')}
             {description.wikipediaUrl && (
               <>
@@ -252,7 +252,7 @@ export default function SeriesPage() {
 
       {/* Books */}
       <div className="series-page-books">
-        <div className="book-modal-section-title">
+        <div className="bp-section__label">
           {t('seriesPage.booksInSeries')}
           {total && <span className="lv-hl-muted">· {total}</span>}
         </div>

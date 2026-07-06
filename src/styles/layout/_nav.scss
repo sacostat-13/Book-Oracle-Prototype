@@ -553,11 +553,23 @@ body.theme-parchment .nav-logo__img--light {
     padding: 18px var(--ro-gutter-mobile);
     border-bottom: 1px solid var(--ro-border);
     flex-shrink: 0;
+    padding-bottom: 50px;
+    position: relative;
+
+
   }
 
   &__search {
     flex: 1;
     margin: 0 12px;
+    position: absolute;
+    bottom: 5px;
+    left: 5px;
+    width: 90%;
+
+    input{
+      width: 100%;
+    }
   }
 
   &__body {
@@ -652,4 +664,15 @@ body.theme-parchment .nav-logo__img--light {
   @include ro-down(tablet) {
     display: none;
   }
+}
+
+// v0.39.5: NavSearch's own root is always .nav-search (the `compact` prop
+// only changes its internal layout, not this class), so the tablet-breakpoint
+// hide rule above — correct for the desktop topbar copy — was also hiding
+// the copy nested inside .mobile-menu__search, leaving mobile with no way
+// to search at all. Override it back to visible in that specific context.
+.mobile-menu__search .nav-search {
+  display: block;
+  flex: 1;
+  max-width: none;
 }

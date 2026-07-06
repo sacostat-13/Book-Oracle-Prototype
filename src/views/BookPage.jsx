@@ -19,6 +19,7 @@ import BookCover from '../components/BookCover';
 import ReportBookForm from '../components/ReportBookForm';
 import AddToListPicker from '../components/AddToListPicker';
 import RatingModal from '../components/RatingModal';
+import ProgressUpdateModal from '../components/ProgressUpdateModal';
 import CategoryAutocomplete from '../components/CategoryAutocomplete';
 
 
@@ -144,6 +145,9 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
     updateReadBook,
     getCategoriesForBook,
     removeCategoryFromBook,
+    finishReading,
+    updateReadingProgress,
+    removeFromCurrentlyReading,
   } = useData();
   const { route, go } = useRouter();
   const t = useT();
@@ -172,6 +176,8 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
   const [seriesDescription, setSeriesDescription] = useState(null);
   const [notFound, setNotFound] = useState(false);
   const [ratingEditorOpen, setRatingEditorOpen] = useState(false);
+  const [finishing, setFinishing] = useState(false);
+  const [updatingProgress, setUpdatingProgress] = useState(false);
   const [adderOpen, setAdderOpen] = useState(false);
   const [pendingRemoveId, setPendingRemoveId] = useState(null);
 
@@ -405,10 +411,17 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
   const inLib = state.library.some((b) => bookKey(b) === k);
   const inNext = state.readNext.some((b) => bookKey(b) === k);
   const inWish = state.wishlist.some((b) => bookKey(b) === k);
+  const inCurrentlyReading = state.currentlyReading.some((b) => bookKey(b) === k);
 
   const libraryRow = inLib ? state.library.find((b) => bookKey(b) === k) : null;
+  const currentlyReadingRow = inCurrentlyReading ? state.currentlyReading.find((b) => bookKey(b) === k) : null;
   const liveRating = libraryRow?.rating ?? display.rating ?? null;
   const liveNotes = libraryRow?.notes ?? null;
+
+  // v0.39: reading-progress fields, same derivation as CurrentlyReading.jsx
+  const pagesRead = currentlyReadingRow?.pagesRead ?? 0;
+  const totalPages = currentlyReadingRow?.userPageCount ?? currentlyReadingRow?.pp ?? display.pp;
+  const progressPct = totalPages && pagesRead > 0 ? Math.min(100, Math.round((pagesRead / totalPages) * 100)) : null;
 
   const categories = getCategoriesForBook ? getCategoriesForBook(display) : [];
   const existingCategoryIds = new Set(categories.map((c) => c.categoryId));
@@ -418,6 +431,18 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
   async function handleSaveRating({ rating, notes, readAt }) {
     if (!libraryRow) return;
     await updateReadBook(libraryRow, { rating, notes, readAt });
+  }
+
+  async function handleFinishReading({ rating, notes, readAt }) {
+    if (!currentlyReadingRow) return;
+    await finishReading(currentlyReadingRow, { rating, notes, readAt });
+    setFinishing(false);
+  }
+
+  async function handleProgressSave(newPagesRead, userPageCount) {
+    if (!currentlyReadingRow) return;
+    await updateReadingProgress(currentlyReadingRow, newPagesRead, userPageCount);
+    setUpdatingProgress(false);
   }
 
   async function handleRemoveCategory(categoryId) {
@@ -653,9 +678,37 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
               <button className="btn-secondary" onClick={() => removeFromLibrary(display)}>
                 {t('bookPage.removeFromLibrary')}
               </button>
+            ) : inCurrentlyReading ? (
+              <>
+                {totalPages ? (
+                  <div className="cr-progress-wrap">
+                    <div className="cr-progress-bar-track">
+                      <div className="cr-progress-bar-fill" style={{ '--cr-pct': `${progressPct ?? 0}%` }} />
+                    </div>
+                    <div className="cr-progress-label">
+                      {pagesRead > 0
+                        ? t('currentlyReading.pagesReadPct', { read: pagesRead, total: totalPages, pct: progressPct ?? 0 })
+                        : t('currentlyReading.pagesRead', { read: 0, total: totalPages })}
+                    </div>
+                  </div>
+                ) : pagesRead > 0 ? (
+                  <div className="cr-progress-label">
+                    {t('currentlyReading.pagesReadOnly', { count: pagesRead })}
+                  </div>
+                ) : null}
+                <button className="btn-primary" onClick={() => setUpdatingProgress(true)}>
+                  {t('currentlyReading.updateProgress')}
+                </button>
+                <button className="btn-secondary" onClick={() => setFinishing(true)}>
+                  {t('currentlyReading.markFinished')}
+                </button>
+                <button className="btn-tertiary" onClick={() => removeFromCurrentlyReading(currentlyReadingRow)}>
+                  {t('wishlist.remove')}
+                </button>
+              </>
             ) : inNext ? (
               <>
-                <button className="btn-primary" onClick={() => markAsRead(display)}>
+                <button className="btn-primary" onClick={async () => { await markAsRead(display); setRatingEditorOpen(true); }}>
                   {t('bookPage.markAsRead')}
                 </button>
                 <button className="btn-secondary" onClick={() => removeFromReadNext(display)}>
@@ -672,7 +725,7 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
                     {t('bookPage.addToWishlist')}
                   </button>
                 )}
-                <button className="btn-secondary" onClick={() => markAsRead(display)}>
+                <button className="btn-secondary" onClick={async () => { await markAsRead(display); setRatingEditorOpen(true); }}>
                   {t('bookPage.markAsRead')}
                 </button>
               </>
@@ -834,9 +887,31 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
           initialRating={liveRating}
           initialNotes={liveNotes}
           initialReadAt={libraryRow?.dateRead}
-          mode="edit"
+          mode={liveRating > 0 ? 'edit' : 'create'}
           onSave={handleSaveRating}
           onSkip={() => setRatingEditorOpen(false)}
+        />
+      )}
+
+      {/* v0.39: finish-reading modal, for books currently in progress */}
+      {finishing && currentlyReadingRow && (
+        <RatingModal
+          book={currentlyReadingRow}
+          mode="finish"
+          onSave={handleFinishReading}
+          onSkip={() => {
+            finishReading(currentlyReadingRow);
+            setFinishing(false);
+          }}
+        />
+      )}
+
+      {/* v0.39: reading-progress modal, for books currently in progress */}
+      {updatingProgress && currentlyReadingRow && (
+        <ProgressUpdateModal
+          book={currentlyReadingRow}
+          onSave={handleProgressSave}
+          onClose={() => setUpdatingProgress(false)}
         />
       )}
     </div>

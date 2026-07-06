@@ -22,6 +22,19 @@
   align-items: center;
   justify-content: center;
   padding: var(--ro-space-6) var(--ro-gutter-mobile);
+
+  // v0.39.5: modifier for contexts where this wrapper is nested below Nav
+  // and above Footer (e.g. NotFound.jsx, rendered via App.jsx's legalViews
+  // map) instead of standing alone full-screen (SignInGate, Onboarding.jsx).
+  // Forcing another 100dvh here on top of .app's own 100dvh + Nav + Footer
+  // + .container padding produced a page far taller than one screen —
+  // exactly the huge whitespace/scroll reported on the 404 page. This
+  // modifier drops the height force entirely; the content just sits in
+  // the normal page flow with generous padding instead.
+  &--nested {
+    min-height: 0;
+    padding: var(--ro-space-8) var(--ro-gutter-mobile);
+  }
 }
 
 .onboarding-card {

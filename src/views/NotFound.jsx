@@ -26,7 +26,7 @@ export default function NotFound() {
   });
 
   return (
-    <div className="onboarding-wrap">
+    <div className="onboarding-wrap onboarding-wrap--nested">
       <div className="onboarding-card onboarding-card--centered">
         <CornerBrackets />
         <div className="onb-eyebrow">{t('notFound.eyebrow') || '404 · Off the map'}</div>

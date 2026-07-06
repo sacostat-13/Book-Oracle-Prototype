@@ -16,9 +16,50 @@
 
 // The version label shown as "current" — keep in sync with package.json and
 // the README version line.
-export const CURRENT_VERSION = 'v0.39.4';
+export const CURRENT_VERSION = 'v0.39.7';
 
 export const RELEASES = [{
+    version: 'v0.39.7',
+    date: '2026-07-04',
+    titleEn: 'Better link previews when books and series are shared',
+    titleEs: 'Mejores vistas previas al compartir libros y series',
+    bodyEn: [
+      'Sharing a book or series link in Slack, WhatsApp, X, or Discord now shows the real title, cover, and description in the preview \u2014 instead of the site\u2019s generic name for every link.',
+    ],
+    bodyEs: [
+      'Compartir un enlace de un libro o serie en Slack, WhatsApp, X o Discord ahora muestra el t\u00edtulo real, la portada y la descripci\u00f3n en la vista previa \u2014 en vez del nombre gen\u00e9rico del sitio para cualquier enlace.',
+    ],
+  }, {
+    version: 'v0.39.6',
+    date: '2026-07-04',
+    titleEn: 'Fixed the Series page, and a stats bug',
+    titleEs: 'Se corrigi\u00f3 la p\u00e1gina de Series, y un error en las estad\u00edsticas',
+    bodyEn: [
+      'The Series page had lost its styling entirely and now has its own clean look \u2014 distinct from Reading Plans, so the two won\u2019t be confused for one another.',
+      'Fixed a bug where editing a book\u2019s read date (or rating) could silently fail to save for certain books, so the change would look like it worked but revert the next time you opened the app.',
+    ],
+    bodyEs: [
+      'La p\u00e1gina de Series hab\u00eda perdido todo su estilo y ahora tiene un dise\u00f1o propio y prolijo \u2014 distinto al de los Planes de Lectura, para que no se confundan entre s\u00ed.',
+      'Se corrigi\u00f3 un error donde editar la fecha de lectura (o calificaci\u00f3n) de un libro pod\u00eda fallar en silencio para ciertos libros, haciendo que el cambio pareciera funcionar pero se revirtiera la pr\u00f3xima vez que abr\u00edas la app.',
+    ],
+  }, {
+    version: 'v0.39.5',
+    date: '2026-07-04',
+    titleEn: 'Mobile search, reading progress on the book page, and more scroll fixes',
+    titleEs: 'B\u00fasqueda en m\u00f3vil, progreso de lectura en la p\u00e1gina del libro, y m\u00e1s arreglos de scroll',
+    bodyEn: [
+      'The search bar is back on mobile \u2014 open the menu and it\u2019s right there at the top.',
+      'Marking a book as read now opens the rating prompt right away, instead of silently filing it away with no rating.',
+      'If you\u2019re currently reading a book, its book page now shows your progress bar and lets you update it or mark it finished \u2014 previously there was no way to do either from there.',
+      'Fixed the same phantom-scroll bug (from last release) also affecting the 404 page and every loading spinner across the app.',
+    ],
+    bodyEs: [
+      'La barra de b\u00fasqueda volvi\u00f3 en m\u00f3vil \u2014 abr\u00ed el men\u00fa y ah\u00ed est\u00e1, arriba de todo.',
+      'Marcar un libro como le\u00eddo ahora abre el panel de calificaci\u00f3n al toque, en vez de guardarlo en silencio sin calificar.',
+      'Si est\u00e1s leyendo un libro en este momento, su p\u00e1gina ahora muestra tu barra de progreso y te deja actualizarla o marcarlo como terminado \u2014 antes no hab\u00eda forma de hacer ninguna de las dos cosas desde ah\u00ed.',
+      'Se corrigi\u00f3 el mismo error de scroll fantasma (de la versi\u00f3n anterior) que tambi\u00e9n afectaba la p\u00e1gina 404 y cada pantalla de carga de la app.',
+    ],
+  }, {
     version: 'v0.39.4',
     date: '2026-07-04',
     titleEn: 'Fixed phantom scroll on mobile',

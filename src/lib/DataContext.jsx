@@ -1091,19 +1091,30 @@ export function DataProvider({ children }) {
         ),
       }));
 
-      if (!user || !book.bookId) return;
+      if (!user) return;
+      // v0.39.6: previously `if (!user || !book.bookId) return;` silently
+      // skipped the Supabase write whenever bookId was missing — the
+      // optimistic local update above made the edit *look* successful in
+      // the moment, but it reverted on the next fresh load since nothing
+      // was ever persisted. Mirrors the same resolve-or-create fallback
+      // markAsRead already uses.
+      const bookId = book.bookId || (await upsertBookOnServer(book));
+      if (!bookId) {
+        showToast("Couldn't save your changes", true);
+        return;
+      }
 
       const { error } = await supabase
         .from('read_books')
         .update(update)
         .eq('user_id', user.id)
-        .eq('book_id', book.bookId);
+        .eq('book_id', bookId);
       if (error) {
         console.error('read_books update failed', error);
         showToast("Couldn't save your changes", true);
       }
     },
-    [user, showToast]
+    [user, showToast, upsertBookOnServer]
   );
 
   const removeFromLibrary = useCallback(

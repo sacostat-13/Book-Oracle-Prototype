@@ -2055,47 +2055,76 @@
 }
 
 // ── Series Page ───────────────────────────────────────────────────────────────
-.sp-page {
+// v0.39.6: this whole block was previously written against .sp-page/.sp-progress/
+// .sp-bar/etc, but SeriesPage.jsx was refactored at some point to render
+// .series-page-* class names instead — leaving the entire page unstyled except
+// for .sp-read-label and .sp-purchase-link, which happened to survive the rename.
+// Rewritten to match what the component actually renders, and given its own
+// visual identity (forest-green progress + book-list rows) rather than reusing
+// .plan-hero's gold/italic treatment — series and reading plans should read as
+// different things, not variations of the same page.
+
+.series-page {
   display: flex;
   flex-direction: column;
-  gap: 28px;
+  gap: var(--ro-space-6);
 }
 
-.sp-progress {
-  background: var(--ro-surface);
-  border: 1px solid var(--ro-border);
-  border-radius: var(--ro-radius-lg);
-  padding: 24px;
-}
-
-.sp-progress__head {
+.series-page-hero {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 8px;
+  flex-direction: column;
+  gap: var(--ro-space-3);
 }
 
-.sp-progress__label {
+.series-page-status-pill {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 10px;
+  padding: 3px 10px;
+  border-radius: var(--ro-radius-pill);
   font-family: var(--ro-font-mono);
   font-weight: 600;
-  font-size: 10px;
-  letter-spacing: .16em;
+  font-size: 9px;
+  letter-spacing: .12em;
   text-transform: uppercase;
+  vertical-align: middle;
+}
+
+.series-page-status-ongoing {
+  border: 1px solid var(--ro-border-strong);
   color: var(--ro-muted);
 }
 
-.sp-progress__count {
-  font-family: var(--ro-font-body);
-  font-weight: 600;
-  font-size: 14px;
-  color: var(--ro-gold-text);
-
-  span {
-    opacity: .6;
-  }
+.series-page-status-complete {
+  background: color-mix(in srgb, var(--ro-forest) 16%, transparent);
+  color: var(--ro-forest);
 }
 
-.sp-bar {
+// Regular (non-italic) display face — .bp-title and .plan-hero__title are both
+// italic; keeping this upright is a small, deliberate way to tell a series page
+// apart from a book page or a reading plan at a glance.
+.series-page-title {
+  font-family: var(--ro-font-display);
+  font-size: clamp(30px, 4.5vw, 44px);
+  line-height: 1.1;
+  color: var(--ro-text);
+}
+
+.series-page-author {
+  font-family: var(--ro-font-body);
+  font-size: 18px;
+  color: var(--ro-text-2);
+}
+
+.series-page-progress {
+  background: var(--ro-surface);
+  border: 1px solid var(--ro-border);
+  border-radius: var(--ro-radius-lg);
+  padding: 18px 22px;
+  margin-top: 6px;
+}
+
+.series-page-progress-bar {
   height: 6px;
   border-radius: var(--ro-radius-pill);
   background: var(--ro-ring-track);
@@ -2103,46 +2132,187 @@
   margin-bottom: 10px;
 }
 
-.sp-bar__fill {
+.series-page-progress-fill {
   height: 100%;
   border-radius: var(--ro-radius-pill);
-  background: var(--ro-gold);
+  // Forest green, not gold — same reasoning as the upright title: this page
+  // should not read as "a plan with a different label" or "another CurrentlyReading
+  // progress bar". Gold is used everywhere else for progress; green is series-only.
+  background: var(--ro-forest);
   width: var(--sp-pct, 0%);
-  transition: width .4s;
+  transition: width .4s ease;
 }
 
-.sp-read-label {
-  color: var(--ro-forest);
+.series-page-progress-label {
+  font-family: var(--ro-font-mono);
+  font-weight: 600;
+  font-size: 11px;
+  letter-spacing: .04em;
+  color: var(--ro-muted);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
-.sp-description {
+.series-page-ctas {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+
+.series-page-description {
   font-family: var(--ro-font-body);
   font-size: 16px;
   line-height: 1.75;
   color: var(--ro-text-2);
   max-width: 680px;
-}
 
-.sp-books-label {
-  font-family: var(--ro-font-mono);
-  font-weight: 600;
-  font-size: 10px;
-  letter-spacing: .16em;
-  text-transform: uppercase;
-  color: var(--ro-muted);
-  margin-bottom: 14px;
-
-  span {
-    opacity: .5;
-    margin-left: 6px;
+  p {
+    margin-top: 8px;
   }
 }
 
-.sp-no-books {
-  font-family: var(--ro-font-body);
-  font-style: italic;
-  font-size: 14px;
+.series-page-books {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.series-page-book-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 6px;
+}
+
+// Book row: cover thumbnail + info, laid out as a compact row (not a card grid
+// like .book-tile-grid, and not a stacked "month card" like .plan-month-card —
+// a numbered row reads more like a table of contents, which fits a series list).
+.series-page-book {
+  display: grid;
+  grid-template-columns: 56px 1fr;
+  gap: 16px;
+  align-items: start;
+  padding: 14px 16px;
+  background: var(--ro-surface);
+  border: 1px solid var(--ro-border);
+  border-left: 3px solid transparent;
+  border-radius: var(--ro-radius-md);
+  transition: border-color .15s;
+
+  &:hover {
+    border-color: var(--ro-border-strong);
+  }
+
+  &.read {
+    border-left-color: var(--ro-forest);
+  }
+
+  &.queued {
+    border-left-color: var(--ro-gold);
+  }
+}
+
+.series-page-book-cover {
+  position: relative;
+  aspect-ratio: 2/3;
+  width: 56px;
+  border-radius: 6px;
+  overflow: hidden;
+  border: 1px solid var(--ro-border-strong);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.series-page-book-read-badge {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--ro-forest);
+  color: #F4EBD8;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.series-page-book-info {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.series-page-book-position {
+  font-family: var(--ro-font-mono);
+  font-weight: 600;
+  font-size: 10px;
+  letter-spacing: .1em;
+  text-transform: uppercase;
   color: var(--ro-muted);
+}
+
+.series-page-book-title {
+  font-family: var(--ro-font-body);
+  font-weight: 600;
+  font-size: 15px;
+  color: var(--ro-text);
+  cursor: pointer;
+
+  &:hover {
+    color: var(--ro-gold-text);
+  }
+}
+
+.series-page-book-pages {
+  font-family: var(--ro-font-body);
+  font-size: 12px;
+  color: var(--ro-muted);
+}
+
+.series-page-book-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 6px;
+  flex-wrap: wrap;
+}
+
+.series-page-book-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 9px;
+  border-radius: var(--ro-radius-pill);
+  font-family: var(--ro-font-mono);
+  font-weight: 600;
+  font-size: 10px;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+
+.series-page-book-badge--read {
+  background: color-mix(in srgb, var(--ro-forest) 16%, transparent);
+  color: var(--ro-forest);
+}
+
+.series-page-book-badge--queued {
+  background: color-mix(in srgb, var(--ro-gold) 16%, transparent);
+  color: var(--ro-gold-text);
+}
+
+.series-page-book-badge--wishlist {
+  background: var(--ro-surface-2);
+  color: var(--ro-muted);
+}
+
+.sp-read-label {
+  color: var(--ro-forest);
 }
 
 .sp-purchase-link {
@@ -2155,6 +2325,44 @@
   &:hover {
     opacity: 1;
     color: var(--ro-gold-text);
+  }
+}
+
+// Small text-only action button used in tight list rows (series book rows,
+// list-view items, session-create's "change book"). Previously had no base
+// rule at all — only the --disabled modifier existed — so every one of
+// these rendered as an unstyled default <button>.
+.li-action {
+  font-family: var(--ro-font-mono);
+  font-weight: 600;
+  font-size: 11px;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  background: transparent;
+  border: 0;
+  padding: 6px 10px;
+  border-radius: var(--ro-radius-sm);
+  color: var(--ro-gold-text);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: opacity .15s, background .15s;
+
+  &:hover:not(:disabled) {
+    opacity: .8;
+    background: var(--ro-surface-2);
+  }
+
+  &:disabled {
+    opacity: .4;
+    cursor: default;
+  }
+
+  &.danger {
+    color: var(--ro-burgundy);
+  }
+
+  &.success {
+    color: var(--ro-forest);
   }
 }
 

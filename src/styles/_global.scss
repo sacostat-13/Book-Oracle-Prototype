@@ -20,8 +20,15 @@ body {
   padding: 4rem 2rem;
   height: 100%;
   display: flex;
-  min-height: 100vh; // fallback for browsers without dvh support
-  min-height: 100dvh; // v0.39.4: excludes mobile browser toolbar, fixes phantom scroll
+  // v0.39.5: this was min-height: 100vh/100dvh, but every usage of .loading
+  // is a spinner nested inside .container, below Nav — never a standalone
+  // full-page state (those use .book-loader--full instead). Forcing another
+  // full viewport height here on top of Nav + .container's own padding
+  // produced the same "huge whitespace while loading" bug reported across
+  // PlanCreate/ListView/BookClubDetail/PlanView/FriendProfile/SessionDetail/
+  // JoinClub/SeriesPage. 50vh is enough to center a spinner without pushing
+  // the page well past one screen's height.
+  min-height: 50vh;
   flex-flow: column;
   align-items: center;
   justify-content: center;
