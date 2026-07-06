@@ -121,9 +121,23 @@ export default async (request, context) => {
         }
       );
       if (!res.ok) return context.next();
+
       const rows = await res.json();
 
-      // Narrowly match the exact key against the small pool of title matches
+      // Find the book row case-insensitively by title to examine it
+      const dbRow = rows.find(b => (b.title || '').toLowerCase() === "the haunting of hill house");
+
+      if (dbRow) {
+        console.log("--- DEBUGGING MATCH FOR: The Haunting of Hill House ---");
+        console.log(`Raw DB Title:  "${dbRow.title}"`);
+        console.log(`Raw DB Author: "${dbRow.author}"`);
+        console.log(`Generated Key from DB: "${bookKey(dbRow.title, dbRow.author)}"`);
+        console.log(`Expected Wanted Key:   "${wantedKey}"`);
+        console.log("-------------------------------------------------------");
+      } else {
+        console.log("The book 'The Haunting of Hill House' was still not found in the fetched rows payload.");
+      }
+
       const match = rows.find((b) => bookKey(b.title, b.author) === wantedKey);
 
       console.log(`Wanted Key: ${wantedKey} | Match Found: ${!!match}`);
