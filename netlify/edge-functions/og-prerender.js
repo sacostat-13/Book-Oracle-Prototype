@@ -108,18 +108,22 @@ export default async (request, context) => {
     const seriesMatch = url.pathname.match(/^\/series\/([^/]+)$/);
 
     if (bookMatch) {
-      const wantedKey = decodeURIComponent(bookMatch[1]);
-      // No stored bookKey column to query by directly — same tradeoff
-      // sitemap.js makes, scanning verified books and computing the key
-      // per row. Bounded to bot traffic only, which is a small fraction
-      // of requests, so the cost here is acceptable.
+      // Split by '?' to isolate the book key from any query strings (like ?from=app)
+      const pureKeyString = bookMatch[1].split('?')[0];
+      const wantedKey = decodeURIComponent(pureKeyString);
+
       const res = await fetch(
-        `${supabaseUrl}/rest/v1/books?select=title,author,description,cover_url&status=eq.verified&limit=5000`,
-        { headers: restHeaders }
+        `${supabaseUrl}/rest/v1/books?select=title,author,description,cover_url&status=eq.verified&limit=5000`, {
+          headers: restHeaders
+        }
       );
       if (!res.ok) return context.next();
       const rows = await res.json();
       const match = rows.find((b) => bookKey(b.title, b.author) === wantedKey);
+
+      // For safety while debugging, add a temporary log here:
+      console.log("Wanted Key:", wantedKey, "Match Found:", !!match);
+
       if (!match) return context.next();
 
       const response = await context.next();
