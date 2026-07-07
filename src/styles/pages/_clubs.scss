@@ -49,6 +49,369 @@
   }
 }
 
+// Row of buttons above the clubs list (New club / Discover clubs) —
+// .clubs-list itself keeps its commented-out display:flex for the card
+// stack below, so this is scoped narrowly to the actions row only.
+.clubs-list__actions {
+  display: flex;
+  gap: var(--ro-space-3);
+  flex-wrap: wrap;
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// PUBLIC CLUB DIRECTORY (v0.40)
+// ══════════════════════════════════════════════════════════════════════════════
+
+.directory-page {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.directory-filter-label {
+  font-family: var(--ro-font-mono);
+  font-weight: 600;
+  font-size: 10px;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--ro-dim);
+  margin: var(--ro-space-4) 0 var(--ro-space-2);
+}
+
+.directory-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: var(--ro-space-2);
+}
+
+.directory-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--ro-space-3);
+  margin: var(--ro-space-6) 0 var(--ro-space-4);
+  padding-top: var(--ro-space-4);
+  border-top: 1px solid var(--ro-border);
+}
+
+.directory-toolbar__count {
+  font-family: var(--ro-font-mono);
+  font-size: 11px;
+  letter-spacing: .06em;
+  color: var(--ro-dim);
+}
+
+.directory-toolbar__controls {
+  display: flex;
+  align-items: center;
+  gap: var(--ro-space-6);
+  flex-wrap: wrap;
+}
+
+.directory-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--ro-text-2);
+  cursor: pointer;
+  background: none;
+  border: 0;
+  padding: 0;
+}
+
+.directory-switch {
+  width: 34px;
+  height: 20px;
+  border-radius: var(--ro-radius-pill);
+  background: var(--ro-surface-2);
+  border: 1px solid var(--ro-border-strong);
+  position: relative;
+  flex-shrink: 0;
+
+  &::after {
+    content: '';
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: var(--ro-dim);
+    transition: left .15s, background .15s;
+  }
+
+  &--on {
+    border-color: var(--ro-gold);
+
+    &::after {
+      left: 15px;
+      background: var(--ro-gold);
+    }
+  }
+}
+
+.directory-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 18px;
+
+  @include ro-up(desktop) {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  @include ro-down(tablet) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.directory-card {
+  @extend %widget-surface;
+  border-radius: var(--ro-radius-lg);
+  padding: 20px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  transition: border-color .15s;
+
+  &:hover {
+    border-color: var(--ro-gold);
+  }
+}
+
+.directory-card__top {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+}
+
+.directory-card__emblem {
+  width: 48px;
+  height: 48px;
+  border-radius: var(--ro-radius-md);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--ro-font-display);
+  font-style: italic;
+  font-size: 22px;
+  color: var(--ro-gold-on);
+  background: linear-gradient(150deg, var(--ro-gold), var(--ro-burgundy));
+  border: 1px solid var(--ro-border-strong);
+}
+
+.directory-card__head {
+  flex: 1;
+  min-width: 0;
+}
+
+.directory-card__name {
+  font-family: var(--ro-font-display);
+  font-style: italic;
+  font-size: 1.2rem;
+  line-height: 1.15;
+  color: var(--ro-text);
+}
+
+.directory-card__meta {
+  font-family: var(--ro-font-mono);
+  font-size: 10px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--ro-dim);
+  margin-top: 4px;
+}
+
+// Join-mode badge — same visual language as .club-card__badge, new states
+.join-badge {
+  font-family: var(--ro-font-mono);
+  font-weight: 600;
+  font-size: 10px;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  padding: 5px 10px;
+  border-radius: var(--ro-radius-pill);
+  white-space: nowrap;
+  flex-shrink: 0;
+
+  &--auto {
+    background: color-mix(in srgb, var(--ro-forest) 18%, transparent);
+    color: var(--ro-forest);
+    border: 1px solid color-mix(in srgb, var(--ro-forest) 40%, transparent);
+  }
+
+  &--approval {
+    background: color-mix(in srgb, var(--ro-gold) 15%, transparent);
+    color: var(--ro-gold-text);
+    border: 1px solid color-mix(in srgb, var(--ro-gold) 40%, transparent);
+  }
+
+  &--waitlist {
+    background: color-mix(in srgb, var(--ro-error) 15%, transparent);
+    color: var(--ro-error);
+    border: 1px solid color-mix(in srgb, var(--ro-error) 35%, transparent);
+  }
+}
+
+// Description clamp: 3 lines, with a "View more" toggle that removes the
+// clamp on click. Kept as two explicit classes rather than a JS-measured
+// height so it degrades gracefully with no JS cost per card.
+.directory-card__desc {
+  font-size: 0.86rem;
+  line-height: 1.5;
+  color: var(--ro-muted);
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+
+  &--expanded {
+    display: block;
+    -webkit-line-clamp: unset;
+    overflow: visible;
+  }
+}
+
+.directory-card__desc-toggle {
+  align-self: flex-start;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  font-family: var(--ro-font-body);
+  font-weight: 600;
+  font-size: 12px;
+  color: var(--ro-gold-text);
+  margin-top: -6px;
+
+  &:hover {
+    opacity: .8;
+  }
+}
+
+.directory-card__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.directory-tag {
+  font-family: var(--ro-font-mono);
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  padding: 4px 9px;
+  border-radius: var(--ro-radius-pill);
+  border: 1px solid var(--ro-border);
+  color: var(--ro-muted);
+
+  &--mood {
+    color: var(--ro-gold-text);
+    border-color: color-mix(in srgb, var(--ro-gold) 30%, transparent);
+  }
+}
+
+.directory-now-reading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  background: var(--ro-surface);
+  border: 1px solid var(--ro-border);
+  border-radius: var(--ro-radius-md);
+}
+
+.directory-now-reading__cover {
+  width: 28px;
+  height: 42px;
+  flex-shrink: 0;
+  overflow: hidden;
+  border-radius: 3px;
+  border: 1px solid var(--ro-border-strong);
+  background: var(--ro-surface-2);
+}
+
+.directory-now-reading__body {
+  min-width: 0;
+}
+
+.directory-now-reading__label {
+  font-family: var(--ro-font-mono);
+  font-size: 9px;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--ro-gold);
+  margin-bottom: 2px;
+}
+
+.directory-now-reading__title {
+  font-family: var(--ro-font-display);
+  font-style: italic;
+  font-size: 0.95rem;
+  color: var(--ro-text);
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.directory-now-reading__author {
+  font-size: 0.72rem;
+  color: var(--ro-muted);
+}
+
+.directory-members-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-family: var(--ro-font-mono);
+  font-size: 10px;
+  letter-spacing: .04em;
+  color: var(--ro-muted);
+  margin-bottom: 4px;
+
+  strong {
+    color: var(--ro-text-2);
+    font-weight: 600;
+  }
+}
+
+.directory-members-bar {
+  height: 4px;
+  background: var(--ro-ring-track);
+  border-radius: var(--ro-radius-pill);
+  overflow: hidden;
+}
+
+.directory-members-fill {
+  height: 100%;
+  border-radius: var(--ro-radius-pill);
+  background: var(--ro-gold);
+
+  &--full {
+    background: var(--ro-error);
+  }
+
+  &--unlimited {
+    background: var(--ro-forest);
+    width: 100% !important;
+    opacity: .35;
+  }
+}
+
+.directory-card__note {
+  font-family: var(--ro-font-mono);
+  font-size: 10px;
+  letter-spacing: .04em;
+  color: var(--ro-dim);
+  text-align: center;
+  margin-top: -6px;
+}
+
 .club-card__actions {
   display: flex;
   gap: var(--ro-space-2);

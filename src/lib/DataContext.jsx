@@ -298,7 +298,7 @@ async function loadFromSupabase(userId) {
   try {
     clubsRes = await supabase
       .from('book_club_members')
-      .select('role, club:book_clubs(id, name, description, join_token, created_by, created_at)')
+      .select('role, club:book_clubs(id, name, description, join_token, created_by, created_at, visibility, join_mode, max_members)')
       .eq('user_id', userId);
   } catch (e) {
     console.warn('Clubs query failed — continuing without clubs', e);
@@ -555,6 +555,9 @@ async function loadFromSupabase(userId) {
       joinToken: m.club?.join_token,
       createdBy: m.club?.created_by,
       createdAt: m.club?.created_at,
+      visibility: m.club?.visibility,
+      joinMode: m.club?.join_mode,
+      maxMembers: m.club?.max_members,
       callerRole: m.role,
     })).filter((c) => c.id),
   };
@@ -1677,11 +1680,21 @@ export function DataProvider({ children }) {
 
   // ── v0.28: Club mutations ─────────────────────────────────────────────────
 
-  const createClub = useCallback(async ({ name, description, genreIds = [] }) => {
+  const createClub = useCallback(async ({
+    name, description, genreIds = [],
+    // v0.40: public club directory
+    moods = [], visibility = 'private', joinMode = 'auto', maxMembers = null,
+  }) => {
     if (!user) return null;
     const { data, error } = await supabase
       .from('book_clubs')
-      .insert({ name, description: description || null })
+      .insert({
+        name,
+        description: description || null,
+        visibility,
+        join_mode: joinMode,
+        max_members: maxMembers || null,
+      })
       .select()
       .single();
     if (error) { console.error('createClub failed', error); return null; }
@@ -1700,6 +1713,13 @@ export function DataProvider({ children }) {
       );
     }
 
+    // Attach mood tags (v0.40 — same taxonomy as onboarding's mood chips)
+    if (moods.length > 0) {
+      await supabase.from('book_club_moods').insert(
+        moods.map((mood) => ({ club_id: data.id, mood }))
+      );
+    }
+
     const newClub = {
       id: data.id,
       name: data.name,
@@ -1707,6 +1727,9 @@ export function DataProvider({ children }) {
       joinToken: data.join_token,
       createdBy: data.created_by,
       createdAt: data.created_at,
+      visibility: data.visibility,
+      joinMode: data.join_mode,
+      maxMembers: data.max_members,
       callerRole: 'admin',
     };
     setState((s) => ({ ...s, clubs: [newClub, ...(s.clubs || [])] }));
@@ -1718,6 +1741,9 @@ export function DataProvider({ children }) {
     const dbUpdates = {};
     if (updates.name !== undefined) dbUpdates.name = updates.name;
     if (updates.description !== undefined) dbUpdates.description = updates.description;
+    if (updates.visibility !== undefined) dbUpdates.visibility = updates.visibility;
+    if (updates.joinMode !== undefined) dbUpdates.join_mode = updates.joinMode;
+    if (updates.maxMembers !== undefined) dbUpdates.max_members = updates.maxMembers;
     await supabase.from('book_clubs').update(dbUpdates).eq('id', clubId);
     setState((s) => ({
       ...s,
@@ -1747,6 +1773,69 @@ export function DataProvider({ children }) {
       clubs: (s.clubs || []).map((c) => c.id === clubId ? { ...c, joinToken: data } : c),
     }));
     return data;
+  }, [user]);
+
+  // ── v0.40: Public club directory ──────────────────────────────────────────
+
+  const searchPublicClubs = useCallback(async ({
+    query = null, genreIds = null, moods = null, openOnly = false, sort = 'activity',
+  } = {}) => {
+    const { data, error } = await supabase.rpc('search_public_clubs', {
+      p_query: query || null,
+      p_genre_ids: genreIds && genreIds.length ? genreIds : null,
+      p_moods: moods && moods.length ? moods : null,
+      p_open_only: openOnly,
+      p_sort: sort,
+    });
+    if (error) { console.error('searchPublicClubs failed', error); return []; }
+    return (data || []).map((r) => ({
+      id: r.id,
+      name: r.name,
+      description: r.description,
+      joinMode: r.join_mode,
+      maxMembers: r.max_members,
+      memberCount: Number(r.member_count) || 0,
+      createdAt: r.created_at,
+      genreNames: r.genre_names || [],
+      moods: r.moods || [],
+      currentBook: r.current_book_title
+        ? { title: r.current_book_title, author: r.current_book_author, coverUrl: r.current_book_cover }
+        : null,
+      callerStatus: r.caller_status, // 'none' | 'member' | 'pending_approval' | 'waitlisted'
+    }));
+  }, []);
+
+  const joinPublicClub = useCallback(async (clubId) => {
+    if (!user) return null;
+    const { data, error } = await supabase.rpc('join_public_club', { p_club_id: clubId });
+    if (error) { console.error('joinPublicClub failed', error); return null; }
+    return data?.status || null; // 'joined' | 'pending_approval' | 'waitlisted' | 'already_member'
+  }, [user]);
+
+  const fetchClubJoinRequests = useCallback(async (clubId) => {
+    if (!user) return [];
+    const { data, error } = await supabase
+      .from('club_join_requests')
+      .select('id, user_id, status, created_at, profile:profiles(display_name, username, avatar_url)')
+      .eq('club_id', clubId)
+      .in('status', ['pending_approval', 'waitlisted'])
+      .order('created_at', { ascending: true });
+    if (error) { console.error('fetchClubJoinRequests failed', error); return []; }
+    return data || [];
+  }, [user]);
+
+  const approveJoinRequest = useCallback(async (requestId) => {
+    if (!user) return null;
+    const { data, error } = await supabase.rpc('approve_join_request', { p_request_id: requestId });
+    if (error) { console.error('approveJoinRequest failed', error); return null; }
+    return data?.status || null;
+  }, [user]);
+
+  const rejectJoinRequest = useCallback(async (requestId) => {
+    if (!user) return null;
+    const { data, error } = await supabase.rpc('reject_join_request', { p_request_id: requestId });
+    if (error) { console.error('rejectJoinRequest failed', error); return null; }
+    return data?.status || null;
   }, [user]);
 
   // ── v0.29: Discussion mutations ───────────────────────────────────────────
@@ -1952,6 +2041,12 @@ export function DataProvider({ children }) {
     deleteClub,
     leaveClub,
     regenerateJoinToken,
+    // v0.40: public club directory
+    searchPublicClubs,
+    joinPublicClub,
+    fetchClubJoinRequests,
+    approveJoinRequest,
+    rejectJoinRequest,
     // v0.29: discussion mutations
     postComment,
     deleteComment,

@@ -39,6 +39,7 @@ import ListDetail from './views/ListDetail';
 import SeriesPage from './views/SeriesPage';
 // v0.28: book clubs
 import BookClubs from './views/BookClubs';
+import ClubDirectory from './views/ClubDirectory';
 import BookClubCreate from './views/BookClubCreate';
 import BookClubDetail from './views/BookClubDetail';
 import SessionCreate from './views/SessionCreate';
@@ -152,6 +153,7 @@ export default function App() {
     'plan-list': { title: 'Reading Plans — The Books Oracle' },
     lists: { title: 'My Lists — The Books Oracle' },
     'book-clubs': { title: 'Book Clubs — The Books Oracle' },
+    'club-directory': { title: 'Find a Book Club — The Books Oracle' },
     'book-club-create': { title: 'Start a Book Club — The Books Oracle' },
     privacy: { title: 'Privacy Policy — The Books Oracle' },
     terms: { title: 'Terms of Service — The Books Oracle' },
@@ -333,6 +335,7 @@ export default function App() {
     case 'list-view': page = <ListView />; break;
     // v0.28: book clubs
     case 'book-clubs': page = <BookClubs />; break;
+    case 'club-directory': page = <ClubDirectory />; break;
     case 'book-club-create': page = <BookClubCreate />; break;
     case 'book-club-detail': page = <BookClubDetail />; break;
     case 'session-create': page = <SessionCreate />; break;

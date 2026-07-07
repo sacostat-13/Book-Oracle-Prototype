@@ -1,24 +1,14 @@
 // src/views/BookClubCreate.jsx — v0.31
+// v0.40: visibility (private/public), join_mode, max_members, mood tags.
 
 import { useState } from 'react';
 import { useData } from '../lib/DataContext';
 import { useRouter } from '../lib/RouterContext';
 import { useT, useTNode } from '../lib/I18nContext';
 
-const inputStyle = {
-  width: '100%', boxSizing: 'border-box',
-  background: 'rgba(176, 140, 63, 0.04)',
-  border: '1px solid rgba(176, 140, 63, 0.25)',
-  borderRadius: 'var(--ro-radius-sm)', padding: '0.6rem 0.85rem',
-  color: 'var(--paper)', fontFamily: 'var(--ro-font-display)',
-  fontSize: '1.05rem', lineHeight: 1.5,
-};
-
-const labelStyle = {
-  display: 'block', fontFamily: 'var(--ro-font-mono)',
-  fontSize: '0.72rem', letterSpacing: '0.15em',
-  textTransform: 'uppercase', color: 'var(--gilt)', marginBottom: '0.4rem',
-};
+// v0.38 onboarding mood taxonomy — reused here so clubs can be tagged and
+// later filtered in the directory by the same vibe chips as onboarding.
+const MOODS = ['comfort', 'challenge', 'escapism', 'mind-bending', 'character-driven', 'atmospheric', 'fast-paced', 'short-read'];
 
 export default function BookClubCreate() {
   const { createClub, state } = useData();
@@ -29,18 +19,36 @@ export default function BookClubCreate() {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [selectedGenreIds, setSelectedGenreIds] = useState([]);
+  const [selectedMoods, setSelectedMoods] = useState([]);
+  const [visibility, setVisibility] = useState('private');
+  const [joinMode, setJoinMode] = useState('auto');
+  const [maxMembers, setMaxMembers] = useState('');
   const [saving, setSaving] = useState(false);
 
   const genres = state.genres || [];
+  const isPublic = visibility === 'public';
 
   function toggleGenre(id) {
     setSelectedGenreIds((ids) => ids.includes(id) ? ids.filter((x) => x !== id) : [...ids, id]);
   }
 
+  function toggleMood(id) {
+    setSelectedMoods((ids) => ids.includes(id) ? ids.filter((x) => x !== id) : [...ids, id]);
+  }
+
   async function handleSubmit() {
     if (!name.trim()) return;
     setSaving(true);
-    const club = await createClub({ name: name.trim(), description: description.trim() || undefined, genreIds: selectedGenreIds });
+    const parsedMax = maxMembers.trim() ? Math.max(1, parseInt(maxMembers, 10) || 0) || null : null;
+    const club = await createClub({
+      name: name.trim(),
+      description: description.trim() || undefined,
+      genreIds: selectedGenreIds,
+      moods: isPublic ? selectedMoods : [],
+      visibility,
+      joinMode: isPublic ? joinMode : 'auto',
+      maxMembers: isPublic ? parsedMax : null,
+    });
     setSaving(false);
     if (club) go('book-club-detail', { clubId: club.id });
   }
@@ -60,9 +68,9 @@ export default function BookClubCreate() {
 
       <div className="club-form">
         <div>
-          <label style={labelStyle}>{t('clubs.fieldName')}</label>
+          <label className="field-label">{t('clubs.fieldName')}</label>
           <input
-            style={inputStyle}
+            className="input"
             placeholder={t('clubs.fieldNamePlaceholder')}
             value={name}
             onChange={(e) => setName(e.target.value)}
@@ -72,7 +80,7 @@ export default function BookClubCreate() {
         </div>
 
         <div>
-          <label style={labelStyle}>
+          <label className="field-label">
             {t('clubs.fieldDescription')}{' '}
             <span className="club-form__optional">({t('clubs.fieldOptional')})</span>
           </label>
@@ -87,7 +95,7 @@ export default function BookClubCreate() {
 
         {genres.length > 0 && (
           <div>
-            <label style={labelStyle}>
+            <label className="field-label">
               {t('clubs.fieldGenres')}{' '}
               <span className="club-form__optional">({t('clubs.fieldOptional')})</span>
             </label>
@@ -105,6 +113,88 @@ export default function BookClubCreate() {
               })}
             </div>
           </div>
+        )}
+
+        {/* v0.40: visibility — private (invite-only) vs public (discoverable) */}
+        <div>
+          <label className="field-label">{t('clubs.fieldVisibility')}</label>
+          <div className="club-form__genre-row">
+            <button
+              type="button" onClick={() => setVisibility('private')}
+              className={`chip${!isPublic ? ' chip--active' : ''}`}
+            >
+              {t('clubs.visibilityPrivate')}
+            </button>
+            <button
+              type="button" onClick={() => setVisibility('public')}
+              className={`chip${isPublic ? ' chip--active' : ''}`}
+            >
+              {t('clubs.visibilityPublic')}
+            </button>
+          </div>
+          <p className="club-form__desc">
+            {isPublic ? t('clubs.visibilityPublicHint') : t('clubs.visibilityPrivateHint')}
+          </p>
+        </div>
+
+        {isPublic && (
+          <>
+            <div>
+              <label className="field-label">{t('clubs.fieldJoinMode')}</label>
+              <div className="club-form__genre-row">
+                <button
+                  type="button" onClick={() => setJoinMode('auto')}
+                  className={`chip${joinMode === 'auto' ? ' chip--active' : ''}`}
+                >
+                  {t('clubs.joinModeAuto')}
+                </button>
+                <button
+                  type="button" onClick={() => setJoinMode('approval')}
+                  className={`chip${joinMode === 'approval' ? ' chip--active' : ''}`}
+                >
+                  {t('clubs.joinModeApproval')}
+                </button>
+              </div>
+              <p className="club-form__desc">
+                {joinMode === 'auto' ? t('clubs.joinModeAutoHint') : t('clubs.joinModeApprovalHint')}
+              </p>
+            </div>
+
+            <div>
+              <label className="field-label">
+                {t('clubs.fieldMaxMembers')}{' '}
+                <span className="club-form__optional">({t('clubs.fieldOptional')} — {t('clubs.maxMembersUnlimitedHint')})</span>
+              </label>
+              <input
+                className="input"
+                type="number" min="1" inputMode="numeric"
+                placeholder={t('clubs.maxMembersPlaceholder')}
+                value={maxMembers}
+                onChange={(e) => setMaxMembers(e.target.value)}
+              />
+              <p className="club-form__desc">{t('clubs.maxMembersHint')}</p>
+            </div>
+
+            <div>
+              <label className="field-label">
+                {t('clubs.fieldMoods')}{' '}
+                <span className="club-form__optional">({t('clubs.fieldOptional')})</span>
+              </label>
+              <div className="club-form__genre-row">
+                {MOODS.map((id) => {
+                  const selected = selectedMoods.includes(id);
+                  return (
+                    <button
+                      key={id} type="button" onClick={() => toggleMood(id)}
+                      className={`chip${selected ? ' chip--active' : ''}`}
+                    >
+                      {t(`onboarding.moods.${id}.title`)}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </>
         )}
 
         <div className="club-form__actions">

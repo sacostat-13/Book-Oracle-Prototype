@@ -25,9 +25,12 @@ export default function BookClubs() {
       </div>
 
       {user && (
-        <div className="clubs-list">
+        <div className="clubs-list clubs-list__actions">
           <button className="btn-primary" onClick={() => go('book-club-create')}>
             {t('clubs.newClub')}
+          </button>
+          <button className="btn-secondary" onClick={() => go('club-directory')}>
+            {t('clubs.discoverClubs')}
           </button>
         </div>
       )}

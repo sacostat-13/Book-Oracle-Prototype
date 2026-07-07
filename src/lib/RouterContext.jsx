@@ -44,6 +44,7 @@ const ROUTE_DEFS = [
   { name: 'plan-list',          path: '/plans' },
   { name: 'lists',              path: '/lists' },
   { name: 'book-clubs',         path: '/clubs' },
+  { name: 'club-directory',     path: '/clubs/discover' },
   { name: 'book-club-create',   path: '/clubs/new' },
   { name: 'privacy',            path: '/privacy' },
   { name: 'terms',              path: '/terms' },

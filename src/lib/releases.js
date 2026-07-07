@@ -16,9 +16,22 @@
 
 // The version label shown as "current" — keep in sync with package.json and
 // the README version line.
-export const CURRENT_VERSION = 'v0.39.11';
+export const CURRENT_VERSION = 'v0.40.1';
 
 export const RELEASES = [{
+    version: 'v0.40.1',
+    date: '2026-07-06',
+    titleEn: 'Find a Book Club',
+    titleEs: 'Encontr\u00e1 un Club de Lectura',
+    bodyEn: [
+      'New: Discover clubs from the Book Clubs page \u2014 search by name, filter by genre or mood, and see what each club is currently reading before you join.',
+      'When creating a club, choose Private (invite-only, as before) or Public, which lets anyone find it in the directory. Public clubs can require your approval on join requests, and can cap membership \u2014 once full, new joiners land on a waitlist and move in automatically as spots open up.',
+    ],
+    bodyEs: [
+      'Nuevo: Descubr\u00ed clubes desde la p\u00e1gina de Clubes de Lectura \u2014 busc\u00e1 por nombre, filtr\u00e1 por g\u00e9nero u onda, y mir\u00e1 qu\u00e9 est\u00e1 leyendo cada club antes de sumarte.',
+      'Al crear un club, eleg\u00ed Privado (solo por invitaci\u00f3n, como antes) o P\u00fablico, que permite que cualquiera lo encuentre en el directorio. Los clubes p\u00fablicos pueden pedir tu aprobaci\u00f3n antes de sumar gente, y pueden tener un l\u00edmite de miembros \u2014 una vez lleno, los nuevos quedan en una lista de espera y se suman solos cuando se libera un lugar.',
+    ],
+  }, {
     version: 'v0.39.11',
     date: '2026-07-06',
     titleEn: 'Link previews now work for every book',

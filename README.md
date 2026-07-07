@@ -4,7 +4,7 @@ A reading companion — wishlist, library, reading plans, book clubs, and an AI-
 for book discovery. Built with React + Vite + SCSS, backed by Supabase for auth
 and cross-device sync, and Netlify Functions for API proxying.
 
-> Current version: **v0.39.11** — see [Releases](#releases) below for changelog.
+> Current version: **v0.40.1** — see [Releases](#releases) below for changelog.
 > Upgrading from an earlier version? Check the matching `MIGRATION_*.md` / `UPDATE_*.md`.
 
 ---
@@ -326,6 +326,26 @@ and forward requests. Locally you need `netlify dev` to make them work.
 ---
 
 ## Releases
+
+### v0.40.1 — Public Club Directory: search, join modes, waitlist
+
+**Migration required:** `supabase/schema_v26_migration.sql`.
+
+**First slice of v0.40.** Book clubs can now be discovered and joined from inside the app without an invite link — still fully auth-gated, no unauthenticated access anywhere in this release.
+
+**Schema.** `book_clubs` gains `visibility` (`private` | `public`, default `private`), `join_mode` (`auto` | `approval`), and `max_members` (nullable = unlimited). New `book_club_moods` mirrors the existing `book_club_genres` pattern against the same 8-id mood taxonomy from onboarding (`comfort`, `challenge`, `escapism`, `mind-bending`, `character-driven`, `atmospheric`, `fast-paced`, `short-read`), so clubs can be tagged and filtered by vibe as well as genre. New `club_join_requests` is a single queue table covering both "awaiting admin approval" and "waitlisted, club is full" — a partial unique index (`club_id, user_id` where status is active) allows a fresh request after a past one resolved.
+
+**RPCs, all `security definer`.** `join_public_club()` locks the club row before counting members, so two people can't race the last open seat — routes to instant membership, a pending-approval request, or the waitlist depending on `join_mode` and remaining capacity. `approve_join_request()` / `reject_join_request()` are the admin actions; approval re-checks capacity in case the club filled up since the request was made, holding on the waitlist instead of over-filling. A `promote_from_waitlist()` trigger fires `after delete on book_club_members`: frees exactly one seat, so promotes exactly the oldest waitlisted request — straight to member if `join_mode = 'auto'`, or back to `pending_approval` if `'approval'` (a freed seat doesn't waive admin review). `search_public_clubs()` powers the directory: text search, genre/mood filters, an open-only filter, and three sort orders (activity / members / newest), joined against each club's active `book_club_sessions` row (if any) for a "currently reading" preview.
+
+**Notifications.** `notifications.type` extended with `join_request`, `join_approved`, `join_rejected`, `waitlist_promoted`.
+
+**New UI.** `ClubDirectory.jsx` (`/clubs/discover`) — search bar, genre/mood chip filters, open-only toggle, sort dropdown, and a card grid showing each club's join-mode badge, member count vs. cap, and currently-reading book. Descriptions clamp to 3 lines with a "View more" toggle that only appears when the text actually overflows (measured via `scrollHeight` vs `clientHeight`, not a fixed word count). Linked from a new "Discover clubs" button next to "New book club" on the existing Book Clubs page. `BookClubCreate.jsx` gained a Private/Public toggle plus (when Public) join-mode, member-limit, and mood-tag fields.
+
+**Fixed in passing — `BookClubCreate.jsx` colors.** Its name/description fields were still using inline `style` objects referencing `--paper`/`--gilt`, pre-rename theme variables that don't exist since the `--ro-` token rename in v0.37.1 (that sweep covered `EditSessionModal` in the same file family but missed this one) — they were silently falling back to browser defaults instead of the DS. Replaced with `.field-label`/`.input`.
+
+**Deferred to the next slice (v0.40.2):** the admin-facing "Pending requests" / "Waitlist" panel in `BookClubDetail.jsx`. The data functions (`fetchClubJoinRequests`, `approveJoinRequest`, `rejectJoinRequest`) are already in `DataContext.jsx` — this release just doesn't have the UI wired up yet, so approvals/rejections need to go through Supabase directly until then.
+
+No i18n changes skipped — new `clubs.directory.*` keys and `clubs.fieldVisibility`/`fieldJoinMode`/`fieldMaxMembers`/`fieldMoods` and friends added to both `en.json` and `es.json`.
 
 ### v0.37.1 — Design System redesign: sign-in, forms, Oracle, clubs, profile
 
