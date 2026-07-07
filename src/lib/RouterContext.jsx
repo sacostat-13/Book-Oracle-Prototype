@@ -40,6 +40,7 @@ const ROUTE_DEFS = [
   { name: 'oracle',             path: '/oracle' },
   { name: 'oracle-categories',  path: '/oracle/categories' },
   { name: 'oracle-similar',     path: '/oracle/similar' },
+  { name: 'oracle-ask',         path: '/oracle/ask' },
   { name: 'plan-create',        path: '/plans/new' },
   { name: 'plan-list',          path: '/plans' },
   { name: 'lists',              path: '/lists' },

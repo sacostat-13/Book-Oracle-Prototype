@@ -17,6 +17,7 @@ const SECTIONS = [
       { route: 'oracle', label: 'The Oracle' },
       { route: 'oracle-categories', label: 'Explore by genre' },
       { route: 'oracle-similar', label: 'Find similar books' },
+      { route: 'oracle-ask', label: 'Ask the Oracle' },
       { route: 'plan-list', label: 'Reading plans' },
       { route: 'book-clubs', label: 'Book clubs' },
     ],

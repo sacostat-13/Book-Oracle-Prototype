@@ -1651,8 +1651,12 @@
 
 .oracle-fork-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(3, 1fr);
   gap: 20px;
+
+  @include ro-down(tablet) {
+    grid-template-columns: 1fr 1fr;
+  }
 
   @include ro-down(mobile) {
     grid-template-columns: 1fr;
@@ -1827,6 +1831,64 @@
   display: flex;
   flex-direction: column;
   gap: var(--ro-space-4);
+}
+
+// ── Ask the Oracle (free-text mode) ───────────────────────────────────────────
+.oracle-ask-nudge {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  background: color-mix(in srgb, var(--ro-gold) 8%, transparent);
+  border: 1px solid var(--ro-border-strong);
+  border-radius: var(--ro-radius-lg);
+  padding: 16px 20px;
+  margin-bottom: var(--ro-space-6);
+}
+
+.oracle-ask-nudge__text {
+  font-family: var(--ro-font-body);
+  font-size: 14px;
+  color: var(--ro-text-2);
+}
+
+.oracle-ask-box {
+  border: 1px solid var(--ro-border-strong);
+  border-radius: var(--ro-radius-lg);
+  background: var(--ro-surface);
+  padding: 4px 4px 10px;
+  margin-bottom: var(--ro-space-6);
+}
+
+.oracle-ask-input {
+  width: 100%;
+  border: none;
+  background: transparent;
+  resize: none;
+  outline: none;
+  padding: 14px 16px 6px;
+  font-family: var(--ro-font-body);
+  font-size: 16px;
+  line-height: 1.5;
+  color: var(--ro-text);
+
+  &::placeholder {
+    color: var(--ro-muted);
+    font-style: italic;
+  }
+}
+
+.oracle-ask-box__foot {
+  display: flex;
+  justify-content: flex-end;
+  padding: 0 16px;
+}
+
+.oracle-ask-box__count {
+  font-family: var(--ro-font-mono);
+  font-size: 11px;
+  color: var(--ro-dim);
 }
 
 // Segmented card tabs — source selector (DS "Tabs" pattern). Selected tab

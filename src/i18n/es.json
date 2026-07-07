@@ -277,11 +277,13 @@
   "oracle": {
     "breadcrumbDashboard": "Inicio",
     "forkEyebrow": "Oráculo",
-    "forkSubtitle": "Dos formas de invocar libros de la bóveda.",
+    "forkSubtitle": "Tres formas de invocar libros de la bóveda.",
     "forkByGenres": "<em class=\"accent\">Por géneros</em>",
     "forkByGenresDesc": "Elegí un temperamento — folk horror, gótico, sáfico, latinoamericano — y te traemos tres libros para escoger.",
     "forkBySimilar": "<em class=\"accent\">Basado en otros libros</em>",
     "forkBySimilarDesc": "Decinos 1–3 libros que hayás amado. Encontramos otros con la misma sangre.",
+    "forkByAsk": "<em class=\"accent\">Preguntale al Oráculo</em>",
+    "forkByAskDesc": "Contale qué buscás, con tus propias palabras — un estado de ánimo, un momento, una pregunta. Te responde con tres libros.",
     "categoriesEyebrow": "Por géneros",
     "categoriesSubtitle": "Tres libros frescos, {source}.",
     "sourceWishlist": "de tu lista",
@@ -323,7 +325,17 @@
     "quotaWallBodyMonth": "Las cuentas gratuitas incluyen {limit} consultas de IA por mes.",
     "forkPageTitle": "¿Cómo vamos a <em class=\"accent\">adivinar</em>?",
     "categoriesPageTitle": "Elige un <em class=\"accent\">temperamento</em>",
-    "similarPageTitle": "Elige <em class=\"accent\">1–3 libros</em> que hayas amado"
+    "similarPageTitle": "Elige <em class=\"accent\">1–3 libros</em> que hayas amado",
+    "askEyebrow": "Preguntale al Oráculo",
+    "askPageTitle": "Pedí lo que <em class=\"accent\">sea</em>",
+    "askSubtitle": "Un estado de ánimo, un momento, una pregunta — contale al Oráculo qué buscás, con tus propias palabras.",
+    "askNudgeText": "Configurá tus géneros favoritos y tu estado de ánimo en tu perfil — el Oráculo los usa para responder mejor.",
+    "askNudgeCta": "Configurar géneros y ánimo →",
+    "askPlaceholder": "Algo gótico y atmosférico para una semana lluviosa…",
+    "askButton": "Preguntale al Oráculo ☩",
+    "askAsking": "El Oráculo está escuchando…",
+    "askError": "No se pudo contactar al Oráculo. Intentá reformular tu pregunta.",
+    "askResultsTitle": "Encontramos <em class=\"accent\">{count}</em> libros para vos"
   },
   "plans": {
     "breadcrumb": "Inicio",

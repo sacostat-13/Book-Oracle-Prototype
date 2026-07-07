@@ -29,6 +29,10 @@ export default function OracleFork() {
           <h2 className="oracle-fork-card__label">✦ {tNode('oracle.forkBySimilar')}</h2>
           <p className="oracle-fork-card__sub">{t('oracle.forkBySimilarDesc')}</p>
         </button>
+        <button className="oracle-fork-card" onClick={() => go('oracle-ask')}>
+          <h2 className="oracle-fork-card__label">☩ {tNode('oracle.forkByAsk')}</h2>
+          <p className="oracle-fork-card__sub">{t('oracle.forkByAskDesc')}</p>
+        </button>
       </div>
     </>
   );

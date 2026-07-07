@@ -29,6 +29,7 @@ import SitemapPage from './views/SitemapPage';
 import OracleFork from './views/OracleFork';
 import OracleCategories from './views/OracleCategories';
 import OracleSimilar from './views/OracleSimilar';
+import OracleAsk from './views/OracleAsk';
 import PlanCreate from './views/PlanCreate';
 import PlanList from './views/PlanList';
 import PlanView from './views/PlanView';
@@ -149,6 +150,7 @@ export default function App() {
     oracle: { title: 'Oracle — The Books Oracle' },
     'oracle-categories': { title: 'Explore by Genre — The Books Oracle' },
     'oracle-similar': { title: 'Find Similar Books — The Books Oracle' },
+    'oracle-ask': { title: 'Ask the Oracle — The Books Oracle' },
     'plan-create': { title: 'New Reading Plan — The Books Oracle' },
     'plan-list': { title: 'Reading Plans — The Books Oracle' },
     lists: { title: 'My Lists — The Books Oracle' },
@@ -324,6 +326,7 @@ export default function App() {
     case 'oracle': page = <OracleFork />; break;
     case 'oracle-categories': page = <OracleCategories onOpenBook={openBook} />; break;
     case 'oracle-similar': page = <OracleSimilar onOpenBook={openBook} />; break;
+    case 'oracle-ask': page = <OracleAsk onOpenBook={openBook} />; break;
     case 'plan-create': page = <PlanCreate />; break;
     case 'plan-list': page = <PlanList />; break;
     // 'plan-view' is handled earlier in the public-routes branch (it renders
