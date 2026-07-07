@@ -130,16 +130,9 @@ export default async (request, context) => {
 
     if (bookMatch) {
       const wantedKey = decodeURIComponent(bookMatch[1]);
+      const [wantedTitle, wantedAuthor] = wantedKey.split('|');
+      console.log(`[diagnostic] wantedTitle="${wantedTitle}" wantedAuthor="${wantedAuthor}"`);
 
-      // No stored bookKey column to query by directly, so we fetch verified
-      // books and compute bookKey() per row to find the match — same
-      // tradeoff netlify/functions/sitemap.js already makes. (An earlier
-      // version of this tried an `ilike` search on a chunk of the
-      // space-stripped key, e.g. "thehaunt" — that can never match, since
-      // bookKey() strips spaces/punctuation but the `title` column still
-      // has them: "The Haunting of Hill House" never literally contains
-      // the substring "thehaunt".) Bounded to bot traffic only, which is a
-      // small fraction of requests, so the cost of scanning is acceptable.
       // No stored bookKey column to query by directly, so we fetch verified
       // books and compute bookKey() per row to find the match — same
       // tradeoff netlify/functions/sitemap.js already makes. PostgREST caps
@@ -152,23 +145,67 @@ export default async (request, context) => {
       const MAX_PAGES = 20; // hard ceiling so a bad/huge catalog can't hang the function
       let match = null;
       let totalFetched = 0;
+      const candidates = []; // v0.39.11: diagnostic — rows whose normalized title looks similar to wanted, so we can see what the DB is actually returning
 
       for (let page = 0; page < MAX_PAGES; page++) {
         const res = await fetch(
-          `${supabaseUrl}/rest/v1/books?select=title,author,description,cover_url&status=in.(verified,oracle_categorized)&limit=${PAGE_SIZE}&offset=${page * PAGE_SIZE}`, {
+          `${supabaseUrl}/rest/v1/books?select=title,author,status,description,cover_url&status=in.(verified,oracle_categorized)&limit=${PAGE_SIZE}&offset=${page * PAGE_SIZE}`, {
             headers: restHeaders
           }
         );
-        if (!res.ok) break;
+        if (!res.ok) {
+          console.log(`[diagnostic] fetch failed page=${page} status=${res.status}`);
+          break;
+        }
         const rows = await res.json();
         totalFetched += rows.length;
+
+        for (const b of rows) {
+          const normTitle = (b.title || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+          if (wantedTitle && normTitle.startsWith(wantedTitle.slice(0, 8))) {
+            candidates.push({
+              title: b.title,
+              author: b.author,
+              status: b.status,
+              normTitle,
+              normAuthor: (b.author || '').toLowerCase().replace(/[^a-z0-9]/g, '')
+            });
+          }
+        }
+
         match = rows.find((b) => matchesBookKey(b.title, b.author, wantedKey));
-        if (match || rows.length < PAGE_SIZE) break; // found it, or hit the last page
+        if (match || rows.length < PAGE_SIZE) break;
       }
 
-      console.log(`Fetched ${totalFetched} verified books (paginated). Wanted key: ${wantedKey} | Match found: ${!!match}`);
+      console.log(`[diagnostic] fetched ${totalFetched} total rows. Title-prefix candidates: ${candidates.length}`);
+      if (candidates.length > 0) {
+        console.log(`[diagnostic] candidates:`, JSON.stringify(candidates.slice(0, 5)));
+      }
+      console.log(`[diagnostic] Wanted key: ${wantedKey} | Match found: ${!!match}`);
 
-      if (!match) return context.next();
+      if (!match) {
+        // v0.39.11: direct probe against the DB for this exact title,
+        // ignoring status entirely, to see what its actual status column
+        // says — helps distinguish "wrong status filter" from "book not
+        // in DB" from "book in DB but not returned by the paginated scan".
+        try {
+          const probeTitle = wantedTitle.slice(0, 12);
+          const probeRes = await fetch(
+            `${supabaseUrl}/rest/v1/books?select=title,author,status&title=ilike.*${encodeURIComponent(probeTitle)}*&limit=10`, {
+              headers: restHeaders
+            }
+          );
+          if (probeRes.ok) {
+            const probeRows = await probeRes.json();
+            console.log(`[diagnostic] direct probe (no status filter) on title~"${probeTitle}" returned ${probeRows.length} rows:`, JSON.stringify(probeRows));
+          } else {
+            console.log(`[diagnostic] probe fetch failed status=${probeRes.status}`);
+          }
+        } catch (e) {
+          console.log(`[diagnostic] probe threw:`, e.message);
+        }
+        return context.next();
+      }
 
       const response = await context.next();
       const html = await response.text();
