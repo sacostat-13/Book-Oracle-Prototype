@@ -3,30 +3,30 @@
 // DS spec: gradient surfaces, gold section eyebrows, consistent cover sizes.
 
 import { useMemo, useState, useCallback, useEffect } from 'react';
-import { useData }          from '../lib/DataContext';
-import { useRouter }        from '../lib/RouterContext';
-import { useT, useTNode }   from '../lib/I18nContext';
-import { useAuth }          from '../lib/AuthContext';
-import { useOracleQuota }   from '../lib/OracleQuotaContext';
+import { useData } from '../lib/DataContext';
+import { useRouter } from '../lib/RouterContext';
+import { useT, useTNode } from '../lib/I18nContext';
+import { useAuth } from '../lib/AuthContext';
+import { useOracleQuota } from '../lib/OracleQuotaContext';
 import { callClaude, QuotaExceededError } from '../lib/claudeApi';
-import { bookKey, openBookTab }           from '../lib/bookHelpers';
-import { getFriendsFeedEvents }           from '../lib/useFriends';
+import { bookKey, openBookTab } from '../lib/bookHelpers';
+import { getFriendsFeedEvents } from '../lib/useFriends';
 
 const FEED_PAGE_SIZE = 5;
 
 // ─── Default widget layout ────────────────────────────────────────────────────
 export const DEFAULT_DASHBOARD_LAYOUT = [
-  { id: 'currently-reading', visible: true  },
-  { id: 'oracle-spark',      visible: true  },
-  { id: 'quick-actions',     visible: true  },
-  { id: 'reading-stats',     visible: true  },
-  { id: 'reading-goal',      visible: true  },
-  { id: 'series-progress',   visible: true  },
-  { id: 'streak',            visible: true  },
-  { id: 'plans',             visible: true  },
-  { id: 'clubs',             visible: true  },
-  { id: 'friends-feed',      visible: true  },
-  { id: 'feed',              visible: true  },
+  { id: 'currently-reading', visible: true },
+  { id: 'oracle-spark', visible: true },
+  { id: 'quick-actions', visible: true },
+  { id: 'reading-stats', visible: true },
+  { id: 'reading-goal', visible: true },
+  { id: 'series-progress', visible: true },
+  { id: 'streak', visible: true },
+  { id: 'plans', visible: true },
+  { id: 'clubs', visible: true },
+  { id: 'friends-feed', visible: true },
+  { id: 'feed', visible: true },
 ];
 
 function resolveLayout(saved) {
@@ -47,23 +47,23 @@ function relativeDay(dateStr, t) {
   const diff = Math.floor((Date.now() - new Date(dateStr)) / 86400000);
   if (diff === 0) return t('dashboard.today');
   if (diff === 1) return t('dashboard.yesterday');
-  if (diff < 7)   return t('dashboard.daysAgo',   { count: diff });
-  if (diff < 30)  return t('dashboard.weeksAgo',  { count: Math.floor(diff / 7)  });
-  return                  t('dashboard.monthsAgo', { count: Math.floor(diff / 30) });
+  if (diff < 7) return t('dashboard.daysAgo', { count: diff });
+  if (diff < 30) return t('dashboard.weeksAgo', { count: Math.floor(diff / 7) });
+  return t('dashboard.monthsAgo', { count: Math.floor(diff / 30) });
 }
 
 function buildFeed(state) {
   const events = [];
-  const lib    = state.library || [];
-  const wl     = state.wishlist || [];
-  const plans  = state.plans   || [];
+  const lib = state.library || [];
+  const wl = state.wishlist || [];
+  const plans = state.plans || [];
 
   for (const b of lib) {
-    if (b.dateRead)  events.push({ type: 'finished',  date: b.dateRead,  book: b, key: 'f-' + bookKey(b) });
-    if (b.startedAt) events.push({ type: 'started',   date: b.startedAt, book: b, key: 's-' + bookKey(b) });
+    if (b.dateRead) events.push({ type: 'finished', date: b.dateRead, book: b, key: 'f-' + bookKey(b) });
+    if (b.startedAt) events.push({ type: 'started', date: b.startedAt, book: b, key: 's-' + bookKey(b) });
   }
   for (const b of state.currentlyReading || []) {
-    if (b.startedAt) events.push({ type: 'started',   date: b.startedAt, book: b, key: 'cs-' + bookKey(b) });
+    if (b.startedAt) events.push({ type: 'started', date: b.startedAt, book: b, key: 'cs-' + bookKey(b) });
   }
   // Group wishlist additions by day
   const byDay = {};
@@ -82,17 +82,17 @@ function buildFeed(state) {
 // ─── Sparkle SVG icon (Oracle sigil) ─────────────────────────────────────────
 const IconSparkle = ({ size = 11 }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-    <path d="M12 0 L14.5 9.5 L24 12 L14.5 14.5 L12 24 L9.5 14.5 L0 12 L9.5 9.5Z"/>
+    <path d="M12 0 L14.5 9.5 L24 12 L14.5 14.5 L12 24 L9.5 14.5 L0 12 L9.5 9.5Z" />
   </svg>
 );
 const IconDiamond = ({ size = 11 }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-    <path d="M12 2 L20 12 L12 22 L4 12Z"/>
+    <path d="M12 2 L20 12 L12 22 L4 12Z" />
   </svg>
 );
 const IconBook = ({ size = 12 }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
-    <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+    <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" /><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
   </svg>
 );
 
@@ -161,11 +161,11 @@ function CurrentlyReadingWidget({ books, onOpenBook, t }) {
 // ─── Oracle Spark ─────────────────────────────────────────────────────────────
 function OracleSparkWidget({ wishlist, go, t, profile }) {
   const { quota, refresh: refreshQuota } = useOracleQuota();
-  const [state,  setState]  = useState('idle');
+  const [state, setState] = useState('idle');
   const [result, setResult] = useState(null);
 
   const hasWishlist = (wishlist || []).length > 0;
-  const quotaEmpty  = !quota?.unlimited && quota?.calls_remaining === 0;
+  const quotaEmpty = !quota?.unlimited && quota?.calls_remaining === 0;
 
   async function draw() {
     if (!hasWishlist || quotaEmpty) return;
@@ -188,7 +188,7 @@ function OracleSparkWidget({ wishlist, go, t, profile }) {
       );
       if (!raw) { setState('error'); return; }
       const parsed = JSON.parse(raw.replace(/```json|```/g, '').trim());
-      const match  = (wishlist || []).find((b) =>
+      const match = (wishlist || []).find((b) =>
         b.t?.toLowerCase().replace(/[^a-z0-9]/g, '') === parsed.title?.toLowerCase().replace(/[^a-z0-9]/g, '')
       );
       setResult({ ...parsed, book: match || null });
@@ -276,20 +276,20 @@ function OracleSparkWidget({ wishlist, go, t, profile }) {
 
 // ─── Reading Stats ─────────────────────────────────────────────────────────────
 function ReadingStatsWidget({ library, go, t }) {
-  const now   = new Date();
-  const year  = now.getFullYear();
+  const now = new Date();
+  const year = now.getFullYear();
   const total = library.length;
   const thisYearCount = library.filter(
     (b) => b.dateRead && new Date(b.dateRead).getFullYear() === year
   ).length;
   const twelveAgo = new Date(now.getFullYear(), now.getMonth() - 11, 1);
-  const recent    = library.filter((b) => b.dateRead && new Date(b.dateRead) >= twelveAgo);
-  const pace      = recent.length > 0 ? (recent.length / 12).toFixed(1) : null;
-  const pages     = library.reduce((s, b) => s + (b.pp || 0), 0);
+  const recent = library.filter((b) => b.dateRead && new Date(b.dateRead) >= twelveAgo);
+  const pace = recent.length > 0 ? (recent.length / 12).toFixed(1) : null;
+  const pages = library.reduce((s, b) => s + (b.pp || 0), 0);
 
   const cards = [
-    { value: total,                        label: thisYearCount > 0 ? t('dashboard.statsWidgetThisYear', { count: thisYearCount }) : t('dashboard.statsWidgetBooks', { count: total }) },
-    { value: pace ?? '—',                   label: 'avg per month' },
+    { value: total, label: thisYearCount > 0 ? t('dashboard.statsWidgetThisYear', { count: thisYearCount }) : t('dashboard.statsWidgetBooks', { count: total }) },
+    { value: pace ?? '—', label: 'avg per month' },
     { value: pages > 0 ? pages.toLocaleString() : '—', label: 'pages total' },
   ];
 
@@ -311,20 +311,38 @@ function ReadingStatsWidget({ library, go, t }) {
 }
 
 // ─── Reading Goal ─────────────────────────────────────────────────────────────
-function ReadingGoalWidget({ library, readingGoalCount, setReadingGoalCount, t }) {
+function ReadingGoalWidget({ library, genresByBookId, readingGoalCount, setReadingGoalCount, t }) {
   const [editing, setEditing] = useState(false);
-  const [input,   setInput]   = useState('');
+  const [input, setInput] = useState('');
 
-  const now        = new Date();
-  const year       = now.getFullYear();
-  const target     = readingGoalCount;
-  const done       = library.filter((b) => b.dateRead && new Date(b.dateRead).getFullYear() === year).length;
+  const now = new Date();
+  const year = now.getFullYear();
+  const target = readingGoalCount;
+  const done = library.filter((b) => b.dateRead && new Date(b.dateRead).getFullYear() === year).length;
   const daysInYear = ((year % 4 === 0 && year % 100 !== 0) || year % 400 === 0) ? 366 : 365;
-  const yearFrac   = (Math.floor((now - new Date(year, 0, 1)) / 86400000) + 1) / daysInYear;
-  const expected   = target ? Math.round(target * yearFrac) : 0;
-  const delta      = target ? done - expected : 0;
-  const pct        = target ? Math.min(100, Math.round((done / target) * 100)) : 0;
-  const reached    = target && done >= target;
+  const yearFrac = (Math.floor((now - new Date(year, 0, 1)) / 86400000) + 1) / daysInYear;
+  const expected = target ? Math.round(target * yearFrac) : 0;
+  const delta = target ? done - expected : 0;
+  const pct = target ? Math.min(100, Math.round((done / target) * 100)) : 0;
+  const reached = target && done >= target;
+
+  // v0.42-ish: yearly genre breakdown — same source of truth as Profile's
+  // all-time "Top genres" (state.genresByBookId), but scoped to books read
+  // this year and capped to 3, to sit compactly under the goal bar.
+  const topGenres = useMemo(() => {
+    const counts = {};
+    for (const b of library) {
+      if (!b.dateRead || new Date(b.dateRead).getFullYear() !== year) continue;
+      for (const g of (genresByBookId?.[b.bookId] || [])) {
+        counts[g.name] = (counts[g.name] || 0) + 1;
+      }
+    }
+    return Object.entries(counts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 3)
+      .map(([name, count]) => ({ name, count }));
+  }, [library, genresByBookId, year]);
+  const genreBarColors = ['--ro-burgundy', '--ro-forest', '--ro-gold'];
 
   function save() {
     const n = parseInt(input, 10);
@@ -380,12 +398,35 @@ function ReadingGoalWidget({ library, readingGoalCount, setReadingGoalCount, t }
               {reached
                 ? t('dashboard.goalWidgetDone')
                 : delta > 0
-                ? `${t('dashboard.goalWidgetAhead', { n: delta })} · ${year}`
-                : delta < 0
-                ? `${t('dashboard.goalWidgetBehind', { n: Math.abs(delta) })} · ${year}`
-                : t('dashboard.goalWidgetProgress', { done, target })}
+                  ? `${t('dashboard.goalWidgetAhead', { n: delta })} · ${year}`
+                  : delta < 0
+                    ? `${t('dashboard.goalWidgetBehind', { n: Math.abs(delta) })} · ${year}`
+                    : t('dashboard.goalWidgetProgress', { done, target })}
             </div>
           </>
+        )}
+
+        {topGenres.length > 0 && (
+          <div className="db-goal__genres">
+            <div className="db-goal__genres-label">{t('dashboard.goalWidgetGenresTitle')}</div>
+            {topGenres.map((g, i) => (
+              <div key={g.name} className="db-goal__genre-row">
+                <div className="db-goal__genre-head">
+                  <span className="db-goal__genre-name">{g.name}</span>
+                  <span className="db-goal__genre-count">{g.count}</span>
+                </div>
+                <div className="db-goal__genre-track">
+                  <div
+                    className="db-goal__genre-fill"
+                    style={{
+                      '--genre-pct': `${Math.round((g.count / topGenres[0].count) * 100)}%`,
+                      '--genre-color': `var(${genreBarColors[i % genreBarColors.length]})`,
+                    }}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
         )}
       </div>
     </WidgetShell>
@@ -447,8 +488,8 @@ function StreakWidget({ library, t }) {
   const now = new Date();
   let streak = 0;
   for (let i = 0; i < 24; i++) {
-    const m   = now.getMonth() - i;
-    const y   = now.getFullYear() + Math.floor(m / 12);
+    const m = now.getMonth() - i;
+    const y = now.getFullYear() + Math.floor(m / 12);
     const key = `${y}-${String(((m % 12) + 12) % 12 + 1).padStart(2, '0')}`;
     if (sorted.some((b) => b.dateRead?.slice(0, 7) === key)) streak++;
     else break;
@@ -505,26 +546,72 @@ function PlansWidget({ plans, go, t }) {
 }
 
 // ─── Book Clubs ────────────────────────────────────────────────────────────────
-function ClubsWidget({ clubs, go, t }) {
+function ClubAvatar({ displayName, avatarUrl, size = 26 }) {
+  const [imgFailed, setImgFailed] = useState(false);
+  const initials = (displayName || '?').split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase();
+  if (avatarUrl && !imgFailed) {
+    return <img src={avatarUrl} alt={displayName} onError={() => setImgFailed(true)} className="friend-avatar" style={{ '--fa-sz': `${size}px` }} />;
+  }
+  return <div className="friend-avatar--fallback" style={{ '--fa-sz': `${size}px` }}>{initials}</div>;
+}
+
+function ClubsWidget({ clubs, summary, go, t }) {
   if (!clubs?.length) return null;
+  // summary === null while the get_dashboard_clubs_summary RPC is still loading —
+  // fall back to the plain name/member-count row for that brief window rather
+  // than blocking the whole widget.
+  const summaryById = new Map((summary || []).map((s) => [s.id, s]));
+
   return (
     <WidgetShell icon={<IconDiamond />} label={t('dashboard.yourClubs')}>
       <div className="db-clubs-list">
-        {clubs.map((c) => (
-          <div key={c.id} className="db-club-row"
-            onClick={() => go('book-club-detail', { clubId: c.id })}>
-            {c.coverUrl && <Cover book={{ coverUrl: c.coverUrl, t: c.name }} w={30} h={44} />}
-            <div className="db-club-body">
-              <div className="db-club-title">{c.name}</div>
-              {c.memberCount && (
-                <div className="db-club-meta">
-                  {c.memberCount} members{c.currentBook ? ` · reading ${c.currentBook}` : ''}
-                </div>
+        {clubs.map((c) => {
+          const s = summaryById.get(c.id);
+          const hasBook = s?.current_book_title;
+          return (
+            <div key={c.id} className="db-club-row"
+              onClick={() => go('book-club-detail', { clubId: c.id })}>
+
+              {hasBook && (
+                <Cover book={{ coverUrl: s.current_book_cover, t: s.current_book_title }} w={44} />
               )}
+
+              <div className="db-club-body">
+                <div className="db-club-row__head">
+                  <div className="db-club-title">{c.name}</div>
+                  {s?.session_number && s.session_status && (
+                    <span className={`db-club-session-badge db-club-session-badge--${s.session_status}`}>
+                      {t('dashboard.clubSession', { n: s.session_number })}
+                    </span>
+                  )}
+                </div>
+                <div className="db-club-meta">
+                  {hasBook
+                    ? t('dashboard.clubReadingMeta', { title: s.current_book_title })
+                    : (s?.member_count
+                      ? t('dashboard.clubMemberCount', { count: s.member_count })
+                      : (c.memberCount ? t('dashboard.clubMemberCount', { count: c.memberCount }) : ''))}
+                </div>
+                {s?.member_avatars?.length > 0 && (
+                  <div className="db-club-avatars">
+                    <div className="db-club-avatars__stack">
+                      {s.member_avatars.slice(0, 3).map((m, i) => (
+                        <ClubAvatar key={i} displayName={m.display_name} avatarUrl={m.avatar_url} />
+                      ))}
+                    </div>
+                    {s.member_count > 3 && (
+                      <span className="db-club-avatars__more">
+                        {t('dashboard.clubReadingAlong', { count: s.member_count - 3 })}
+                      </span>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              <div className="db-club-cta">{t('dashboard.viewPlan')}</div>
             </div>
-            <div className="db-club-cta">{t('dashboard.viewPlan')}</div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </WidgetShell>
   );
@@ -534,10 +621,10 @@ function ClubsWidget({ clubs, go, t }) {
 function QuickActionsWidget({ go, t }) {
   const tNode = useTNode();
   const actions = [
-    { richLabel: 'dashboard.ctaOracle',   sub: t('dashboard.ctaOracleSub'),   glyph: '❦', route: 'oracle',      isAccent: true  },
-    { richLabel: 'dashboard.ctaPlan',     sub: t('dashboard.ctaPlanSub'),     glyph: '✦', route: 'plan-create', isAccent: false },
-    { richLabel: 'dashboard.ctaWishlist', sub: t('dashboard.ctaWishlistSub'), glyph: '↗', route: 'wishlist',    isAccent: false },
-    { richLabel: 'dashboard.ctaLibrary',  sub: t('dashboard.ctaLibrarySub'),  glyph: '▤', route: 'library',     isAccent: false },
+    { richLabel: 'dashboard.ctaOracle', sub: t('dashboard.ctaOracleSub'), glyph: '❦', route: 'oracle', isAccent: true },
+    { richLabel: 'dashboard.ctaPlan', sub: t('dashboard.ctaPlanSub'), glyph: '✦', route: 'plan-create', isAccent: false },
+    { richLabel: 'dashboard.ctaWishlist', sub: t('dashboard.ctaWishlistSub'), glyph: '↗', route: 'wishlist', isAccent: false },
+    { richLabel: 'dashboard.ctaLibrary', sub: t('dashboard.ctaLibrarySub'), glyph: '▤', route: 'library', isAccent: false },
   ];
   return (
     <section className="db-ctas">
@@ -556,10 +643,10 @@ function QuickActionsWidget({ go, t }) {
 
 // ─── Activity Feed ─────────────────────────────────────────────────────────────
 const FEED_CFG = {
-  finished: { char: '<svg data-dc-tpl="879" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--ro-forest)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path data-dc-tpl="880" d="M20 6 9 17l-5-5"></path></svg>', label: 'finished'   },
-  started: { char: '<svg data-dc-tpl="879" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--ro-gold)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path data-dc-tpl="880" d="M12 7v14M3 18V5a2 2 0 0 1 2-2h6v15H5a2 2 0 0 0-2 2M21 18V5a2 2 0 0 0-2-2h-6v15h6a2 2 0 0 1 2 2"></path></svg>', label: 'started'    },
+  finished: { char: '<svg data-dc-tpl="879" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--ro-forest)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path data-dc-tpl="880" d="M20 6 9 17l-5-5"></path></svg>', label: 'finished' },
+  started: { char: '<svg data-dc-tpl="879" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--ro-gold)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path data-dc-tpl="880" d="M12 7v14M3 18V5a2 2 0 0 1 2-2h6v15H5a2 2 0 0 0-2 2M21 18V5a2 2 0 0 0-2-2h-6v15h6a2 2 0 0 1 2 2"></path></svg>', label: 'started' },
   wishlisted: { char: '<svg data-dc-tpl="879" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--ro-burgundy)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path data-dc-tpl="880" d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.29 1.51 4.04 3 5.5l7 7z"></path></svg>', label: 'wishlisted' },
-  plan:       { char: '✦', label: 'plan'       },
+  plan: { char: '✦', label: 'plan' },
 };
 function FeedAccent({ type }) {
   const mod = FEED_CFG[type]?.label || '';
@@ -656,7 +743,7 @@ function PlanEvent({ ev, go, t }) {
 
 function FeedWidget({ state, onOpenBook, go, t, eyebrow }) {
   const [visibleCount, setVisibleCount] = useState(FEED_PAGE_SIZE);
-  const events  = useMemo(() => buildFeed(state), [state]);
+  const events = useMemo(() => buildFeed(state), [state]);
   const visible = events.slice(0, visibleCount);
   const hasMore = visibleCount < events.length;
 
@@ -674,10 +761,10 @@ function FeedWidget({ state, onOpenBook, go, t, eyebrow }) {
           {visible.map((ev, i) => (
             <div key={ev.key}>
               <FeedDateLabel date={ev.date} prev={visible[i - 1]?.date} t={t} />
-              {ev.type === 'finished'   && <FinishedEvent  ev={ev} onOpenBook={onOpenBook} t={t} />}
-              {ev.type === 'started'    && <StartedEvent   ev={ev} onOpenBook={onOpenBook} t={t} />}
-              {ev.type === 'wishlisted' && <WishlistEvent  ev={ev} onOpenBook={onOpenBook} t={t} />}
-              {ev.type === 'plan'       && <PlanEvent      ev={ev} go={go} t={t} />}
+              {ev.type === 'finished' && <FinishedEvent ev={ev} onOpenBook={onOpenBook} t={t} />}
+              {ev.type === 'started' && <StartedEvent ev={ev} onOpenBook={onOpenBook} t={t} />}
+              {ev.type === 'wishlisted' && <WishlistEvent ev={ev} onOpenBook={onOpenBook} t={t} />}
+              {ev.type === 'plan' && <PlanEvent ev={ev} go={go} t={t} />}
             </div>
           ))}
           {hasMore && (
@@ -697,10 +784,10 @@ function AIQuotaBar({ go, t }) {
   const { quota, loading } = useOracleQuota();
   if (loading || !quota) return null;
 
-  const isPro     = quota.subscription_status === 'active';
-  const isDay     = quota.period === 'day';
-  const isEmpty   = quota.calls_remaining === 0;
-  const pct       = Math.round(((quota.calls_used ?? 0) / (quota.calls_limit ?? 5)) * 100);
+  const isPro = quota.subscription_status === 'active';
+  const isDay = quota.period === 'day';
+  const isEmpty = quota.calls_remaining === 0;
+  const pct = Math.round(((quota.calls_used ?? 0) / (quota.calls_limit ?? 5)) * 100);
   const resetDate = quota.reset_at
     ? quota.reset_at.toLocaleDateString(undefined, { month: 'long', day: 'numeric' })
     : null;
@@ -740,7 +827,7 @@ function AIQuotaBar({ go, t }) {
 // ─── Friends Feed ──────────────────────────────────────────────────────────────
 function FriendAvatar({ friend, size = 30 }) {
   const label = friend?.display_name || friend?.username || '?';
-  const vars  = { '--ff-sz': `${size}px`, fontSize: size * 0.42 };
+  const vars = { '--ff-sz': `${size}px`, fontSize: size * 0.42 };
   if (friend?.avatar_url) {
     return <img src={friend.avatar_url} alt={label} className="db-ff-avatar" style={vars} />;
   }
@@ -752,8 +839,8 @@ function FriendAvatar({ friend, size = 30 }) {
 }
 
 function FriendsFeedWidget({ userId, hasFriends, go, t }) {
-  const [events,    setEvents]    = useState([]);
-  const [loading,   setLoading]   = useState(false);
+  const [events, setEvents] = useState([]);
+  const [loading, setLoading] = useState(false);
   const [updatedAt, setUpdatedAt] = useState(null);
 
   const load = useCallback(async () => {
@@ -806,9 +893,9 @@ function FriendsFeedWidget({ userId, hasFriends, go, t }) {
         <div className="db-ff-list">
           {events.map((ev) => {
             const friendLabel = ev.friend?.display_name || (ev.friend?.username ? `@${ev.friend.username}` : '?');
-            const verb        = ev.type === 'finished' ? t('dashboard.friendsFeedFinished') : t('dashboard.friendsFeedStarted');
-            const daysAgo     = Math.floor((Date.now() - new Date(ev.date)) / 86400000);
-            const timeLabel   = daysAgo === 0 ? t('dashboard.today') : daysAgo === 1 ? t('dashboard.yesterday') : t('dashboard.daysAgo', { count: daysAgo });
+            const verb = ev.type === 'finished' ? t('dashboard.friendsFeedFinished') : t('dashboard.friendsFeedStarted');
+            const daysAgo = Math.floor((Date.now() - new Date(ev.date)) / 86400000);
+            const timeLabel = daysAgo === 0 ? t('dashboard.today') : daysAgo === 1 ? t('dashboard.yesterday') : t('dashboard.daysAgo', { count: daysAgo });
             return (
               <div key={ev.key} className="db-ff-row">
                 <div className="db-ff-avatar-wrap"
@@ -848,16 +935,16 @@ function FriendsFeedWidget({ userId, hasFriends, go, t }) {
 // ─── Widget Settings ──────────────────────────────────────────────────────────
 const WIDGET_LABELS = {
   'currently-reading': 'widgetCurrentlyReading',
-  'oracle-spark':      'widgetSpark',
-  'quick-actions':     'widgetQuickActions',
-  'reading-stats':     'widgetStats',
-  'reading-goal':      'widgetGoal',
-  'series-progress':   'widgetSeries',
-  'streak':            'widgetStreak',
-  'plans':             'widgetPlans',
-  'clubs':             'widgetClubs',
-  'friends-feed':      'widgetFriendsFeed',
-  'feed':              'widgetMyFeed',
+  'oracle-spark': 'widgetSpark',
+  'quick-actions': 'widgetQuickActions',
+  'reading-stats': 'widgetStats',
+  'reading-goal': 'widgetGoal',
+  'series-progress': 'widgetSeries',
+  'streak': 'widgetStreak',
+  'plans': 'widgetPlans',
+  'clubs': 'widgetClubs',
+  'friends-feed': 'widgetFriendsFeed',
+  'feed': 'widgetMyFeed',
 };
 
 function WidgetSettings({ layout, onClose, onChange, t }) {
@@ -906,7 +993,7 @@ function WidgetSettings({ layout, onClose, onChange, t }) {
               </span>
               <div className="db-settings__moves">
                 <button className="db-settings__move" onClick={() => move(w.id, -1)} disabled={i === 0} title="Up">↑</button>
-                <button className="db-settings__move" onClick={() => move(w.id,  1)} disabled={i === local.length - 1} title="Down">↓</button>
+                <button className="db-settings__move" onClick={() => move(w.id, 1)} disabled={i === local.length - 1} title="Down">↓</button>
               </div>
             </div>
           ))}
@@ -923,12 +1010,13 @@ function WidgetSettings({ layout, onClose, onChange, t }) {
 // ─── Main Dashboard ───────────────────────────────────────────────────────────
 export default function Dashboard({ onOpenBook }) {
   const { state, setDashboardLayout, setReadingGoalCount } = useData();
-  const { go }          = useRouter();
-  const { user }        = useAuth();
-  const t               = useT();
-  const tNode           = useTNode();
+  const { go } = useRouter();
+  const { user } = useAuth();
+  const t = useT();
+  const tNode = useTNode();
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [friendCount,  setFriendCount]  = useState(0);
+  const [friendCount, setFriendCount] = useState(0);
+  const [clubsSummary, setClubsSummary] = useState(null); // null = not loaded yet
 
   useEffect(() => {
     if (!user) return;
@@ -938,33 +1026,48 @@ export default function Dashboard({ onOpenBook }) {
     });
   }, [user]);
 
-  const layout    = useMemo(() => resolveLayout(state.dashboardLayout), [state.dashboardLayout]);
+  useEffect(() => {
+    if (!user || !(state.clubs || []).length) { setClubsSummary([]); return; }
+    import('../lib/supabase').then(({ supabase }) => {
+      supabase.rpc('get_dashboard_clubs_summary').then(({ data, error }) => {
+        if (error) { console.error('get_dashboard_clubs_summary failed', error); setClubsSummary([]); return; }
+        setClubsSummary(data || []);
+      });
+    });
+  }, [user, state.clubs]);
+
+  const layout = useMemo(() => resolveLayout(state.dashboardLayout), [state.dashboardLayout]);
   const firstName = (state.profile?.displayName || state.profile?.display_name || '').split(' ')[0];
   const levelName = state.profile?.readingLevel || null;
 
   function renderWidget(id) {
     switch (id) {
       case 'currently-reading': return <CurrentlyReadingWidget key={id} books={state.currentlyReading || []} onOpenBook={onOpenBook} t={t} />;
-      case 'oracle-spark':      return <OracleSparkWidget      key={id} wishlist={state.wishlist} go={go} t={t} profile={state.profile} />;
-      case 'quick-actions':     return <QuickActionsWidget      key={id} go={go} t={t} />;
-      case 'reading-stats':     return <ReadingStatsWidget      key={id} library={state.library || []} go={go} t={t} />;
-      case 'reading-goal':      return <ReadingGoalWidget       key={id} library={state.library || []} readingGoalCount={state.readingGoalCount} setReadingGoalCount={setReadingGoalCount} t={t} />;
-      case 'series-progress':   return <SeriesProgressWidget    key={id} library={state.library || []} wishlist={state.wishlist} readNext={state.readNext} go={go} t={t} />;
-      case 'streak':            return <StreakWidget            key={id} library={state.library || []} t={t} />;
-      case 'plans':             return <PlansWidget             key={id} plans={state.plans || []} go={go} t={t} />;
-      case 'clubs':             return <ClubsWidget            key={id} clubs={state.clubs || []} go={go} t={t} />;
-      case 'friends-feed':      return <FriendsFeedWidget       key={id} userId={user?.id} hasFriends={friendCount > 0} go={go} t={t} />;
-      case 'feed':              return <FeedWidget              key={id} state={state} onOpenBook={onOpenBook} go={go} t={t} eyebrow={t('dashboard.widgetMyFeed')} />;
+      case 'oracle-spark': return <OracleSparkWidget key={id} wishlist={state.wishlist} go={go} t={t} profile={state.profile} />;
+      case 'quick-actions': return <QuickActionsWidget key={id} go={go} t={t} />;
+      case 'reading-stats': return <ReadingStatsWidget key={id} library={state.library || []} go={go} t={t} />;
+      case 'reading-goal': return <ReadingGoalWidget key={id} library={state.library || []} genresByBookId={state.genresByBookId || {}} readingGoalCount={state.readingGoalCount} setReadingGoalCount={setReadingGoalCount} t={t} />;
+      case 'series-progress': return <SeriesProgressWidget key={id} library={state.library || []} wishlist={state.wishlist} readNext={state.readNext} go={go} t={t} />;
+      case 'streak': return <StreakWidget key={id} library={state.library || []} t={t} />;
+      case 'plans': return <PlansWidget key={id} plans={state.plans || []} go={go} t={t} />;
+      case 'clubs': return <ClubsWidget key={id} clubs={state.clubs || []} summary={clubsSummary} go={go} t={t} />;
+      case 'friends-feed': return <FriendsFeedWidget key={id} userId={user?.id} hasFriends={friendCount > 0} go={go} t={t} />;
+      case 'feed': return <FeedWidget key={id} state={state} onOpenBook={onOpenBook} go={go} t={t} eyebrow={t('dashboard.widgetMyFeed')} />;
       default: return null;
     }
   }
 
-  // ── Hero stat chips ─────────────────────────────────────────────────────────
-  const chips = [
-    levelName && { glyph: '◆', label: t('dashboard.levelPill', { level: levelName }) },
-    { glyph: '▤', label: t('dashboard.booksRead', { count: state.library?.length || 0 }) },
-    { glyph: '❦', label: t('dashboard.inWishlist', { count: (state.wishlist || []).length }) },
-    (state.currentlyReading || []).length > 0 && { glyph: '❧', label: t('dashboard.readingNow', { count: state.currentlyReading.length }) },
+  // ── Hero level chip (badge only — numeric counts moved to the glance grid) ──
+  const levelChip = levelName ? { glyph: '◆', label: t('dashboard.levelPill', { level: levelName }) } : null;
+
+  // ── Hero "at a glance" stat cards ───────────────────────────────────────────
+  const glanceCards = [
+    { value: state.library?.length || 0, label: t('dashboard.glanceRead') },
+    { value: (state.wishlist || []).length, label: t('dashboard.glanceWishlist') },
+    (state.currentlyReading || []).length > 0 &&
+    { value: state.currentlyReading.length, label: t('dashboard.currentlyReading') },
+    { value: (state.plans || []).length, label: t('dashboard.readingPlans') },
+    { value: (state.clubs || []).length, label: t('dashboard.glanceClubs') },
   ].filter(Boolean);
 
   return (
@@ -979,15 +1082,23 @@ export default function Dashboard({ onOpenBook }) {
             ? <>{t('dashboard.greeting')} <span>{firstName}</span></>
             : tNode('dashboard.greetingBack')}
         </h1>
-        <div className="db-chips">
-          {chips.map((c, i) => (
-            <div key={i} className="db-chip">
-              <span className="db-chip__glyph">{c.glyph}</span>
-              {c.label}
+        {levelChip && (
+          <div className="db-chips">
+            <div className="db-chip">
+              <span className="db-chip__glyph">{levelChip.glyph}</span>
+              {levelChip.label}
+            </div>
+          </div>
+        )}
+
+        <div className="db-glance-grid">
+          {glanceCards.map((c, i) => (
+            <div key={i} className="db-stat-card db-stat-card--glance">
+              <div className="db-stat-value">{c.value}</div>
+              <div className="db-stat-label">{c.label}</div>
             </div>
           ))}
         </div>
-       
       </div>
 
       {/* Sparkle divider */}
@@ -998,7 +1109,7 @@ export default function Dashboard({ onOpenBook }) {
       {/* AI quota bar */}
       <AIQuotaBar go={go} t={t} />
 
-      
+
 
       {/* Widget grid */}
       <div className="db-widgets">
