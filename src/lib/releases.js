@@ -16,9 +16,31 @@
 
 // The version label shown as "current" — keep in sync with package.json and
 // the README version line.
-export const CURRENT_VERSION = 'v0.39.9';
+export const CURRENT_VERSION = 'v0.39.11';
 
 export const RELEASES = [{
+    version: 'v0.39.11',
+    date: '2026-07-06',
+    titleEn: 'Link previews now work for every book',
+    titleEs: 'Las vistas previas de enlaces ahora funcionan para todos los libros',
+    bodyEn: [
+      'Sharing any book link on Slack, WhatsApp, X, or Discord now shows the real title, cover, and description \u2014 including books that haven\u2019t been manually reviewed yet.',
+    ],
+    bodyEs: [
+      'Compartir cualquier enlace de libro en Slack, WhatsApp, X o Discord ahora muestra el t\u00edtulo real, la portada y la descripci\u00f3n \u2014 incluyendo libros que todav\u00eda no fueron revisados manualmente.',
+    ],
+  }, {
+    version: 'v0.39.10',
+    date: '2026-07-06',
+    titleEn: 'Fixed link previews still not matching books',
+    titleEs: 'Se corrigi\u00f3 que las vistas previas de enlaces todav\u00eda no encontraban libros',
+    bodyEn: [
+      'The link-preview lookup was comparing an internal ID it generates itself against a slightly different version of the same ID used elsewhere in the app \u2014 close enough to look right, but never an exact match. Loosened the comparison so small formatting differences like this can\u2019t cause a silent mismatch again.',
+    ],
+    bodyEs: [
+      'La b\u00fasqueda de vistas previas de enlaces comparaba un identificador interno que genera por su cuenta contra una versi\u00f3n ligeramente distinta del mismo identificador usada en otra parte de la app \u2014 lo suficientemente parecido para parecer correcto, pero nunca una coincidencia exacta. Se flexibiliz\u00f3 la comparaci\u00f3n para que peque\u00f1as diferencias de formato como esta no vuelvan a causar un desajuste silencioso.',
+    ],
+  }, {
     version: 'v0.39.9',
     date: '2026-07-06',
     titleEn: 'Fixed sitemap and link previews silently truncating the catalog',

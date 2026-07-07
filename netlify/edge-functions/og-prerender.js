@@ -14,13 +14,11 @@
 // (real browsers, Googlebot, any path this doesn't match) passes straight
 // through untouched via context.next().
 //
-// ⚠️ IMPORTANT — NOT YET VERIFIED ON A LIVE DEPLOY. Edge Functions run on a
-// Deno runtime that can't be simulated in a local/sandbox environment, so
-// this has only been reviewed for logical correctness, not run against a
-// real Netlify preview. Test with a real bot-UA request (or a tool like
-// https://www.opengraph.xyz or Twitter's card validator) before trusting
-// it in production, and check Netlify's function logs for the first few
-// real bot hits.
+// Deliberate split from sitemap.js: this function has NO status filter
+// (any book with a page renders here), while sitemap.js keeps its
+// status filter to verified/oracle_categorized. Rationale: the sitemap
+// invites Google to index pages, which is a stronger commitment than
+// just serving a preview to someone who already has the URL.
 
 
 
@@ -106,10 +104,6 @@ export default async (request, context) => {
   const isBot = BOT_UA_PATTERN.test(userAgent);
 
   // This will print every single time the function triggers
-  console.log("Edge function triggered! URL:", request.url);
-
-  console.log("User-Agent detected:", userAgent);
-
   // Not a bot, or Netlify somehow routed a path this function isn't scoped
   // to — just pass through untouched.
   if (!isBot) return context.next();
@@ -130,87 +124,54 @@ export default async (request, context) => {
 
     if (bookMatch) {
       const wantedKey = decodeURIComponent(bookMatch[1]);
-      const [wantedTitle, wantedAuthor] = wantedKey.split('|');
-      console.log(`[diagnostic] wantedTitle="${wantedTitle}" wantedAuthor="${wantedAuthor}"`);
 
-      // No stored bookKey column to query by directly, so we fetch verified
-      // books and compute bookKey() per row to find the match — same
-      // tradeoff netlify/functions/sitemap.js already makes. PostgREST caps
-      // `limit` at the project's Max Rows setting (default 1000) regardless
-      // of what's requested here, so a single fetch silently truncates on
-      // any catalog bigger than that — paginate with `offset` until we
-      // either find a match or run out of rows, stopping early as soon as
-      // a match is found so most requests only cost one or two round trips.
+      // v0.39.11: no status filter here. sitemap.js keeps its status filter
+      // (verified/oracle_categorized) because the sitemap invites Google to
+      // *index* pages, which is a stronger commitment than serving a link
+      // preview to someone who already has the URL. If a page renders for a
+      // signed-in visitor (all book pages do, regardless of status), it
+      // should render a proper preview when shared — otherwise link
+      // unfurls look broken for legitimately-reachable content. Deliberate
+      // split: sitemap strict, OG-prerender permissive.
+      //
+      // No stored bookKey column to query by directly, so we fetch and
+      // compute bookKey() per row to find the match — same tradeoff
+      // sitemap.js already makes. PostgREST caps `limit` at the project's
+      // Max Rows setting (default 1000) regardless of what's requested, so
+      // a single fetch silently truncates on any catalog bigger than that
+      // — paginate with `offset` until we find a match or run out of rows,
+      // stopping early on match so most requests only cost one round trip.
       const PAGE_SIZE = 1000;
-      const MAX_PAGES = 20; // hard ceiling so a bad/huge catalog can't hang the function
+      const MAX_PAGES = 20; // hard ceiling so a runaway catalog can't hang the function
       let match = null;
       let totalFetched = 0;
-      const candidates = []; // v0.39.11: diagnostic — rows whose normalized title looks similar to wanted, so we can see what the DB is actually returning
 
       for (let page = 0; page < MAX_PAGES; page++) {
         const res = await fetch(
-          `${supabaseUrl}/rest/v1/books?select=title,author,status,description,cover_url&status=in.(verified,oracle_categorized)&limit=${PAGE_SIZE}&offset=${page * PAGE_SIZE}`, {
+          `${supabaseUrl}/rest/v1/books?select=title,author,description,cover_url&limit=${PAGE_SIZE}&offset=${page * PAGE_SIZE}`, {
             headers: restHeaders
           }
         );
-        if (!res.ok) {
-          console.log(`[diagnostic] fetch failed page=${page} status=${res.status}`);
-          break;
-        }
+        if (!res.ok) break;
         const rows = await res.json();
         totalFetched += rows.length;
-
-        for (const b of rows) {
-          const normTitle = (b.title || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-          if (wantedTitle && normTitle.startsWith(wantedTitle.slice(0, 8))) {
-            candidates.push({
-              title: b.title,
-              author: b.author,
-              status: b.status,
-              normTitle,
-              normAuthor: (b.author || '').toLowerCase().replace(/[^a-z0-9]/g, '')
-            });
-          }
-        }
-
         match = rows.find((b) => matchesBookKey(b.title, b.author, wantedKey));
-        if (match || rows.length < PAGE_SIZE) break;
+        if (match || rows.length < PAGE_SIZE) break; // found it, or hit the last page
       }
 
-      console.log(`[diagnostic] fetched ${totalFetched} total rows. Title-prefix candidates: ${candidates.length}`);
-      if (candidates.length > 0) {
-        console.log(`[diagnostic] candidates:`, JSON.stringify(candidates.slice(0, 5)));
-      }
-      console.log(`[diagnostic] Wanted key: ${wantedKey} | Match found: ${!!match}`);
+      console.log(`[og-prerender] scanned ${totalFetched} books | wanted=${wantedKey} | match=${!!match}${match ? ` (${match.title} by ${match.author})` : ''}`);
 
-      if (!match) {
-        // v0.39.11: direct probe against the DB for this exact title,
-        // ignoring status entirely, to see what its actual status column
-        // says — helps distinguish "wrong status filter" from "book not
-        // in DB" from "book in DB but not returned by the paginated scan".
-        try {
-          const probeTitle = wantedTitle.slice(0, 12);
-          const probeRes = await fetch(
-            `${supabaseUrl}/rest/v1/books?select=title,author,status&title=ilike.*${encodeURIComponent(probeTitle)}*&limit=10`, {
-              headers: restHeaders
-            }
-          );
-          if (probeRes.ok) {
-            const probeRows = await probeRes.json();
-            console.log(`[diagnostic] direct probe (no status filter) on title~"${probeTitle}" returned ${probeRows.length} rows:`, JSON.stringify(probeRows));
-          } else {
-            console.log(`[diagnostic] probe fetch failed status=${probeRes.status}`);
-          }
-        } catch (e) {
-          console.log(`[diagnostic] probe threw:`, e.message);
-        }
-        return context.next();
-      }
+      if (!match) return context.next();
 
       const response = await context.next();
       const html = await response.text();
+      // v0.39.11: null-safe author fallback — some catalog rows have null
+      // authors (seen in earlier diagnostic candidate list). "Untitled" is
+      // never right for the book title, but "Unknown author" is a reasonable
+      // fallback for a missing author in the OG title string.
+      const authorDisplay = match.author || 'Unknown author';
       const injected = injectMeta(html, {
-        title: `${match.title} by ${match.author} — The Books Oracle`,
+        title: `${match.title} by ${authorDisplay} — The Books Oracle`,
         description: match.description ? match.description.slice(0, 200) : undefined,
         image: match.cover_url || undefined,
         url: SITE + url.pathname,
@@ -218,10 +179,12 @@ export default async (request, context) => {
           '@context': 'https://schema.org',
           '@type': 'Book',
           name: match.title,
-          author: {
-            '@type': 'Person',
-            name: match.author
-          },
+          ...(match.author ? {
+            author: {
+              '@type': 'Person',
+              name: match.author
+            }
+          } : {}),
           ...(match.description ? {
             description: match.description.slice(0, 300)
           } : {}),
