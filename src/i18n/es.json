@@ -270,6 +270,7 @@
     "viewCovers": "Portadas",
     "editRating": "✎ Calificación",
     "remove": "Quitar",
+    "bulkImport": "Agregar varios",
     "finishedOn": "Terminado el {date}",
     "stars": "{count} ★",
     "pageTitle": "Libros que he <em class=\"accent\">leído</em>"
@@ -446,7 +447,6 @@
     "loadingLibrary": "Cargando tu biblioteca…",
     "signInToAdd": "Iniciar sesión para agregar ↗",
     "verified": "☩ Verificado",
-    "match": "Compatibilidad",
     "inWishlistShort": "En tu lista",
     "inReadNextShort": "En tu cola",
     "loadingSeries": "Cargando saga…",
@@ -1500,6 +1500,169 @@
     "section": {
       "explore": "Explorar",
       "legal": "Legal"
+    }
+  },
+  "landing": {
+    "nav": {
+      "features": "Funciones",
+      "pricing": "Precios",
+      "about": "Acerca de",
+      "login": "Iniciar sesión",
+      "signup": "Empezar gratis"
+    },
+    "hero": {
+      "eyebrow": "Un compañero de lectura para el alma dark academia",
+      "headline": "Un Oráculo que sabe qué te va a encantar después.",
+      "subheadline": "Lleva el registro de lo que has leído, recibe recomendaciones que sí encajan con tu gusto, y lee acompañado en vez de solo.",
+      "ctaPrimary": "Empezar gratis",
+      "ctaSecondary": "Ver cómo funciona",
+      "imageAlt": "El panel de The Books Oracle — meta de lectura, lecturas en curso y recomendaciones del Oráculo"
+    },
+    "problem": {
+      "eyebrow": "El problema",
+      "heading": "Leer no debería sentirse como un segundo trabajo",
+      "point1": "Tu próximo libro está repartido entre una lista de deseos, un estante de Goodreads y una nota en el celular que nunca vas a volver a abrir.",
+      "point2": "Los feeds algorítmicos están optimizados para mantenerte enganchado, no para conocerte — recomendaciones que persiguen tendencias, no tu gusto.",
+      "point3": "Leer se volvió solitario por defecto, no por elección — no hay una forma fácil de leer *con* otras personas."
+    },
+    "features": {
+      "eyebrow": "Qué incluye",
+      "heading": "Un recorrido, no una promesa",
+      "subheading": "Todo lo de abajo ya está construido y funcionando en la app.",
+      "oracle": {
+        "number": "01",
+        "title": "El Oráculo",
+        "subtitle": "Recomendaciones que te entienden",
+        "description": "Dile al Oráculo tus géneros y tu ánimo, y él lee tu biblioteca como un bibliotecario que te conoce — selecciones con puntaje de afinidad, no una lista de bestsellers.",
+        "slide1Title": "Por género",
+        "slide1Body": "Elige un género y una fuente — tu lista de deseos, la Bóveda, o el propio Oráculo — y recibe un libro nuevo en segundos.",
+        "slide2Title": "Por otros libros",
+        "slide2Body": "Cuéntanos qué libros has amado, y el Oráculo encuentra lo que pertenece junto a ellos en tu estante.",
+        "slide3Title": "Pregunta en lenguaje natural",
+        "slide3Body": "Describe un ánimo — una tarde lluviosa y gótica — y el Oráculo te devuelve cuatro selecciones basadas en tu gusto."
+      },
+      "readingLife": {
+        "number": "02",
+        "title": "Tu vida lectora",
+        "subtitle": "Todo lo que estás leyendo, en un solo lugar",
+        "description": "Lista de deseos, lecturas en curso con progreso, y tu biblioteca completa — se acabaron las notas dispersas y las pestañas olvidadas.",
+        "slide1Title": "Toda tu biblioteca",
+        "slide1Body": "Cada libro que has guardado, de portada a portada, en un solo lugar navegable.",
+        "slide2Title": "Tu lista de deseos, de un vistazo",
+        "slide2Body": "Agrega libros con un toque y navega tu lista de deseos por categorías cuando te dé el antojo.",
+        "slide3Title": "Categorías personalizadas",
+        "slide3Body": "Etiqueta tus libros a tu manera, y encuéntralos siempre agrupados como realmente los piensas.",
+        "slide4Title": "Lecturas en curso, con seguimiento",
+        "slide4Body": "Registra las páginas a medida que avanzas y mira crecer la barra de progreso — retoma exactamente donde quedaste, siempre."
+      },
+      "plans": {
+        "number": "03",
+        "title": "Planes de lectura",
+        "subtitle": "Planifica tu lectura, mes a mes",
+        "description": "Deja que el Oráculo arme un plan de lectura para subir de nivel, terminar una saga, o arrancar en un género nuevo.",
+        "slide1Title": "Hecho a tu medida",
+        "slide1Body": "Dile al Oráculo qué buscas y de cuánto tiempo dispones — él arma un plan diseñado específicamente para ti.",
+        "slide2Title": "Mira tu progreso tomar forma",
+        "slide2Body": "Revisa tu avance de un vistazo y mueve libros directo de tu plan a tu lista de próximas lecturas."
+      },
+      "friends": {
+        "number": "04",
+        "title": "Amigos y actividad",
+        "subtitle": "Mira qué está leyendo tu gente",
+        "description": "Sigue a tus amigos, mira sus estantes llenarse, y convierte el “qué leo después” en una conversación en vez de una adivinanza.",
+        "slide1Title": "Un feed vivo",
+        "slide1Body": "Mira qué terminan, empiezan y califican tus amigos en el momento en que sucede.",
+        "slide2Title": "Un vistazo a sus estantes",
+        "slide2Body": "Abre el perfil de un amigo para explorar sus lecturas recientes.",
+        "slide3Title": "Listas curadas",
+        "slide3Body": "Arma una lista con — o para — tus amigos, y compártela en público o guárdala solo para ti."
+      },
+      "stats": {
+        "number": "05",
+        "title": "Estadísticas y metas",
+        "subtitle": "Mira tu año lector tomar forma",
+        "description": "Una meta anual, tu ritmo, y los géneros a los que realmente vuelves — números amables que premian el hábito en vez de sermonearte.",
+        "slide1Title": "Fija una meta anual",
+        "slide1Body": "Mira tu progreso crecer junto a los géneros a los que sigues volviendo.",
+        "slide2Title": "Mira tu ritmo",
+        "slide2Body": "Un gráfico mes a mes revela la forma de tu año lector.",
+        "slide3Title": "Mantén la racha",
+        "slide3Body": "Pequeñas victorias diarias se acumulan — y la racha te mantiene honesto."
+      },
+      "clubs": {
+        "number": "06",
+        "title": "Clubes de lectura",
+        "subtitle": "Lean juntos, sesión por sesión",
+        "description": "Crea un club o descubre uno, define un ritmo de lectura, y discutan cada sesión sin que los spoilers se adelanten al grupo.",
+        "slide1Title": "Impulsado por el Oráculo",
+        "slide1Body": "Deja que el Oráculo arme una encuesta inteligente para tu próxima elección, o preguntas de discusión para tu próxima sesión.",
+        "slide2Title": "Dentro de una sesión",
+        "slide2Body": "Mira el libro actual, qué capítulos están en juego, y quién más va en el viaje.",
+        "slide3Title": "Descubre clubes",
+        "slide3Body": "Encuentra grupos por gusto y ritmo, y únete con un solo toque.",
+        "slide4Title": "Sin spoilers, siempre",
+        "slide4Body": "Los hilos de discusión se desbloquean sesión por sesión, para que nadie se adelante al grupo."
+      }
+    },
+    "howItWorks": {
+      "eyebrow": "Cómo funciona",
+      "heading": "Tres pasos hacia tu próximo libro favorito",
+      "step1Title": "Cuéntale al Oráculo tu gusto",
+      "step1Body": "Géneros, ánimos, los libros que ya amas.",
+      "step2Title": "Recibe selecciones, arma tu estante",
+      "step2Body": "Recomendaciones personalizadas, directo a tu biblioteca.",
+      "step3Title": "Lee, sigue tu progreso, discute",
+      "step3Body": "Registra tu avance, únete a un club, coméntalo con amigos."
+    },
+    "pricing": {
+      "eyebrow": "Precios",
+      "heading": "Gratis significa gratis",
+      "note": "Sin tarjeta de crédito para registrarte — nunca.",
+      "freeName": "Gratis",
+      "freePrice": "$0",
+      "freeCta": "Empezar gratis",
+      "proName": "Pro",
+      "proPrice": "Próximamente",
+      "proCta": "Avísenme",
+      "row1": "Lista de deseos, biblioteca, planes de lectura",
+      "row2": "Clubes de lectura",
+      "row3": "Recomendaciones del Oráculo",
+      "row3Free": "Consultas mensuales limitadas",
+      "row3Pro": "Más consultas, ilimitadas próximamente",
+      "row4": "Estadísticas y metas de lectura"
+    },
+    "founder": {
+      "eyebrow": "Hecho por lectores",
+      "heading": "Hecho por lectores, para lectores",
+      "body": "El Oráculo empezó como el intento de una persona por dejar de perder el rastro de qué leer después. Creció hasta convertirse en un compañero de lectura completo — construido como siempre quisimos que funcionara una app de lectura."
+    },
+    "faq": {
+      "eyebrow": "Preguntas",
+      "heading": "Antes de empezar",
+      "q1": "¿Es gratis?",
+      "a1": "Sí — crear una cuenta, armar tu biblioteca y recibir recomendaciones del Oráculo no cuesta nada. No se pide tarjeta de crédito.",
+      "q2": "¿Puedo importar mi biblioteca de Goodreads?",
+      "a2": "Sí. Trae tu exportación de Goodreads y el Oráculo la organiza directo en tu lista de deseos y tu biblioteca.",
+      "q3": "¿Mis datos de lectura son privados?",
+      "a3": "Tu biblioteca es privada por defecto. Tú eliges qué compartir con tus amigos — nada es público a menos que tú lo decidas.",
+      "q4": "¿Puedo usarlo en español?",
+      "a4": "Sí — el Oráculo habla español completo, y puedes cambiar de idioma cuando quieras desde el pie de página.",
+      "q5": "¿Cómo hace el Oráculo sus recomendaciones?",
+      "a5": "Lee tus géneros, tus ánimos y los libros que has calificado, y luego busca coincidencias en tu biblioteca en vez de empujarte lo que está de moda.",
+      "q6": "¿Puedo leer con amigos que todavía no tienen cuenta?",
+      "a6": "Sí — invítalos a un club de lectura o comparte una lista con un enlace; pueden verla antes de registrarse."
+    },
+    "finalCta": {
+      "heading": "Tu próximo libro te está esperando.",
+      "sub": "Únete gratis y deja que el Oráculo conozca tu estante.",
+      "ctaPrimary": "Empezar gratis",
+      "ctaSecondary": "Iniciar sesión"
+    },
+    "footer": {
+      "languageLabel": "Idioma"
+    },
+    "mobileNav": {
+      "menuLabel": "Enlaces rápidos"
     }
   }
 }

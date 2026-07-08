@@ -118,10 +118,7 @@ export default function ListDetail() {
 
   return (
     <>
-      <div className="breadcrumb">
-        <a onClick={() => go('lists')}>{t('about.featureListsTitle')}</a>
-        {' · '}{list.title}
-      </div>
+      
 
       <div className="ls-page-head">
         <div className="page-head__eyebrow">

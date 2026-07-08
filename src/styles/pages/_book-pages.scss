@@ -233,6 +233,10 @@
 }
 
 // Covers view
+.cover-grid-shelves,
+.lv-section {
+    margin-top: var(--ro-space-6);
+}
 .cover-shelf-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));

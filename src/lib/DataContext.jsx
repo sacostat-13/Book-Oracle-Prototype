@@ -1844,7 +1844,7 @@ export function DataProvider({ children }) {
     if (!user || !body?.trim()) return null;
     const { data, error } = await supabase
       .from('session_comments')
-      .insert({ session_id: sessionId, club_id: clubId, body: body.trim(), question_id: questionId || null, parent_id: parentId || null })
+      .insert({ session_id: sessionId, club_id: clubId, body: body.trim(), question_id: questionId || null, parent_id: parentId || null, created_by: user.id })
       .select()
       .single();
     if (error) { console.error('postComment failed', error); return null; }
@@ -1871,7 +1871,7 @@ export function DataProvider({ children }) {
     if (!user || !body?.trim()) return null;
     const { data, error } = await supabase
       .from('session_questions')
-      .insert({ session_id: sessionId, club_id: clubId, body: body.trim(), position })
+      .insert({ session_id: sessionId, club_id: clubId, body: body.trim(), position, created_by: user.id })
       .select()
       .single();
     if (error) { console.error('addQuestion failed', error); return null; }

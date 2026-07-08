@@ -7,12 +7,16 @@ import { useT, useTNode } from './lib/I18nContext';
 import { useDocumentMeta } from './lib/useDocumentMeta';
 
 import Nav from './components/Nav';
+import LandingNav from './components/LandingNav';
+import LandingFooter from './components/LandingFooter';
 import CornerBrackets from './components/CornerBrackets';
 import BookLoader from './components/BookLoader';
 import Toast from './components/Toast';
+import SignInGate from './components/SignInGate';
 
 import Onboarding from './views/Onboarding';
 import Dashboard from './views/Dashboard';
+import Landing from './views/Landing';
 import Wishlist from './views/Wishlist';
 import Library from './views/Library';
 import ReadNext from './views/ReadNext';
@@ -48,97 +52,22 @@ import SessionDetail from './views/SessionDetail';
 import JoinClub from './views/JoinClub';
 import Footer from './components/Footer';
 
-function SignInGate() {
-  const { signInWithGoogle, signInWithApple, signInWithFacebook, signInWithEmail } = useAuth();
-  const t = useT();
-  const tNode = useTNode();
-  const [email, setEmail] = useState('');
-  const [sending, setSending] = useState(false);
-  const [sentTo, setSentTo] = useState(null);
-  const [error, setError] = useState(null);
-
-  async function handleEmailSubmit(e) {
-    e.preventDefault();
-    if (!email.trim() || sending) return;
-    setSending(true);
-    setError(null);
-    const { error: err } = await signInWithEmail(email.trim());
-    setSending(false);
-    if (err) setError(t('signIn.emailErrorGeneric'));
-    else setSentTo(email.trim());
-  }
-
-  return (
-    <div className="onboarding-wrap">
-      <div className="onboarding-card">
-        <CornerBrackets />
-        <div className="onb-eyebrow">{t('signIn.eyebrow')}</div>
-        <h1 className="onb-title">
-          {tNode('app.brand', { wishlist: <span className="accent">{t('app.brandAccent')}</span> })}
-        </h1>
-        <p className="onb-desc">{t('signIn.desc')}</p>
-
-        {sentTo ? (
-          <div className="sign-in-confirm">
-            <div className="pf-account-card__section-title">{t('signIn.checkInboxTitle')}</div>
-            <p className="onb-desc">{t('signIn.checkInboxText', { email: sentTo })}</p>
-            <button className="btn-text" onClick={() => setSentTo(null)}>
-              {t('signIn.useAnotherEmail')}
-            </button>
-          </div>
-        ) : (
-          <>
-            <div className="sso-stack">
-              <button className="btn-secondary btn--block" onClick={signInWithGoogle}>
-                {t('signIn.continueGoogle')}
-              </button>
-              {/* <button className="btn-secondary btn--block" onClick={signInWithApple}>
-                {t('signIn.continueApple')}
-              </button>
-              <button className="btn-secondary btn--block" onClick={signInWithFacebook}>
-                {t('signIn.continueFacebook')}
-              </button> */}
-            </div>
-
-            <div className="sso-divider"><span>{t('signIn.orDivider')}</span></div>
-
-            <form className="sso-email-form" onSubmit={handleEmailSubmit}>
-              <input
-                type="email"
-                required
-                className="input"
-                placeholder={t('signIn.emailPlaceholder')}
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-              />
-              <button type="submit" className="btn-primary btn--block" disabled={sending || !email.trim()}>
-                {sending ? t('signIn.sendingLink') : t('signIn.sendLink')}
-              </button>
-              {error && <div className="pf-error">{error}</div>}
-            </form>
-          </>
-        )}
-        <div className="sign-in-legal">
-          <a className="btn btn-text" href="#privacy" target="_blank" rel="noopener noreferrer">{t('footer.privacy') || 'Privacy Policy'}</a>
-          <span className="sign-in-legal__sep">·</span>
-          <a className="btn btn-text" href="#terms" target="_blank" rel="noopener noreferrer">{t('footer.terms') || 'Terms of Service'}</a>
-          <span className="sign-in-legal__sep">·</span>
-          <a className="btn btn-text" href="#refund" target="_blank" rel="noopener noreferrer">{t('footer.refund') || 'Refund Policy'}</a>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 export default function App() {
   const { state, loading } = useData();
-  const { route } = useRouter();
+  const { route, go } = useRouter();
+  const { user, loading: authLoading } = useAuth();
+  const t = useT();
 
   // v0.39: default <title>/description per static route. book-page and
   // series-page are deliberately excluded — those own their own title/meta
   // once their data resolves (BookPage.jsx / SeriesPage.jsx), and setting a
   // generic default here would race with and overwrite their effect since
   // child effects commit before parent effects in React.
+  //
+  // v0.40: 'dashboard' is excluded the same way for signed-out visitors —
+  // Landing.jsx sets its own marketing title/description/JSON-LD, and this
+  // generic default would otherwise stomp it for the same child-before-parent
+  // reason.
   const ROUTE_META = {
     dashboard: { title: 'Dashboard — The Books Oracle', description: 'Your wishlist, library, and reading plans in one place.' },
     wishlist: { title: 'Wishlist — The Books Oracle' },
@@ -163,14 +92,13 @@ export default function App() {
     sitemap: { title: 'Sitemap — The Books Oracle', description: 'A map of every section of The Books Oracle.' },
     'not-found': { title: "The Oracle can't see that far — The Books Oracle", noindex: true },
   };
-  useDocumentMeta(ROUTE_META[route.name] || {});
+  const isLandingVisit = route.name === 'dashboard' && !authLoading && !user;
+  useDocumentMeta(isLandingVisit ? {} : (ROUTE_META[route.name] || {}));
 
   // v0.39: keep <link rel="canonical"> in sync with the current path, now that
   // paths are real routes instead of a hash. Always points at thebooksoracle.com
   // regardless of which domain/alias served the request, so .net/.org visitors
   // and any lingering readingoracle.com traffic canonicalize correctly.
-  // Full per-route <title>/meta/OG tags are a separate, still-pending v0.39 task —
-  // this only handles canonical for now.
   useEffect(() => {
     const canonicalUrl = `https://thebooksoracle.com${window.location.pathname}${window.location.search}`;
     let link = document.querySelector('link[rel="canonical"]');
@@ -181,8 +109,7 @@ export default function App() {
     }
     link.setAttribute('href', canonicalUrl);
   }, [route.name, route.params]);
-  const { user, loading: authLoading } = useAuth();
-  const t = useT();
+
   // previewBook holds a book from search results that isn't in the collection yet.
   // BookPage reads this ref when route.params.preview === 'true'.
   const previewBookRef = useRef(null);
@@ -249,17 +176,34 @@ export default function App() {
     }
 
     // Legal pages — public, no auth required.
-    // Nav is always visible; Footer and Nav switch to guest mode for unauthenticated viewers.
+    // Signed-in visitors keep the authenticated app chrome (Nav + Footer).
+    // Signed-out visitors now get the PUBLIC marketing chrome — the same
+    // LandingNav/LandingFooter used on '/' — per the landing-page guideline:
+    // "if you're not logged in, you will see the legal pages opening on the
+    // landing page interface, which is with the nav, footer and styling of
+    // the landing page."
     const legalViews = { privacy: Privacy, terms: Terms, refund: Refund, sitemap: SitemapPage, 'not-found': NotFound };
     if (legalViews[route.name]) {
       const View = legalViews[route.name];
+      if (isAuthed) {
+        return (
+          <div className="app">
+            <Nav onPreviewBook={setPreviewBook} />
+            <div className="container">
+              <View />
+            </div>
+            <Footer />
+            <Toast />
+          </div>
+        );
+      }
       return (
-        <div className="app">
-          <Nav onPreviewBook={setPreviewBook} guestMode={!isAuthed} />
-          <div className="container">
+        <div className="app lp-root">
+          <LandingNav onOpenAuth={(mode) => go('dashboard', { auth: mode })} />
+          <div className="container lp-legal-container">
             <View />
           </div>
-          <Footer guestMode={!isAuthed} />
+          <LandingFooter />
           <Toast />
         </div>
       );
@@ -275,10 +219,20 @@ export default function App() {
     );
   }
 
-  // No session → show the sign-in gate. Sign-in is required; there is no
-  // longer a guest/offline bypass.
-  // Don't wait on DataContext loading here — there's no user data to load yet.
+  // No session on the public root → show the Landing page (marketing site),
+  // not the sign-in gate directly. Landing's own CTAs open the sign-in modal
+  // (a reused <SignInGate>) so first-time visitors get context before being
+  // asked to commit. Every other authenticated route still gates on sign-in
+  // as before — there is no guest/offline bypass beyond '/'.
   if (!user) {
+    if (route.name === 'dashboard') {
+      return (
+        <div className="app">
+          <Landing />
+          <Toast />
+        </div>
+      );
+    }
     return (
       <div className="app">
         <SignInGate />

@@ -324,7 +324,7 @@ export default function Library({ onOpenBook }) {
                             className="btn btn-tertiary btn--sm"
                             onClick={(e) => { e.stopPropagation(); setEditing(b); }}
                           >
-                            {b.rating ? t('library.buttonRatingUpdate') : t('library.buttonRatingNew')}
+                            {b.rating ? t('library.editRating') : t('library.editRating')}
                           </button>
                           <button
                             className="btn btn-danger btn--sm"
@@ -333,7 +333,7 @@ export default function Library({ onOpenBook }) {
                               if (confirm(`Remove "${b.t}" from your library?`)) removeFromLibrary(b);
                             }}
                           >
-                            {t('library.buttonRemove')}
+                            {t('library.remove')}
                           </button>
                         </div>
                       )}

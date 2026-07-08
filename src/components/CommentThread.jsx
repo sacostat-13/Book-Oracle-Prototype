@@ -27,7 +27,7 @@ function Avatar({ displayName, avatarUrl, size = 26 }) {
   );
 }
 
-function relativeTime(dateStr) {
+function relativeTime(dateStr, t) {
   const diff = Date.now() - new Date(dateStr).getTime();
   const mins = Math.floor(diff / 60000);
   if (mins < 1) return t('discussion.justNow');
@@ -75,6 +75,7 @@ function CommentInput({ onPost, placeholder = 'Add a comment…', autoFocus = fa
 }
 
 function EditInput({ initialBody, onSave, onCancel }) {
+  const t = useT();
   const [body, setBody] = useState(initialBody);
   const [saving, setSaving] = useState(false);
 
@@ -129,7 +130,7 @@ function SingleComment({ comment, onPost, onDelete, onEdit, isReply = false }) {
             {comment.display_name || 'Anonymous'}
           </span>
           <span className="comment-item__meta">
-            {relativeTime(comment.created_at)}
+            {relativeTime(comment.created_at, t)}
             {comment.updated_at && comment.updated_at !== comment.created_at && t('discussion.edited')}
           </span>
         </div>

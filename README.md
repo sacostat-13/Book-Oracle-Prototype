@@ -332,6 +332,124 @@ and forward requests. Locally you need `netlify dev` to make them work.
 
 ## Releases
 
+# Update Notes — v0.40.1 → v0.41.0: Public Landing Page
+
+Adds a real, public-facing marketing page at `/` for signed-out visitors, per
+`landing-page-guideline.md`. Signed-in visitors are unaffected — they still
+land on the Dashboard exactly as before.
+
+## What's new
+
+1. **Landing page at `/`** — hero, "the problem," six feature carousels
+   (alternating text/thumbnail layout, per-feature slides), how-it-works,
+   pricing, FAQ, and a final CTA band. Parchment-only regardless of the
+   visitor's saved theme preference.
+2. **Legal pages get dual chrome** — Privacy/Terms/Refund/Sitemap render with
+   the app's Nav/Footer when you're signed in, and with the new
+   LandingNav/LandingFooter (marketing style) when you're signed out.
+3. **Language switcher** — an EN/ES dropdown in the landing footer, reusing
+   `I18nContext` and the same `src/i18n/*.json` catalogs as the rest of the
+   app (new copy lives under the `landing` key — nothing new to wire up for
+   translators).
+4. **SEO** — tuned title/description, JSON-LD (`SoftwareApplication` +
+   `FAQPage`) for rich-result eligibility, canonical tag reuses the existing
+   per-route logic.
+5. **Mobile** — a short slide-down quick-link sheet from the nav (not the
+   full-screen app hamburger menu), plus a sticky bottom CTA bar.
+
+## Database changes
+
+**None.**
+
+## Code changes
+
+- `src/views/Landing.jsx` (new) — the page itself
+- `src/components/FeatureCarousel.jsx` (new) — alternating text/thumbnail
+  carousel used by the 6 feature sections
+- `src/components/LandingNav.jsx`, `LandingFooter.jsx` (new) — public chrome,
+  shared between the landing page and signed-out legal pages
+- `src/components/SignInGate.jsx` (new) — extracted from `App.jsx` so the
+  landing page's "Start reading free" / "Log in" CTAs can open it as a modal
+  instead of navigating away
+- `src/App.jsx` — signed-out visits to `/` now render `<Landing>` instead of
+  the sign-in gate; signed-out legal-page visits use the public chrome
+- `src/i18n/en.json`, `es.json` — new `landing` key, both languages
+- `src/styles/pages/_landing.scss` (new) — all landing styling, scoped under
+  `.lp-root`
+- `src/lib/releases.js` — new `v0.41.0` entry (bilingual, user-facing)
+
+## Image assets needed before this goes live
+
+The page ships with real `<img>` tags pointing at files that don't exist yet
+— on purpose, so it's obvious exactly what to drop in and where. Until
+they're added, the page works and reads fine, just with broken-image icons
+in these spots:
+
+| Path | Used for | Suggested shape |
+|---|---|---|
+| `public/images/landing/hero-dashboard.png` | Hero "screenshot" | ~1200×825, real Dashboard or Oracle chat screenshot |
+| `public/images/landing/problem-bg.jpg` | "The problem" section background | ~1600×900, atmospheric library/reading photo |
+| `public/images/landing/how-it-works-bg.jpg` | "How it works" section background | ~1800×1000, same mood as above, visually distinct from problem-bg |
+| `public/images/landing/final-cta-bg.jpg` | Final CTA full-bleed band | ~2000×1100, warm/inviting, this one is the most prominent photo on the page |
+| `public/images/landing/og-share.png` | Social share preview (`og:image`) | 1200×630 per OG spec |
+| `public/images/landing/features/oracle-1-by-genre.png` | Oracle, slide 1 | ~800×500 screenshot |
+| `public/images/landing/features/oracle-2-by-other-books.png` | Oracle, slide 2 | ″ |
+| `public/images/landing/features/oracle-3-ask-in-plain-language.png` | Oracle, slide 3 | ″ |
+| `public/images/landing/features/readingLife-1-whole-library.png` | Reading Life, slide 1 | ″ |
+| `public/images/landing/features/readingLife-2-wishlist-at-a-glance.png` | Reading Life, slide 2 | ″ |
+| `public/images/landing/features/readingLife-3-custom-categories.png` | Reading Life, slide 3 | ″ |
+| `public/images/landing/features/readingLife-4-currently-reading-tracked.png` | Reading Life, slide 4 | ″ |
+| `public/images/landing/features/plans-1-built-around-you.png` | Reading Plans, slide 1 | ″ |
+| `public/images/landing/features/plans-2-watch-it-come-together.png` | Reading Plans, slide 2 | ″ |
+| `public/images/landing/features/friends-1-living-feed.png` | Friends & Activity, slide 1 | ″ |
+| `public/images/landing/features/friends-2-peek-at-shelves.png` | Friends & Activity, slide 2 | ″ |
+| `public/images/landing/features/friends-3-curated-lists.png` | Friends & Activity, slide 3 | ″ |
+| `public/images/landing/features/stats-1-yearly-goal.png` | Stats & Goals, slide 1 | ″ |
+| `public/images/landing/features/stats-2-see-your-pace.png` | Stats & Goals, slide 2 | ″ |
+| `public/images/landing/features/stats-3-keep-the-streak.png` | Stats & Goals, slide 3 | ″ |
+| `public/images/landing/features/clubs-1-powered-by-the-oracle.png` | Book Clubs, slide 1 | ″ |
+| `public/images/landing/features/clubs-2-inside-a-session.png` | Book Clubs, slide 2 | ″ |
+| `public/images/landing/features/clubs-3-discover-clubs.png` | Book Clubs, slide 3 | ″ |
+| `public/images/landing/features/clubs-4-spoiler-safe.png` | Book Clubs, slide 4 | ″ |
+
+Filenames are stable across languages (keyed off the feature/slide, not the
+translated title) so switching to Spanish never changes which file loads.
+Real screenshots are captured in the app's dark theme — frame them (browser
+chrome / drop shadow) so the contrast against the light landing page reads
+intentionally, per the design guideline.
+
+## Verify it works
+
+1. Sign out (or open in an incognito window) and visit `/` — should show the
+   landing page, not the sign-in screen.
+2. Sign in — `/` should still go straight to the Dashboard as before.
+3. Visit `/privacy` (or terms/refund/sitemap) signed out — public chrome;
+   signed in — app chrome.
+4. Click "Start reading free" / "Log in" from the landing page — opens the
+   sign-in modal in place, no navigation.
+5. Footer language dropdown — switches the whole page EN ↔ ES.
+6. Resize to mobile width — nav collapses to a short quick-link sheet (not
+   the full-screen app menu), and a sticky CTA bar appears at the bottom.
+
+## What didn't change
+
+- Pro pricing has no number yet — shows "Coming soon" deliberately, per the
+  guideline's "don't invent numbers" rule. Fill in `landing.pricing.proPrice`
+  in both i18n files once Lemon Squeezy is live.
+- No testimonials/social-proof section — skipped per guideline until there
+  are real quotes to show.
+
+## A note on the dev-server HMR error some may see mid-session
+
+If you pull these files into a repo with `npm run dev` / `netlify dev`
+already running, Vite's hot-reload may throw `Failed to reload
+/src/lib/I18nContext.jsx` once, since a lot of interdependent files (several
+of which import `I18nContext`) changed at the same time rather than through
+its normal one-file-at-a-time watch flow. It's a dev-server cache hiccup, not
+a real bug — a production build (`npm run build`) compiles clean, and a
+dev-server restart (or hard browser reload) clears it.
+
+
 ### v0.42 — Ask the Oracle, Match %, Dashboard widgets, and complexity/depth backfill
 
 **Migration required:** `supabase/schema_v27_migration.sql`.

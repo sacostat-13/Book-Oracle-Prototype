@@ -16,7 +16,7 @@
 
 // The version label shown as "current" — keep in sync with package.json and
 // the README version line.
-export const CURRENT_VERSION = 'v0.42';
+export const CURRENT_VERSION = 'v0.41.0';
 
 export const RELEASES = [{
     version: 'v0.42',
@@ -38,6 +38,22 @@ export const RELEASES = [{
       'Dashboard: tu widget de Clubes de Lectura ahora muestra la sesión actual, el libro que se está leyendo, y quién más lo está leyendo con vos \u2014 no solo un nombre y un enlace.',
       'Dashboard: el widget de Meta de Lectura ahora incluye un desglose de tus géneros más leídos en el año.',
       'Corregido: las portadas y algunas búsquedas de datos de libros en segundo plano estaban siendo bloqueadas en silencio por la configuración de seguridad de la app \u2014 podía afectar ocasionalmente la carga de portadas o el autocompletado de detalles de libros.',
+    ],
+  }, 
+  {
+    version: 'v0.41.0',
+    date: '2026-07-08',
+    titleEn: 'A real front door: the public landing page',
+    titleEs: 'Una puerta de entrada de verdad: la p\u00e1gina p\u00fablica',
+    bodyEn: [
+      'thebooksoracle.com now greets signed-out visitors with a proper marketing page instead of the sign-in screen \u2014 what the Oracle does, a tour of every feature (with real screenshots coming soon), pricing, and FAQs, in English and Spanish.',
+      'Privacy, Terms, Refund, and Sitemap pages now show the public site\u2019s look when you\u2019re signed out, and switch back to the app\u2019s own styling once you\u2019re logged in.',
+      'Signing in or starting a free account now happens right from the landing page \u2014 no separate page to find first.',
+    ],
+    bodyEs: [
+      'thebooksoracle.com ahora recibe a quienes no iniciaron sesi\u00f3n con una p\u00e1gina p\u00fablica de verdad en vez de la pantalla de inicio de sesi\u00f3n \u2014 qu\u00e9 hace el Or\u00e1culo, un recorrido por cada funci\u00f3n (con capturas reales pr\u00f3ximamente), precios y preguntas frecuentes, en espa\u00f1ol e ingl\u00e9s.',
+      'Las p\u00e1ginas de Privacidad, T\u00e9rminos, Reembolsos y Mapa del sitio ahora muestran el estilo del sitio p\u00fablico cuando no iniciaste sesi\u00f3n, y vuelven al estilo de la app una vez que inici\u00e1s sesi\u00f3n.',
+      'Iniciar sesi\u00f3n o crear una cuenta gratis ahora se hace directo desde la p\u00e1gina p\u00fablica \u2014 sin tener que buscar otra pantalla primero.',
     ],
   }, {
     version: 'v0.40.1',
