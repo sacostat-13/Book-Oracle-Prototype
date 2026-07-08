@@ -8,6 +8,7 @@ import { useOracleQuota } from '../lib/OracleQuotaContext';
 import { OracleQuotaBadge, OracleQuotaWall } from '../components/OracleQuotaBadge';
 import { useT, useI18n, langDirective } from '../lib/I18nContext';
 import BookCard from '../components/BookCard';
+import { buildTasteProfile, describeTasteProfile, computeLocalMatch, MATCH_SCORING_INSTRUCTIONS } from '../lib/matchHelpers';
 
 // v0.15 phase 2.6: copy pass — "categories" → "genres" throughout.
 // The Temperament dropdown now draws from Oracle genres (genresByBookId)
@@ -26,6 +27,20 @@ export default function OracleCategories({ onOpenBook }) {
 
   const mode = state.oracleMode || 'wishlist';
   const { genresByBookId } = state;
+
+  const tasteProfile = useMemo(
+    () => buildTasteProfile(state.library, genresByBookId, state.profile),
+    [state.library, genresByBookId, state.profile]
+  );
+
+  // Attaches a local (zero-LLM) match % to each book, omitting it entirely
+  // when there's no usable signal — never show a fabricated number.
+  function withLocalMatch(books) {
+    return books.map((b) => {
+      const match = computeLocalMatch(b, tasteProfile, genresByBookId);
+      return match != null ? { ...b, match } : b;
+    });
+  }
 
   // Lazily load the Vault when user picks vault mode
   useEffect(() => {
@@ -90,7 +105,7 @@ export default function OracleCategories({ onOpenBook }) {
         return;
       }
       const shuffled = [...available].sort(() => Math.random() - 0.5);
-      setDraw(shuffled.slice(0, Math.min(3, shuffled.length)));
+      setDraw(withLocalMatch(shuffled.slice(0, Math.min(3, shuffled.length))));
       return;
     }
 
@@ -118,16 +133,18 @@ ${libContext}
 Books currently on their wishlist (to give you a sense of taste — feel free to go beyond these):
 ${wishContext}
 
+${describeTasteProfile(tasteProfile)}
+
 Do NOT recommend any book in this list (already known to them): ${exclude}
 
 Return ONLY valid JSON in this format:
-{"books":[{"title":"...","author":"...","genre":"...","complexity":1-5,"depth":1-5,"description":"one-sentence description"}]}`;
+{"books":[{"title":"...","author":"...","genre":"...","complexity":1-5,"depth":1-5,"description":"one-sentence description","match":0-100}]}`;
 
       let response = null;
       try {
         response = await callClaude(
           prompt,
-          `You are a literary curator. Recommend books accurately. Always return valid JSON. ${langDirective(lang)} Any natural-language field in the JSON (description, genre label) MUST be in that language; titles and author names stay in their original language.`
+          `You are a literary curator. Recommend books accurately. Always return valid JSON. ${langDirective(lang)} Any natural-language field in the JSON (description, genre label) MUST be in that language; titles and author names stay in their original language.\n${MATCH_SCORING_INSTRUCTIONS}`
         );
         onCallSucceeded();
       } catch (err) {
@@ -149,6 +166,7 @@ Return ONLY valid JSON in this format:
               g: b.genre || (genre !== 'all' ? selectedGenreName : 'Recommended'),
               c: b.complexity, p: b.depth, d: b.description,
               aiSuggested: true,
+              match: Number.isFinite(b.match) ? Math.max(0, Math.min(100, Math.round(b.match))) : undefined,
             }))
             .filter((b) => b.t && b.a);
         }
@@ -161,13 +179,13 @@ Return ONLY valid JSON in this format:
         if (vaultPool.length > 0) {
           showToast("Couldn't reach the AI. Drawing from the Vault instead.", true);
           const shuffled = [...vaultPool].sort(() => Math.random() - 0.5);
-          setDraw(shuffled.slice(0, Math.min(3, shuffled.length)));
+          setDraw(withLocalMatch(shuffled.slice(0, Math.min(3, shuffled.length))));
         } else {
           showToast("Couldn't reach the AI. Falling back to your wishlist.", true);
           const pool = state.wishlist.filter(bookMatchesGenre);
           const available = pool.filter((b) => !inUse.has(bookKey(b)));
           const shuffled = [...available].sort(() => Math.random() - 0.5);
-          setDraw(shuffled.slice(0, Math.min(3, shuffled.length)));
+          setDraw(withLocalMatch(shuffled.slice(0, Math.min(3, shuffled.length))));
         }
       } else {
         setDraw(books);

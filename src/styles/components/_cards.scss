@@ -44,7 +44,7 @@
   @include ro-down(tablet) {
     flex-flow: column;
 
-    .bp-pill {
+    .book-card__badges {
       width: max-content;
       order: 1;
     }
@@ -53,6 +53,26 @@
       order: 2;
     }
   }
+}
+
+.book-card__badges {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.match-badge {
+  background: var(--ro-gold);
+  color: var(--ro-gold-on);
+  font-family: var(--ro-font-mono);
+  font-weight: 700;
+  font-size: 11px;
+  letter-spacing: .02em;
+  text-transform: uppercase;
+  padding: 6px 9px;
+  border-radius: 8px;
+  white-space: nowrap;
 }
 
 .book-card__title {

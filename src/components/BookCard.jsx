@@ -29,11 +29,16 @@ export default function BookCard({ book, reason, onClick }) {
         <div className="book-card__body">
           <div className="book-card__head">
             <h3 className="book-card__title">{book.t}</h3>
-            {isVerified && (
-              <span className="bp-pill bp-pill--ro-gold" title="Curated · verified by our editors">
-                ☩ {t('bookPage.verified')}
-              </span>
-            )}
+            <div className="book-card__badges">
+              {typeof book.match === 'number' && (
+                <span className="match-badge">{book.match}% {t('bookPage.match')}</span>
+              )}
+              {isVerified && (
+                <span className="bp-pill bp-pill--ro-gold" title="Curated · verified by our editors">
+                  ☩ {t('bookPage.verified')}
+                </span>
+              )}
+            </div>
           </div>
           <div className="book-card__author">{book.a}</div>
 

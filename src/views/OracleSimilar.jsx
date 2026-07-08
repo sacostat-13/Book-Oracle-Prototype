@@ -9,6 +9,11 @@ import { OracleQuotaWall } from '../components/OracleQuotaBadge';
 import { useT, useI18n, langDirective } from '../lib/I18nContext';
 import BookCard from '../components/BookCard';
 import BookCover from '../components/BookCover';
+import { buildTasteProfile, describeTasteProfile, MATCH_SCORING_INSTRUCTIONS } from '../lib/matchHelpers';
+
+// Max possible raw score per seed book (3 for genre + 2 for complexity + 1 for
+// depth — see the scoring loop below), used to normalize into a 0-100 match %.
+const MAX_SCORE_PER_SEED = 6;
 
 function fallbackSimilar(selection, candidates) {
   const scored = candidates.map((c) => {
@@ -21,8 +26,15 @@ function fallbackSimilar(selection, candidates) {
     return { book: c, score };
   });
   scored.sort((a, b) => b.score - a.score);
+  const maxPossible = selection.length * MAX_SCORE_PER_SEED;
   return {
-    books: scored.slice(0, 5).map((s) => s.book),
+    // This score is a genuine computation against the SEED books you picked
+    // (not your overall taste profile) — "similar to these" is the whole
+    // point of this mode, so that's the more correct basis here.
+    books: scored.slice(0, 5).map((s) => ({
+      ...s.book,
+      match: maxPossible > 0 ? Math.round((s.score / maxPossible) * 100) : undefined,
+    })),
     reasons: {},
     source: 'fallback',
   };
@@ -118,20 +130,22 @@ export default function OracleSimilar({ onOpenBook }) {
     const seedBooks = selection
       .map((b) => `- "${b.t}" by ${b.a}${b.g ? ` (${b.g})` : ''}${b.d ? `: ${b.d}` : ''}`)
       .join('\n');
+    const tasteProfile = buildTasteProfile(state.library, state.genresByBookId, state.profile);
+    const tasteSummary = describeTasteProfile(tasteProfile);
 
     const prompt = `A reader loves these books:
 ${seedBooks}
 
-Recommend 5 OTHER books they would love — books with similar tone, themes, prose style, or atmosphere. You are NOT limited to any catalog; recommend the best matches in world literature.
+${tasteSummary ? tasteSummary + '\n\n' : ''}Recommend 5 OTHER books they would love — books with similar tone, themes, prose style, or atmosphere. You are NOT limited to any catalog; recommend the best matches in world literature.
 
 Do NOT recommend any of these (already known to reader): ${exclude}
 
 Return ONLY valid JSON in this exact format:
-{"books":[{"title":"...","author":"...","genre":"...","complexity":1-5,"depth":1-5,"description":"one-sentence description","reason":"one-sentence kinship to the seed books"}]}`;
+{"books":[{"title":"...","author":"...","genre":"...","complexity":1-5,"depth":1-5,"description":"one-sentence description","reason":"one-sentence kinship to the seed books","match":0-100}]}`;
 
     const response = await callClaude(
       prompt,
-      `You are a literary expert recommending books based on a reader's tastes. Recommend accurately. Always return valid JSON. ${langDirective(lang)} Any natural-language field in the JSON (description, reason, genre label) MUST be in that language; titles and author names stay in their original language.`
+      `You are a literary expert recommending books based on a reader's tastes. Recommend accurately. Always return valid JSON. ${langDirective(lang)} Any natural-language field in the JSON (description, reason, genre label) MUST be in that language; titles and author names stay in their original language.\n${MATCH_SCORING_INSTRUCTIONS}`
     );
 
     let aiResults = null;
@@ -142,6 +156,7 @@ Return ONLY valid JSON in this exact format:
           .map((b) => ({
             t: b.title, a: b.author, g: b.genre || 'Recommended',
             c: b.complexity, p: b.depth, d: b.description, aiSuggested: true,
+            match: Number.isFinite(b.match) ? Math.max(0, Math.min(100, Math.round(b.match))) : undefined,
           }))
           .filter((b) => b.t && b.a);
         const reasons = {};

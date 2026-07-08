@@ -4,7 +4,7 @@ A reading companion — wishlist, library, reading plans, book clubs, and an AI-
 for book discovery. Built with React + Vite + SCSS, backed by Supabase for auth
 and cross-device sync, and Netlify Functions for API proxying.
 
-> Current version: **v0.40.1** — see [Releases](#releases) below for changelog.
+> Current version: **v0.42** — see [Releases](#releases) below for changelog.
 > Upgrading from an earlier version? Check the matching `MIGRATION_*.md` / `UPDATE_*.md`.
 
 ---
@@ -253,7 +253,7 @@ oracle/
 ### Shared catalog (read-public, write via RPC only)
 | Table | Purpose |
 |---|---|
-| `books` | The catalog. `status` enum: `unreviewed` \| `incomplete` \| `oracle_categorized` \| `verified` \| `flagged` \| `discovered`. |
+| `books` | The catalog. `status` enum: `unreviewed` \| `incomplete` \| `oracle_categorized` \| `verified` \| `flagged` \| `discovered`. `complexity`/`depth` (prose complexity / thematic depth, 1-5) were curated-only through v0.41 — as of v0.42 the Oracle categorization pipeline (in-app button and `oracleBatch.mjs`) assigns them too, so coverage grows as books get categorized. |
 | `series` | Series rows. `publication_status` tracks ongoing/complete/unknown. |
 | `genres` | Canonical genre taxonomy. Oracle-curated. 15 seeds pre-loaded. |
 | `book_genres` | Global many-to-many book ↔ genre. |
@@ -274,6 +274,11 @@ oracle/
 | `get_session_discussion(session_id)` | authed member | Returns all questions with answer threads + free comments in one call. Includes `is_mine` flags. |
 | `get_club_polls(club_id)` | authed member | Returns all polls with options, vote counts, and the caller's current vote. |
 | `cast_vote(poll_id, option_id)` | authed member | Upserts a vote (handles first vote and vote change). Returns updated option counts. |
+
+### RPCs (v0.42 additions)
+| RPC | Auth | Purpose |
+|---|---|---|
+| `get_dashboard_clubs_summary()` | authed member | Aggregates all of the caller's clubs in one call for the Dashboard's Book Clubs widget: member count, the "current" session (active → most recent past → soonest upcoming), that session's book, and up to 4 member avatars (admins first). Avoids an N+1 fan-out over `get_club_detail()` per club. |
 
 ### The curated catalog (The Vault)
 Starting v0.26, the Vault is powered by the curator's live wishlist rather than a bundled static file. The `get_curated_catalog()` RPC (v11 migration) returns all books wishlisted by any user with `profiles.is_curator = true`, joined with their series data. This is what the Oracle draws from when AI is disabled, and what the plan generator uses as its source pool.
@@ -326,6 +331,39 @@ and forward requests. Locally you need `netlify dev` to make them work.
 ---
 
 ## Releases
+
+### v0.42 — Ask the Oracle, Match %, Dashboard widgets, and complexity/depth backfill
+
+**Migration required:** `supabase/schema_v27_migration.sql`.
+
+**Dashboard — "My Books at Glance."** The hero's numeric chips (previously small inline pills: level badge + Read/Wishlist/Currently Reading counts all mixed together) are now split: the level badge stays a small pill, and the counts move into a prominent `db-glance-grid` of stat cards reusing the exact `.db-stat-card`/`.db-stat-value`/`.db-stat-label` classes from the Reading Stats widget — no new visual language. Added **Reading Plans** and **Book Clubs** counts, which weren't surfaced at the top before (Currently Reading still only shows if > 0; Read/Wishlist/Plans/Clubs always show).
+
+**Dashboard — Book Clubs widget extension.** Previously just name + member count + a generic "View" link, pulled from the lightweight `state.clubs` index (no sessions/members — that's only fetched on demand via `get_club_detail()` per club). New `get_dashboard_clubs_summary()` RPC (v27 migration) aggregates all of the caller's clubs in one round trip instead: member count, the "current" session (active → most recent past → soonest upcoming, so the card never goes blank between sessions), that session's book, and up to 4 member avatars. `ClubsWidget` rebuilt to show the book cover, a `Session N` badge (colored by active/past/upcoming, reusing `--ro-forest` for active — matches the design spec's green pill), a "Reading *{title}*" line, and a stacked avatar row with a "+N reading along" overflow count. Falls back to the old plain name/count row if the summary hasn't loaded yet or a club has no sessions.
+
+**Bug found and fixed post-deploy:** the RPC's member-avatar ordering assumed `book_club_members` has a `created_at` column (to sort "admins first, then earliest joined") — that table predates what's tracked in this repo's migrations, so this wasn't verifiable ahead of time. Failed at runtime with `42703 column m.created_at does not exist` once deployed. Fixed by dropping that ordering criterion entirely (now: admins first, then `user_id` — stable but arbitrary tiebreak). If a `joined_at`/`created_at` column gets added to that table later, swap it back in.
+
+**Dashboard — Yearly Genre Breakdown, in the Reading Goal widget.** Reuses the same `state.genresByBookId` source as Profile's existing all-time "Top genres," but scoped to books read *this year* and capped to the top 3 (Profile's version stays all-time, top 8 — intentionally different, not a duplicate). Styled to match the design spec: 9px bars, one color per genre (burgundy/forest/gold, cycling), sitting below the goal progress bar. Shows even before a reading goal is set.
+
+**Bug found and fixed post-deploy:** the genre bars initially rendered with no visible fill. Root cause: `.db-goal__genre-track` kept `flex: 1` from an earlier side-by-side layout iteration — in that layout `flex: 1` meant "grow to fill remaining width," but after restructuring to a stacked (`flex-direction: column`) layout so long genre names wouldn't truncate, the same property meant "grow to fill remaining *height*" instead. With no fixed height on the row, the track's flex-basis of 0% never had freed space to grow into, so it collapsed to 0px. Fixed by switching to `width: 100%` and letting the column's default `align-items: stretch` handle the width instead.
+
+**New: Ask the Oracle** (`OracleAsk.jsx`, route `/oracle/ask`) — a third recommendation mode alongside By Genres and Based on Other Books, added as a third card on `OracleFork.jsx` (grid widened from 2 to 3 columns). Free-text request box, injects the reader's `favoriteGenres`/`currentMood` (from onboarding) as context alongside the query, with a nudge banner + CTA to Profile when neither is set. Shares the exact same `callClaude()` proxy and `useOracleQuota()` bucket as the other two modes — this is a different prompt shape hitting the same quota, not a separate billing path. Added to the human-readable `/sitemap` page and per-route document title.
+
+**New: Match %.** New shared module `src/lib/matchHelpers.js`:
+- `buildTasteProfile(library, genresByBookId, profile)` — computes average rating per genre from the reader's library (books with both a rating and known genres), plus `favoriteGenres`/`currentMood`, plus average complexity/depth of books rated 4-5★. All from data already loaded client-side — no new query.
+- `computeLocalMatch(book, tasteProfile, genresByBookId)` — zero-LLM score: genre affinity (best-matching genre's average rating, or partial credit for a stated-favorite genre with no rating history yet) weighted 70%, complexity/depth closeness weighted 30%. Returns `null` (not a fabricated number) when there's no usable signal at all for that book.
+- `describeTasteProfile()` + `MATCH_SCORING_INSTRUCTIONS` — shared text injected into every AI-mode prompt, so all three AI modes score against the same rubric. This is a reasoned LLM estimate grounded in real signals we provide, not a reproducible statistical computation — an intentional tradeoff to avoid a separate scoring subsystem.
+
+Wired into all five recommendation paths: `OracleCategories` wishlist/vault draws (previously pure random shuffle with **no scoring at all** — now get a real local match %, draw itself stays random to preserve the "surprise" framing); `OracleCategories` AI mode; `OracleSimilar`'s wishlist/fallback mode (its existing seed-based score — genre/complexity/depth distance to the 1-3 *selected seed books*, not the reader's overall taste profile — is now normalized into an honest 0-100 rather than left as an unbounded raw integer, since "similar to these specific books" is the more correct basis for that page anyway); `OracleSimilar` AI mode; `OracleAsk`. `BookCard.jsx` gained a `.match-badge` pill (gold fill, matching the design spec's `background: var(--ro-gold); color: var(--ro-gold-on)` badge exactly) shown whenever `book.match` is a number.
+
+**Oracle categorization now also assigns complexity/depth.** Both `oracleCategorizationService.js` (in-app "Let the Oracle categorize my books") and `oracleBatch.mjs` (standalone admin backfill script) previously returned only genres + series + description. `complexity`/`depth` were `-- curated only` per the schema comment — every book added via Hardcover/OpenLibrary/Goodreads import or manual entry has always had them `null`, which is what Match % needs to score a reader's own library (as opposed to Reading Plans, which turned out to be unaffected — see note below). Both prompts now also request `complexity`/`depth` (1-5, same rubric already used in `PlanCreate.jsx`: casual/mid/literary/challenging/experimental, with Faulkner/Han Kang/Donoso/Lispector as anchors for the top end) and write them back in the same DB update as the rest of the enrichment. New `sanitizeLevel()` guard (duplicated in both files, since one runs in-browser and one is a standalone Node script) clamps to an integer 1-5 or discards the value entirely — a missing complexity/depth degrades gracefully everywhere downstream; a wrong one baked into the DB would not.
+
+**Investigated, not changed:** confirmed Reading Plans are *not* affected by the complexity/depth gap — `PlanCreate.jsx` and `OracleCategories`'s Vault mode both draw exclusively from `loadVault()`, hard-filtered to `source = 'curated'`, which by construction always has complexity/depth populated. The `(b.c || 3)` fallback in `PlanCreate.jsx` is defensive code that in practice never fires. Worth revisiting if Plans ever expand beyond the curated Vault.
+
+**Fixed — CSP silently blocking OpenLibrary and Google Books.** `connect-src` in `netlify.toml` never included `covers.openlibrary.org`, `openlibrary.org`, or `www.googleapis.com`. `img-src` allows `https:` broadly, so `<img>` tags loading covers directly always worked — but `connect-src` governs `fetch()`, which is what broke two separate things: (1) the service worker's runtime image-caching (`workbox` calling `fetch()` to cache covers for offline use — the visible symptom that surfaced this), and (2) actual lookup calls in `coverService.js`, `bookLookup.js`, and `enrichmentService.js`, which all call these three domains directly via `fetch()` (not through a Netlify function proxy, unlike Hardcover and Wikipedia, which are proxied and unaffected). The OpenLibrary tier of the Hardcover → OpenLibrary → Wikipedia lookup chain, and the Google Books fallback, have likely been silently failing in production this whole time — caught in try/catch, falling through to the next source. Added all three domains to `connect-src`.
+
+**Found, not fixed this release:** `bookPage.verified`'s translation string already includes the ☩ symbol (`"☩ Verified"`), but `BookCard.jsx` also prepends a literal `☩` in JSX — the verified badge has likely been rendering a doubled symbol since it was introduced. Left as-is since it's unrelated to this release's scope; flagging for a future pass.
+
+i18n: new `oracle.forkByAsk`/`forkByAskDesc`/`ask*` keys (Ask the Oracle page + nudge banner), `dashboard.glanceRead`/`glanceWishlist`/`glanceClubs`/`goalWidgetGenresTitle`, `dashboard.clubSession`/`clubReadingMeta`/`clubMemberCount`/`clubReadingAlong`, and `bookPage.match` — all added to both `en.json` and `es.json`. `oracle.forkSubtitle` updated from "Two ways…" to "Three ways…".
 
 ### v0.40.1 — Public Club Directory: search, join modes, waitlist
 

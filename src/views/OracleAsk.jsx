@@ -15,6 +15,7 @@ import { useOracleQuota } from '../lib/OracleQuotaContext';
 import { OracleQuotaWall } from '../components/OracleQuotaBadge';
 import { useT, useTNode, useI18n, langDirective } from '../lib/I18nContext';
 import BookCard from '../components/BookCard';
+import { buildTasteProfile, describeTasteProfile, MATCH_SCORING_INSTRUCTIONS } from '../lib/matchHelpers';
 
 const QUERY_MAX = 280;
 
@@ -34,6 +35,7 @@ export default function OracleAsk({ onOpenBook }) {
   const mood      = state.profile?.currentMood || [];
   const hasPersonalization = favGenres.length > 0 || mood.length > 0;
   const quotaEmpty = quota && !quota.unlimited && quota.calls_remaining === 0;
+  const tasteProfile = buildTasteProfile(state.library, state.genresByBookId, state.profile);
 
   async function ask() {
     const trimmed = query.trim();
@@ -45,9 +47,11 @@ export default function OracleAsk({ onOpenBook }) {
       .map((b) => `"${b.t}"`)
       .join(', ');
 
+    const tasteSummary = describeTasteProfile(tasteProfile);
     const personalization = [
       favGenres.length > 0 ? `Reader's favorite genres: ${favGenres.join(', ')}. Lean toward these when a good option exists, but don't force it.` : null,
       mood.length > 0 ? `Reader says they're generally in the mood for: ${mood.join(', ')}.` : null,
+      tasteSummary || null,
     ].filter(Boolean).join(' ');
 
     const prompt = `${personalization ? personalization + '\n\n' : ''}A reader asks: "${trimmed}"
@@ -57,12 +61,12 @@ Recommend 3 books that best answer this request. You are NOT limited to any cata
 Do NOT recommend any of these (already known to reader): ${exclude}
 
 Return ONLY valid JSON in this exact format:
-{"books":[{"title":"...","author":"...","genre":"...","complexity":1-5,"depth":1-5,"description":"one-sentence description","reason":"one-sentence reason this answers the request"}]}`;
+{"books":[{"title":"...","author":"...","genre":"...","complexity":1-5,"depth":1-5,"description":"one-sentence description","reason":"one-sentence reason this answers the request","match":0-100}]}`;
 
     try {
       const raw = await callClaude(
         prompt,
-        `You are a literary oracle taking a free-form request from a reader and recommending books that answer it. Recommend accurately. Always return valid JSON. ${langDirective(lang)} Any natural-language field in the JSON (description, reason, genre label) MUST be in that language; titles and author names stay in their original language.`
+        `You are a literary oracle taking a free-form request from a reader and recommending books that answer it. Recommend accurately. Always return valid JSON. ${langDirective(lang)} Any natural-language field in the JSON (description, reason, genre label) MUST be in that language; titles and author names stay in their original language.\n${MATCH_SCORING_INSTRUCTIONS}`
       );
       const parsed = parseJSONResponse(raw);
       if (parsed?.books && Array.isArray(parsed.books) && parsed.books.length > 0) {
@@ -70,6 +74,7 @@ Return ONLY valid JSON in this exact format:
           .map((b) => ({
             t: b.title, a: b.author, g: b.genre || 'Recommended',
             c: b.complexity, p: b.depth, d: b.description, aiSuggested: true,
+            match: Number.isFinite(b.match) ? Math.max(0, Math.min(100, Math.round(b.match))) : undefined,
           }))
           .filter((b) => b.t && b.a);
         const reasons = {};

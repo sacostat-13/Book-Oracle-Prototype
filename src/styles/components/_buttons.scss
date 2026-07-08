@@ -147,6 +147,66 @@
   }
 }
 
+// ── Oracle categorization progress (previously had zero CSS behind it —
+// rendered as plain unstyled text, no spacing, no visible bar) ────────────────
+.oracle-categorization-button {
+  margin: var(--ro-space-4) 0px;
+}
+
+.oracle-progress {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ro-space-3);
+  padding: 16px 20px;
+  border-radius: 12px;
+  background: var(--ro-surface);
+  border: 1px solid var(--ro-border);
+}
+
+.oracle-progress-label {
+  font-family: var(--ro-font-body);
+  font-style: italic;
+  font-size: 14px;
+  color: var(--ro-text-2);
+}
+
+.oracle-progress-track {
+  width: 100%;
+  height: 8px;
+  border-radius: var(--ro-radius-pill);
+  background: var(--ro-ring-track);
+  overflow: hidden;
+}
+
+.oracle-progress-fill {
+  height: 100%;
+  background: var(--ro-accent);
+  border-radius: var(--ro-radius-pill);
+  transition: width .3s ease;
+}
+
+.oracle-progress-errors {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ro-space-2);
+  margin-top: var(--ro-space-1);
+}
+
+.oracle-progress-error {
+  font-family: var(--ro-font-body);
+  font-size: 13px;
+  color: var(--ro-error);
+  padding-left: 14px;
+  position: relative;
+
+  &::before {
+    content: '⚑';
+    position: absolute;
+    left: 0;
+    font-size: 11px;
+  }
+}
+
 // ── Sizes ─────────────────────────────────────────────────────────────────────
 .btn--sm {
   padding: 9px 16px;

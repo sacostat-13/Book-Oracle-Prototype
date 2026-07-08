@@ -16,9 +16,30 @@
 
 // The version label shown as "current" — keep in sync with package.json and
 // the README version line.
-export const CURRENT_VERSION = 'v0.40.1';
+export const CURRENT_VERSION = 'v0.42';
 
 export const RELEASES = [{
+    version: 'v0.42',
+    date: '2026-07-07',
+    titleEn: 'Ask the Oracle, Match %, and a richer Dashboard',
+    titleEs: 'Preguntale al Oráculo, Compatibilidad, y un Dashboard más completo',
+    bodyEn: [
+      'New: Ask the Oracle — a third way to get recommendations, alongside By Genres and Based on Other Books. Describe what you\u2019re after in your own words (a mood, a moment, a question) and get three books back. Uses the same Oracle calls as your other Oracle features, so it counts against the same monthly/daily limit.',
+      'New: every Oracle recommendation now shows a Match % — how well the Oracle thinks a book fits you, based on your ratings, favorite genres, and mood. Some are the Oracle\u2019s own estimate; others (like wishlist-matched picks) are computed directly from your data.',
+      'Dashboard: "My Books at Glance" is now front and center at the top of the page, with two new counts \u2014 Book Clubs and Reading Plans \u2014 alongside Read, Wishlist, and Currently Reading.',
+      'Dashboard: your Book Clubs widget now shows the current session, the book being read, and who else is reading along \u2014 not just a name and a link.',
+      'Dashboard: the Reading Goal widget now includes a breakdown of your top genres for the year.',
+      'Fixed: cover images and a couple of background book lookups were being silently blocked by the app\u2019s security settings \u2014 could occasionally affect cover loading or auto-filled book details.',
+    ],
+    bodyEs: [
+      'Nuevo: Preguntale al Oráculo — una tercera forma de conseguir recomendaciones, junto a Por Géneros y Basado en Otros Libros. Describí qué estás buscando con tus propias palabras (un estado de ánimo, un momento, una pregunta) y recibí tres libros. Usa las mismas consultas al Oráculo que tus otras funciones, así que cuenta para el mismo límite mensual/diario.',
+      'Nuevo: cada recomendación del Oráculo ahora muestra una Compatibilidad % \u2014 qué tan bien cree el Oráculo que un libro te queda, según tus calificaciones, géneros favoritos y estado de ánimo. Algunas son una estimación del Oráculo; otras (como las de tu lista de deseos) se calculan directamente con tus datos.',
+      'Dashboard: "Mis Libros de un Vistazo" ahora está más arriba y más visible en la página, con dos contadores nuevos \u2014 Clubes de Lectura y Planes de Lectura \u2014 junto a Leídos, Lista de Deseos y Leyendo Ahora.',
+      'Dashboard: tu widget de Clubes de Lectura ahora muestra la sesión actual, el libro que se está leyendo, y quién más lo está leyendo con vos \u2014 no solo un nombre y un enlace.',
+      'Dashboard: el widget de Meta de Lectura ahora incluye un desglose de tus géneros más leídos en el año.',
+      'Corregido: las portadas y algunas búsquedas de datos de libros en segundo plano estaban siendo bloqueadas en silencio por la configuración de seguridad de la app \u2014 podía afectar ocasionalmente la carga de portadas o el autocompletado de detalles de libros.',
+    ],
+  }, {
     version: 'v0.40.1',
     date: '2026-07-06',
     titleEn: 'Find a Book Club',
