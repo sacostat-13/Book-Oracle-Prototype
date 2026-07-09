@@ -1194,7 +1194,7 @@
     "pricingFreeFeature4": "5 consultas al Oráculo por mes",
     "pricingFreeFeature5": "Soporte completo en inglés y español",
     "pricingProTitle": "Pro",
-    "pricingProPrice": "$5",
+    "pricingProPrice": "$5.99",
     "pricingProPeriod": "por mes",
     "pricingProFeature1": "Todo lo del plan Gratis",
     "pricingProFeature2": "5 consultas al Oráculo por día",
@@ -1503,6 +1503,26 @@
     }
   },
   "landing": {
+    "intro": {
+      "ariaLabel": "The Books Oracle — la lectura del Oráculo",
+      "line1": "Cualquiera puede mostrarte los más vendidos.",
+      "q1": "¿Pero saben lo que realmente anhelas?",
+      "q2": "¿Pueden seguir el hilo de cada libro que has amado?",
+      "q3": "¿Te ayudan a leer más profundo, no solo más?",
+      "q4": "¿Encontrarían el que nadie pensó en mostrarte?",
+      "reads": "El Oráculo te lee.",
+      "tagline": "Tu próximo libro, presagiado.",
+      "reject1": "El que todos están leyendo",
+      "reject2": "La sensación del año",
+      "reject3": "Ahora una gran película",
+      "reject4": "Visto absolutamente en todas partes",
+      "ribbon": "Bestseller",
+      "pickTitle": "El volumen destinado a ti",
+      "pickMatch": "93% de afinidad",
+      "skip": "Saltar",
+      "continue": "Entrar a la biblioteca",
+      "logoAlt": "The Books Oracle"
+    },
     "nav": {
       "features": "Funciones",
       "pricing": "Precios",

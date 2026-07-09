@@ -1194,7 +1194,7 @@
     "pricingFreeFeature4": "5 Oracle AI calls per month",
     "pricingFreeFeature5": "Full English & Spanish support",
     "pricingProTitle": "Pro",
-    "pricingProPrice": "$5",
+    "pricingProPrice": "$5.99",
     "pricingProPeriod": "per month",
     "pricingProFeature1": "Everything in Free",
     "pricingProFeature2": "5 Oracle draws per day",
@@ -1503,6 +1503,26 @@
     }
   },
   "landing": {
+    "intro": {
+      "ariaLabel": "The Books Oracle — an oracle's reading",
+      "line1": "Anyone can show you the bestsellers.",
+      "q1": "But do they know what you truly long for?",
+      "q2": "Can they trace the thread through every book you've loved?",
+      "q3": "Do they help you read deeper — not just more?",
+      "q4": "Could they find the one no one thought to show you?",
+      "reads": "The Oracle reads you.",
+      "tagline": "Your next book, foretold.",
+      "reject1": "The One Everyone Is Reading",
+      "reject2": "This Year's Sensation",
+      "reject3": "Now a Major Motion Picture",
+      "reject4": "As Seen Absolutely Everywhere",
+      "ribbon": "Bestseller",
+      "pickTitle": "The volume meant for you",
+      "pickMatch": "93% match",
+      "skip": "Skip",
+      "continue": "Enter the library",
+      "logoAlt": "The Books Oracle"
+    },
     "nav": {
       "features": "Features",
       "pricing": "Pricing",

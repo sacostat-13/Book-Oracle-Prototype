@@ -14,6 +14,19 @@ import LandingNav from '../components/LandingNav';
 import LandingFooter from '../components/LandingFooter';
 import FeatureCarousel from '../components/FeatureCarousel';
 import SignInGate from '../components/SignInGate';
+import OracleIntro from '../components/OracleIntro';
+import ConstellationThread from '../components/ConstellationThread';
+
+// The Reading intro plays once per session, and never for reduced-motion
+// visitors — they land directly on the parchment page.
+function shouldPlayIntro() {
+  try {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return false;
+    return sessionStorage.getItem('tbo.introSeen') !== '1';
+  } catch {
+    return false;
+  }
+}
 
 // ── Scroll-reveal: fades/slides sections in once, first time they enter the
 // viewport. Subtle only, per guideline ("this audience associates restraint
@@ -117,6 +130,7 @@ export default function Landing() {
   const t = useT();
   const heroBgRef = useRef(null);
   const [authMode, setAuthMode] = useState(null); // null | 'login' | 'signup'
+  const [introPlaying, setIntroPlaying] = useState(shouldPlayIntro);
 
   useScrollReveal();
   useHeroParallax(heroBgRef);
@@ -168,10 +182,10 @@ export default function Landing() {
   // query-param passthrough).
   useEffect(() => {
     const anchor = route.params?.anchor;
-    if (!anchor) return;
+    if (!anchor || introPlaying) return;
     const el = document.getElementById(anchor);
     if (el) setTimeout(() => el.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60);
-  }, [route.params?.anchor]);
+  }, [route.params?.anchor, introPlaying]);
 
   // Arrived from a legal page's nav/footer CTA with ?auth=login|signup —
   // open the sign-in modal directly instead of making them click again.
@@ -202,6 +216,8 @@ export default function Landing() {
 
   return (
     <div className="lp-root">
+      {introPlaying && <OracleIntro onDone={() => setIntroPlaying(false)} />}
+      <ConstellationThread />
       <LandingNav onOpenAuth={setAuthMode} />
 
       {/* ═══ Hero ═══════════════════════════════════════════════════════ */}
