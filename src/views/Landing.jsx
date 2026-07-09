@@ -313,9 +313,6 @@ export default function Landing() {
               <li>{t('landing.pricing.row3Free')}</li>
               <li>✓ {t('landing.pricing.row4')}</li>
             </ul>
-            <button className="btn-accent btn--block" onClick={() => setAuthMode('signup')}>
-              {t('landing.pricing.freeCta')}
-            </button>
           </div>
 
           <div className="lp-pricing__col lp-pricing__col--pro">
@@ -327,9 +324,6 @@ export default function Landing() {
               <li>{t('landing.pricing.row3Pro')}</li>
               <li>✓ {t('landing.pricing.row4')}</li>
             </ul>
-            <button className="btn-secondary btn--block" onClick={() => setAuthMode('signup')}>
-              {t('landing.pricing.proCta')}
-            </button>
           </div>
         </div>
         <p className="lp-pricing__note">{t('landing.pricing.note')}</p>
