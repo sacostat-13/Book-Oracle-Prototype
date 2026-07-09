@@ -139,9 +139,9 @@ export async function handler(event) {
 
   try {
     switch (eventName) {
-      case 'subscription_created':
-      case 'subscription_payment_success':
-      case 'subscription_payment_recovered': {
+      case 'subscription_created': {
+        // data is a subscription object: attributes.status is a subscription
+        // status ('active', 'on_trial', …) and data.id is the subscription id.
         const appStatus = lsStatusToAppStatus(attrs?.status || 'active');
         await updateProfile(supabaseUrl, serviceKey, userId, {
           subscription_status:       appStatus,
@@ -149,6 +149,24 @@ export async function handler(event) {
           ...(lsSubscriptionId && { ls_subscription_id: lsSubscriptionId }),
         });
         console.log(`${eventName}: user ${userId} → ${appStatus}`);
+        break;
+      }
+
+      case 'subscription_payment_success':
+      case 'subscription_payment_recovered': {
+        // v0.43.1 FIX: these events carry a subscription-INVOICE object, not
+        // a subscription. attributes.status here is the invoice status
+        // ('paid') — feeding it through lsStatusToAppStatus fell through to
+        // 'free', so a SUCCESSFUL payment silently downgraded the user.
+        // Likewise data.id is the invoice id, not the subscription id — the
+        // real subscription id lives at attributes.subscription_id.
+        // A successful or recovered payment means exactly one thing: active.
+        await updateProfile(supabaseUrl, serviceKey, userId, {
+          subscription_status: 'active',
+          ...(lsCustomerId && { ls_customer_id: lsCustomerId }),
+          ...(attrs?.subscription_id && { ls_subscription_id: String(attrs.subscription_id) }),
+        });
+        console.log(`${eventName}: user ${userId} → active`);
         break;
       }
 
