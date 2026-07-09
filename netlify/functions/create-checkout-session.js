@@ -1,67 +1,40 @@
 // netlify/functions/create-checkout-session.js
 // Lemon Squeezy checkout — redirects to the hosted checkout URL.
 //
-// Lemon Squeezy's hosted checkout page is a fixed URL per variant.
-// We append the customer's email as a prefill param so they don't
-// have to type it. The checkout URL itself comes from the dashboard.
+// v0.39 hardening: the JWT is verified against Supabase Auth (was: decoded
+// without verification). The email/user_id embedded in the checkout URL now
+// come from the VERIFIED session, so an attacker can't attach someone else's
+// user_id to their own subscription.
 //
 // Required env vars:
 //   LEMON_SQUEEZY_REDIRECT_URL  — full checkout URL from LS dashboard
-//                                 e.g. https://thebooksoracle.lemonsqueezy.com/checkout/buy/...
 //   SUPABASE_URL
-//   SUPABASE_SERVICE_ROLE_KEY   (optional — used to look up email if not in JWT)
+//   SUPABASE_SERVICE_ROLE_KEY
 
-const CORS = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-};
-
-function json(statusCode, data) {
-  return {
-    statusCode,
-    headers: {
-      ...CORS,
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify(data)
-  };
-}
+import { corsHeaders, bearerToken, verifySupabaseJwt } from './_shared/auth.js';
 
 export async function handler(event) {
-  if (event.httpMethod === 'OPTIONS') return {
-    statusCode: 204,
-    headers: CORS,
-    body: ''
-  };
-  if (event.httpMethod !== 'POST') return json(405, {
-    error: 'Method not allowed'
+  const CORS = corsHeaders(event);
+  const json = (statusCode, data) => ({
+    statusCode,
+    headers: { ...CORS, 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
   });
+
+  if (event.httpMethod === 'OPTIONS') return { statusCode: 204, headers: CORS, body: '' };
+  if (event.httpMethod !== 'POST') return json(405, { error: 'Method not allowed' });
 
   const checkoutBase = process.env.LEMON_SQUEEZY_REDIRECT_URL;
-  if (!checkoutBase) {
-    return json(500, {
-      error: 'LEMON_SQUEEZY_REDIRECT_URL not set.'
-    });
-  }
+  if (!checkoutBase) return json(500, { error: 'Server misconfigured' });
 
-  // Decode user info from JWT
-  const authHeader = event.headers?.authorization || event.headers?.Authorization || '';
-  const jwt = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
-  if (!jwt) return json(401, {
-    error: 'unauthenticated'
-  });
+  const jwt = bearerToken(event);
+  if (!jwt) return json(401, { error: 'unauthenticated' });
 
-  let userId, userEmail;
-  try {
-    const payload = JSON.parse(Buffer.from(jwt.split('.')[1], 'base64url').toString());
-    userId = payload.sub;
-    userEmail = payload.email;
-  } catch {
-    return json(401, {
-      error: 'invalid_token'
-    });
-  }
+  const user = await verifySupabaseJwt(jwt);
+  if (!user) return json(401, { error: 'invalid_token' });
+
+  const userId    = user.userId;
+  const userEmail = user.email;
 
   // Build checkout URL with prefill params and user_id as custom data.
   // We build the query string manually — bracket notation in URLSearchParams
@@ -74,7 +47,5 @@ export async function handler(event) {
   const separator = checkoutBase.includes('?') ? '&' : '?';
   const finalUrl = checkoutBase + separator + params.join('&');
 
-  return json(200, {
-    url: finalUrl
-  });
+  return json(200, { url: finalUrl });
 }

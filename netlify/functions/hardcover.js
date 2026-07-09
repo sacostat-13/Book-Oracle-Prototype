@@ -6,14 +6,10 @@
 // Required env var (set in Netlify → Site → Environment variables):
 //   HARDCOVER_API_TOKEN   (Bearer token from hardcover.app/settings)
 
+import { corsHeaders as buildCors } from './_shared/auth.js';
+
 export async function handler(event) {
-  // Basic CORS for local dev (Netlify Functions are same-origin in prod, but
-  // `netlify dev` proxies on a different port).
-  const corsHeaders = {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type',
-  };
+  const corsHeaders = buildCors(event);
 
   if (event.httpMethod === 'OPTIONS') {
     return { statusCode: 204, headers: corsHeaders, body: '' };
@@ -81,10 +77,11 @@ export async function handler(event) {
       body: text,
     };
   } catch (e) {
+    console.error('hardcover.js upstream error:', String(e));
     return {
       statusCode: 502,
       headers: corsHeaders,
-      body: JSON.stringify({ error: 'Upstream request failed', detail: String(e) }),
+      body: JSON.stringify({ error: 'Upstream request failed' }),
     };
   }
 }

@@ -12,6 +12,8 @@
 //   SUPABASE_URL
 //   SUPABASE_SERVICE_ROLE_KEY
 
+import { timingSafeEqual } from 'node:crypto';
+
 async function verifySignature(rawBody, signatureHeader, secret) {
   try {
     const encoder   = new TextEncoder();
@@ -23,7 +25,10 @@ async function verifySignature(rawBody, signatureHeader, secret) {
     const sigBuffer = await crypto.subtle.sign('HMAC', key, encoder.encode(rawBody));
     const computed  = Array.from(new Uint8Array(sigBuffer))
       .map((b) => b.toString(16).padStart(2, '0')).join('');
-    return computed === signatureHeader;
+    // Constant-time comparison — a plain === leaks a timing side-channel.
+    const a = Buffer.from(computed, 'utf8');
+    const b = Buffer.from(String(signatureHeader || ''), 'utf8');
+    return a.length === b.length && timingSafeEqual(a, b);
   } catch { return false; }
 }
 
@@ -43,16 +48,40 @@ function lsStatusToAppStatus(lsStatus) {
 
 async function updateProfile(supabaseUrl, serviceKey, userId, fields) {
   if (!userId) return;
+
+  // schema_v28: LS customer/subscription IDs live in profile_billing
+  // (service-role only), not on the world-readable profiles row.
+  const { ls_customer_id, ls_subscription_id, ...profileFields } = fields;
+
+  const svcHeaders = {
+    'Content-Type': 'application/json',
+    'apikey': serviceKey,
+    'Authorization': `Bearer ${serviceKey}`,
+    'Prefer': 'return=minimal',
+  };
+
+  if (ls_customer_id || ls_subscription_id) {
+    try {
+      const res = await fetch(`${supabaseUrl}/rest/v1/profile_billing`, {
+        method: 'POST',
+        headers: { ...svcHeaders, 'Prefer': 'resolution=merge-duplicates,return=minimal' },
+        body: JSON.stringify({
+          user_id: userId,
+          ...(ls_customer_id     && { ls_customer_id }),
+          ...(ls_subscription_id && { ls_subscription_id }),
+          updated_at: new Date().toISOString(),
+        }),
+      });
+      if (!res.ok) console.error('Billing upsert failed:', res.status, await res.text());
+    } catch (e) { console.error('Billing upsert error:', e); }
+  }
+
+  if (Object.keys(profileFields).length === 0) return;
   try {
     const res = await fetch(`${supabaseUrl}/rest/v1/profiles?id=eq.${userId}`, {
       method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json',
-        'apikey': serviceKey,
-        'Authorization': `Bearer ${serviceKey}`,
-        'Prefer': 'return=minimal',
-      },
-      body: JSON.stringify(fields),
+      headers: svcHeaders,
+      body: JSON.stringify(profileFields),
     });
     if (!res.ok) console.error('Profile update failed:', res.status, await res.text());
   } catch (e) { console.error('Profile update error:', e); }

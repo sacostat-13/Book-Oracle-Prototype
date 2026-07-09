@@ -16,7 +16,7 @@
 
 // The version label shown as "current" — keep in sync with package.json and
 // the README version line.
-export const CURRENT_VERSION = 'v0.41.0';
+export const CURRENT_VERSION = 'v0.42.0';
 
 export const RELEASES = [{
     version: 'v0.42',

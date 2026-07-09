@@ -1,39 +1,54 @@
 // Anthropic Claude proxy — with Oracle quota enforcement.
 //
+// Security model (v0.39 hardening):
+//   1. The JWT is VERIFIED against Supabase Auth (signature + expiry), not
+//      just decoded. A forged `sub` no longer works.
+//   2. Quota FAILS CLOSED: if the quota lookup errors or returns nothing,
+//      the call is denied (503) instead of proceeding unmetered.
+//   3. `model` is allowlisted, `maxTokens` is clamped, and prompt/system
+//      prompt sizes are capped, so cost-per-call is bounded.
+//   4. CORS is restricted to known origins (see _shared/auth.js).
+//   5. Quota-skip for local dev only applies under `netlify dev`
+//      (NETLIFY_DEV=true). In production, missing Supabase env vars is a
+//      hard 503 — never an open proxy.
+//
 // Flow:
 //   1. Parse and validate request body.
-//   2. If Supabase env vars are present AND a JWT is provided:
-//      a. Decode user_id from JWT.
-//      b. Check quota via get_oracle_quota (READ ONLY — does not consume).
-//         Return 402 immediately if already exceeded.
-//      c. Forward to Anthropic.
-//      d. Only if Anthropic succeeds (2xx), consume one call via
-//         consume_oracle_call. This way a failed Anthropic call never
-//         costs the user a quota slot.
-//   3. If Supabase env vars are missing (local dev), skip quota entirely.
+//   2. Verify JWT → check quota via get_oracle_quota (read-only).
+//      Return 402 if exceeded, 503 if quota can't be determined.
+//   3. Forward to Anthropic.
+//   4. Only on Anthropic 2xx, consume one call via consume_oracle_call —
+//      a failed Anthropic call never costs the user a quota slot.
 //
 // Required env vars (Netlify → Site → Environment variables):
 //   ANTHROPIC_API_KEY
 //   SUPABASE_URL              (same value as VITE_SUPABASE_URL)
 //   SUPABASE_SERVICE_ROLE_KEY (secret — never expose client-side)
 
-const CORS = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-};
+import { corsHeaders, bearerToken, verifySupabaseJwt } from './_shared/auth.js';
 
-function json(statusCode, data) {
-  return { statusCode, headers: { ...CORS, 'Content-Type': 'application/json' }, body: JSON.stringify(data) };
-}
+// ── Abuse limits ──────────────────────────────────────────────────────────────
+// The app only ever uses the default model; categorization batches ask for up
+// to 4000 output tokens (oracleCategorizationService.js).
+const ALLOWED_MODELS = ['claude-sonnet-4-5'];
+const DEFAULT_MODEL = 'claude-sonnet-4-5';
+const MAX_OUTPUT_TOKENS = 4000;
+const MAX_PROMPT_CHARS = 50_000;
+const MAX_SYSTEM_PROMPT_CHARS = 10_000;
 
-// Log once at cold start if env vars are missing so it's visible in deploy logs
-// but doesn't spam on every request.
+const DEFAULT_SYSTEM_PROMPT =
+  'You are a literary book recommendation expert with deep knowledge of horror, gothic, literary fiction, and Latin American literature.';
+
 const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
-const serviceKey  = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const QUOTA_ENABLED = !!(supabaseUrl && serviceKey);
+const IS_LOCAL_DEV = process.env.NETLIFY_DEV === 'true';
+
 if (!QUOTA_ENABLED) {
-  console.warn('claude.js: SUPABASE_SERVICE_ROLE_KEY not set — quota enforcement disabled (local dev mode)');
+  console.warn(
+    'claude.js: Supabase env vars not set — ' +
+      (IS_LOCAL_DEV ? 'quota disabled (netlify dev)' : 'requests will be REFUSED (fail closed)')
+  );
 }
 
 async function supabaseRpc(rpcName, params) {
@@ -54,70 +69,86 @@ async function supabaseRpc(rpcName, params) {
     }
     return await res.json();
   } catch (e) {
-    // Only log if we expected this to work (env vars were present).
     console.error(`${rpcName} fetch failed:`, String(e));
     return null;
   }
 }
 
 export async function handler(event) {
+  const CORS = corsHeaders(event);
+  const json = (statusCode, data) => ({
+    statusCode,
+    headers: { ...CORS, 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+
   if (event.httpMethod === 'OPTIONS') return { statusCode: 204, headers: CORS, body: '' };
   if (event.httpMethod !== 'POST') return json(405, { error: 'Method not allowed' });
 
-  // ── 1. Parse body ────────────────────────────────────────────────────────────
+  // ── 1. Parse + validate body ─────────────────────────────────────────────────
   let body;
   try { body = JSON.parse(event.body || '{}'); }
   catch { return json(400, { error: 'Invalid JSON body' }); }
 
-  const { prompt, systemPrompt, maxTokens = 2000, model = 'claude-sonnet-4-5' } = body;
-  if (!prompt) return json(400, { error: 'Missing prompt' });
+  const { prompt, systemPrompt } = body;
+  if (!prompt || typeof prompt !== 'string') return json(400, { error: 'Missing prompt' });
+  if (prompt.length > MAX_PROMPT_CHARS) return json(413, { error: 'Prompt too long' });
+  if (systemPrompt && (typeof systemPrompt !== 'string' || systemPrompt.length > MAX_SYSTEM_PROMPT_CHARS)) {
+    return json(413, { error: 'System prompt too long' });
+  }
 
-  // ── 2. Quota enforcement ─────────────────────────────────────────────────────
-  const authHeader = event.headers?.authorization || event.headers?.Authorization || '';
-  const jwt        = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+  const model = ALLOWED_MODELS.includes(body.model) ? body.model : DEFAULT_MODEL;
+  const maxTokens = Math.min(
+    Math.max(parseInt(body.maxTokens, 10) || 2000, 1),
+    MAX_OUTPUT_TOKENS
+  );
 
+  // ── 2. Auth + quota (fail closed) ────────────────────────────────────────────
   let userId = null;
   let quotaEnforced = false;
 
   if (!QUOTA_ENABLED) {
-    // Local dev without service role key — skip quota silently.
-  } else if (!jwt) {
-    return json(401, { error: 'unauthenticated', message: 'Sign in to use the Oracle.' });
-  } else {
-    // Decode sub claim from JWT payload (no signature verification needed —
-    // the Supabase RPC will reject an invalid user_id with a profile-not-found).
-    try {
-      const payload = JSON.parse(Buffer.from(jwt.split('.')[1], 'base64url').toString());
-      userId = payload.sub;
-    } catch {
-      return json(401, { error: 'invalid_token', message: 'Could not read auth token.' });
+    if (!IS_LOCAL_DEV) {
+      // Production without Supabase config must never become an open proxy.
+      return json(503, { error: 'service_unavailable', message: 'The Oracle is resting. Try again soon.' });
     }
-    if (!userId) return json(401, { error: 'invalid_token', message: 'Auth token missing user ID.' });
+    // netlify dev without service role key — skip quota silently.
+  } else {
+    const jwt = bearerToken(event);
+    if (!jwt) return json(401, { error: 'unauthenticated', message: 'Sign in to use the Oracle.' });
+
+    // Verify signature/expiry with Supabase Auth — do NOT trust a decoded sub.
+    const user = await verifySupabaseJwt(jwt);
+    if (!user) return json(401, { error: 'invalid_token', message: 'Your session has expired. Sign in again.' });
+    userId = user.userId;
 
     // READ quota first — does not consume a slot yet.
     const quota = await supabaseRpc('get_oracle_quota', { p_user_id: userId });
 
-    if (quota && quota.status !== 'error') {
-      quotaEnforced = true;
-      if (!quota.unlimited && quota.calls_remaining <= 0) {
-        const resetDate = quota.reset_at
-          ? new Date(quota.reset_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric' })
-          : null;
-        return json(402, {
-          error:       'quota_exceeded',
-          calls_used:  quota.calls_used,
-          calls_limit: quota.calls_limit,
-          reset_at:    quota.reset_at,
-          message:     `You've used all ${quota.calls_limit} free Oracle calls this month.${resetDate ? ` Your quota resets on ${resetDate}.` : ''}`,
-        });
-      }
+    // Fail closed: no quota row / RPC error / explicit error status → deny.
+    if (!quota || quota.status === 'error') {
+      console.error('claude.js: quota lookup failed for user', userId, '— denying (fail closed)');
+      return json(503, { error: 'quota_unavailable', message: 'The Oracle cannot verify your quota right now. Try again in a moment.' });
     }
-    // If quota lookup failed (supabaseRpc returned null), we fail open and proceed.
+
+    quotaEnforced = true;
+    if (!quota.unlimited && quota.calls_remaining <= 0) {
+      const resetDate = quota.reset_at
+        ? new Date(quota.reset_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric' })
+        : null;
+      return json(402, {
+        error:       'quota_exceeded',
+        calls_used:  quota.calls_used,
+        calls_limit: quota.calls_limit,
+        reset_at:    quota.reset_at,
+        message:     `You've used all ${quota.calls_limit} free Oracle calls this month.${resetDate ? ` Your quota resets on ${resetDate}.` : ''}`,
+      });
+    }
   }
 
   // ── 3. Anthropic call ────────────────────────────────────────────────────────
   const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) return json(500, { error: 'ANTHROPIC_API_KEY not set' });
+  if (!apiKey) return json(500, { error: 'Server misconfigured' });
 
   let upstreamStatus;
   let responseText;
@@ -132,15 +163,15 @@ export async function handler(event) {
       body: JSON.stringify({
         model,
         max_tokens: maxTokens,
-        system: systemPrompt ||
-          'You are a literary book recommendation expert with deep knowledge of horror, gothic, literary fiction, and Latin American literature.',
+        system: systemPrompt || DEFAULT_SYSTEM_PROMPT,
         messages: [{ role: 'user', content: prompt }],
       }),
     });
     upstreamStatus = upstream.status;
     responseText   = await upstream.text();
   } catch (e) {
-    return json(502, { error: 'Upstream request failed', detail: String(e) });
+    console.error('claude.js upstream error:', String(e));
+    return json(502, { error: 'Upstream request failed' });
   }
 
   // ── 4. Consume quota ONLY on Anthropic success ───────────────────────────────

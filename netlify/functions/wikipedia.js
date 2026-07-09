@@ -28,13 +28,10 @@
 
 const USER_AGENT = 'BookOracle/0.12 (https://github.com/sacostat-13/Book-Oracle-Prototype; contact via repo)';
 
-const CORS = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type',
-};
+import { corsHeaders } from './_shared/auth.js';
 
 export async function handler(event) {
+  const CORS = corsHeaders(event);
   if (event.httpMethod === 'OPTIONS') {
     return { statusCode: 204, headers: CORS, body: '' };
   }
