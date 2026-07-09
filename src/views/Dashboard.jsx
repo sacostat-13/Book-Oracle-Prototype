@@ -11,6 +11,7 @@ import { useOracleQuota } from '../lib/OracleQuotaContext';
 import { callClaude, QuotaExceededError } from '../lib/claudeApi';
 import { bookKey, openBookTab } from '../lib/bookHelpers';
 import { getFriendsFeedEvents } from '../lib/useFriends';
+import { supabase } from '../lib/supabase';
 
 const FEED_PAGE_SIZE = 5;
 
@@ -1033,21 +1034,20 @@ export default function Dashboard({ onOpenBook }) {
   const [friendCount, setFriendCount] = useState(0);
   const [clubsSummary, setClubsSummary] = useState(null); // null = not loaded yet
 
+  // v0.43.1: static supabase import — the dynamic import('../lib/supabase')
+  // pattern resolved to a namespace without `supabase` in the prod bundle
+  // (chunk/SW interop), silently breaking the friend count and clubs summary.
   useEffect(() => {
     if (!user) return;
-    import('../lib/supabase').then(({ supabase }) => {
-      supabase.from('friend_pairs').select('user_b', { count: 'exact', head: true })
-        .eq('user_a', user.id).then(({ count }) => setFriendCount(count || 0));
-    });
+    supabase.from('friend_pairs').select('user_b', { count: 'exact', head: true })
+      .eq('user_a', user.id).then(({ count }) => setFriendCount(count || 0));
   }, [user]);
 
   useEffect(() => {
     if (!user || !(state.clubs || []).length) { setClubsSummary([]); return; }
-    import('../lib/supabase').then(({ supabase }) => {
-      supabase.rpc('get_dashboard_clubs_summary').then(({ data, error }) => {
-        if (error) { console.error('get_dashboard_clubs_summary failed', error); setClubsSummary([]); return; }
-        setClubsSummary(data || []);
-      });
+    supabase.rpc('get_dashboard_clubs_summary').then(({ data, error }) => {
+      if (error) { console.error('get_dashboard_clubs_summary failed', error); setClubsSummary([]); return; }
+      setClubsSummary(data || []);
     });
   }, [user, state.clubs]);
 

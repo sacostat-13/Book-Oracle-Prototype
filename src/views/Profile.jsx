@@ -662,7 +662,10 @@ export default function Profile() {
     if (!user) return;
     setCheckoutLoading(true);
     try {
-      const { data } = await import('../lib/supabase').then(m => m.supabase.auth.getSession());
+      // v0.43.1: use the static import — the dynamic import('../lib/supabase')
+      // resolved to a namespace without `supabase` in the prod bundle
+      // (chunk/SW interop), killing checkout with "reading 'auth'".
+      const { data } = await supabase.auth.getSession();
       const token = data?.session?.access_token;
       const res = await fetch('/.netlify/functions/create-checkout-session', {
         method: 'POST',
@@ -762,7 +765,10 @@ export default function Profile() {
     if (!user) return;
     setPortalLoading(true);
     try {
-      const { data } = await import('../lib/supabase').then(m => m.supabase.auth.getSession());
+      // v0.43.1: use the static import — the dynamic import('../lib/supabase')
+      // resolved to a namespace without `supabase` in the prod bundle
+      // (chunk/SW interop), killing checkout with "reading 'auth'".
+      const { data } = await supabase.auth.getSession();
       const token = data?.session?.access_token;
       const res = await fetch('/.netlify/functions/manage-subscription', {
         method: 'POST',
