@@ -31,6 +31,7 @@ export const RELEASES = [{
       'Fixed: books in the Friends Feed are now clickable — tap a cover or title to open its Book Page.',
       'Fixed: every "Upgrade to Pro" button now takes you to My Profile and scrolls straight to the subscription section.',
       'Fixed: after switching from Pro to Free, the Oracle calls counter no longer shows more calls used than your plan allows.',
+      'My Profile, reorganized: one card, five tabs — Overview (your stats, top genres, most read author, series in progress, and Reading Challenge), Account, Privacy, Subscription, and Notifications. Tighter spacing throughout, and no more marathon scroll.',
     ],
     bodyEs: [
       'Nuevo: botones de Compartir en Páginas de Libro, Listas, Clubes de Lectura, Planes de Lectura y tu Perfil — enviá un enlace por WhatsApp, X, Telegram o donde quieras con el menú de compartir de tu dispositivo. Los enlaces ahora se muestran con una vista previa completa (título, descripción, portada) donde los pegues.',
@@ -40,6 +41,7 @@ export const RELEASES = [{
       'Corregido: los libros del Feed de Amigos ahora se pueden abrir — tocá una portada o un título para ir a su Página de Libro.',
       'Corregido: todos los botones de "Mejorar a Pro" ahora te llevan a Mi Perfil directo a la sección de suscripción.',
       'Corregido: al pasar de Pro a Gratis, el contador de consultas del Oráculo ya no muestra más consultas usadas de las que permite tu plan.',
+      'Mi Perfil, reorganizado: una sola tarjeta, cinco pestañas — Resumen (tus estadísticas, géneros más leídos, autor más leído, series en progreso y Desafío de Lectura), Cuenta, Privacidad, Suscripción y Notificaciones. Espaciado más compacto en toda la página, y se acabó el scroll infinito.',
     ],
   }, {
     version: 'v0.42',

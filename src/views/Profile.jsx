@@ -618,17 +618,45 @@ export default function Profile() {
     }
   }, [checkoutResult]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // v0.43.1: Upgrade CTAs elsewhere in the app land here with
-  // ?scrollTo=subscription — scroll the subscription section into view.
-  // Delayed a tick so it wins over the router's own scroll-to-top.
-  const scrollTarget = route.params?.scrollTo;
+  // v0.43.1: settings live in tabs (Account · Privacy · Subscription ·
+  // Notifications). Active tab is reflected in the URL as ?tab=<name> so
+  // deep links and back-nav work; ?scrollTo=subscription (used by the
+  // Upgrade CTAs) stays supported as an alias for ?tab=subscription.
+  const VALID_TABS = ['overview', 'account', 'privacy', 'subscription', 'notifications'];
+  const tabFromRoute = VALID_TABS.includes(route.params?.tab)
+    ? route.params.tab
+    : route.params?.scrollTo === 'subscription' ? 'subscription' : null;
+  const [tab, setTab] = useState(tabFromRoute || 'overview');
+
+  // Follow route changes while mounted (Upgrade CTA fired from Dashboard,
+  // browser back/forward re-parsing the URL, etc.)
   useEffect(() => {
-    if (scrollTarget !== 'subscription') return;
+    if (tabFromRoute && tabFromRoute !== tab) setTab(tabFromRoute);
+  }, [tabFromRoute]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  function selectTab(next) {
+    setTab(next);
+    // Reflect in the URL without go() — the router scrolls to top on every
+    // navigation, which is wrong for an in-place tab switch. replaceState
+    // also avoids polluting history with one entry per tab click.
+    try {
+      const url = new URL(window.location.href);
+      url.searchParams.set('tab', next);
+      url.searchParams.delete('scrollTo');
+      history.replaceState(null, '', url.pathname + url.search);
+    } catch { /* URL API unavailable — tab still switches */ }
+  }
+
+  // Arriving with an explicit tab intent (e.g. Upgrade CTA): bring the
+  // settings card into view. Delayed a tick so it wins over the router's
+  // own scroll-to-top.
+  useEffect(() => {
+    if (!tabFromRoute) return;
     const timer = setTimeout(() => {
-      document.getElementById('pf-subscription')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      document.getElementById('pf-settings')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }, 150);
     return () => clearTimeout(timer);
-  }, [scrollTarget]);
+  }, [tabFromRoute]);
 
   async function handleUpgrade() {
     if (!user) return;
@@ -872,7 +900,36 @@ export default function Profile() {
         )}
       </div>
 
-      {/* ── Reading Stats ─────────────────────────────────────────────────── */}
+      {/* ── v0.43.1: the whole page is tabbed. Overview = reading identity
+          (stats, pace, genres, author, series, challenge); the other four
+          tabs are settings. One card, one tab row, no long scroll. */}
+      <div className="pf-account-card" id="pf-settings">
+        <CornerBrackets />
+
+        <div className="pf-tabs" role="tablist" aria-label={t('profile.breadcrumb')}>
+          {[
+            ['overview', t('profile.tabOverview')],
+            ['account', t('profile.tabAccount')],
+            ['privacy', t('profile.tabPrivacy')],
+            ...(user ? [
+              ['subscription', t('profile.tabSubscription')],
+              ['notifications', t('profile.tabNotifications')],
+            ] : []),
+          ].map(([id, label]) => (
+            <button
+              key={id}
+              role="tab"
+              aria-selected={tab === id}
+              className={`pf-tab${tab === id ? ' pf-tab--active' : ''}`}
+              onClick={() => selectTab(id)}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+
+        {tab === 'overview' && (
+        <>
       {hasStats && (
         <div className="profile-stats">
 
@@ -939,12 +996,16 @@ export default function Profile() {
           {stats.topAuthor && stats.topAuthor[1] > 1 && (
             <section>
               {sectionTitle(t('profile.sectionTopAuthor'))}
-              <p className="pf-author-line">
-                <span className="pf-author-name">{stats.topAuthor[0]}</span>
-                <span className="pf-author-count">
-                  · {t('profile.topAuthorBooks', { count: stats.topAuthor[1] })}
-                </span>
-              </p>
+              {/* v0.43.1: panel wrapper — was a bare line floating on the
+                  page background, inconsistent with the genre/pace panels */}
+              <div className="pf-pace-panel">
+                <p className="pf-author-line">
+                  <span className="pf-author-name">{stats.topAuthor[0]}</span>
+                  <span className="pf-author-count">
+                    · {t('profile.topAuthorBooks', { count: stats.topAuthor[1] })}
+                  </span>
+                </p>
+              </div>
             </section>
           )}
 
@@ -991,9 +1052,24 @@ export default function Profile() {
         </div>
       )}
 
-      {/* ── Profile settings ──────────────────────────────────────────────── */}
-      <div className="pf-account-card">
-        <CornerBrackets />
+      {/* ── Reading Challenge — inside Overview, panel-wrapped. No outer
+          overline: the component self-labels ("2026 Reading Challenge" /
+          the set-a-goal subtitle), so an extra label doubled up. */}
+      <section className="pf-challenge-block">
+        <div className="pf-pace-panel">
+          <ReadingChallenge
+            library={state.library}
+            readingGoalCount={state.readingGoalCount}
+            setReadingGoalCount={setReadingGoalCount}
+            t={t}
+          />
+        </div>
+      </section>
+        </>
+        )}
+
+        {tab === 'account' && (
+        <>
         {user && (
           <>
             <h2 className="pf-section__title">
@@ -1011,7 +1087,6 @@ export default function Profile() {
 
         <UsernameSection profile={state.profile} user={user} updateUsername={updateUsername} t={t} />
         <DisplayNameSection profile={state.profile} updateDisplayName={updateDisplayName} t={t} />
-        <PrivacySection profile={state.profile} updatePrivacyPrefs={updatePrivacyPrefs} t={t} />
         <ReaderPrefsSection state={state} setProfile={setProfile} t={t} />
 
         <h2 className="pf-section__title" style={user ? undefined : { marginTop: 0 }}>
@@ -1020,16 +1095,6 @@ export default function Profile() {
         <p className="pf-text">
           {LEVEL_NAMES[state.profile.readingLevel] || t('profile.notSet')}
         </p>
-
-        <h2 className="pf-section__title">
-          {t('profile.labelReadingChallenge')}
-        </h2>
-        <ReadingChallenge
-          library={state.library}
-          readingGoalCount={state.readingGoalCount}
-          setReadingGoalCount={setReadingGoalCount}
-          t={t}
-        />
 
         <h2 className="pf-section__title">
           {t('profile.labelLibrary')}
@@ -1058,8 +1123,29 @@ export default function Profile() {
           </button>
         </div>
 
-        {/* ── Subscription section ──────────────────────────────────────────── */}
-        {user && (
+        {/* ── Danger zone — lives at the bottom of the Account tab ─────────── */}
+        <div className="pf-section">
+          <button
+            className="btn-danger"
+            onClick={() => {
+              if (confirm(t('library.confirmReset'))) {
+                resetAll();
+                go('dashboard');
+              }
+            }}
+          >
+            {t('profile.resetProfile')}
+          </button>
+        </div>
+        </>
+        )}
+
+        {tab === 'privacy' && (
+          <PrivacySection profile={state.profile} updatePrivacyPrefs={updatePrivacyPrefs} t={t} />
+        )}
+
+        {/* ── Subscription tab ──────────────────────────────────────────────── */}
+        {tab === 'subscription' && user && (
           <div className="pf-section" id="pf-subscription">
             <h2 className="pf-section__title">
               {t('subscription.sectionTitle')}
@@ -1130,25 +1216,10 @@ export default function Profile() {
           </div>
         )}
 
-        {/* ── Notification Preferences ──────────────────────────────────────── */}
-        {user && (
+        {/* ── Notifications tab ─────────────────────────────────────────────── */}
+        {tab === 'notifications' && user && (
           <NotificationPreferences t={t} user={user} showToast={showToast} />
         )}
-
-        {/* ── Danger zone ───────────────────────────────────────────────────── */}
-        <div className="pf-section">
-          <button
-            className="btn-danger"
-            onClick={() => {
-              if (confirm(t('library.confirmReset'))) {
-                resetAll();
-                go('dashboard');
-              }
-            }}
-          >
-            {t('profile.resetProfile')}
-          </button>
-        </div>
       </div>
     </>
   );

@@ -294,9 +294,12 @@
   gap: var(--ro-space-8);
 }
 
+// v0.43.1 spacing pass: sections were floating in too much air (space-6 top
+// padding + another space-6 on the first title inside = ~2 full rows of gap).
+// Tightened to space-4 while keeping the hairline separators.
 .pf-section {
   border-top: 1px solid var(--ro-border);
-  padding-top: var(--ro-space-6);
+  padding-top: var(--ro-space-4);
   padding-bottom: var(--ro-space-2);
 
   &:first-child {
@@ -312,8 +315,66 @@
   font-size: 21px;
   color: var(--ro-text);
   margin-bottom: var(--ro-space-2);
+  margin-top: var(--ro-space-4);
+
+  // Directly after a section separator (or the tab row), the title is the
+  // first thing in its block — no extra top margin on top of the padding.
+  .pf-section > &:first-child,
+  &:first-child {
+    margin-top: 0;
+  }
+}
+
+// ── v0.43.1: settings tabs (Account · Privacy · Subscription · Notifications) ─
+.pf-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ro-space-1);
+  border-bottom: 1px solid var(--ro-border);
+  margin-bottom: var(--ro-space-6);
+}
+
+.pf-tab {
+  background: none;
+  border: 0;
+  cursor: pointer;
+  padding: 10px 14px 12px;
+  margin-bottom: -1px; // active underline sits ON the row's border
+  font-family: var(--ro-font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ro-muted);
+  border-bottom: 2px solid transparent;
+  transition: color 120ms ease, border-color 120ms ease;
+
+  &:hover { color: var(--ro-text); }
+
+  &--active {
+    color: var(--ro-gold-text);
+    border-bottom-color: var(--ro-gold);
+  }
+}
+
+// Content directly after the tab row starts flush — no doubled separators.
+.pf-tabs + .pf-section,
+.pf-tabs + div > .pf-section:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+
+// ── v0.43.1: Reading Challenge — last Overview section, panel-wrapped ────────
+.pf-challenge-block {
   margin-top: var(--ro-space-6);
 
+  // The challenge component renders .pf-section wrappers internally — inside
+  // its panel they don't need the settings-card separators or padding.
+  .pf-section {
+    border-top: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+  }
 }
 
 .pf-section__hint {

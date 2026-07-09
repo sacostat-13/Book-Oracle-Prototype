@@ -341,7 +341,7 @@
   background: var(--ro-surface);
   border: 1px solid var(--ro-border-strong);
   border-radius: 18px;
-  padding: 34px;
+  padding: 28px; // v0.43.1: was 34px — tightened with the pf-section spacing pass
   box-shadow: var(--ro-shadow);
   margin-top: var(--ro-space-6);
 }
