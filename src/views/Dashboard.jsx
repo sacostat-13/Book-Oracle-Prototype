@@ -209,7 +209,7 @@ function OracleSparkWidget({ wishlist, go, t, profile }) {
               {quotaEmpty ? (
                 <>
                   <span className="db-spark__empty-text">{t('oracle.quotaWallTitle')}</span>
-                  <button className="btn-tertiary btn--sm" onClick={() => go('profile')}>
+                  <button className="btn-tertiary btn--sm" onClick={() => go('profile', { scrollTo: 'subscription' })}>
                     {t('dashboard.aiQuotaUpgrade')}
                   </button>
                 </>
@@ -264,7 +264,7 @@ function OracleSparkWidget({ wishlist, go, t, profile }) {
               {state === 'quota' ? t('oracle.quotaWallTitle') : 'Something went wrong.'}
             </span>
             <button className="btn-tertiary btn--sm"
-              onClick={() => state === 'quota' ? go('profile') : setState('idle')}>
+              onClick={() => state === 'quota' ? go('profile', { scrollTo: 'subscription' }) : setState('idle')}>
               {state === 'quota' ? t('dashboard.aiQuotaUpgrade') : 'Try again'}
             </button>
           </div>
@@ -787,7 +787,12 @@ function AIQuotaBar({ go, t }) {
   const isPro = quota.subscription_status === 'active';
   const isDay = quota.period === 'day';
   const isEmpty = quota.calls_remaining === 0;
-  const pct = Math.round(((quota.calls_used ?? 0) / (quota.calls_limit ?? 5)) * 100);
+  // v0.43.1: clamp to the CURRENT tier's limit. After a Pro→Free downgrade
+  // calls_used can legitimately exceed the free limit (e.g. 14 used, limit 5)
+  // — showing "14 of 5" reads as a bug, so the display caps at the limit.
+  const limit = quota.calls_limit ?? 5;
+  const usedDisplay = Math.min(quota.calls_used ?? 0, limit);
+  const pct = Math.min(100, Math.round(((quota.calls_used ?? 0) / limit) * 100));
   const resetDate = quota.reset_at
     ? quota.reset_at.toLocaleDateString(undefined, { month: 'long', day: 'numeric' })
     : null;
@@ -800,8 +805,8 @@ function AIQuotaBar({ go, t }) {
         </div>
         <span className="db-ai__usage">
           {t(isDay ? 'dashboard.aiQuotaPro' : 'dashboard.aiQuotaFree', {
-            used: quota.calls_used ?? 0,
-            limit: quota.calls_limit ?? 5,
+            used: usedDisplay,
+            limit,
             type: isPro ? t('dashboard.aiQuotaTypeDaily') : t('dashboard.aiQuotaTypeMonthly'),
           })}
         </span>
@@ -817,7 +822,7 @@ function AIQuotaBar({ go, t }) {
         {resetDate && <> · {t('dashboard.aiQuotaResetsOn', { date: resetDate })}</>}
         {!isPro && (
           <> · <button className="btn-text" style={{ padding: 0, fontSize: 'inherit' }}
-            onClick={() => go('profile')}>{t('dashboard.aiQuotaUpgrade')}</button></>
+            onClick={() => go('profile', { scrollTo: 'subscription' })}>{t('dashboard.aiQuotaUpgrade')}</button></>
         )}
       </div>
     </div>
@@ -903,7 +908,11 @@ function FriendsFeedWidget({ userId, hasFriends, go, t }) {
                   <FriendAvatar friend={ev.friend} size={30} />
                 </div>
                 {ev.book?.coverUrl && (
-                  <img src={ev.book.coverUrl} alt={ev.book.t} className="db-ff-book-cover" />
+                  <img
+                    src={ev.book.coverUrl} alt={ev.book.t} className="db-ff-book-cover"
+                    style={{ cursor: 'pointer' }}
+                    onClick={() => ev.book?.t && openBookTab(ev.book, 'dashboard')}
+                  />
                 )}
                 <div className="db-ff-body">
                   <div className="db-ff-text">
@@ -912,7 +921,13 @@ function FriendsFeedWidget({ userId, hasFriends, go, t }) {
                       {friendLabel}
                     </span>{' '}
                     <span className="db-ff-verb">{verb}</span>{' '}
-                    <span className="db-ff-title">{ev.book?.t}</span>
+                    <span
+                      className="db-ff-title"
+                      style={{ cursor: 'pointer' }}
+                      onClick={() => ev.book?.t && openBookTab(ev.book, 'dashboard')}
+                    >
+                      {ev.book?.t}
+                    </span>
                   </div>
                   <div className="db-ff-meta">
                     {ev.book?.rating > 0 && (

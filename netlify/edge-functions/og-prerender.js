@@ -7,12 +7,22 @@
 // Those fetch the HTML once and never run JS, so they only ever see
 // index.html's generic static <title>/description.
 //
-// This Edge Function intercepts requests to /book/:bookKey and
-// /series/:seriesName, checks the User-Agent against known bot patterns,
-// and — only for those — fetches the real book/series data and rewrites
+// This Edge Function intercepts requests to /book/:bookKey,
+// /series/:seriesName, /l/:listId, /plans/:planId, /clubs/:clubId and
+// /u/:username, checks the User-Agent against known bot patterns,
+// and — only for those — fetches the real entity data and rewrites
 // the <head> of the served HTML before it reaches the bot. Everything else
 // (real browsers, Googlebot, any path this doesn't match) passes straight
 // through untouched via context.next().
+//
+// v0.43: lists, plans, clubs and profiles added for Share Cards. Public
+// gating is inherited from what already exists rather than re-invented:
+//   - lists/plans go through the same get_public_list / get_public_plan
+//     RPCs the ListView share pages use — a non-public entity returns
+//     null there and we simply pass through with no OG injection.
+//   - clubs are only served when visibility = 'public' (v26 column).
+//   - profiles render for any username, matching /u/:username page
+//     behaviour (the page itself is publicly reachable).
 //
 // Deliberate split from sitemap.js: this function has NO status filter
 // (any book with a page renders here), while sitemap.js keeps its
@@ -118,9 +128,37 @@ export default async (request, context) => {
     Authorization: `Bearer ${serviceKey}`,
   };
 
+  // POST to a PostgREST RPC endpoint. Returns the parsed JSON result or
+  // null on any failure — callers treat null as "not public / not found"
+  // and pass through untouched.
+  async function callRpc(name, args) {
+    try {
+      const res = await fetch(`${supabaseUrl}/rest/v1/rpc/${name}`, {
+        method: 'POST',
+        headers: { ...restHeaders, 'Content-Type': 'application/json' },
+        body: JSON.stringify(args),
+      });
+      if (!res.ok) return null;
+      return await res.json();
+    } catch {
+      return null;
+    }
+  }
+
+  // Shared tail for every match: get the SPA HTML, inject, respond.
+  async function respond(meta) {
+    const response = await context.next();
+    const html = await response.text();
+    return new Response(injectMeta(html, meta), response);
+  }
+
   try {
     const bookMatch = url.pathname.match(/^\/book\/([^/]+)$/);
     const seriesMatch = url.pathname.match(/^\/series\/([^/]+)$/);
+    const listMatch = url.pathname.match(/^\/l\/([^/]+)$/);
+    const planMatch = url.pathname.match(/^\/plans\/([^/]+)$/);
+    const clubMatch = url.pathname.match(/^\/clubs\/([^/]+)$/);
+    const profileMatch = url.pathname.match(/^\/u\/([^/]+)$/);
 
     if (bookMatch) {
       const wantedKey = decodeURIComponent(bookMatch[1]);
@@ -209,9 +247,7 @@ export default async (request, context) => {
       const match = rows[0];
       if (!match) return context.next();
 
-      const response = await context.next();
-      const html = await response.text();
-      const injected = injectMeta(html, {
+      return respond({
         title: `${match.name} series — The Books Oracle`,
         description: match.description ? match.description.slice(0, 200) : undefined,
         url: SITE + url.pathname,
@@ -224,7 +260,90 @@ export default async (request, context) => {
           } : {}),
         },
       });
-      return new Response(injected, response);
+    }
+
+    // ── Lists: /l/:listId (public share links) ────────────────────────────
+    if (listMatch) {
+      const data = await callRpc('get_public_list', { p_list_id: decodeURIComponent(listMatch[1]) });
+      if (!data || !data.list) return context.next();
+      const { list, owner, books = [] } = data;
+      const firstCover = books.find((e) => e.book?.cover_url)?.book?.cover_url;
+      const curator = owner?.display_name;
+      return respond({
+        title: `${list.title} — a reading list on The Books Oracle`,
+        description: list.description
+          ? list.description.slice(0, 200)
+          : `${books.length} books${curator ? `, curated by ${curator}` : ''}.`,
+        image: firstCover || undefined,
+        url: SITE + url.pathname,
+        jsonLd: {
+          '@context': 'https://schema.org',
+          '@type': 'ItemList',
+          name: list.title,
+          numberOfItems: books.length,
+          ...(list.description ? { description: list.description.slice(0, 300) } : {}),
+        },
+      });
+    }
+
+    // ── Plans: /plans/:planId ──────────────────────────────────────────────
+    // /plans/new (the create page) hits this matcher too — the RPC just
+    // returns null for a non-uuid id and we pass through. Cheap enough to
+    // not special-case, but skip the obvious static route to save the call.
+    if (planMatch && planMatch[1] !== 'new') {
+      const data = await callRpc('get_public_plan', { p_plan_id: decodeURIComponent(planMatch[1]) });
+      if (!data || !data.plan) return context.next();
+      const { plan, owner } = data;
+      const content = plan.content || {};
+      const books = content.books || [];
+      const title = plan.title || content.title || 'A reading plan';
+      const curator = owner?.display_name;
+      return respond({
+        title: `${title} — a reading plan on The Books Oracle`,
+        description: content.intro
+          ? content.intro.slice(0, 200)
+          : `${books.length} books${content.timeline ? ` over ${content.timeline} months` : ''}${curator ? `, by ${curator}` : ''}.`,
+        url: SITE + url.pathname,
+      });
+    }
+
+    // ── Clubs: /clubs/:clubId (public clubs only) ─────────────────────────
+    // Static club routes (/clubs/new, /clubs/discover) fall into this
+    // matcher; the eq filter simply finds no row and we pass through.
+    if (clubMatch && clubMatch[1] !== 'new' && clubMatch[1] !== 'discover') {
+      const res = await fetch(
+        `${supabaseUrl}/rest/v1/book_clubs?select=name,description,visibility&id=eq.${encodeURIComponent(decodeURIComponent(clubMatch[1]))}&limit=1`,
+        { headers: restHeaders }
+      );
+      if (!res.ok) return context.next();
+      const club = (await res.json())[0];
+      // Service role bypasses RLS, so visibility must be enforced here:
+      // private clubs get no preview, exactly like a private list/plan.
+      if (!club || club.visibility !== 'public') return context.next();
+      return respond({
+        title: `${club.name} — a book club on The Books Oracle`,
+        description: club.description ? club.description.slice(0, 200) : 'Join this book club on The Books Oracle.',
+        url: SITE + url.pathname,
+      });
+    }
+
+    // ── Profiles: /u/:username ────────────────────────────────────────────
+    if (profileMatch) {
+      const username = decodeURIComponent(profileMatch[1]).toLowerCase();
+      const res = await fetch(
+        `${supabaseUrl}/rest/v1/profiles?select=username,display_name,avatar_url&username=eq.${encodeURIComponent(username)}&limit=1`,
+        { headers: restHeaders }
+      );
+      if (!res.ok) return context.next();
+      const profile = (await res.json())[0];
+      if (!profile) return context.next();
+      const name = profile.display_name || profile.username;
+      return respond({
+        title: `${name} (@${profile.username}) — The Books Oracle`,
+        description: `${name}'s reading profile on The Books Oracle.`,
+        image: profile.avatar_url || undefined,
+        url: SITE + url.pathname,
+      });
     }
   } catch (err) {
     console.error('og-prerender failed', err);
@@ -236,5 +355,5 @@ export default async (request, context) => {
 };
 
 export const config = {
-  path: ['/book/*', '/series/*'],
+  path: ['/book/*', '/series/*', '/l/*', '/plans/*', '/clubs/*', '/u/*'],
 };

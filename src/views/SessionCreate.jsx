@@ -28,7 +28,7 @@ function BookThumb({ book, size = 28 }) {
 }
 
 export default function SessionCreate() {
-  const { state, showToast, upsertBookOnServer } = useData();
+  const { state, showToast, upsertBookOnServer, showShareMoment } = useData();
   const { go, route } = useRouter();
   const t = useT();
   const tNode = useTNode();
@@ -76,6 +76,18 @@ export default function SessionCreate() {
     }).select().single();
     setSaving(false);
     if (error) { console.error('SessionCreate failed', error); showToast(t('sessions.saveError'), true); return; }
+    // v0.43: public clubs get a share moment on session creation — the card
+    // invites people in, and og-prerender renders the club's link preview.
+    if (club?.visibility === 'public') {
+      showShareMoment({
+        type: 'session_created',
+        clubName: club.name,
+        bookTitle: selectedBook.t,
+        bookAuthor: selectedBook.a || '',
+        coverUrl: selectedBook.coverUrl || null,
+        url: `${window.location.origin}/clubs/${clubId}`,
+      });
+    }
     go('session-detail', { sessionId: data.id });
   }
 

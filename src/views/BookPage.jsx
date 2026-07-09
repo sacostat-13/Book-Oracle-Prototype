@@ -21,6 +21,8 @@ import AddToListPicker from '../components/AddToListPicker';
 import RatingModal from '../components/RatingModal';
 import ProgressUpdateModal from '../components/ProgressUpdateModal';
 import CategoryAutocomplete from '../components/CategoryAutocomplete';
+import ShareModal from '../components/ShareModal';
+import { bookShareUrl } from '../lib/shareService';
 
 
 // ─── Similar books ────────────────────────────────────────────────────────────
@@ -180,6 +182,7 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
   const [updatingProgress, setUpdatingProgress] = useState(false);
   const [adderOpen, setAdderOpen] = useState(false);
   const [pendingRemoveId, setPendingRemoveId] = useState(null);
+  const [shareOpen, setShareOpen] = useState(false); // v0.43
 
   // Read snapshot from URL immediately — renders before DataContext loads
   const snapshotBook = (() => {
@@ -787,6 +790,14 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
             )}
           </div>
 
+          {/* v0.43: Share — public page, so shown regardless of auth state.
+              Link previews are rendered by og-prerender. */}
+          <div className="bp-actions-row bp-actions-row--tertiary">
+            <button className="btn-tertiary btn--sm" onClick={() => setShareOpen(true)}>
+              ↗ {t('share.shareBook')}
+            </button>
+          </div>
+
           {/* Buy zone — separated from the shelf/reading actions above and
               shown regardless of auth state (external links, nothing to
               gate), same as the old .bp-links row it replaces. */}
@@ -945,6 +956,16 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
           book={currentlyReadingRow}
           onSave={handleProgressSave}
           onClose={() => setUpdatingProgress(false)}
+        />
+      )}
+
+      {/* v0.43: page-share modal */}
+      {shareOpen && (
+        <ShareModal
+          title={display.a ? `${display.t} — ${display.a}` : display.t}
+          text={t('share.text.bookPage', { title: display.t, author: display.a || '' })}
+          url={bookShareUrl(display)}
+          onClose={() => setShareOpen(false)}
         />
       )}
     </div>

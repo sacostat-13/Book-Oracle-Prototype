@@ -9,6 +9,8 @@ import { useT } from '../lib/I18nContext';
 import { useAuth } from '../lib/AuthContext';
 import { useFriends, getProfileByUsername, getFriendLibrary, getFriendCurrentlyReading } from '../lib/useFriends';
 import { openBookTab } from '../lib/bookHelpers';
+import ShareModal from '../components/ShareModal';
+import { profileShareUrl } from '../lib/shareService';
 
 const PAGE_SIZE = 48;
 
@@ -262,6 +264,7 @@ export default function FriendProfile() {
   const [notFound, setNotFound] = useState(false);
   const [reqSent, setReqSent] = useState(false);
   const [reqError, setReqError] = useState(null);
+  const [shareOpen, setShareOpen] = useState(false); // v0.43
 
   const isFriend = friends.some((f) => f.other?.username === username);
   const pendingEntry = pending.find((p) => p.other?.username === username);
@@ -435,7 +438,7 @@ export default function FriendProfile() {
         )}
       </section>
 
-      {/* Share own profile link */}
+      {/* Share own profile link — v0.43: opens the full share modal */}
       {isSelf && profile.username && (
         <section>
           <div className="pf-overline">{t('friends.shareProfile')}</div>
@@ -445,12 +448,21 @@ export default function FriendProfile() {
             </code>
             <button
               className="btn-tertiary btn--sm"
-              onClick={() => navigator.clipboard?.writeText(`${window.location.origin}/u/${profile.username}`)}
+              onClick={() => setShareOpen(true)}
             >
-              {t('friends.copyLink')}
+              ↗ {t('share.shareProfile')}
             </button>
           </div>
         </section>
+      )}
+
+      {shareOpen && profile.username && (
+        <ShareModal
+          title={profile.display_name || `@${profile.username}`}
+          text={t('share.text.profile', { name: profile.display_name || profile.username })}
+          url={profileShareUrl(profile.username)}
+          onClose={() => setShareOpen(false)}
+        />
       )}
     </div>
   );

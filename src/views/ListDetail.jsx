@@ -10,6 +10,8 @@ import CornerBrackets from '../components/CornerBrackets';
 import { useSelection } from '../lib/useSelection';
 import SelectionBar from '../components/SelectionBar';
 import BookCover from '../components/BookCover';
+import ShareModal from '../components/ShareModal';
+import { listShareUrl } from '../lib/shareService';
 
 function AddBookPicker({ list, onClose }) {
   const { state, addBookToList } = useData();
@@ -85,7 +87,7 @@ export default function ListDetail() {
   const t = useT();
   const { lang } = useI18n();
   const [addingBook, setAddingBook] = useState(false);
-  const [copied, setCopied] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false); // v0.43: replaces copy-link
 
   const listId = route.params?.listId;
   const list = (state.lists || []).find(l => l.id === listId);
@@ -106,14 +108,6 @@ export default function ListDetail() {
 
   async function togglePublic() {
     await updateList(list.id, { is_public: !list.is_public });
-  }
-
-  async function copyLink() {
-    await navigator.clipboard.writeText(
-      `${window.location.origin}/l/${list.id}?lang=${lang}`
-    );
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
   }
 
   return (
@@ -149,8 +143,8 @@ export default function ListDetail() {
             : (t('lists.makePublic'))}
         </button>
         {list.is_public && (
-          <button className="btn-primary" onClick={copyLink}>
-            {copied ? '✓ Copied!' : (t('listDetail.copyLink'))}
+          <button className="btn-primary" onClick={() => setShareOpen(true)}>
+            ↗ {t('share.shareList')}
           </button>
         )}
         {books.length > 0 && (
@@ -225,6 +219,15 @@ export default function ListDetail() {
         listId={list.id}
       />
       {addingBook && <AddBookPicker list={list} onClose={() => setAddingBook(false)} />}
+      {/* v0.43: page-share modal (public lists only — button is gated above) */}
+      {shareOpen && (
+        <ShareModal
+          title={list.title}
+          text={t('share.text.list', { title: list.title, count: books.length })}
+          url={`${listShareUrl(list.id)}?lang=${lang}`}
+          onClose={() => setShareOpen(false)}
+        />
+      )}
     </>
   );
 }

@@ -6,6 +6,7 @@ import { createContext, useContext, useEffect, useState, useCallback, useRef } f
 import { supabase } from './supabase';
 import { useAuth } from './AuthContext';
 import { ALL_BOOKS, bookKey } from './bookHelpers';
+import { computeCompletionMoments } from './shareMoments';
 
 const LOCAL_KEY    = 'wishlist_oracle_state_v2';
 const SESSION_KEY  = 'wishlist_oracle_session_v3'; // bumped v0.31: genres now included in cache
@@ -593,6 +594,7 @@ export function DataProvider({ children }) {
   // we can render immediately. Only flip to true when fetching for a real user.
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState(null);
+  const [shareMoment, setShareMoment] = useState(null); // v0.43: pending action-share moment
 
   // v0.13.1 follow-up: ref-guarded "already loaded for this user ID". Prevents
   // the load effect from refetching when the user reference changes without
@@ -679,6 +681,15 @@ export function DataProvider({ children }) {
     setToast({ msg, isError, id: Math.random() });
     setTimeout(() => setToast(null), 2800);
   }, []);
+
+  // ---------- Share moments (v0.43) ----------
+  // The pending action-share moment, rendered globally by <ShareMomentModal/>.
+  // State-only, never persisted: a moment exists exactly between the action
+  // that produced it and the user sharing/dismissing the modal.
+  const showShareMoment = useCallback((moment) => {
+    if (moment) setShareMoment(moment);
+  }, []);
+  const dismissShareMoment = useCallback(() => setShareMoment(null), []);
 
   // ---------- Mutations ----------
 
@@ -889,6 +900,30 @@ export function DataProvider({ children }) {
     setState((s) => ({ ...s, readNext: s.readNext.filter((b) => bookKey(b) !== k) }));
   }, []);
 
+  // v0.43: after a completion lands in the library, compute the share moment
+  // it produced (goal / series / plan / milestone / plain book card) and
+  // queue the action-share modal. Skipped for Goodreads imports — a bulk
+  // import of 400 books is not 400 celebrations.
+  const fireCompletionMoment = useCallback(
+    (book, newLibrary) => {
+      if (book.fromGoodreads) return;
+      try {
+        const moments = computeCompletionMoments({
+          book,
+          library: newLibrary,
+          genresByBookId: state.genresByBookId,
+          goal: state.readingGoalCount,
+          plans: state.plans,
+        });
+        if (moments[0]) setShareMoment(moments[0]);
+      } catch (err) {
+        // A share card must never break a completion.
+        console.warn('share moment computation failed', err);
+      }
+    },
+    [state.genresByBookId, state.readingGoalCount, state.plans]
+  );
+
   const markAsRead = useCallback(
     async (book, extra = {}) => {
       const k = bookKey(book);
@@ -912,6 +947,7 @@ export function DataProvider({ children }) {
           library: [...s.library, enriched],
         }));
         showToast(`"${book.t}" added to your library`);
+        fireCompletionMoment(enriched, [...state.library, enriched]);
         return;
       }
 
@@ -950,8 +986,9 @@ export function DataProvider({ children }) {
         library: [...s.library, { ...enriched, bookId }],
       }));
       showToast(`"${book.t}" added to your library`);
+      fireCompletionMoment({ ...enriched, bookId }, [...state.library, { ...enriched, bookId }]);
     },
-    [user, state.library, showToast, upsertBookOnServer]
+    [user, state.library, showToast, upsertBookOnServer, fireCompletionMoment]
   );
 
   // v0.22: Currently Reading actions
@@ -2061,6 +2098,10 @@ export function DataProvider({ children }) {
     resetAll,
     vault,
     loadVault,
+    // v0.43: action-share moments
+    shareMoment,
+    showShareMoment,
+    dismissShareMoment,
   };
 
   return <DataContext.Provider value={value}>{children}</DataContext.Provider>;

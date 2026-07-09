@@ -32,12 +32,16 @@ export function OracleQuotaProvider({ children }) {
     try {
       const { data, error } = await supabase.rpc('get_oracle_quota', { p_user_id: user.id });
       if (error) { console.error('get_oracle_quota error:', error); setLoading(false); return; }
+      // v0.43.1: clamp remaining at 0. After a Pro→Free downgrade calls_used
+      // can exceed the free limit mid-period, which makes the raw
+      // (limit - used) go negative — every consumer treats remaining as a
+      // displayable count, so it must never be below zero.
       setQuota({
         subscription_status: data.subscription_status ?? 'free',
         period:              data.period ?? 'month',
         calls_used:          data.calls_used ?? 0,
         calls_limit:         data.calls_limit ?? FREE_LIMIT,
-        calls_remaining:     data.calls_remaining ?? FREE_LIMIT,
+        calls_remaining:     Math.max(0, data.calls_remaining ?? FREE_LIMIT),
         reset_at:            data.reset_at ? new Date(data.reset_at) : null,
         unlimited:           false,
       });

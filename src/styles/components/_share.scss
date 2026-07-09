@@ -1,0 +1,178 @@
+// components/_share.scss — The Books Oracle (v0.43)
+//
+//   .share-modal          page-share modal additions (on top of .rating-modal)
+//   .share-moment-modal   action-share modal (card + share/download actions)
+//   .share-card           the exported brand card — 540×675, PNG'd at 2×
+//
+// IMPORTANT: .share-card is a fixed BRAND asset, not an app surface. It is
+// exported to a PNG that must look identical in both themes, so its palette
+// is deliberately hardcoded to the Dark Academia brand constants instead of
+// var(--ro-*). This is the one sanctioned exception to the "no hardcoded
+// parchment values" rule — do not "fix" it back to theme tokens.
+
+// ── Page-share modal ─────────────────────────────────────────────────────
+
+.share-modal {
+  max-width: 480px;
+}
+
+.share-modal__url-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 16px 0;
+  padding: 8px 12px;
+  border: 1px solid var(--ro-border);
+  border-radius: 8px;
+  background: var(--ro-surface-tint);
+}
+
+.share-modal__url {
+  flex: 1;
+  font-family: var(--ro-font-mono);
+  font-size: 12px;
+  color: var(--ro-text-secondary);
+  word-break: break-all;
+}
+
+.share-modal__targets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+  margin: 8px 0 4px;
+
+  a { text-decoration: none; }
+}
+
+// ── Action-share (moment) modal ──────────────────────────────────────────
+
+.share-moment-modal {
+  max-width: 560px;
+}
+
+// The card renders at its full export size (540×675) and is scaled down to
+// fit the modal — transform keeps the DOM node at true size so html-to-image
+// exports crisp pixels regardless of viewport.
+.share-moment-modal__card-scale {
+  display: flex;
+  justify-content: center;
+  margin: 12px 0;
+  // 540px card scaled to fit ~420px of modal width
+  zoom: 0.72;
+  @supports not (zoom: 1) {
+    transform: scale(0.72);
+    transform-origin: top center;
+  }
+}
+
+.share-moment-modal__note {
+  font-size: 13px;
+  color: var(--ro-text-secondary);
+  text-align: center;
+  margin: 4px 0 0;
+}
+
+// ── The card itself (fixed brand palette — see header comment) ──────────
+
+.share-card {
+  box-sizing: border-box;
+  flex-shrink: 0;
+  background:
+    radial-gradient(120% 90% at 50% 0%, #241f19 0%, #141210 60%, #0d0b09 100%);
+  color: #E9DFCA;
+  padding: 22px;
+  font-family: var(--ro-font-body);
+}
+
+.share-card__frame {
+  box-sizing: border-box;
+  height: 100%;
+  border: 1px solid rgba(201, 168, 76, 0.55);
+  outline: 1px solid rgba(201, 168, 76, 0.18);
+  outline-offset: 5px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 40px 36px 28px;
+}
+
+.share-card__ornament {
+  font-size: 34px;
+  color: #C9A84C;
+  line-height: 1;
+  margin-bottom: 22px;
+}
+
+.share-card__eyebrow {
+  font-family: var(--ro-font-mono);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: #D8B85E;
+  margin-bottom: 18px;
+}
+
+.share-card__headline {
+  font-family: var(--ro-font-display);
+  font-size: 44px;
+  line-height: 1.08;
+  color: #E9DFCA;
+  // Long titles: clamp to 4 lines rather than overflowing the frame.
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.share-card__sub {
+  font-size: 17px;
+  font-style: italic;
+  color: rgba(233, 223, 202, 0.66);
+  margin-top: 14px;
+  max-width: 380px;
+}
+
+.share-card__cover-wrap {
+  margin-top: 26px;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  min-height: 0;
+}
+
+.share-card__cover {
+  max-height: 240px;
+  max-width: 170px;
+  object-fit: cover;
+  border: 1px solid rgba(201, 168, 76, 0.4);
+  box-shadow: 0 10px 32px rgba(0, 0, 0, 0.65);
+}
+
+.share-card__book-caption {
+  margin-top: 14px;
+  font-size: 14px;
+  color: rgba(233, 223, 202, 0.75);
+  .share-card__book-title { font-style: italic; }
+}
+
+.share-card__footer {
+  margin-top: auto;
+  padding-top: 22px;
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  font-family: var(--ro-font-mono);
+  font-size: 12px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.share-card__footer-glyph { color: #C9A84C; }
+.share-card__footer-brand { color: #D8B85E; }
+.share-card__footer-url { color: rgba(233, 223, 202, 0.5); }
+
+// When there's no cover, keep the footer pinned to the bottom.
+.share-card__frame > .share-card__footer { width: 100%; justify-content: center; }

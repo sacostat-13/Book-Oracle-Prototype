@@ -242,7 +242,7 @@ function EditSessionModal({ session, book, onSave, onClose }) {
 
 export default function SessionDetail() {
   const t = useT();
-  const { state, updateReadingProgress, startReading, showToast } = useData();
+  const { state, updateReadingProgress, startReading, showToast, showShareMoment } = useData();
   const { go, route } = useRouter();
   const { user } = useAuth();
 
@@ -389,6 +389,26 @@ export default function SessionDetail() {
             {fmtDate(session.starts_at)} — {fmtDate(session.ends_at)}
             {book.pages ? ` · ${book.pages} pages` : ''}
           </div>
+          {/* v0.43: once the session has ended, offer the "session done"
+              share card. Not auto-fired — there's no single moment a session
+              "finishes" for a viewer, so it's a deliberate action here. */}
+          {isPast && (
+            <button
+              className="btn-tertiary btn--sm session-hero__share"
+              onClick={() => showShareMoment({
+                type: 'session_done',
+                clubName: club?.name || '',
+                bookTitle: book.title,
+                bookAuthor: book.author || '',
+                coverUrl: book.cover_url || null,
+                url: club?.visibility === 'public'
+                  ? `${window.location.origin}/clubs/${clubId}`
+                  : window.location.origin,
+              })}
+            >
+              ↗ {t('share.shareSessionDone')}
+            </button>
+          )}
         </div>
       </div>
 

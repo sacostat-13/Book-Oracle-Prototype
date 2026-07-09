@@ -16,9 +16,32 @@
 
 // The version label shown as "current" — keep in sync with package.json and
 // the README version line.
-export const CURRENT_VERSION = 'v0.42.0';
+export const CURRENT_VERSION = 'v0.43.0';
 
 export const RELEASES = [{
+    version: 'v0.43',
+    date: '2026-07-09',
+    titleEn: 'Share your reading life: Share Cards',
+    titleEs: 'Compartí tu vida lectora: Tarjetas para Compartir',
+    bodyEn: [
+      'New: Share buttons on Book Pages, Lists, Book Clubs, Reading Plans, and your Profile — send a link to WhatsApp, X, Telegram, or anywhere via your device’s share sheet. Links now unfurl with a proper preview (title, description, cover) wherever you paste them.',
+      'New: finish a book and a share card appears — a dark-academia card you can post as an image or share as a link. Finishing a series, completing a reading plan, or hitting your reading goal gets its own card too.',
+      'New: reading milestones. Your 5th, 10th, 25th (and beyond) book of the year, your first book in a new genre, and genre devotion milestones ("10 gothic books") each get a shareable card of their own.',
+      'Book clubs: creating a session in a public club offers a "now reading" card to invite people in, and finished sessions can be shared from the session page.',
+      'Fixed: books in the Friends Feed are now clickable — tap a cover or title to open its Book Page.',
+      'Fixed: every "Upgrade to Pro" button now takes you to My Profile and scrolls straight to the subscription section.',
+      'Fixed: after switching from Pro to Free, the Oracle calls counter no longer shows more calls used than your plan allows.',
+    ],
+    bodyEs: [
+      'Nuevo: botones de Compartir en Páginas de Libro, Listas, Clubes de Lectura, Planes de Lectura y tu Perfil — enviá un enlace por WhatsApp, X, Telegram o donde quieras con el menú de compartir de tu dispositivo. Los enlaces ahora se muestran con una vista previa completa (título, descripción, portada) donde los pegues.',
+      'Nuevo: al terminar un libro aparece una tarjeta para compartir — una tarjeta dark academia que podés publicar como imagen o compartir como enlace. Terminar una serie, completar un plan de lectura o cumplir tu meta de lectura también tiene su propia tarjeta.',
+      'Nuevo: hitos de lectura. Tu 5.º, 10.º, 25.º (y más) libro del año, tu primer libro en un género nuevo y los hitos de devoción por género ("10 libros góticos") tienen cada uno su tarjeta para compartir.',
+      'Clubes de lectura: crear una sesión en un club público ofrece una tarjeta de "leyendo ahora" para invitar gente, y las sesiones terminadas se pueden compartir desde la página de la sesión.',
+      'Corregido: los libros del Feed de Amigos ahora se pueden abrir — tocá una portada o un título para ir a su Página de Libro.',
+      'Corregido: todos los botones de "Mejorar a Pro" ahora te llevan a Mi Perfil directo a la sección de suscripción.',
+      'Corregido: al pasar de Pro a Gratis, el contador de consultas del Oráculo ya no muestra más consultas usadas de las que permite tu plan.',
+    ],
+  }, {
     version: 'v0.42',
     date: '2026-07-07',
     titleEn: 'Ask the Oracle, Match %, and a richer Dashboard',

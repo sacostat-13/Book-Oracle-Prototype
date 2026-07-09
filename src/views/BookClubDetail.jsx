@@ -8,6 +8,8 @@ import { useT } from '../lib/I18nContext';
 import { supabase } from '../lib/supabase';
 import BookCover from '../components/BookCover';
 import ClubPolls from '../components/ClubPolls';
+import ShareModal from '../components/ShareModal';
+import { clubShareUrl } from '../lib/shareService';
 
 function Avatar({ displayName, avatarUrl, size = 32 }) {
   const [imgFailed, setImgFailed] = useState(false);
@@ -64,6 +66,7 @@ export default function BookClubDetail() {
   const [loading, setLoading] = useState(true);
   const [linkCopied, setLinkCopied] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false); // v0.43: public clubs only
 
   const stateClub = (state.clubs || []).find((c) => c.id === clubId);
 
@@ -165,6 +168,14 @@ export default function BookClubDetail() {
 
       <div className="bp-actions">
         <button className="btn-tertiary btn--sm" onClick={copyJoinLink}>{linkCopied ? t('clubs.linkCopied') : t('clubs.copyJoinLink')}</button>
+        {/* v0.43: share — only public clubs render a link preview / are
+            joinable by strangers, so gate the button on visibility. The
+            join link above stays the path for private invitations. */}
+        {club.visibility === 'public' && (
+          <button className="btn-tertiary btn--sm" onClick={() => setShareOpen(true)}>
+            ↗ {t('share.shareClub')}
+          </button>
+        )}
         {isAdmin && (
           <>
             <button className="btn-primary btn--sm" onClick={() => go('session-create', { clubId })}>{t('clubs.newSession')}</button>
@@ -258,6 +269,16 @@ export default function BookClubDetail() {
             )}
           </section>
         </>
+      )}
+
+      {/* v0.43: page-share modal (public clubs only — button is gated above) */}
+      {shareOpen && (
+        <ShareModal
+          title={club.name}
+          text={t('share.text.club', { name: club.name })}
+          url={clubShareUrl(club.id)}
+          onClose={() => setShareOpen(false)}
+        />
       )}
     </>
   );

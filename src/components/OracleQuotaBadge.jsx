@@ -5,6 +5,7 @@
 
 import { useT } from '../lib/I18nContext';
 import { useOracleQuota } from '../lib/OracleQuotaContext';
+import { useRouter } from '../lib/RouterContext';
 
 export function OracleQuotaBadge({ style = {} }) {
   const { quota, loading } = useOracleQuota();
@@ -34,6 +35,7 @@ export function OracleQuotaBadge({ style = {} }) {
 export function OracleQuotaWall() {
   const { quota } = useOracleQuota();
   const t = useT();
+  const { go } = useRouter();
 
   const isDay   = quota?.period === 'day';
   const limit   = quota?.calls_limit ?? 5;
@@ -68,9 +70,20 @@ export function OracleQuotaWall() {
 
       <div className="session-divider" style={{ width: 48, margin: "4px 0" }} />
 
-      <p className="quota-wall__body">
-        {!isPro && t('oracle.quotaWallUpgradeNote')}
-      </p>
+      {!isPro && (
+        <>
+          <p className="quota-wall__body">
+            {t('oracle.quotaWallUpgradeNote')}
+          </p>
+          {/* v0.43.1: all Upgrade CTAs route to Profile → subscription section */}
+          <button
+            className="btn-primary btn--sm"
+            onClick={() => go('profile', { scrollTo: 'subscription' })}
+          >
+            {t('dashboard.aiQuotaUpgrade')}
+          </button>
+        </>
+      )}
     </div>
   );
 }

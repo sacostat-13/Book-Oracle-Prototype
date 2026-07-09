@@ -245,7 +245,7 @@ export default function About() {
                     </li>
                   ))}
                 </ul>
-                <button className="btn-primary about-credit-card__cta" onClick={() => go('profile')}>
+                <button className="btn-primary about-credit-card__cta" onClick={() => go('profile', { scrollTo: 'subscription' })}>
                   {t('about.pricingProCta')}
                 </button>
               </div>

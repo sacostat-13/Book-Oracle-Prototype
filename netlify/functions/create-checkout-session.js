@@ -47,5 +47,22 @@ export async function handler(event) {
   const separator = checkoutBase.includes('?') ? '&' : '?';
   const finalUrl = checkoutBase + separator + params.join('&');
 
+  // v0.43.1: probe the checkout URL before handing it to the client. A stale
+  // LEMON_SQUEEZY_REDIRECT_URL (deleted/renamed product, wrong store) makes
+  // LS serve a 404 page — which the client would otherwise open full-screen
+  // in the overlay, stranding the user on an error page with broken back
+  // navigation. A dead link is a config problem, so surface it as a clean
+  // toastable error instead of letting the user hit it.
+  try {
+    const probe = await fetch(finalUrl, { method: 'GET', redirect: 'follow' });
+    if (probe.status === 404 || probe.status === 410) {
+      console.error(`create-checkout-session: checkout URL returned ${probe.status} — LEMON_SQUEEZY_REDIRECT_URL is stale`, checkoutBase);
+      return json(502, { error: 'Checkout is temporarily unavailable. Please try again later.' });
+    }
+  } catch (e) {
+    // Network hiccup probing LS — don't block checkout on it, just log.
+    console.warn('create-checkout-session: probe failed, continuing', e?.message);
+  }
+
   return json(200, { url: finalUrl });
 }

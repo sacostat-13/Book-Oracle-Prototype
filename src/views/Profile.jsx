@@ -9,6 +9,7 @@ import { findBookByTitle, bookKey, openBookTab } from '../lib/bookHelpers';
 import { useFriends, checkUsernameAvailability, validateUsername } from '../lib/useFriends';
 import { supabase } from '../lib/supabase';
 import CornerBrackets from '../components/CornerBrackets';
+import ShareModal from '../components/ShareModal';
 
 const LEVEL_NAMES = {
   1: 'Casual companion', 2: 'Steady reader', 3: 'Devoted reader',
@@ -161,6 +162,7 @@ function UsernameSection({ profile, user, updateUsername, t }) {
   const [availability, setAvailability] = useState(null); // 'available'|'taken'|'invalid'|null
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
+  const [shareOpen, setShareOpen] = useState(false); // v0.43
   const debounceRef = useRef(null);
 
   function onInputChange(val) {
@@ -240,8 +242,8 @@ function UsernameSection({ profile, user, updateUsername, t }) {
             {t('profile.usernameEdit')}
           </button>
           {profileUrl && (
-            <button className="btn-tertiary btn--sm" onClick={() => navigator.clipboard?.writeText(profileUrl)}>
-              {t('friends.copyLink')}
+            <button className="btn-tertiary btn--sm" onClick={() => setShareOpen(true)}>
+              ↗ {t('share.shareProfile')}
             </button>
           )}
         </div>
@@ -249,6 +251,16 @@ function UsernameSection({ profile, user, updateUsername, t }) {
         <button className="btn-tertiary btn--sm" onClick={() => { setInput(''); setAvailability(null); setEditing(true); }}>
           {t('profile.usernameClaim')}
         </button>
+      )}
+
+      {/* v0.43: page-share modal */}
+      {shareOpen && profileUrl && (
+        <ShareModal
+          title={profile.displayName || `@${profile.username}`}
+          text={t('share.text.profile', { name: profile.displayName || profile.username })}
+          url={profileUrl}
+          onClose={() => setShareOpen(false)}
+        />
       )}
     </div>
   );
@@ -606,6 +618,18 @@ export default function Profile() {
     }
   }, [checkoutResult]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // v0.43.1: Upgrade CTAs elsewhere in the app land here with
+  // ?scrollTo=subscription — scroll the subscription section into view.
+  // Delayed a tick so it wins over the router's own scroll-to-top.
+  const scrollTarget = route.params?.scrollTo;
+  useEffect(() => {
+    if (scrollTarget !== 'subscription') return;
+    const timer = setTimeout(() => {
+      document.getElementById('pf-subscription')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 150);
+    return () => clearTimeout(timer);
+  }, [scrollTarget]);
+
   async function handleUpgrade() {
     if (!user) return;
     setCheckoutLoading(true);
@@ -617,7 +641,11 @@ export default function Profile() {
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
       });
       const json = await res.json();
-      if (!json.url) { showToast(json.error || t('subscription.checkoutError'), true); return; }
+      if (!json.url) {
+        console.error('[checkout] no URL from create-checkout-session:', res.status, json);
+        showToast(json.error || t('subscription.checkoutError'), true);
+        return;
+      }
 
       const checkoutUrl = json.url;
 
@@ -634,31 +662,68 @@ export default function Profile() {
       }
       window.addEventListener('message', onLSMessage);
 
-      // Use LS overlay JS if available, otherwise fall back to full redirect
+      // Use LS overlay JS if available, otherwise fall back to full redirect.
+      //
+      // v0.43.1: the overlay path can no longer fail silently. Url.Open()
+      // doesn't throw when the embed can't render (blocked iframe, half-
+      // initialized lemon.js, etc.) — it just does nothing, which read as
+      // "the button is dead" in production. Now: log the path taken, wrap
+      // Url.Open in try/catch, and verify the overlay actually appeared
+      // ~1.5s later — if no LS iframe is in the DOM by then, hard-redirect
+      // to the checkout URL, which cannot fail silently.
+      const redirectFallback = () => { window.location.href = checkoutUrl; };
+      const verifyOverlayOpened = () => {
+        setTimeout(() => {
+          const overlayVisible = !!document.querySelector('iframe[src*="lemonsqueezy.com"], .lemonsqueezy-modal');
+          if (!overlayVisible) {
+            console.warn('[checkout] LS overlay did not appear — falling back to redirect');
+            redirectFallback();
+          }
+        }, 1500);
+      };
+
       if (window.LemonSqueezy?.Url?.Open) {
-        window.LemonSqueezy.Url.Open(checkoutUrl);
+        console.log('[checkout] opening via LS overlay');
+        try {
+          window.LemonSqueezy.Url.Open(checkoutUrl);
+          verifyOverlayOpened();
+        } catch (e) {
+          console.error('[checkout] LS overlay threw — falling back to redirect', e);
+          redirectFallback();
+        }
       } else {
         // Load LS overlay JS then open
         const existing = document.getElementById('lemon-squeezy-js');
         if (!existing) {
+          console.log('[checkout] loading lemon.js, then opening');
           const script = document.createElement('script');
           script.id = 'lemon-squeezy-js';
           script.src = 'https://assets.lemonsqueezy.com/lemon.js';
           script.defer = true;
           script.onload = () => {
             window.createLemonSqueezy?.();
-            window.LemonSqueezy?.Url?.Open
-              ? window.LemonSqueezy.Url.Open(checkoutUrl)
-              : (window.location.href = checkoutUrl);
+            if (window.LemonSqueezy?.Url?.Open) {
+              try {
+                window.LemonSqueezy.Url.Open(checkoutUrl);
+                verifyOverlayOpened();
+              } catch (e) {
+                console.error('[checkout] LS overlay threw — falling back to redirect', e);
+                redirectFallback();
+              }
+            } else {
+              redirectFallback();
+            }
           };
-          script.onerror = () => { window.location.href = checkoutUrl; };
+          script.onerror = () => { console.warn('[checkout] lemon.js failed to load — redirecting'); redirectFallback(); };
           document.head.appendChild(script);
         } else {
           // Script tag exists but Url.Open not ready yet — just redirect
-          window.location.href = checkoutUrl;
+          console.log('[checkout] lemon.js present but not ready — redirecting');
+          redirectFallback();
         }
       }
-    } catch {
+    } catch (e) {
+      console.error('[checkout] handleUpgrade failed', e);
       showToast(t('subscription.checkoutError'), true);
     } finally {
       setCheckoutLoading(false);
@@ -995,7 +1060,7 @@ export default function Profile() {
 
         {/* ── Subscription section ──────────────────────────────────────────── */}
         {user && (
-          <div className="pf-section">
+          <div className="pf-section" id="pf-subscription">
             <h2 className="pf-section__title">
               {t('subscription.sectionTitle')}
             </h2>
@@ -1031,7 +1096,7 @@ export default function Profile() {
                 <div className="db-ai__track">
                   <div
                     className={`db-ai__fill${quota.calls_remaining === 0 ? ' db-ai__fill--empty' : ''}`}
-                    style={{ '--ai-pct': `${Math.round(((quota.calls_used ?? 0) / (quota.calls_limit ?? 5)) * 100)}%` }}
+                    style={{ '--ai-pct': `${Math.min(100, Math.round(((quota.calls_used ?? 0) / (quota.calls_limit ?? 5)) * 100))}%` }}
                   />
                 </div>
                 {quota.reset_at && (

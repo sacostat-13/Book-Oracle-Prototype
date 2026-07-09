@@ -4,11 +4,14 @@ import { useRouter } from '../lib/RouterContext';
 import { bookKey, findBookByTitle } from '../lib/bookHelpers';
 import { useT } from '../lib/I18nContext';
 import { supabase } from '../lib/supabase';
+import ShareModal from '../components/ShareModal';
+import { planShareUrl } from '../lib/shareService';
 
 export default function PlanView() {
   const { state, addToReadNext, markAsRead, deletePlan, setCurrentPlan, showToast } = useData();
   const { go, route } = useRouter();
   const t = useT();
+  const [shareOpen, setShareOpen] = useState(false); // v0.43
 
   const planId = route.params?.planId;
 
@@ -172,6 +175,12 @@ export default function PlanView() {
             </button>
           </>
         )}
+        {/* v0.43: share — plans are publicly reachable via get_public_plan */}
+        {plan._id && (
+          <button className="btn-tertiary" onClick={() => setShareOpen(true)}>
+            ↗ {t('share.sharePlan')}
+          </button>
+        )}
       </div>
 
       <div className="plan-months">
@@ -223,6 +232,16 @@ export default function PlanView() {
           );
         })}
       </div>
+
+      {/* v0.43: page-share modal */}
+      {shareOpen && plan._id && (
+        <ShareModal
+          title={plan.title}
+          text={t('share.text.planPage', { title: plan.title, count: plan.books.length })}
+          url={planShareUrl(plan._id)}
+          onClose={() => setShareOpen(false)}
+        />
+      )}
     </>
   );
 }

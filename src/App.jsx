@@ -12,6 +12,7 @@ import LandingFooter from './components/LandingFooter';
 import CornerBrackets from './components/CornerBrackets';
 import BookLoader from './components/BookLoader';
 import Toast from './components/Toast';
+import ShareMomentModal from './components/ShareMomentModal';
 import SignInGate from './components/SignInGate';
 
 import Onboarding from './views/Onboarding';
@@ -311,6 +312,8 @@ export default function App() {
       </div>
       <Footer />
       <Toast />
+      {/* v0.43: global action-share modal — fires after completions */}
+      <ShareMomentModal />
     </div>
   );
 }

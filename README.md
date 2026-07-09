@@ -4,7 +4,7 @@ A reading companion — wishlist, library, reading plans, book clubs, and an AI-
 for book discovery. Built with React + Vite + SCSS, backed by Supabase for auth
 and cross-device sync, and Netlify Functions for API proxying.
 
-> Current version: **v0.42** — see [Releases](#releases) below for changelog.
+> Current version: **v0.43** — see [Releases](#releases) below for changelog.
 > Upgrading from an earlier version? Check the matching `MIGRATION_*.md` / `UPDATE_*.md`.
 
 ---
@@ -449,6 +449,34 @@ its normal one-file-at-a-time watch flow. It's a dev-server cache hiccup, not
 a real bug — a production build (`npm run build`) compiles clean, and a
 dev-server restart (or hard browser reload) clears it.
 
+
+### v0.43 — Share Cards: page shares, action shares, and reading milestones
+
+**No migration required.** New dependency: `html-to-image` (client-side card → PNG export).
+
+**Page shares.** `ShareModal.jsx` (copy link, native `navigator.share`, X/WhatsApp/Telegram intents) wired into five destinations: Book Page, List detail (public lists only — the button stays gated on `is_public`, replacing the old bare copy-link button), Book Club detail (public clubs only; the join-token link remains the path for private invites), Plan view (any plan with an `_id` — plans were already publicly reachable by UUID via `get_public_plan`), and Profile (both the `/profile` settings page and the `/u/:username` self view). URL builders centralized in `src/lib/shareService.js` so client URLs always match the routes og-prerender covers.
+
+**og-prerender extended.** `netlify/edge-functions/og-prerender.js` now also serves OG/Twitter meta for `/l/:listId`, `/plans/:planId`, `/clubs/:clubId`, and `/u/:username` (config.path extended to match). Public gating is inherited rather than re-invented: lists/plans go through the same `get_public_list`/`get_public_plan` RPCs the share pages use (non-public → null → pass through untouched); clubs are only served when `visibility = 'public'` — enforced explicitly in the function since the service-role key bypasses RLS; profiles render for any username, matching the page's own behaviour. Static-route collisions (`/plans/new`, `/clubs/new`, `/clubs/discover`) are skipped before any fetch. New `callRpc()`/`respond()` helpers deduplicate the per-entity blocks; the book/series handlers are unchanged (series now uses `respond()` too).
+
+**Action shares (the "share moment" system).** New `src/lib/shareMoments.js` — pure, client-only milestone computation, deliberately table-free: milestones are recomputed from the library at the instant of completion and only fire on an *exact threshold crossing* (`count === milestone`), so nothing ever re-fires on reload and no persistence is needed. This is the cheap-accomplishments model; a real achievements system (persistent, retroactive, trophy shelf on Profile) stays post-1.0. `computeCompletionMoments()` returns every moment a completion produced, sorted by significance — goal completed → series completed → plan completed → Nth book of the year (5/10/25/50/75/100/150/200) → genre-count milestone (5/10/25/50 per canonical genre) → first book in a new genre (suppressed until the library has ≥5 books, so early reads aren't all "new territory") → plain book-completed fallback. Only the top moment is shown.
+
+**Wiring:** `DataContext.markAsRead` calls `fireCompletionMoment()` after both the guest and authed library updates (and therefore covers `finishReading` too, which delegates to it). Goodreads imports are excluded — a 400-book import is not 400 celebrations. Plan completion is detected here as well (all plan books present in the post-completion library, and the just-finished book must be one of them, so an unrelated completion can't claim credit for a plan finished weeks ago). Club sessions fire their own moments directly: `SessionCreate` shows a "now reading" card after insert when the club is public; `SessionDetail` offers a deliberate share button on past sessions (no auto-modal — there's no single moment a session "finishes" for a viewer). New DataContext state `shareMoment` + `showShareMoment()`/`dismissShareMoment()`, rendered globally by `<ShareMomentModal/>` in App.jsx's authed shell.
+
+**The card.** `ShareCard.jsx` renders at a fixed 540×675 (4:5) and exports at 2× (1080×1350) via `html-to-image`'s `toPng` — the DOM node stays true-size and is scaled down in the modal with `zoom` (with a `transform: scale()` fallback), so exports stay crisp regardless of viewport. The card is a fixed **brand asset, not an app surface**: its palette is deliberately hardcoded to the Dark Academia constants instead of `var(--ro-*)` so the PNG looks identical in both themes — the one sanctioned exception to the no-hardcoded-parchment rule, flagged as such in `_share.scss`. Cover images are third-party (OpenLibrary/Wikimedia/…); when a host refuses CORS the export throws and the modal degrades to text + link with an explanatory note — never a broken PNG. On no-file-share platforms (desktop) the image downloads and the caption is placed on the clipboard instead.
+
+**Follow-up (v0.43.x):** port the same card template to a satori-based Netlify function so OG *link previews* also show the branded card instead of the raw cover art. Keep `ShareCard.jsx` and that endpoint in sync when either changes.
+
+i18n: full new `share.*` block (modal labels, card copy per moment type, share texts per entity) in both `en.json` and `es.json`.
+
+**Also in this release — four fixes:**
+
+**Friends Feed books are clickable.** `FriendsFeedWidget` rows made the avatar and friend name clickable but not the book — cover and title now call `openBookTab(ev.book, 'dashboard')` (the feed events already carried `t`/`a`/`coverUrl`, so `bookKey()` resolves).
+
+**Upgrade CTAs → Profile → subscription.** Every "Upgrade to Pro" button (Dashboard AI-quota bar, Spark widget quota states, About pricing card, and a new button on the Oracle quota wall — which previously had upgrade *text* but nothing to click) now does `go('profile', { scrollTo: 'subscription' })`. Profile's subscription section gained `id="pf-subscription"` and a mount effect that `scrollIntoView`s when `?scrollTo=subscription` is present, delayed 150ms so it wins over the router's own scroll-to-top. Checkout itself stays exactly one place: the Profile section's button.
+
+**Checkout hardening.** `create-checkout-session.js` now probes the Lemon Squeezy URL server-side before returning it; a 404/410 (stale `LEMON_SQUEEZY_REDIRECT_URL` — deleted/renamed product) returns a clean 502 the client shows as a toast, instead of letting the LS overlay open a full-screen 404 page that traps browser history. Root cause of the local "Page not found. Request ID: …" symptom is the env var pointing at a dead LS checkout link — verify it against the product's current Share URL in the LS dashboard (local `.env` and Netlify prod env separately).
+
+**Quota display after Pro→Free downgrade.** `calls_used` can legitimately exceed the free limit mid-period after a downgrade (e.g. 14 used, limit 5). `OracleQuotaContext` now clamps `calls_remaining` at 0 (the raw limit−used went negative), and the Dashboard AI-quota bar caps both the displayed used count (`Math.min(used, limit)` → "5 of 5", not "14 of 5") and the fill percentage at 100%. Profile's quota bar percentage is capped the same way. Server values stay untouched — this is display-side only, so the real counter still resets correctly at period end.
 
 ### v0.42 — Ask the Oracle, Match %, Dashboard widgets, and complexity/depth backfill
 
