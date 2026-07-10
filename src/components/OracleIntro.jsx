@@ -27,17 +27,19 @@ export default function OracleIntro({ onDone }) {
   const rafRef = useRef(null);
   const [settled, setSettled] = useState(false);
   const [leaving, setLeaving] = useState(false);
+  // Phase and dealt/laid classes live in React state so that re-renders
+  // (settled, leaving) can't clobber them. They used to be added
+  // imperatively via classList on the root div — but React owns that div's
+  // className, so the first settled re-render rewrote it and wiped
+  // oi--dealt/oi--laid/oi--phase-5: the logo, constellation, and fated card
+  // all vanished at the exact moment the tableau was supposed to shine.
+  const [phase, setPhase] = useState(0);
+  const [dealt, setDealt] = useState(false);
   const leavingRef = useRef(false);
 
   // ── timeline helpers ──────────────────────────────────────────────────────
   function at(ms, fn) { timersRef.current.push(setTimeout(fn, ms)); }
   function clearTimers() { timersRef.current.forEach(clearTimeout); timersRef.current = []; }
-  function setPhase(n) {
-    const el = rootRef.current;
-    if (!el) return;
-    el.className = el.className.replace(/oi--phase-\d/g, '').trim();
-    el.classList.add(`oi--phase-${n}`);
-  }
   function sayLine(text, isTagline) {
     const line = rootRef.current?.querySelector('.oi__line span');
     if (!line) return;
@@ -69,7 +71,7 @@ export default function OracleIntro({ onDone }) {
     if (!el) return;
     clearTimers();
     setPhase(5);
-    el.classList.add('oi--dealt', 'oi--laid');
+    setDealt(true);
     el.querySelectorAll('.oi__card').forEach((c, i) => {
       if (i === FATED_INDEX) c.classList.add('is-open');
       else c.style.display = 'none';
@@ -152,6 +154,11 @@ export default function OracleIntro({ onDone }) {
         e.x += e.vx + Math.sin(tt * 1.1 + (e.sway || 0)) * 0.15;
         e.vy *= 0.985;
         e.life -= e.decay || 0.011; // bursts keep their fast fade; ambient drifts long
+        // An ember that just burned out must not reach arc(): a negative
+        // radius throws IndexSizeError, which kills the whole rAF loop —
+        // motes, bursts, everything. Skip it; the filter above removes it
+        // next frame.
+        if (e.life <= 0) continue;
         ctx.beginPath(); ctx.arc(e.x, e.y, e.r * e.life, 0, Math.PI * 2);
         ctx.fillStyle = `rgba(216,166,86,${0.85 * e.life * flick})`; ctx.fill();
       }
@@ -165,7 +172,7 @@ export default function OracleIntro({ onDone }) {
     const cards = Array.from(el.querySelectorAll('.oi__card'));
 
     /* P1 (0–4.5s) — deal into the tarot line */
-    at(200, () => { el.classList.add('oi--dealt', 'oi--laid'); setPhase(1); });
+    at(200, () => { setDealt(true); setPhase(1); });
     at(1600, () => sayLine(t('landing.intro.line1')));
 
     /* P2 (4.5–19s) — flip, question, judge, burn — left to right */
@@ -230,7 +237,13 @@ export default function OracleIntro({ onDone }) {
 
   return (
     <div
-      className={`oi${leaving ? ' oi--leaving' : ''}${settled ? ' oi--settled' : ''}`}
+      className={[
+        'oi',
+        dealt && 'oi--dealt oi--laid',
+        phase > 0 && `oi--phase-${phase}`,
+        settled && 'oi--settled',
+        leaving && 'oi--leaving',
+      ].filter(Boolean).join(' ')}
       ref={rootRef}
       role="dialog"
       aria-label={t('landing.intro.ariaLabel')}
