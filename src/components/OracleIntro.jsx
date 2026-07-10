@@ -131,11 +131,29 @@ export default function OracleIntro({ onDone }) {
         ctx.beginPath(); ctx.arc(m.x, m.y, m.r, 0, Math.PI * 2);
         ctx.fillStyle = `rgba(216,184,94,${m.a * tw * flick})`; ctx.fill();
       }
+      // v0.43.1: ambient embers restored — a slow drift of warm sparks rising
+      // from the table edge, looping forever (including the settled tableau,
+      // so the final state keeps breathing instead of going still).
+      if (Math.random() < 0.1 && embersRef.current.length < 260) {
+        embersRef.current.push({
+          x: Math.random() * canvas.width,
+          y: canvas.height + 6,
+          r: 0.7 + Math.random() * 1.9,
+          vy: -(0.25 + Math.random() * 0.75),
+          vx: (Math.random() - 0.5) * 0.35,
+          life: 1,
+          decay: 0.0035 + Math.random() * 0.003,
+          sway: Math.random() * Math.PI * 2,
+        });
+      }
       embersRef.current = embersRef.current.filter((e) => e.life > 0);
       for (const e of embersRef.current) {
-        e.y += e.vy; e.x += e.vx; e.vy *= 0.985; e.life -= 0.011;
+        e.y += e.vy;
+        e.x += e.vx + Math.sin(tt * 1.1 + (e.sway || 0)) * 0.15;
+        e.vy *= 0.985;
+        e.life -= e.decay || 0.011; // bursts keep their fast fade; ambient drifts long
         ctx.beginPath(); ctx.arc(e.x, e.y, e.r * e.life, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(216,166,86,${0.85 * e.life})`; ctx.fill();
+        ctx.fillStyle = `rgba(216,166,86,${0.85 * e.life * flick})`; ctx.fill();
       }
       rafRef.current = requestAnimationFrame(draw);
     }
@@ -168,14 +186,16 @@ export default function OracleIntro({ onDone }) {
       });
     });
 
-    /* P3 (19.2–25.5s) — constellation divines into the last card */
+    /* P3 (19.2–23.7s) — constellation divines into the last card.
+       v0.43.1: threads draw in ~2.6s now (was ~5.4s), so the card opens
+       and the verdict lands sooner — the whole reading ends ~2s earlier. */
     at(19200, () => { setPhase(4); sayLine(t('landing.intro.reads')); });
-    at(23800, () => cards[FATED_INDEX].classList.add('is-open'));
+    at(22000, () => cards[FATED_INDEX].classList.add('is-open'));
 
-    /* P4 (25.5–30s) — the verdict; settled tableau + chevron */
-    at(25500, () => setPhase(5));
-    at(26200, () => sayLine(t('landing.intro.tagline'), true));
-    at(29600, () => setSettled(true));
+    /* P4 (23.7–27.6s) — the verdict; settled tableau + chevron */
+    at(23700, () => setPhase(5));
+    at(24400, () => sayLine(t('landing.intro.tagline'), true));
+    at(27600, () => setSettled(true));
 
     return () => {
       clearTimers();

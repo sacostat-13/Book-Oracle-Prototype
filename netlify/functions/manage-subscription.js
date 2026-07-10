@@ -56,12 +56,18 @@ export async function handler(event) {
     } catch (e) { console.error('Billing lookup failed:', e); }
   }
 
+  // v0.43.1: no more silent fallback to app.lemonsqueezy.com/my-orders.
+  // That page requires a Lemon Squeezy login, so every failure below used
+  // to strand the user on an LS sign-in screen with no hint anything went
+  // wrong. The ONLY correct destination is the SIGNED customer_portal URL
+  // from a fresh subscription fetch (signed URLs expire, so it must be
+  // fetched per click, never cached). Anything else is an error the client
+  // can toast.
   if (!lsSubscriptionId) {
-    // No subscription on file — send to general orders page
-    return json(200, { url: 'https://app.lemonsqueezy.com/my-orders' });
+    console.warn(`manage-subscription: no ls_subscription_id on file for user ${userId}`);
+    return json(404, { error: 'No subscription found for this account.' });
   }
 
-  // Fetch the subscription from LS to get the management URL
   try {
     const res = await fetch(`${LS_API}/subscriptions/${lsSubscriptionId}`, {
       headers: {
@@ -71,18 +77,22 @@ export async function handler(event) {
     });
     const data = await res.json();
     if (!res.ok) {
-      console.error('LS subscription fetch error:', data);
-      return json(200, { url: 'https://app.lemonsqueezy.com/my-orders' });
+      // 404 here usually means test/live mode mismatch: a test-mode API key
+      // can't see live subscriptions and vice versa.
+      console.error(`LS subscription fetch failed: HTTP ${res.status} for sub ${lsSubscriptionId}`, JSON.stringify(data?.errors || data).slice(0, 500));
+      return json(502, { error: 'Could not open the billing portal. Please try again shortly.' });
     }
 
-    // LS returns a urls object with customer_portal and update_payment_method
-    const portalUrl = data.data?.attributes?.urls?.customer_portal
-      || 'https://app.lemonsqueezy.com/my-orders';
+    // Signed, short-lived customer portal URL — fetched fresh per request.
+    const portalUrl = data.data?.attributes?.urls?.customer_portal;
+    if (!portalUrl) {
+      console.error('LS subscription has no customer_portal URL', JSON.stringify(data.data?.attributes?.urls || {}));
+      return json(502, { error: 'Could not open the billing portal. Please try again shortly.' });
+    }
 
     return json(200, { url: portalUrl });
   } catch (e) {
     console.error('LS manage error:', String(e));
-    // Fallback to generic orders page rather than erroring
-    return json(200, { url: 'https://app.lemonsqueezy.com/my-orders' });
+    return json(502, { error: 'Could not open the billing portal. Please try again shortly.' });
   }
 }
