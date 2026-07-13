@@ -201,8 +201,11 @@ export default function BulkImport({ onClose, target = 'wishlist' }) {
 
       <div className="bulk-tabs">
         {tabs.map((tb) => (
-          <button key={tb.id} className={`toggle-btn ${tab === tb.id ? 'active' : ''}`} onClick={() => switchTab(tb.id)}>
-            {tb.label}<span className="toggle-sub">{tb.sub}</span>
+          <button key={tb.id} className={`source-tab ${tab === tb.id ? 'active' : ''}`} onClick={() => switchTab(tb.id)}>
+            <div className="source-tab__head">
+              <span className="source-tab__title">{tb.label}</span>
+            </div>
+            <div className="source-tab__sub">{tb.sub}</div>
           </button>
         ))}
       </div>

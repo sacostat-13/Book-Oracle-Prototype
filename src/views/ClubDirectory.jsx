@@ -170,6 +170,7 @@ export default function ClubDirectory() {
   const [query, setQuery] = useState('');
   const [genreId, setGenreId] = useState(null);
   const [mood, setMood] = useState(null);
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [openOnly, setOpenOnly] = useState(false);
   const [sort, setSort] = useState('activity');
   const [clubs, setClubs] = useState([]);
@@ -177,6 +178,7 @@ export default function ClubDirectory() {
   const [joiningId, setJoiningId] = useState(null);
 
   const genres = state.genres || [];
+  const activeFilterCount = (genreId ? 1 : 0) + (mood ? 1 : 0);
 
   const runSearch = useCallback(async () => {
     setLoading(true);
@@ -247,47 +249,15 @@ export default function ClubDirectory() {
         />
       </div>
 
-      {genres.length > 0 && (
-        <>
-          <div className="directory-filter-label">{t('clubs.fieldGenres')}</div>
-          <div className="directory-chip-row">
-            <button className={`chip${!genreId ? ' chip--active' : ''}`} onClick={() => setGenreId(null)}>
-              {t('clubs.directory.allGenres')}
-            </button>
-            {genres.map((g) => (
-              <button
-                key={g.id}
-                className={`chip${genreId === g.id ? ' chip--active' : ''}`}
-                onClick={() => setGenreId(genreId === g.id ? null : g.id)}
-              >
-                {g.name}
-              </button>
-            ))}
-          </div>
-        </>
-      )}
-
-      <div className="directory-filter-label">{t('clubs.directory.moodLabel')}</div>
-      <div className="directory-chip-row">
-        <button className={`chip${!mood ? ' chip--active' : ''}`} onClick={() => setMood(null)}>
-          {t('clubs.directory.allMoods')}
-        </button>
-        {MOODS.map((id) => (
-          <button
-            key={id}
-            className={`chip${mood === id ? ' chip--active' : ''}`}
-            onClick={() => setMood(mood === id ? null : id)}
-          >
-            {t(`onboarding.moods.${id}.title`)}
-          </button>
-        ))}
-      </div>
-
       <div className="directory-toolbar">
         <div className="directory-toolbar__count">
           {loading ? t('clubs.directory.searching') : t('clubs.directory.resultCount', { count: clubs.length })}
         </div>
         <div className="directory-toolbar__controls">
+          <button type="button" className="btn-secondary" onClick={() => setFiltersOpen(true)}>
+            {t('clubs.directory.filtersButton')}
+            {activeFilterCount > 0 && ` (${activeFilterCount})`}
+          </button>
           <button type="button" className="directory-toggle" onClick={() => setOpenOnly((v) => !v)}>
             <span className={`directory-switch${openOnly ? ' directory-switch--on' : ''}`} />
             {t('clubs.directory.openOnlyToggle')}
@@ -299,6 +269,66 @@ export default function ClubDirectory() {
           </select>
         </div>
       </div>
+
+      {filtersOpen && (
+        <div className="overlay" onClick={() => setFiltersOpen(false)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <button className="modal__close" onClick={() => setFiltersOpen(false)}>×</button>
+            <div className="modal__head">
+              <h2 className="modal__title">{t('clubs.directory.filtersTitle')}</h2>
+            </div>
+            <div className="modal__body">
+              {genres.length > 0 && (
+                <>
+                  <div className="directory-filter-label">{t('clubs.fieldGenres')}</div>
+                  <div className="directory-chip-row">
+                    <button className={`chip${!genreId ? ' chip--active' : ''}`} onClick={() => setGenreId(null)}>
+                      {t('clubs.directory.allGenres')}
+                    </button>
+                    {genres.map((g) => (
+                      <button
+                        key={g.id}
+                        className={`chip${genreId === g.id ? ' chip--active' : ''}`}
+                        onClick={() => setGenreId(genreId === g.id ? null : g.id)}
+                      >
+                        {g.name}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
+
+              <div className="directory-filter-label">{t('clubs.directory.moodLabel')}</div>
+              <div className="directory-chip-row">
+                <button className={`chip${!mood ? ' chip--active' : ''}`} onClick={() => setMood(null)}>
+                  {t('clubs.directory.allMoods')}
+                </button>
+                {MOODS.map((id) => (
+                  <button
+                    key={id}
+                    className={`chip${mood === id ? ' chip--active' : ''}`}
+                    onClick={() => setMood(mood === id ? null : id)}
+                  >
+                    {t(`onboarding.moods.${id}.title`)}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="modal__actions">
+              <button
+                className="btn-text"
+                disabled={activeFilterCount === 0}
+                onClick={() => { setGenreId(null); setMood(null); }}
+              >
+                {t('clubs.directory.clearFilters')}
+              </button>
+              <button className="btn-primary" onClick={() => setFiltersOpen(false)}>
+                {t('clubs.directory.filtersDone')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {!loading && clubs.length === 0 ? (
         <div className="empty-state">

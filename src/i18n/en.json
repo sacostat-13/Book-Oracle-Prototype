@@ -943,7 +943,11 @@
       "toastPending": "Request sent — waiting on the admin",
       "toastWaitlisted": "Club is full — you're on the waitlist",
       "waitlistNote": "You'll be added automatically when a spot opens",
-      "approvalNote": "An admin reviews requests before you're added"
+      "approvalNote": "An admin reviews requests before you're added",
+      "filtersButton": "Filters",
+      "filtersTitle": "Filter clubs",
+      "clearFilters": "Clear all",
+      "filtersDone": "Done"
     }
   },
   "sessions": {
@@ -1403,7 +1407,9 @@
     "checkoutSuccess": "Payment successful! Activating your Pro plan…",
     "checkoutCancelled": "Checkout cancelled — no charge was made.",
     "checkoutError": "Could not open checkout. Try again.",
-    "portalError": "Could not open billing portal. Try again."
+    "portalError": "Could not open billing portal. Try again.",
+    "noSubToast": "No active subscription on this account yet — upgrade to Pro to unlock daily Oracle draws.",
+    "alreadyProToast": "You're already on Pro — use Manage subscription to make changes."
   },
   "friends": {
     "profileNotFound": "Profile not found",

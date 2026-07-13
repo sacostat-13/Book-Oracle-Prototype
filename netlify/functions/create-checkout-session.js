@@ -36,6 +36,32 @@ export async function handler(event) {
   const userId    = user.userId;
   const userEmail = user.email;
 
+  // v0.43.2: refuse to start a checkout for a user who already has an active
+  // subscription. The Profile UI hides the Upgrade button when active, but a
+  // stale tab, a second device, or a direct call could still reach here and
+  // double-subscribe the user (observed in test mode: one account, two live
+  // subscriptions). The client maps code 'already_subscribed' to an i18n
+  // toast pointing at Manage subscription instead.
+  const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
+  const serviceKey  = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (supabaseUrl && serviceKey) {
+    try {
+      const res = await fetch(
+        `${supabaseUrl}/rest/v1/profiles?id=eq.${userId}&select=subscription_status`,
+        { headers: { 'apikey': serviceKey, 'Authorization': `Bearer ${serviceKey}` } }
+      );
+      if (res.ok) {
+        const rows = await res.json();
+        if (rows[0]?.subscription_status === 'active') {
+          return json(409, { error: 'You already have an active subscription.', code: 'already_subscribed' });
+        }
+      }
+    } catch (e) {
+      // Status lookup hiccup — don't block a legitimate checkout on it.
+      console.warn('create-checkout-session: status check failed, continuing', e?.message);
+    }
+  }
+
   // Build checkout URL with prefill params and user_id as custom data.
   // We build the query string manually — bracket notation in URLSearchParams
   // keys (checkout[email]) confuses older esbuild versions used by Netlify CLI.
@@ -66,3 +92,4 @@ export async function handler(event) {
 
   return json(200, { url: finalUrl });
 }
+

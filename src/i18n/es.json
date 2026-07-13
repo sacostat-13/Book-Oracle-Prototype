@@ -943,7 +943,11 @@
       "toastPending": "Solicitud enviada — esperando al admin",
       "toastWaitlisted": "El club está lleno — quedaste en lista de espera",
       "waitlistNote": "Te sumás automáticamente cuando se libera un lugar",
-      "approvalNote": "Un admin revisa las solicitudes antes de sumarte"
+      "approvalNote": "Un admin revisa las solicitudes antes de sumarte",
+      "filtersButton": "Filtros",
+      "filtersTitle": "Filtrar clubes",
+      "clearFilters": "Limpiar todo",
+      "filtersDone": "Listo"
     }
   },
   "sessions": {
@@ -1403,7 +1407,9 @@
     "checkoutSuccess": "¡Pago exitoso! Activando tu plan Pro…",
     "checkoutCancelled": "Pago cancelado — no se realizó ningún cobro.",
     "checkoutError": "No se pudo abrir el pago. Intentá de nuevo.",
-    "portalError": "No se pudo abrir el portal. Intentá de nuevo."
+    "portalError": "No se pudo abrir el portal. Intentá de nuevo.",
+    "noSubToast": "Esta cuenta aún no tiene una suscripción activa — mejorá a Pro para desbloquear consultas diarias al Oráculo.",
+    "alreadyProToast": "Ya tenés Pro — usá Gestionar suscripción para hacer cambios."
   },
   "friends": {
     "profileNotFound": "Perfil no encontrado",

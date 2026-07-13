@@ -86,7 +86,7 @@
 /* ---- Spacing (8pt) & radius — theme-independent ---- */
 :root {
   --ro-space-1: 4px;  --ro-space-2: 8px;  --ro-space-3: 12px;
-  --ro-space-4: 16px; --ro-space-6: 24px; --ro-space-8: 32px;
+  --ro-space-4: 16px; --ro-space-5: 20px; --ro-space-6: 24px; --ro-space-8: 32px;
   --ro-space-12: 48px; --ro-space-16: 64px;
 
   --ro-radius-sm: 8px;  --ro-radius-md: 12px; --ro-radius-lg: 16px;

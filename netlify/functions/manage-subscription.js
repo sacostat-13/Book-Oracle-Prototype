@@ -65,7 +65,7 @@ export async function handler(event) {
   // can toast.
   if (!lsSubscriptionId) {
     console.warn(`manage-subscription: no ls_subscription_id on file for user ${userId}`);
-    return json(404, { error: 'No subscription found for this account.' });
+    return json(404, { error: 'No subscription found for this account.', code: 'no_subscription' });
   }
 
   try {
@@ -80,14 +80,14 @@ export async function handler(event) {
       // 404 here usually means test/live mode mismatch: a test-mode API key
       // can't see live subscriptions and vice versa.
       console.error(`LS subscription fetch failed: HTTP ${res.status} for sub ${lsSubscriptionId}`, JSON.stringify(data?.errors || data).slice(0, 500));
-      return json(502, { error: 'Could not open the billing portal. Please try again shortly.' });
+      return json(502, { error: 'Could not open the billing portal. Please try again shortly.', code: 'portal_unavailable' });
     }
 
     // Signed, short-lived customer portal URL — fetched fresh per request.
     const portalUrl = data.data?.attributes?.urls?.customer_portal;
     if (!portalUrl) {
       console.error('LS subscription has no customer_portal URL', JSON.stringify(data.data?.attributes?.urls || {}));
-      return json(502, { error: 'Could not open the billing portal. Please try again shortly.' });
+      return json(502, { error: 'Could not open the billing portal. Please try again shortly.', code: 'portal_unavailable' });
     }
 
     return json(200, { url: portalUrl });

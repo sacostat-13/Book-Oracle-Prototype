@@ -296,15 +296,63 @@
 // BULK IMPORT
 // ══════════════════════════════════════════════════════════════════════════════
 
+// Panel container — sets the whole import form apart from the page around it.
+// Rendered inline on both Wishlist and Library (not in a modal). Uses the
+// shared %widget-surface gradient so it reads as a raised card in both the
+// dark and parchment themes, with a stronger border + shadow for lift.
 .bulk-form {
+  @extend %widget-surface;
+  border-color: var(--ro-border-strong);
+  border-radius: var(--ro-radius-lg);
+  box-shadow: var(--ro-shadow);
+  padding: var(--ro-space-5) var(--ro-space-6);
   margin-bottom: 1.5rem;
+    margin-top: 1.5rem;
 }
 
+// Tab row — tabs themselves use the shared DS "Tabs" pattern (.source-tab,
+// defined in _book-pages.scss) with title + sub, matching the book-page
+// source selector.
 .bulk-tabs {
   display: flex;
-  gap: 0.4rem;
+  align-items: stretch;
+  gap: 10px;
   margin-bottom: 1rem;
   flex-wrap: wrap;
+}
+
+.manual-add-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+
+  h3 {
+    margin: 0;
+    font-family: var(--ro-font-display);
+    font-style: italic;
+    font-weight: 600;
+    font-size: 1.15rem;
+    color: var(--ro-text);
+  }
+}
+
+.manual-add-close {
+  @extend .modal-close-btn;
+}
+
+.manual-add-note {
+  flex: 1;
+  min-width: 200px;
+  align-self: center;
+  font-size: 0.8rem;
+  line-height: 1.4;
+  color: var(--ro-muted);
+}
+
+.file-hidden {
+  display: none;
 }
 
 .bulk-actions {

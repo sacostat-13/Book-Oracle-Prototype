@@ -673,8 +673,15 @@ export default function Profile() {
       });
       const json = await res.json();
       if (!json.url) {
+        // v0.43.2: already subscribed — point at Manage instead of erroring,
+        // and refresh the quota so a stale "Upgrade" CTA flips to Manage.
+        if (json.code === 'already_subscribed') {
+          showToast(t('subscription.alreadyProToast'));
+          refreshQuota();
+          return;
+        }
         console.error('[checkout] no URL from create-checkout-session:', res.status, json);
-        showToast(json.error || t('subscription.checkoutError'), true);
+        showToast(t('subscription.checkoutError'), true);
         return;
       }
 
@@ -775,10 +782,14 @@ export default function Profile() {
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
       });
       const json = await res.json();
+      // v0.43.2: server errors carry a `code`; map them to i18n toasts
+      // instead of raw English strings. 'no_subscription' nudges toward
+      // upgrading rather than reading as a failure.
       if (json.url) window.location.href = json.url;
-      else showToast(json.error || 'Could not open billing portal', true);
+      else if (json.code === 'no_subscription') showToast(t('subscription.noSubToast'), true);
+      else showToast(t('subscription.portalError'), true);
     } catch (e) {
-      showToast('Could not open billing portal. Try again.', true);
+      showToast(t('subscription.portalError'), true);
     } finally {
       setPortalLoading(false);
     }
