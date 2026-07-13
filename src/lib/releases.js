@@ -16,9 +16,28 @@
 
 // The version label shown as "current" — keep in sync with package.json and
 // the README version line.
-export const CURRENT_VERSION = 'v0.43.0';
+export const CURRENT_VERSION = 'v0.44.0';
 
 export const RELEASES = [{
+    version: 'v0.44',
+    date: '2026-07-13',
+    titleEn: 'Reading Memory: notes for your future self',
+    titleEs: 'Memoria de lectura: notas para tu yo del futuro',
+    bodyEn: [
+      'New: Reading Memory. When you update your reading progress, you can leave a short private note — where you are, what’s staying with you. The next time you pick that book up, it’s waiting for you: "Last time — p. 145: …". Your Book Page keeps the whole private thread, including the note you write when you finish.',
+      'Goodreads import, polished: series are now detected from your titles (so "The Fellowship of the Ring (The Lord of the Rings, #1)" arrives as part of its saga, with a clean title), duplicate editions are caught before they clutter your library, and big imports show live progress — "Adding 214 of 500…" instead of a mystery wait.',
+      'Fixed: marking a book as read now always removes it from Currently Reading, finished books no longer sneak back into your Read Next queue, and an active re-read shows its progress on the Book Page even when the book is already in your library.',
+      'Fixed: adding a book occasionally failed with an error even though it appeared after a refresh — it now saves on the first try.',
+      'Fixed: the app icon shows correctly when you install The Books Oracle on your phone or desktop, and a source of console errors around book covers is gone.',
+    ],
+    bodyEs: [
+      'Nuevo: Memoria de lectura. Cuando actualizás tu progreso, podés dejarte una nota corta y privada — dónde vas, qué se te quedó. La próxima vez que retomes ese libro, te está esperando: "La última vez — pág. 145: …". Tu Página de Libro guarda todo el hilo privado, incluida la nota que escribís al terminarlo.',
+      'Importación de Goodreads, pulida: ahora se detectan las sagas desde los títulos (así "La Comunidad del Anillo (El Señor de los Anillos, #1)" llega como parte de su saga, con el título limpio), las ediciones duplicadas se detectan antes de ensuciar tu biblioteca, y las importaciones grandes muestran progreso en vivo — "Agregando 214 de 500…" en vez de una espera misteriosa.',
+      'Corregido: marcar un libro como leído ahora siempre lo saca de Leyendo Ahora, los libros terminados ya no se cuelan de vuelta en tu cola de Por Leer, y una relectura activa muestra su progreso en la Página de Libro aunque el libro ya esté en tu biblioteca.',
+      'Corregido: agregar un libro a veces fallaba con un error aunque aparecía después de refrescar — ahora se guarda al primer intento.',
+      'Corregido: el ícono de la app se muestra bien al instalar The Books Oracle en tu teléfono o computadora, y desapareció una fuente de errores de consola relacionada con las portadas.',
+    ],
+  }, {
     version: 'v0.43',
     date: '2026-07-09',
     titleEn: 'Share your reading life: Share Cards',

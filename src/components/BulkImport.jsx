@@ -54,6 +54,8 @@ export default function BulkImport({ onClose, target = 'wishlist' }) {
   const [titleText, setTitleText] = useState('');
   const [amazonText, setAmazonText] = useState('');
   const [importing, setImporting] = useState(false);
+  // v0.44: { done, total } while the confirm-phase import is running
+  const [importProgress, setImportProgress] = useState(null);
   const csvRef = useRef(null);
 
   async function handleGoodreadsFile(file) {
@@ -180,12 +182,22 @@ export default function BulkImport({ onClose, target = 'wishlist' }) {
     setImporting(true);
     let added = 0;
     const books = toAdd.map((r) => r.book);
+    // v0.44 (Goodreads import polish): per-book progress on the import phase —
+    // large libraries (500+) take minutes of sequential upserts, so the save
+    // button counts up instead of showing an indeterminate "Adding…".
+    const onImportProgress = (done, total) => setImportProgress({ done, total });
     if (isLibrary) {
-      if (tab === 'goodreads') { await importGoodreads(books); added = books.length; }
-      else { added = await bulkAddToLibrary(books); }
+      if (tab === 'goodreads') { await importGoodreads(books, onImportProgress); added = books.length; }
+      else { added = await bulkAddToLibrary(books, onImportProgress); }
     } else {
-      for (const row of toAdd) { const ok = await addToWishlist(row.book); if (ok) added++; }
+      let done = 0;
+      for (const row of toAdd) {
+        const ok = await addToWishlist(row.book);
+        if (ok) added++;
+        onImportProgress(++done, toAdd.length);
+      }
     }
+    setImportProgress(null);
     setImporting(false);
     showToast(added === 1
       ? t('bulkImport.added', { count: added, target: targetWord })
@@ -296,7 +308,11 @@ export default function BulkImport({ onClose, target = 'wishlist' }) {
             </span>
             <button className="btn-secondary" onClick={clearResults} disabled={importing}>{t('bulkImport.startOver')}</button>
             <button className="btn-primary" onClick={confirmImport} disabled={(foundCount + unmatchedCount) === 0 || importing || progress}>
-              {importing ? t('bulkImport.adding') : t('bulkImport.addBtn', { count: foundCount + unmatchedCount, target: targetWord })}
+              {importing
+                ? (importProgress
+                    ? t('bulkImport.addingProgress', { done: importProgress.done, total: importProgress.total })
+                    : t('bulkImport.adding'))
+                : t('bulkImport.addBtn', { count: foundCount + unmatchedCount, target: targetWord })}
             </button>
           </div>
         </>

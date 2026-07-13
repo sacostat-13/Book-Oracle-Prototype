@@ -60,21 +60,12 @@ export default defineConfig({
               },
             },
           },
-          {
-            // Book cover images (OpenLibrary, Google Books)
-            urlPattern: /^https:\/\/(covers\.openlibrary\.org|books\.google\.com)\/.*/i,
-            handler: 'CacheFirst',
-            options: {
-              cacheName: 'book-covers-cache',
-              expiration: {
-                maxEntries: 500,
-                maxAgeSeconds: 60 * 60 * 24 * 30
-              },
-              cacheableResponse: {
-                statuses: [0, 200]
-              },
-            },
-          },
+          // v0.44: the book-covers CacheFirst route was removed. When a cover
+          // wasn't cached yet AND the host refused the fetch (Open Library
+          // rate-limits hotlinks), workbox surfaced an unhandled "no-response"
+          // rejection per image — pure console noise since BookCover already
+          // falls back to a placeholder onError. Without the route, covers use
+          // the normal browser HTTP cache; only offline cover display is lost.
         ],
       },
       manifest: false,

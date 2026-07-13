@@ -797,6 +797,7 @@
     "startOver": "Empezar de nuevo",
     "addBtn": "Agregar {count} a {target} ❦",
     "adding": "Agregando…",
+    "addingProgress": "Agregando {done} de {total}…",
     "lookUpBtn": "Buscar libros ❦",
     "goodreadsUploadText": "Soltá tu CSV de Goodreads acá",
     "goodreadsReadShelf": "Traeremos los libros de tu estante de leídos junto con las calificaciones que les diste",
