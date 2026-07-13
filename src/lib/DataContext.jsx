@@ -775,7 +775,15 @@ export function DataProvider({ children }) {
               : resolvedSource
           : null,
       };
-      const { data, error } = await supabase.rpc('upsert_book', args);
+      let { data, error } = await supabase.rpc('upsert_book', args);
+      // PostgREST schema-cache miss (PGRST202): the first RPC after a cold
+      // start or a fresh migration can 404 because the function isn't in the
+      // cached schema yet. The cache reloads within a moment, so retry once
+      // rather than silently dropping the user's action.
+      if (error && (error.code === 'PGRST202' || error.status === 404 || error.message?.includes('schema cache'))) {
+        await new Promise((r) => setTimeout(r, 600));
+        ({ data, error } = await supabase.rpc('upsert_book', args));
+      }
       if (error) {
         console.error('upsert_book failed', error);
         return null;
@@ -1048,6 +1056,10 @@ export function DataProvider({ children }) {
           ...s,
           readNext: s.readNext.filter((b) => bookKey(b) !== k),
           wishlist: s.wishlist.filter((b) => bookKey(b) !== k),
+          // A book can only live in one shelf. Marking it read must clear any
+          // currently-reading entry, or it shows in Library and Currently
+          // Reading at once (e.g. "Mark as Read" on a book that was started).
+          currentlyReading: s.currentlyReading.filter((b) => bookKey(b) !== k),
           library: [...s.library, enriched],
         }));
         showToast(`"${book.t}" added to your library`);
@@ -1088,11 +1100,20 @@ export function DataProvider({ children }) {
         .delete()
         .eq('user_id', user.id)
         .eq('book_id', bookId);
+      // Clear any currently-reading row so a direct "Mark as Read" (from the
+      // Book page or Read Next) can't leave the book in both Library and
+      // Currently Reading. Harmless no-op when there's no such row.
+      await supabase
+        .from('currently_reading')
+        .delete()
+        .eq('user_id', user.id)
+        .eq('book_id', bookId);
 
       setState((s) => ({
         ...s,
         readNext: s.readNext.filter((b) => bookKey(b) !== k),
         wishlist: s.wishlist.filter((b) => bookKey(b) !== k),
+        currentlyReading: s.currentlyReading.filter((b) => bookKey(b) !== k),
         library: [...s.library, { ...enriched, bookId }],
       }));
       showToast(`"${book.t}" added to your library`);
@@ -1167,14 +1188,31 @@ export function DataProvider({ children }) {
     [user]
   );
 
-  // Finishes a currently-reading book: removes from currentlyReading and delegates
-  // to markAsRead which handles the read_books upsert and library state update.
+  // Finishes a currently-reading book: removes it from currentlyReading and
+  // delegates to markAsRead for the read_books upsert + library update.
+  //
+  // Note: this deliberately does NOT go through removeFromCurrentlyReading,
+  // which re-queues the book into readNext (that's the "stop reading / put it
+  // back" action). Routing finish through it left the book in readNext whenever
+  // markAsRead short-circuited, producing the Library + Read Next duplicate.
   const finishReading = useCallback(
     async (book, extra = {}) => {
-      await removeFromCurrentlyReading(book);
+      const k = bookKey(book);
+      if (user && book.bookId) {
+        const { error } = await supabase
+          .from('currently_reading')
+          .delete()
+          .eq('user_id', user.id)
+          .eq('book_id', book.bookId);
+        if (error) console.error('currently_reading delete failed', error);
+      }
+      setState((s) => ({
+        ...s,
+        currentlyReading: s.currentlyReading.filter((b) => bookKey(b) !== k),
+      }));
       await markAsRead(book, extra);
     },
-    [removeFromCurrentlyReading, markAsRead]
+    [user, markAsRead]
   );
 
   // v0.28: update how many pages the user has read for a currently-reading book.

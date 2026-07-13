@@ -439,6 +439,7 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
   async function handleSaveRating({ rating, notes, readAt }) {
     if (!libraryRow) return;
     await updateReadBook(libraryRow, { rating, notes, readAt });
+    setRatingEditorOpen(false);
   }
 
   async function handleFinishReading({ rating, notes, readAt }) {
@@ -686,8 +687,10 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
               <span className="bp-loading-note">
                     {t('bookPage.loadingBook')}
               </span>
-            ) : inLib ? (
-              // ── Finished — rating panel is the primary zone ──────────────
+            ) : (inLib && !inCurrentlyReading) ? (
+              // ── Finished — rating panel is the primary zone. A book that is
+              // ALSO being re-read falls through to the currently-reading
+              // branch below so progress stays visible/editable. ────────────
               <>
                 <div className="bp-panel">
                   <div className="bp-panel__head">
