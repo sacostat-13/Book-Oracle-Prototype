@@ -1,0 +1,519 @@
+// pages/_oracle-intro.scss — "The Reading" intro overlay + the constellation
+// thread that carries its motif down the Landing page.
+//
+// .oi is a fixed full-viewport overlay above the Landing (and its fixed nav).
+// Like .lp-root it pins its own --ro-* values — theme-dark's wine palette —
+// so the intro is brand-dark regardless of the visitor's stored app theme,
+// and hands off to the parchment page with a curtain lift on dismiss.
+//
+// Timeline phases are driven by classes from OracleIntro.jsx:
+//   .oi--dealt .oi--laid          cards dealt into the tarot line
+//   .oi--phase-1 … .oi--phase-5   scene state
+//   .oi__card.is-reading/.is-open/.is-burning   per-card judgment
+//   .oi--settled                  chevron shown, scroll continues
+//   .oi--leaving                  curtain lift, then unmount
+
+.oi {
+  // Wine-dark marketing palette (mirrors themes.css .theme-dark)
+  --oi-bg: #1A0E11;
+  --oi-bg-2: #241519;
+  --oi-surface: #2E1B20;
+  --oi-surface-2: #3B252B;
+  --oi-gold: #C9A84C;
+  --oi-gold-bright: #D8B85E;
+  --oi-gold-dim: rgba(201, 168, 76, 0.35);
+  --oi-cream: #F4EBD8;
+  --oi-cream-2: #DBCBB1;
+  --oi-wine: #6E1A22;
+  --oi-border: rgba(233, 222, 198, 0.22);
+  --oi-ease: cubic-bezier(0.22, 0.08, 0.18, 1);
+  --oi-card-w: clamp(96px, 22vmin, 190px);
+  --oi-slot: clamp(56px, 17vmin, 145px);
+
+  position: fixed;
+  inset: 0;
+  z-index: 1200; // above .lp-nav and the mobile sticky CTA
+  overflow: hidden;
+  background: radial-gradient(120% 90% at 50% 115%, var(--oi-bg-2) 0%, var(--oi-bg) 62%);
+  color: var(--oi-cream);
+  transition: transform 1.1s var(--oi-ease);
+
+  // curtain lift: the dark reading room rises to reveal the parchment page
+  &.oi--leaving { transform: translateY(-101%); }
+}
+
+.oi__table-glow {
+  position: absolute; inset: 0; z-index: 1; pointer-events: none;
+  background: radial-gradient(60% 45% at 50% 72%, rgba(216, 166, 86, 0.1) 0%, transparent 70%);
+  animation: oi-flicker 4.6s infinite;
+}
+@keyframes oi-flicker {
+  0%, 100% { filter: brightness(1); } 9% { filter: brightness(1.1); }
+  18% { filter: brightness(0.94); } 33% { filter: brightness(1.05); }
+  49% { filter: brightness(0.96); } 64% { filter: brightness(1.08); }
+  81% { filter: brightness(0.97); }
+}
+
+.oi__embers { position: absolute; inset: 0; z-index: 4; pointer-events: none; }
+
+.oi__vignette {
+  position: absolute; inset: 0; z-index: 6; pointer-events: none;
+  background: radial-gradient(95% 95% at 50% 45%, transparent 44%, rgba(10, 5, 6, 0.78) 100%);
+}
+
+// ── Center stage ──────────────────────────────────────────────────────────────
+.oi__stage {
+  position: absolute; inset: 0; z-index: 3;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: clamp(12px, 2.5vh, 26px);
+}
+
+// ── Sky: constellation → logo ─────────────────────────────────────────────────
+.oi__sky {
+  position: relative;
+  width: min(92vw, 560px);
+  height: clamp(120px, 24vh, 200px);
+  flex: none;
+}
+
+// v0.43.1: the constellation now SURVIVES into phase 5. Previously the
+// star/thread animations were bound to .oi--phase-4 only — setPhase(5)
+// removed that class, so the threads snapped back to dashoffset 400 and the
+// stars lost their wake animation (opacity 0): the freshly-drawn
+// constellation vanished the instant the verdict landed, reading as
+// "everything fades except the text". Every selector below now covers both
+// phases, and the container only dims (never hides) behind the logo.
+.oi__constellation {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  opacity: 0;
+  transition: opacity 1.8s var(--oi-ease);
+
+  .oi--phase-4 & { opacity: 1; }
+  .oi--phase-5 & { opacity: 0.5; transition-duration: 2.6s; }
+}
+
+.oi__star { fill: var(--oi-gold-bright); opacity: 0; }
+.oi__star-halo { fill: none; stroke: var(--oi-gold-dim); stroke-width: 0.5; opacity: 0; transition: opacity 1.2s ease; }
+.oi--phase-4 .oi__star,
+.oi--phase-5 .oi__star { animation: oi-star-wake 1s ease forwards, oi-twinkle 2.8s ease-in-out 1s infinite; }
+.oi--phase-4 .oi__star-halo,
+.oi--phase-5 .oi__star-halo { opacity: 0.6; }
+@keyframes oi-star-wake { to { opacity: 0.9; } }
+@keyframes oi-twinkle { 0%, 100% { opacity: 0.55; } 50% { opacity: 1; } }
+
+.oi__thread {
+  fill: none;
+  stroke: var(--oi-gold);
+  stroke-width: 0.8;
+  stroke-linecap: round;
+  stroke-dasharray: 400;
+  stroke-dashoffset: 400;
+  opacity: 0.85;
+  filter: drop-shadow(0 0 3px rgba(201, 168, 76, 0.6));
+
+  // v0.43.1: faster divination — 1.1s draw, tighter stagger (~2.6s total,
+  // was ~5.4s). Same values under both phases so the 4→5 class swap doesn't
+  // restart the animation.
+  .oi--phase-4 &, .oi--phase-5 & { animation: oi-divine 1.1s var(--oi-ease) forwards; }
+  .oi--phase-4 &:nth-of-type(1), .oi--phase-5 &:nth-of-type(1) { animation-delay: 0.3s; }
+  .oi--phase-4 &:nth-of-type(2), .oi--phase-5 &:nth-of-type(2) { animation-delay: 0.6s; }
+  .oi--phase-4 &:nth-of-type(3), .oi--phase-5 &:nth-of-type(3) { animation-delay: 0.9s; }
+  .oi--phase-4 &:nth-of-type(4), .oi--phase-5 &:nth-of-type(4) { animation-delay: 1.2s; }
+  .oi--phase-4 &:nth-of-type(5), .oi--phase-5 &:nth-of-type(5) { animation-delay: 1.5s; }
+}
+@keyframes oi-divine { to { stroke-dashoffset: 0; } }
+
+.oi__logo-form {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: clamp(5px, 1vh, 10px);
+  opacity: 0;
+  transform: translateY(14px);
+  filter: blur(10px);
+  transition: opacity 2.4s var(--oi-ease) 0.9s,
+              transform 2.4s var(--oi-ease) 0.9s,
+              filter 2.4s var(--oi-ease) 0.9s;
+
+  .oi--phase-5 & { opacity: 1; transform: translateY(0); filter: blur(0); }
+
+  img {
+    height: clamp(52px, 11vmin, 92px);
+    width: auto;
+    filter: drop-shadow(0 0 22px rgba(201, 168, 76, 0.35));
+  }
+}
+
+.oi__wordmark {
+  font-family: var(--ro-font-display);
+  font-size: clamp(24px, 4.4vmin, 38px);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--oi-cream);
+
+  em { font-style: normal; color: var(--oi-gold); }
+}
+
+.oi__rising-thread {
+  position: absolute;
+  left: 50%; bottom: -8%;
+  width: 1px; height: 0;
+  background: linear-gradient(to top, transparent, var(--oi-gold-bright));
+  box-shadow: 0 0 8px rgba(216, 184, 94, 0.7);
+  opacity: 0;
+
+  .oi--phase-5 & { animation: oi-rise 1.8s var(--oi-ease) forwards; }
+}
+@keyframes oi-rise {
+  0% { opacity: 0; height: 0; }
+  25% { opacity: 1; }
+  70% { height: 105%; opacity: 1; }
+  100% { height: 105%; opacity: 0; }
+}
+
+// ── The tarot line ────────────────────────────────────────────────────────────
+.oi__spread {
+  position: relative;
+  width: var(--oi-card-w);
+  height: calc(var(--oi-card-w) * 1.5);
+  flex: none;
+  perspective: 1200px;
+}
+
+.oi__card {
+  position: absolute; inset: 0;
+  transition: transform 1.5s var(--oi-ease), opacity 1s var(--oi-ease);
+  transform: translateY(7vh);
+  opacity: 0;
+
+  .oi--dealt & { opacity: 1; }
+  .oi--dealt &:nth-child(1) { transition-delay: 0s; }
+  .oi--dealt &:nth-child(2) { transition-delay: 0.4s; }
+  .oi--dealt &:nth-child(3) { transition-delay: 0.8s; }
+  .oi--dealt &:nth-child(4) { transition-delay: 1.2s; }
+  .oi--dealt &:nth-child(5) { transition-delay: 1.6s; }
+
+  // tarot line slots, with a real spread's slight crookedness
+  .oi--laid &:nth-child(1) { transform: translateX(calc(var(--oi-slot) * -2)) rotate(-2.5deg); }
+  .oi--laid &:nth-child(2) { transform: translateX(calc(var(--oi-slot) * -1)) rotate(1.5deg); }
+  .oi--laid &:nth-child(3) { transform: translateX(0) rotate(0deg); }
+  .oi--laid &:nth-child(4) { transform: translateX(var(--oi-slot)) rotate(-1.5deg); }
+  .oi--laid &:nth-child(5) { transform: translateX(calc(var(--oi-slot) * 2)) rotate(2.5deg); }
+
+  &.is-reading { z-index: 8; }
+  &.is-reading .oi__card-body { transform: translateY(-2.5vh) scale(1.12); }
+  &.is-burning .oi__card-body { animation: oi-to-embers 1.4s var(--oi-ease) forwards; }
+
+  // the fated card grows to center stage once alone
+  .oi--phase-4 &.oi__card--fated { transform: translateX(0) rotate(0) scale(1.12); z-index: 8; }
+  .oi--phase-5 &.oi__card--fated { transform: translateX(0) rotate(0) scale(1.18); transition-duration: 2.4s; z-index: 8; }
+}
+
+.oi__card-body {
+  position: absolute; inset: 0;
+  transition: transform 0.9s var(--oi-ease);
+  transform-style: preserve-3d;
+}
+
+.oi__card-inner {
+  position: absolute; inset: 0;
+  transform-style: preserve-3d;
+  transition: transform 1.2s var(--oi-ease);
+
+  .oi__card.is-open & { transform: rotateY(180deg); }
+  .oi__card--fated.is-open & { transition-duration: 1.8s; }
+}
+
+@keyframes oi-to-embers {
+  0% { opacity: 1; filter: blur(0) brightness(1); }
+  35% { filter: blur(1px) brightness(1.6); }
+  100% { opacity: 0; transform: translateY(-11vh) scale(0.9); filter: blur(10px) brightness(2.4); }
+}
+
+.oi__face {
+  position: absolute; inset: 0;
+  border-radius: 10px;
+  backface-visibility: hidden;
+  overflow: hidden;
+}
+
+.oi__face--back {
+  background:
+    radial-gradient(70% 55% at 50% 42%, rgba(201, 168, 76, 0.12), transparent 70%),
+    linear-gradient(160deg, var(--oi-surface-2), var(--oi-surface) 55%, #1E1014);
+  border: 1px solid var(--oi-gold-dim);
+  box-shadow: inset 0 0 0 4px rgba(26, 14, 17, 0.6), inset 0 0 0 5px var(--oi-gold-dim),
+              0 14px 36px rgba(0, 0, 0, 0.75);
+  display: grid; place-items: center;
+
+  img {
+    width: 62%;
+    opacity: 0.9;
+    filter: drop-shadow(0 0 10px rgba(201, 168, 76, 0.3));
+  }
+
+  &::after {
+    content: '✶                          ✶';
+    position: absolute; inset: 8px 10px auto 10px;
+    display: flex; justify-content: space-between;
+    font-size: 10px; color: var(--oi-gold-dim);
+  }
+}
+
+.oi__face--front { transform: rotateY(180deg); }
+
+// rejected fronts: bright, commercial, charmless on purpose
+.oi__face--reject {
+  background: linear-gradient(165deg, #E7D9BC, #CBBC98 70%);
+  border: 1px solid rgba(0, 0, 0, 0.35);
+  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.75);
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 10%;
+  padding: 14% 8%;
+  text-align: center;
+}
+
+.oi__reject-title {
+  font-family: var(--ro-font-mono);
+  font-weight: 600;
+  font-size: clamp(9px, 1.8vmin, 13px);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #2A2014;
+  line-height: 1.5;
+}
+
+.oi__reject-ribbon {
+  position: absolute;
+  top: 9%; left: -32%;
+  width: 100%;
+  transform: rotate(-32deg);
+  background: var(--oi-wine);
+  color: var(--oi-cream);
+  font-family: var(--ro-font-mono);
+  font-weight: 600;
+  font-size: clamp(7px, 1.3vmin, 9px);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  text-align: center;
+  padding: 0.3em 0;
+}
+
+.oi__reject-stars {
+  font-size: clamp(9px, 1.6vmin, 12px);
+  color: #7A6C4D;
+  letter-spacing: 0.28em;
+}
+
+// the fated front: wine leather and gold, alive
+.oi__face--pick {
+  background:
+    radial-gradient(80% 55% at 50% 30%, rgba(216, 184, 94, 0.14), transparent 70%),
+    linear-gradient(160deg, #3B252B, #2A171C 60%, #1E1014);
+  border: 1px solid var(--oi-gold);
+  box-shadow: inset 0 0 0 4px rgba(26, 14, 17, 0.6), inset 0 0 0 5px var(--oi-gold-dim),
+              0 14px 36px rgba(0, 0, 0, 0.75), 0 0 40px rgba(201, 168, 76, 0.2);
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 8%;
+  padding: 12% 8%;
+  text-align: center;
+}
+
+.oi__pick-glyph {
+  font-size: clamp(26px, 6vmin, 48px);
+  color: var(--oi-gold-bright);
+  text-shadow: 0 0 20px rgba(216, 184, 94, 0.55);
+  line-height: 1;
+}
+
+.oi__pick-title {
+  font-family: var(--ro-font-display);
+  font-style: italic;
+  font-size: clamp(12px, 2.2vmin, 17px);
+  color: var(--oi-cream);
+  letter-spacing: 0.05em;
+}
+
+.oi__pick-match {
+  font-family: var(--ro-font-mono);
+  font-weight: 600;
+  font-size: clamp(8px, 1.6vmin, 12px);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #241519;
+  background: linear-gradient(150deg, var(--oi-gold-bright), var(--oi-gold));
+  padding: 5px 13px;
+  border-radius: 4px;
+
+  .oi--phase-5 & { animation: oi-badge-pulse 2.6s ease-in-out 1s infinite; }
+}
+@keyframes oi-badge-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(201, 168, 76, 0.5); }
+  50% { box-shadow: 0 0 22px 4px rgba(201, 168, 76, 0.35); }
+}
+
+.oi__orbit {
+  position: absolute; inset: -14%;
+  opacity: 0;
+  transition: opacity 1.8s var(--oi-ease);
+  pointer-events: none;
+
+  .oi--phase-5 & { opacity: 0.7; animation: oi-orbit-spin 30s linear infinite; }
+
+  span {
+    position: absolute;
+    color: var(--oi-gold-dim);
+    font-size: clamp(10px, 2vmin, 15px);
+
+    &:nth-child(1) { top: -6%; left: 50%; }
+    &:nth-child(2) { top: 50%; right: -8%; }
+    &:nth-child(3) { bottom: -6%; left: 50%; }
+    &:nth-child(4) { top: 50%; left: -8%; }
+  }
+}
+@keyframes oi-orbit-spin { to { transform: rotate(360deg); } }
+
+// ── The Oracle's voice ────────────────────────────────────────────────────────
+.oi__line {
+  min-height: 2.6em;
+  display: flex; align-items: center; justify-content: center;
+  text-align: center;
+  font-family: var(--ro-font-display);
+  font-style: italic;
+  font-size: clamp(18px, 3.2vmin, 27px);
+  letter-spacing: 0.04em;
+  width: min(92vw, 640px);
+  color: var(--oi-cream);
+  text-shadow: 0 0 24px rgba(201, 168, 76, 0.22);
+  flex: none;
+  margin: 0;
+
+  span {
+    opacity: 0;
+    transform: translateY(10px);
+    transition: opacity 1.8s var(--oi-ease), transform 1.8s var(--oi-ease);
+    display: inline-block;
+
+    &.is-on { opacity: 1; transform: translateY(0); }
+    &.is-on.is-tagline {
+      font-size: clamp(20px, 3.6vmin, 30px);
+      color: var(--oi-gold-bright);
+    }
+  }
+}
+
+// ── Continue chevron + skip ───────────────────────────────────────────────────
+.oi__continue {
+  position: absolute;
+  left: 50%; bottom: clamp(18px, 4vh, 40px);
+  transform: translateX(-50%) translateY(10px);
+  z-index: 10;
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  background: none; border: none; cursor: pointer;
+  color: var(--oi-gold-bright);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 1.4s var(--oi-ease), transform 1.4s var(--oi-ease);
+
+  .oi--settled & {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateX(-50%) translateY(0);
+
+    svg { animation: oi-bob 2.4s ease-in-out infinite; }
+  }
+
+  &:focus-visible { outline: 2px solid var(--oi-gold-bright); outline-offset: 4px; border-radius: 8px; }
+}
+@keyframes oi-bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(6px); }
+}
+
+.oi__continue-label {
+  font-family: var(--ro-font-mono);
+  font-weight: 600;
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--oi-cream-2);
+}
+
+.oi__skip {
+  position: absolute;
+  right: 18px; bottom: 18px;
+  z-index: 10;
+  font-family: var(--ro-font-mono);
+  font-weight: 600;
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--oi-cream-2);
+  background: rgba(244, 235, 216, 0.04);
+  border: 1px solid var(--oi-border);
+  border-radius: 6px;
+  padding: 8px 14px;
+  cursor: pointer;
+  transition: color 0.3s, border-color 0.3s;
+
+  &:hover, &:focus-visible { color: var(--oi-gold-bright); border-color: var(--oi-gold); outline: none; }
+}
+
+// Reduced motion: Landing.jsx never mounts the intro in that case, but if it
+// ever is mounted, strip the theatrics.
+@media (prefers-reduced-motion: reduce) {
+  .oi *, .oi *::before, .oi *::after { animation: none !important; transition: none !important; }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// The constellation thread — the intro's divination motif carried down the
+// parchment page. A gold line drawn by scroll progress in the left gutter,
+// with a star at each section that lights as it enters the reading position.
+// Wide screens only: below the `wide` breakpoint the gutter disappears and
+// the sections' ✦ eyebrows carry the motif alone.
+// ══════════════════════════════════════════════════════════════════════════════
+.lp-root { position: relative; }
+
+.lp-thread {
+  position: absolute;
+  top: 0; bottom: 0;
+  left: max(20px, calc((100vw - #{$ro-rail-max}) / 2 - 64px));
+  width: 24px;
+  pointer-events: none;
+  z-index: 1;
+  display: none;
+
+  @include ro-up(wide) { display: block; }
+
+  @media (prefers-reduced-motion: reduce) { display: none; }
+
+  svg { width: 100%; height: 100%; overflow: visible; }
+}
+
+.lp-thread__line {
+  fill: none;
+  stroke: rgba(138, 106, 36, 0.38); // --ro-gold-text on parchment, quiet
+  stroke-width: 1.2;
+  stroke-linecap: round;
+}
+
+.lp-thread__star {
+  fill: #BFA04A;
+  opacity: 0.25;
+  transition: opacity 0.8s ease, r 0.8s ease;
+
+  &.is-lit { opacity: 1; }
+}
+
+.lp-thread__halo {
+  fill: none;
+  stroke: rgba(191, 160, 74, 0.4);
+  stroke-width: 0.75;
+  opacity: 0;
+  transition: opacity 0.8s ease;
+
+  .lp-thread__node.is-lit & { opacity: 1; }
+}

@@ -445,6 +445,7 @@
     "seriesOngoing": "En curso",
     "seriesComplete": "Completa",
     "loadingLibrary": "Cargando tu biblioteca…",
+    "loadingBook": "Cargando libro...",
     "signInToAdd": "Iniciar sesión para agregar ↗",
     "verified": "☩ Verificado",
     "inWishlistShort": "En tu lista",
@@ -742,6 +743,19 @@
     "save": "Guardar progreso ❦",
     "saveFinished": "Guardar — ¡terminaste! ❦",
     "saving": "Guardando…"
+  },
+  "memory": {
+    "sectionTitle": "Tu memoria de lectura",
+    "privateChip": "Privado",
+    "lastTime": "La última vez",
+    "pageAt": "pág. {page}",
+    "finishedTag": "al terminarlo",
+    "captureLink": "Dejale una nota a tu yo del futuro",
+    "captureLabel": "Para tu yo del futuro",
+    "captureOptional": "(opcional · privado)",
+    "capturePlaceholder": "¿Dónde estás — y qué se te quedó?",
+    "delete": "Borrar este recuerdo",
+    "deleteConfirm": "¿Borrás este recuerdo? No se puede deshacer."
   },
   "report": {
     "trigger": "⚑ Reportar un error",
@@ -1170,7 +1184,7 @@
     "roadmapHeading": "Hacia dónde va",
     "roadmapBody": "El Oráculo no busca convertirse en Goodreads. El destino es algo con más carácter: una compañera de lectura que conoce tu gusto a fondo, ayuda a tu grupo a leer juntos, y usa la IA donde realmente suma — no en todas partes.",
     "feedbackHeading": "Contame qué está roto",
-    "feedbackBody": "Esto es un prototipo con personas probándolo de verdad, y los comentarios moldean lo que se construye después. Si algo se siente raro, si falta algo, o si algo te resulta genuinamente útil — decímelo.",
+    "feedbackBody": "Si hay algo que no funciona o alguna mejora que te gustaria ver, mandanos un mensaje a support@thebooksoracle.com",
     "roadmapTierNearHeading": "Próximamente",
     "roadmapTierNear1Title": "Resumen del Oráculo al cerrar sesión",
     "roadmapTierNear1Body": "Cuando termina una sesión, el Oráculo genera un resumen de la discusión del grupo, el sentimiento general sobre el libro y una sugerencia de próxima lectura. Compartible como página.",

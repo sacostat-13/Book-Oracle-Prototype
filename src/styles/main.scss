@@ -1,41 +1,42 @@
 // main.scss — The Books Oracle
-// Single entry point. @import for reliable Vite HMR across all partials.
+// Single entry point. Migrated to @use (Dart Sass module system); cross-file
+// @extend targets are wired as explicit @use dependencies in each partial.
 // Order: tokens → themes → reset/type/global → layout → components → pages.
 
 // ── Foundation ────────────────────────────────────────────────────────────────
-@import 'tokens';
-@import 'themes';
-@import 'reset';
-@import 'typography';
-@import 'global';
+@use 'tokens';
+@use 'themes';
+@use 'reset';
+@use 'typography';
+@use 'global';
 
 // ── Layout ────────────────────────────────────────────────────────────────────
-@import 'layout/shell';
-@import 'layout/nav';
-@import 'layout/footer';
+@use 'layout/shell';
+@use 'layout/nav';
+@use 'layout/footer';
 
 // ── Components ────────────────────────────────────────────────────────────────
-@import 'components/buttons';
-@import 'components/cards';
-@import 'components/badges';
-@import 'components/forms';
-@import 'components/rating';
-@import 'components/progress';
-@import 'components/avatars';
-@import 'components/modal';
-@import 'components/onboarding';
-@import 'components/corner-brackets';
-@import 'components/book-loader';
-@import 'components/share';
+@use 'components/buttons';
+@use 'components/cards';
+@use 'components/badges';
+@use 'components/forms';
+@use 'components/rating';
+@use 'components/progress';
+@use 'components/avatars';
+@use 'components/modal';
+@use 'components/onboarding';
+@use 'components/corner-brackets';
+@use 'components/book-loader';
+@use 'components/share';
 
 // ── Pages ─────────────────────────────────────────────────────────────────────
-@import 'pages/dashboard';
-@import 'pages/book-pages';
-@import 'pages/bookpage-extensions';
-@import 'pages/profile-extensions';
-@import 'pages/social';
-@import 'pages/clubs';
-@import 'pages/misc';
-@import 'pages/landing';
-@import 'pages/oracle-intro';
+@use 'pages/dashboard';
+@use 'pages/book-pages';
+@use 'pages/bookpage-extensions';
+@use 'pages/profile-extensions';
+@use 'pages/social';
+@use 'pages/clubs';
+@use 'pages/misc';
+@use 'pages/landing';
+@use 'pages/oracle-intro';
 

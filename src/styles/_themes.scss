@@ -1,7 +1,7 @@
 /* ============================================================
    The Books Oracle — Theme Custom Properties
-   Import once, globally (e.g. top of src/styles/main.scss):
-       @import './themes.css';
+   Loaded once, globally, via src/styles/main.scss:
+       @use 'themes';
    Then set a theme class on <body> (default = theme-dark):
        <body class="theme-dark">       (Dark Academia / dark wine)
        <body class="theme-parchment">  (warm cream)

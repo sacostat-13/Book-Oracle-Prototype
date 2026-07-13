@@ -445,6 +445,7 @@
     "seriesOngoing": "Ongoing",
     "seriesComplete": "Complete",
     "loadingLibrary": "Loading your library…",
+    "loadingBook": "Loading book information...",
     "signInToAdd": "Sign in to add to your library ↗",
     "verified": "☩ Verified",
     "inWishlistShort": "In wishlist",
@@ -742,6 +743,19 @@
     "save": "Save progress ❦",
     "saveFinished": "Save — finished! ❦",
     "saving": "Saving…"
+  },
+  "memory": {
+    "sectionTitle": "Your reading memory",
+    "privateChip": "Private",
+    "lastTime": "Last time",
+    "pageAt": "p. {page}",
+    "finishedTag": "on finishing",
+    "captureLink": "Leave a note for your future self",
+    "captureLabel": "For your future self",
+    "captureOptional": "(optional · private)",
+    "capturePlaceholder": "Where are you — and what's staying with you?",
+    "delete": "Delete this memory",
+    "deleteConfirm": "Delete this memory? This can't be undone."
   },
   "report": {
     "trigger": "⚑ Report an issue",
@@ -1170,7 +1184,7 @@
     "roadmapHeading": "Where it's going",
     "roadmapBody": "The Oracle isn't trying to become Goodreads. The destination is something more opinionated: a reading companion that knows your taste deeply, helps your group read together, and uses AI where it actually adds value — not everywhere.",
     "feedbackHeading": "Tell me what's broken",
-    "feedbackBody": "This is a prototype with real testers, and feedback shapes what gets built next. If something feels off, missing, or genuinely useful — say so.",
+    "feedbackBody": "If there's anything broken or any new features you would like to see, send us a message at support@thebooksoracle.com",
     "roadmapTierNearHeading": "Coming soon",
     "roadmapTierNear1Title": "Oracle session recap",
     "roadmapTierNear1Body": "When a session ends, the Oracle generates a short summary of the group discussion, overall sentiment on the book, and a suggested next read. Shareable as a page.",

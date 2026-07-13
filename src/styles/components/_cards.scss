@@ -1,3 +1,5 @@
+@use "../tokens";
+
 // components/_cards.scss — The Books Oracle
 // Three card archetypes, reused everywhere:
 //   .book-card   feature/recommendation card — gold border, surface-3, the match quote
@@ -17,7 +19,7 @@
   display: flex;
   gap: var(--ro-space-6);
 
-  @include ro-down(tablet) {
+  @include tokens.ro-down(tablet) {
     flex-flow: column;
   }
 }
@@ -41,7 +43,7 @@
   justify-content: space-between;
   gap: var(--ro-space-3);
 
-  @include ro-down(tablet) {
+  @include tokens.ro-down(tablet) {
     flex-flow: column;
 
     .book-card__badges {
@@ -76,12 +78,12 @@
 }
 
 .book-card__title {
-  @include ro-type(section);
+  @include tokens.ro-type(section);
   color: var(--ro-text);
 }
 
 .book-card__author {
-  @include ro-type(body);
+  @include tokens.ro-type(body);
   font-weight: 600;
   color: var(--ro-gold-text);
   margin-top: 6px;
@@ -177,7 +179,7 @@
 }
 
 .list-row__meta {
-  @include ro-type(caption);
+  @include tokens.ro-type(caption);
   color: var(--ro-muted);
   margin-top: 3px;
 }

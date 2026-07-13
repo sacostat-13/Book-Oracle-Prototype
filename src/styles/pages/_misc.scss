@@ -1,3 +1,8 @@
+@use "../tokens";
+@use "dashboard"; // dependency for cross-file @extend
+@use "social"; // dependency for cross-file @extend
+@use "clubs"; // dependency for cross-file @extend
+
 // pages/_misc.scss — The Books Oracle R7
 // Onboarding, Plans, Legal pages, About, and remaining components.
 // Misc modals: Announcement, ReleaseNotes, ProgressUpdate, AddToList, BulkImport.
@@ -394,6 +399,166 @@
   color: var(--ro-muted);
 }
 
+// Dedicated classes below replace styles previously borrowed from unrelated
+// pages (.about-section__body, .lv-hl, .pf-error, .ldetail-scroll,
+// .session-form__book-wrap, .cat-auto__tag) so restyling those pages can't
+// silently break the import flow.
+
+// Summary line above the results list ("N ready · N already have · …")
+.bulk-summary {
+  font-family: var(--ro-font-body);
+  color: var(--ro-muted);
+  line-height: 1.65;
+}
+
+.bulk-hl {
+  color: var(--ro-gold-text);
+}
+
+.bulk-hl-muted {
+  opacity: .55;
+}
+
+.bulk-error {
+  font-size: 0.75rem;
+  color: var(--ro-error);
+  font-style: italic;
+  margin-top: 4px;
+
+  &--inline {
+    display: inline;
+    margin-top: 0;
+  }
+}
+
+// Scrollable results list
+.bulk-result-list {
+  max-height: 50vh;
+  overflow-y: auto;
+  border: 1px solid var(--ro-border);
+  border-radius: var(--ro-radius-sm);
+  padding: 0 0.75rem;
+}
+
+// Title/meta wrapper inside a result row
+.bulk-result-info {
+  flex: 1;
+  min-width: 0;
+}
+
+// Status tag on each result row (Found / Missing / …); color set inline per status
+.bulk-status {
+  font-family: var(--ro-font-mono);
+  font-size: 0.65rem;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  flex-shrink: 0;
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// READING MEMORY  (v0.44 — docs/reading-memory-v1-spec.md)
+// Quiet by design: recall block reads like a margin note, capture stays
+// collapsed, the thread on BookPage is a private ledger.
+// ══════════════════════════════════════════════════════════════════════════════
+
+// "Last time — p. 145, Jun 12: …" block at the top of ProgressUpdateModal
+.memory-recall {
+  background: var(--ro-surface-2);
+  border-left: 2px solid color-mix(in srgb, var(--ro-gold) 45%, transparent);
+  border-radius: var(--ro-radius-sm);
+  padding: 0.6rem 0.85rem;
+  margin-bottom: 1rem;
+}
+
+.memory-recall__meta {
+  font-family: var(--ro-font-mono);
+  font-size: 0.65rem;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--ro-muted);
+  margin-bottom: 4px;
+}
+
+.memory-recall__body {
+  font-family: var(--ro-font-display);
+  font-style: italic;
+  font-size: 0.95rem;
+  line-height: 1.45;
+  color: var(--ro-text-2);
+}
+
+// Expanded capture area in ProgressUpdateModal
+.memory-capture {
+  margin-top: 0.5rem;
+
+  .textarea {
+    margin-top: 4px;
+  }
+}
+
+// BookPage thread
+.memory-thread {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.memory-entry {
+  border-left: 2px solid var(--ro-border-strong);
+  padding-left: 0.85rem;
+}
+
+.memory-entry__meta {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--ro-font-mono);
+  font-size: 0.65rem;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--ro-dim);
+  margin-bottom: 3px;
+}
+
+.memory-entry__delete {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--ro-muted);
+  font-size: 0.9rem;
+  line-height: 1;
+  padding: 0 4px;
+  opacity: .35;
+  margin-left: auto;
+
+  &:hover {
+    opacity: 1;
+    color: var(--ro-error);
+  }
+}
+
+.memory-entry__body {
+  font-family: var(--ro-font-display);
+  font-style: italic;
+  font-size: 0.98rem;
+  line-height: 1.5;
+  color: var(--ro-text-2);
+  white-space: pre-wrap;
+}
+
+.memory-private-chip {
+  font-family: var(--ro-font-mono);
+  font-size: 0.6rem;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--ro-muted);
+  border: 1px solid var(--ro-border-strong);
+  border-radius: var(--ro-radius-pill, 999px);
+  padding: 1px 7px;
+  margin-left: 8px;
+  vertical-align: 1px;
+}
+
 // ══════════════════════════════════════════════════════════════════════════════
 // CATEGORY AUTOCOMPLETE
 // ══════════════════════════════════════════════════════════════════════════════
@@ -617,7 +782,7 @@
 }
 
 .about-feature__sub-label {
-  @include ro-type(overline);
+  @include tokens.ro-type(overline);
   color: var(--ro-gold);
   margin-bottom: 4px;
   font-size: 0.8rem;
@@ -636,7 +801,7 @@
 }
 
 .about-roadmap-tier__heading {
-  @include ro-type(overline);
+  @include tokens.ro-type(overline);
   color: var(--ro-gold);
   margin-bottom: var(--ro-space-3);
   font-size: unset;

@@ -1,3 +1,5 @@
+@use "../tokens";
+
 // components/_onboarding.scss — The Books Oracle
 // Full-screen centered card used by the sign-in gate (App.jsx) and the
 // three-step onboarding flow (views/Onboarding.jsx). Matches the DS
@@ -52,7 +54,7 @@
 }
 
 .onb-eyebrow {
-  @include ro-type(overline);
+  @include tokens.ro-type(overline);
   color: var(--ro-gold);
   text-align: center;
 }
@@ -112,7 +114,7 @@
   gap: 10px;
   margin-top: 22px;
 
-  @include ro-up(tablet) {
+  @include tokens.ro-up(tablet) {
     grid-template-columns: 1fr 1fr;
   }
 }

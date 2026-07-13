@@ -1,3 +1,5 @@
+@use "sass:list";
+@use "sass:map";
 // ============================================================
 //  The Books Oracle — Design Tokens
 //  Drop into src/styles/ and @use it from main.scss:
@@ -40,7 +42,7 @@ $ro-type: (
 // ---- 8-point spacing scale ---------------------------------
 $ro-space: (
   0: 0,    1: 4px,  2: 8px,  3: 12px, 4: 16px,
-  6: 24px, 8: 32px, 12: 48px, 16: 64px,
+  5: 20px, 6: 24px, 8: 32px, 12: 48px, 16: 64px,
 );
 
 // ---- Radius scale ------------------------------------------
@@ -73,11 +75,11 @@ $ro-shadow-light: 0 16px 36px rgba(90, 70, 30, 0.18);
 
 // ---- Helper: emit a type style -----------------------------
 @mixin ro-type($name) {
-  $t: map-get($ro-type, $name);
-  font-family: nth($t, 4);
-  font-size:   nth($t, 1);
-  line-height: nth($t, 2);
-  font-weight: nth($t, 3);
+  $t: map.get($ro-type, $name);
+  font-family: list.nth($t, 4);
+  font-size:   list.nth($t, 1);
+  line-height: list.nth($t, 2);
+  font-weight: list.nth($t, 3);
   @if $name == overline or $name == label {
     letter-spacing: .16em;
     text-transform: uppercase;
@@ -90,11 +92,11 @@ $ro-shadow-light: 0 16px 36px rgba(90, 70, 30, 0.18);
 // ---- Helper: min-width media query at a named breakpoint ---
 //    .sidebar { display: none; @include ro-up(desktop) { display: flex; } }
 @mixin ro-up($name) {
-  @media (min-width: map-get($ro-bp, $name)) { @content; }
+  @media (min-width: map.get($ro-bp, $name)) { @content; }
 }
 
 // ---- Helper: max-width media query (mobile-down) -----------
 //    .desktop-only { @include ro-down(desktop) { display: none; } }
 @mixin ro-down($name) {
-  @media (max-width: (map-get($ro-bp, $name) - 1px)) { @content; }
+  @media (max-width: (map.get($ro-bp, $name) - 1px)) { @content; }
 }

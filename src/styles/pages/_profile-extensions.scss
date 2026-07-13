@@ -1,3 +1,7 @@
+@use "../components/buttons"; // dependency for cross-file @extend
+@use "../components/forms"; // dependency for cross-file @extend
+@use "book-pages"; // dependency for cross-file @extend
+@use "social"; // dependency for cross-file @extend
 // pages/_profile-extensions.scss — The Books Oracle
 // Supplemental partial: fills the *genuine* gaps found while auditing
 // Profile.jsx and BookPage.jsx against the existing design system.

@@ -1,3 +1,6 @@
+@use "../tokens";
+@use "dashboard"; // dependency for cross-file @extend
+
 // pages/_clubs.scss — The Books Oracle R6
 // Book Clubs, Sessions, Comments, Polls.
 // DS pattern: comments. Club/session patterns composed from base components.
@@ -158,11 +161,11 @@
   grid-template-columns: repeat(2, 1fr);
   gap: 18px;
 
-  @include ro-up(desktop) {
+  @include tokens.ro-up(desktop) {
     grid-template-columns: repeat(3, 1fr);
   }
 
-  @include ro-down(tablet) {
+  @include tokens.ro-down(tablet) {
     grid-template-columns: 1fr;
   }
 }
@@ -425,7 +428,7 @@
   color: var(--ro-muted);
   padding: 2rem 0;
 
-  @include ro-down(tablet) {
+  @include tokens.ro-down(tablet) {
     padding-top: 0px;
   }
 }
@@ -437,7 +440,7 @@
   gap: 1rem;
   margin-top: var(--ro-space-6);
 
-  @include ro-down(tablet) {
+  @include tokens.ro-down(tablet) {
     flex-flow: column;
     gap: 0;
   }
@@ -705,7 +708,7 @@
   align-items: start;
   margin-bottom: 2rem;
 
-  @include ro-down(mobile) {
+  @include tokens.ro-down(mobile) {
     grid-template-columns: 1fr;
   }
 }
@@ -1082,7 +1085,7 @@
     resize: none;
   }
 
-  @include ro-down(tablet) {
+  @include tokens.ro-down(tablet) {
     flex-flow: column;
   }
 }

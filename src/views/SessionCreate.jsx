@@ -8,16 +8,9 @@ import { supabase } from '../lib/supabase';
 import { lookupByTitle } from '../lib/bookLookup';
 import BookCover from '../components/BookCover';
 
-const inputStyle = {
-  width: '100%', boxSizing: 'border-box',
-  background: 'rgba(176, 140, 63, 0.04)', border: '1px solid rgba(176, 140, 63, 0.25)',
-  borderRadius: 'var(--ro-radius-sm)', padding: '0.6rem 0.85rem', color: 'var(--paper)',
-  fontFamily: 'var(--ro-font-display)', fontSize: '1.05rem',
-};
-const labelStyle = {
-  display: 'block', fontFamily: 'var(--ro-font-mono)', fontSize: '0.72rem',
-  letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--gilt)', marginBottom: '0.4rem',
-};
+// v0.31 note: inputStyle/labelStyle objects (built from dead --paper/--gilt
+// tokens) removed in favor of the real .field-label / .input classes, matching
+// the same fix applied to EditSessionModal in SessionDetail.jsx.
 
 function BookThumb({ book, size = 28 }) {
   return (
@@ -105,7 +98,7 @@ export default function SessionCreate() {
 
       <div className="session-form">
         <div>
-          <label style={labelStyle}>{t('sessions.fieldBook')}</label>
+          <label className="field-label">{t('sessions.fieldBook')}</label>
           {selectedBook ? (
             <div className="session-form__book-row">
               <BookThumb book={selectedBook} size={32} />
@@ -117,7 +110,7 @@ export default function SessionCreate() {
             </div>
           ) : (
             <div className="session-form__dropdown">
-              <input style={inputStyle} placeholder={t('sessions.fieldBookPlaceholder')} value={bookQuery} onChange={(e) => { setBookQuery(e.target.value); searchBooks(e.target.value); }} autoFocus />
+              <input className="input" placeholder={t('sessions.fieldBookPlaceholder')} value={bookQuery} onChange={(e) => { setBookQuery(e.target.value); searchBooks(e.target.value); }} autoFocus />
               {(bookResults.length > 0 || searching) && (
                 <div className="session-form__search-results">
                   {searching && <div className="ldetail-empty">{t('sessions.searching')}</div>}
@@ -142,17 +135,17 @@ export default function SessionCreate() {
 
         <div className="db-stats-grid">
           <div>
-            <label style={labelStyle}>{t('sessions.fieldStarts')}</label>
-            <input type="date" style={inputStyle} value={startsAt} onChange={(e) => setStartsAt(e.target.value)} />
+            <label className="field-label">{t('sessions.fieldStarts')}</label>
+            <input type="date" className="input" value={startsAt} onChange={(e) => setStartsAt(e.target.value)} />
           </div>
           <div>
-            <label style={labelStyle}>{t('sessions.fieldEnds')}</label>
-            <input type="date" style={inputStyle} value={endsAt} min={startsAt} onChange={(e) => setEndsAt(e.target.value)} />
+            <label className="field-label">{t('sessions.fieldEnds')}</label>
+            <input type="date" className="input" value={endsAt} min={startsAt} onChange={(e) => setEndsAt(e.target.value)} />
           </div>
         </div>
 
         <div>
-          <label style={labelStyle}>
+          <label className="field-label">
             {t('sessions.fieldNotes')}{' '}
             <span className="club-form__optional">{t('sessions.fieldNotesOptional')}</span>
           </label>

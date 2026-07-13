@@ -150,6 +150,8 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
     updateReadingProgress,
     removeFromCurrentlyReading,
     startReading,
+    memoriesForBook,
+    deleteReadingMemory,
   } = useData();
   const { route, go } = useRouter();
   const t = useT();
@@ -377,7 +379,7 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
             <div className="bp-actions">
               {authPending || (isAuthed && !dataReady) ? (
                 <span className="bp-loading-note">
-                  {t('bookPage.loadingLibrary')}
+                  {t('bookPage.loadingBook')}
                 </span>
               ) : !isAuthed ? (
                 <a href={window.location.pathname} className="btn-secondary">
@@ -420,6 +422,9 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
   const currentlyReadingRow = inCurrentlyReading ? state.currentlyReading.find((b) => bookKey(b) === k) : null;
   const liveRating = libraryRow?.rating ?? display.rating ?? null;
   const liveNotes = libraryRow?.notes ?? null;
+  // v0.44: memory thread — prefer the state rows (they carry bookId when the
+  // book exists on the server) so the lookup key matches the capture key.
+  const bookMemories = memoriesForBook(currentlyReadingRow || libraryRow || display);
 
   // v0.39: reading-progress fields, same derivation as CurrentlyReading.jsx
   const pagesRead = currentlyReadingRow?.pagesRead ?? 0;
@@ -679,7 +684,7 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
             ) : !dataReady ? (
               // Signed in but data still loading
               <span className="bp-loading-note">
-                {t('bookPage.loadingLibrary')}
+                    {t('bookPage.loadingBook')}
               </span>
             ) : inLib ? (
               // ── Finished — rating panel is the primary zone ──────────────
@@ -866,6 +871,42 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
           <div className="bp-section__label">{t('bookPage.yourNotes')}</div>
           <div className="bp-notes">
             {liveNotes}
+          </div>
+        </div>
+      )}
+
+      {/* v0.44: Reading Memory — the private thread of moments captured while
+          reading (progress notes) and at the finish (RatingModal notes). Only
+          renders for collected books with at least one memory; owner-only by
+          construction since memories live on per-user state. */}
+      {(inLib || inCurrentlyReading) && bookMemories.length > 0 && (
+        <div className="bp-section">
+          <div className="bp-section__label">
+            {t('memory.sectionTitle')}
+            <span className="memory-private-chip">{t('memory.privateChip')}</span>
+          </div>
+          <div className="memory-thread">
+            {bookMemories.map((m) => (
+              <div key={m.id} className="memory-entry">
+                <div className="memory-entry__meta">
+                  {new Date(m.createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}
+                  {m.pagesAt != null && <> · {t('memory.pageAt', { page: m.pagesAt })}</>}
+                  {m.kind === 'finished' && <> · {t('memory.finishedTag')}</>}
+                  <button
+                    className="memory-entry__delete"
+                    title={t('memory.delete')}
+                    onClick={() => {
+                      if (window.confirm(t('memory.deleteConfirm'))) {
+                        deleteReadingMemory(currentlyReadingRow || libraryRow || display, m.id);
+                      }
+                    }}
+                  >
+                    ×
+                  </button>
+                </div>
+                <div className="memory-entry__body">{m.body}</div>
+              </div>
+            ))}
           </div>
         </div>
       )}

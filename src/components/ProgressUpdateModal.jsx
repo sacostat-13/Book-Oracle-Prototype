@@ -1,11 +1,14 @@
 // ProgressUpdateModal.jsx — v0.37.3
+// v0.44: Reading Memory capture + recall (docs/reading-memory-v1-spec.md)
 
 import { useEffect, useState } from 'react';
 import { useT } from '../lib/I18nContext';
+import { useData } from '../lib/DataContext';
 import CornerBrackets from './CornerBrackets';
 
 export default function ProgressUpdateModal({ book, onSave, onClose }) {
   const t = useT();
+  const { memoriesForBook, addReadingMemory } = useData();
   const catalogPages = book?.pp || null;
   const initialPages = book?.pagesRead ?? 0;
   const initialOverride = book?.userPageCount ?? null;
@@ -14,6 +17,12 @@ export default function ProgressUpdateModal({ book, onSave, onClose }) {
   const [showOverride, setShowOverride] = useState(!!initialOverride);
   const [overridePages, setOverridePages] = useState(initialOverride ? String(initialOverride) : '');
   const [saving, setSaving] = useState(false);
+
+  // v0.44: optional memory capture — collapsed by default; the newest
+  // existing memory is recalled read-only at the top of the modal.
+  const [memoryOpen, setMemoryOpen] = useState(false);
+  const [memoryText, setMemoryText] = useState('');
+  const lastMemory = memoriesForBook(book)[0] || null;
 
   useEffect(() => {
     function onKey(e) { if (e.key === 'Escape' && !saving) onClose?.(); }
@@ -37,7 +46,18 @@ export default function ProgressUpdateModal({ book, onSave, onClose }) {
     setSaving(true);
     // null clears the override and falls back to the catalog page count
     const userPageCount = showOverride && overridePages !== '' && validOverride ? overrideNum : null;
-    try { await onSave?.(cappedPages, userPageCount); } finally { setSaving(false); }
+    try {
+      await onSave?.(cappedPages, userPageCount);
+      // v0.44: memory saves with the progress — one action, never blocking.
+      // A failed memory write must not undo a successful progress save.
+      if (memoryText.trim()) {
+        try {
+          await addReadingMemory(book, memoryText, { pagesAt: cappedPages, pctAt: pct, kind: 'progress' });
+        } catch (err) {
+          console.warn('reading memory save failed', err);
+        }
+      }
+    } finally { setSaving(false); }
   }
 
   return (
@@ -57,6 +77,18 @@ export default function ProgressUpdateModal({ book, onSave, onClose }) {
           {book.t}
           {book.a ? <span className="pu-book-author"> · {book.a}</span> : null}
         </p>
+
+        {lastMemory && (
+          <div className="memory-recall">
+            <div className="memory-recall__meta">
+              {t('memory.lastTime')}
+              {lastMemory.pagesAt != null && <> · {t('memory.pageAt', { page: lastMemory.pagesAt })}</>}
+              {' · '}
+              {new Date(lastMemory.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+            </div>
+            <div className="memory-recall__body">{lastMemory.body}</div>
+          </div>
+        )}
 
         <div>
           <label className="field-label">
@@ -118,6 +150,27 @@ export default function ProgressUpdateModal({ book, onSave, onClose }) {
             </div>
           </div>
         ) : null}
+
+        {!memoryOpen ? (
+          <button type="button" className="btn-text btn--sm" onClick={() => setMemoryOpen(true)}>
+            ✎ {t('memory.captureLink')}
+          </button>
+        ) : (
+          <div className="memory-capture">
+            <label className="field-label">
+              {t('memory.captureLabel')}
+              <span className="club-form__optional">{t('memory.captureOptional')}</span>
+            </label>
+            <textarea
+              className="textarea"
+              rows={3}
+              maxLength={2000}
+              placeholder={t('memory.capturePlaceholder')}
+              value={memoryText}
+              onChange={(e) => setMemoryText(e.target.value)}
+            />
+          </div>
+        )}
 
         <div className="pu-actions">
           <button type="button" className="btn-tertiary" onClick={onClose} disabled={saving}>

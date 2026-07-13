@@ -1,3 +1,7 @@
+@use "../tokens";
+@use "../components/buttons"; // dependency for cross-file @extend
+@use "../components/forms"; // dependency for cross-file @extend
+
 // pages/_book-pages.scss — The Books Oracle R4
 // Book page, list views (Library/Wishlist), Oracle flows, Currently Reading,
 // Read Next, Series Page, BookModal, Recommendations.
@@ -188,18 +192,18 @@
       font-size: .68rem;
       letter-spacing: .1em;
       text-transform: uppercase;
-      color: var(--paper-aged);
+      color: var(--ro-muted);
       white-space: nowrap;
 
       strong {
-        color: var(--gilt);
+        color: var(--ro-gold-text);
       }
     }
 
     .selection-bar__secondary {
       background: transparent;
       border: none;
-      color: var(--text-muted);
+      color: var(--ro-muted);
       font-family: Special Elite, monospace;
       font-size: .6rem;
       letter-spacing: .1em;
@@ -393,7 +397,7 @@
 
 // Eyebrow line above page-head__title ("Dashboard · Library")
 .page-head__eyebrow {
-  @include ro-type(overline);
+  @include tokens.ro-type(overline);
   font-size: 11px;
   color: var(--ro-muted);
 
@@ -416,7 +420,7 @@
     flex: 0 1 220px;
   }
 
-  @include ro-down(tablet) {
+  @include tokens.ro-down(tablet) {
     .lv-search {
       min-width: 100%;
     }
@@ -475,7 +479,7 @@
 }
 
 .lv-section__head {
-  @include ro-type(overline);
+  @include tokens.ro-type(overline);
   font-size: 11px;
   color: var(--ro-muted);
   margin-bottom: var(--ro-space-3);
@@ -578,7 +582,7 @@
   flex-shrink: 0;
 }
 
-@include ro-down(mobile) {
+@include tokens.ro-down(mobile) {
   .lv-row__actions {
     display: none;
   }
@@ -772,12 +776,12 @@
   gap: 44px;
   align-items: start;
 
-  @include ro-down(tablet) {
+  @include tokens.ro-down(tablet) {
     grid-template-columns: 160px 1fr;
     gap: 28px;
   }
 
-  @include ro-down(mobile) {
+  @include tokens.ro-down(mobile) {
     grid-template-columns: 1fr;
     gap: 24px;
   }
@@ -796,7 +800,7 @@
     flex-direction: column;
     justify-content: space-between;
 
-    @include ro-down(tablet) {
+    @include tokens.ro-down(tablet) {
       max-width: 168px;
     }
   }
@@ -828,7 +832,7 @@
   color: var(--ro-text-2);
   margin-top: 10px;
 
-  @include ro-down(tablet) {
+  @include tokens.ro-down(tablet) {
     margin-bottom: var(--ro-space-4);
   }
 }
@@ -850,7 +854,7 @@
     margin-bottom: 5px;
   }
 
-  @include ro-down(tablet) {
+  @include tokens.ro-down(tablet) {
     margin-bottom: var(--ro-space-4);
   }
 }
@@ -1215,7 +1219,7 @@
   }
 
   &__date {
-    @include ro-type(overline);
+    @include tokens.ro-type(overline);
     color: var(--ro-muted);
     flex-shrink: 0;
     white-space: nowrap;
@@ -1258,7 +1262,7 @@
 }
 
 .plan-progress-label {
-  @include ro-type(overline);
+  @include tokens.ro-type(overline);
   color: var(--ro-muted);
   margin-top: 8px;
 }
@@ -1271,7 +1275,7 @@
 }
 
 .plan-hero__eyebrow {
-  @include ro-type(overline);
+  @include tokens.ro-type(overline);
   color: var(--ro-gold-text);
 }
 
@@ -1283,7 +1287,7 @@
   color: var(--ro-text);
   max-width: 780px;
 
-  @include ro-down(mobile) {
+  @include tokens.ro-down(mobile) {
     font-size: 26px;
   }
 }
@@ -1356,14 +1360,14 @@
   gap: var(--ro-space-6);
   align-items: start;
 
-  @include ro-down(mobile) {
+  @include tokens.ro-down(mobile) {
     grid-template-columns: 1fr;
     gap: var(--ro-space-3);
   }
 }
 
 .plan-month-card__label {
-  @include ro-type(overline);
+  @include tokens.ro-type(overline);
   color: var(--ro-gold-text);
   padding-top: 5px;
 }
@@ -1372,7 +1376,7 @@
   border-left: 2px solid var(--ro-border-strong);
   padding-left: var(--ro-space-6);
 
-  @include ro-down(mobile) {
+  @include tokens.ro-down(mobile) {
     border-left: 0;
     padding-left: 0;
   }
@@ -1658,11 +1662,11 @@
   grid-template-columns: repeat(3, 1fr);
   gap: 20px;
 
-  @include ro-down(tablet) {
+  @include tokens.ro-down(tablet) {
     grid-template-columns: 1fr 1fr;
   }
 
-  @include ro-down(mobile) {
+  @include tokens.ro-down(mobile) {
     grid-template-columns: 1fr;
   }
 }
@@ -1905,7 +1909,7 @@
   flex-wrap: wrap;
   margin-bottom: var(--ro-space-5);
 
-  @include ro-down(tablet) {
+  @include tokens.ro-down(tablet) {
     flex-flow: column;
 
     .source-tab__label {
@@ -1926,7 +1930,7 @@
 
 .source-tabs__label {
   align-self: center;
-  @include ro-type(overline);
+  @include tokens.ro-type(overline);
   color: var(--ro-muted);
   padding-right: 4px;
 }
@@ -1965,7 +1969,7 @@
   }
 
   &__sub {
-    @include ro-type(overline);
+    @include tokens.ro-type(overline);
     font-size: 10px;
     color: var(--ro-muted);
     margin-top: 8px;
@@ -2010,7 +2014,7 @@
   // Only styles a plain, class-less label — call sites with their own
   // label class (e.g. .rating-modal__notes-label) keep full control.
   >label:not([class]) {
-    @include ro-type(label);
+    @include tokens.ro-type(label);
     color: var(--ro-text-2);
   }
 
@@ -2484,7 +2488,7 @@
   .rn-author {
     font-style: italic;
     font-size: .9rem;
-    color: var(--text-muted);
+    color: var(--ro-muted);
     opacity: .75;
   }
 

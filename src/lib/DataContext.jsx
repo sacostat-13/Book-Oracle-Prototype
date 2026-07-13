@@ -56,6 +56,11 @@ const defaultState = {
   // createdBy, createdAt, callerRole: 'member'|'admin', memberCount }.
   // Full detail (members, sessions) is fetched on demand by the club views.
   clubs: [],
+  // v0.44: Reading Memory. Keyed by bookId (authed) or bookKey (guest) →
+  // array of { id, kind: 'progress'|'finished', body, pagesAt, pctAt,
+  // createdAt }, newest first. Private per user; guests persist via
+  // localStorage with the rest of state.
+  memories: {},
 };
 
 const DataContext = createContext(null);
@@ -126,6 +131,8 @@ function loadLocal() {
       genresByBookId: {},
       genres: [],
       currentlyReading: dedupeBooks(parsed.currentlyReading || []),
+      // v0.44: guest-mode reading memories ride localStorage too
+      memories: parsed.memories || {},
     };
   } catch {
     return { ...defaultState };
@@ -261,7 +268,7 @@ function rollupGenres(rows) {
 
 // ---------- Supabase loaders ----------
 async function loadFromSupabase(userId) {
-  const [profileRes, wishlistRes, readBooksRes, plansRes, currentlyReadingRes] = await Promise.all([
+  const [profileRes, wishlistRes, readBooksRes, plansRes, currentlyReadingRes, memoriesRes] = await Promise.all([
     supabase.from('profiles').select('*').eq('id', userId).maybeSingle(),
     supabase
       .from('wishlist_items')
@@ -280,7 +287,31 @@ async function loadFromSupabase(userId) {
       .from('currently_reading')
       .select('started_at, pages_read, user_page_count, book:books(*, position_in_series, series:series(*))')
       .eq('user_id', userId),
+    // v0.44: reading memories — one flat query, keyed by book_id client-side
+    supabase
+      .from('reading_memories')
+      .select('id, book_id, kind, body, pages_at, pct_at, created_at')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false }),
   ]);
+
+  // v0.44: group memories by book_id (newest first, from the query order).
+  // A failed query degrades to "no memories" — never blocks the main load.
+  const memories = {};
+  if (memoriesRes.error) {
+    console.warn('reading_memories load failed — continuing without memories', memoriesRes.error);
+  } else {
+    for (const m of (memoriesRes.data || [])) {
+      (memories[m.book_id] = memories[m.book_id] || []).push({
+        id: m.id,
+        kind: m.kind,
+        body: m.body,
+        pagesAt: m.pages_at,
+        pctAt: m.pct_at,
+        createdAt: m.created_at,
+      });
+    }
+  }
 
   // Lists loaded separately — a failure here must not break genres/library load
   let listsRes = { data: [] };
@@ -549,6 +580,7 @@ async function loadFromSupabase(userId) {
     genresByBookId,
     genres,
     currentlyReading: dedupeBooks(currentlyReading),
+    memories,
     clubs: (clubsRes.data || []).map((m) => ({
       id: m.club?.id,
       name: m.club?.name,
@@ -924,6 +956,78 @@ export function DataProvider({ children }) {
     [state.genresByBookId, state.readingGoalCount, state.plans]
   );
 
+  // ── v0.44: Reading Memory ────────────────────────────────────────────────
+  // Private notes tied to the moment a book is put down or finished.
+  // state.memories is keyed by bookId when the book exists on the server,
+  // bookKey otherwise (guest mode); bookKey normalization makes the two
+  // capture/resurface sides agree on the same key for the same book.
+
+  const memoryKeyFor = (book) => book.bookId || bookKey(book);
+
+  const memoriesForBook = useCallback(
+    (book) => (state.memories || {})[memoryKeyFor(book)] || [],
+    [state.memories]
+  );
+
+  const addReadingMemory = useCallback(
+    async (book, body, { pagesAt = null, pctAt = null, kind = 'progress' } = {}) => {
+      const text = (body || '').trim().slice(0, 2000);
+      if (!text) return null;
+
+      if (!user) {
+        const entry = {
+          id: (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : `local-${Date.now()}`,
+          kind, body: text, pagesAt, pctAt,
+          createdAt: new Date().toISOString(),
+        };
+        const key = memoryKeyFor(book);
+        setState((s) => ({
+          ...s,
+          memories: { ...s.memories, [key]: [entry, ...((s.memories || {})[key] || [])] },
+        }));
+        return entry;
+      }
+
+      const bookId = book.bookId || (await upsertBookOnServer(book));
+      if (!bookId) return null;
+      const { data, error } = await supabase
+        .from('reading_memories')
+        .insert({ user_id: user.id, book_id: bookId, kind, body: text, pages_at: pagesAt, pct_at: pctAt })
+        .select('id, created_at')
+        .single();
+      if (error) {
+        console.error('reading_memories insert failed', error);
+        return null;
+      }
+      const entry = { id: data.id, kind, body: text, pagesAt, pctAt, createdAt: data.created_at };
+      setState((s) => ({
+        ...s,
+        memories: { ...s.memories, [bookId]: [entry, ...((s.memories || {})[bookId] || [])] },
+      }));
+      return entry;
+    },
+    [user, upsertBookOnServer]
+  );
+
+  const deleteReadingMemory = useCallback(
+    async (book, memoryId) => {
+      const key = memoryKeyFor(book);
+      setState((s) => ({
+        ...s,
+        memories: { ...s.memories, [key]: ((s.memories || {})[key] || []).filter((m) => m.id !== memoryId) },
+      }));
+      if (user) {
+        const { error } = await supabase
+          .from('reading_memories')
+          .delete()
+          .eq('user_id', user.id)
+          .eq('id', memoryId);
+        if (error) console.error('reading_memories delete failed', error);
+      }
+    },
+    [user]
+  );
+
   const markAsRead = useCallback(
     async (book, extra = {}) => {
       const k = bookKey(book);
@@ -948,6 +1052,12 @@ export function DataProvider({ children }) {
         }));
         showToast(`"${book.t}" added to your library`);
         fireCompletionMoment(enriched, [...state.library, enriched]);
+        // v0.44: a note written at the finish moment joins the book's memory
+        // thread (kind 'finished'). Only notes typed in this flow — not
+        // wishlist notes carried on the book object.
+        if (extra.notes != null && extra.notes.trim()) {
+          addReadingMemory(enriched, extra.notes, { kind: 'finished' });
+        }
         return;
       }
 
@@ -987,8 +1097,12 @@ export function DataProvider({ children }) {
       }));
       showToast(`"${book.t}" added to your library`);
       fireCompletionMoment({ ...enriched, bookId }, [...state.library, { ...enriched, bookId }]);
+      // v0.44: same finished-moment memory as the guest path
+      if (extra.notes != null && extra.notes.trim()) {
+        addReadingMemory({ ...enriched, bookId }, extra.notes, { kind: 'finished' });
+      }
     },
-    [user, state.library, showToast, upsertBookOnServer, fireCompletionMoment]
+    [user, state.library, showToast, upsertBookOnServer, fireCompletionMoment, addReadingMemory]
   );
 
   // v0.22: Currently Reading actions
@@ -1173,7 +1287,10 @@ export function DataProvider({ children }) {
   );
 
   const importGoodreads = useCallback(
-    async (books) => {
+    // v0.44: onProgress(done, total) — fired per book on the authed path so
+    // large imports (500+ books, one upsert_book RPC each) show progress
+    // instead of an indeterminate "Adding…" for minutes.
+    async (books, onProgress) => {
       const existingKeys = new Set(state.library.map(bookKey));
       const toAdd = books.filter((b) => !existingKeys.has(bookKey(b)));
 
@@ -1188,23 +1305,26 @@ export function DataProvider({ children }) {
       }
 
       const linked = [];
-      for (const b of toAdd) {
+      for (let i = 0; i < toAdd.length; i++) {
+        const b = toAdd[i];
         const bookId = await upsertBookOnServer(
           { ...b, fromGoodreads: true },
           'goodreads_import'
         );
-        if (!bookId) continue;
-        const { error } = await supabase.from('read_books').upsert(
-          {
-            user_id: user.id,
-            book_id: bookId,
-            rating: b.rating && b.rating > 0 ? b.rating : null,
-            read_at: b.dateRead || null,
-            source: 'goodreads_import',
-          },
-          { onConflict: 'user_id,book_id' }
-        );
-        if (!error) linked.push({ ...b, bookId, dateRead: b.dateRead || new Date().toISOString() });
+        if (bookId) {
+          const { error } = await supabase.from('read_books').upsert(
+            {
+              user_id: user.id,
+              book_id: bookId,
+              rating: b.rating && b.rating > 0 ? b.rating : null,
+              read_at: b.dateRead || null,
+              source: 'goodreads_import',
+            },
+            { onConflict: 'user_id,book_id' }
+          );
+          if (!error) linked.push({ ...b, bookId, dateRead: b.dateRead || new Date().toISOString() });
+        }
+        onProgress?.(i + 1, toAdd.length);
       }
 
       setState((s) => ({
@@ -1218,7 +1338,8 @@ export function DataProvider({ children }) {
   );
 
   const bulkAddToLibrary = useCallback(
-    async (books) => {
+    // v0.44: onProgress(done, total) — same per-book progress as importGoodreads
+    async (books, onProgress) => {
       const existingKeys = new Set(state.library.map(bookKey));
       const toAdd = books.filter((b) => !existingKeys.has(bookKey(b)));
       const today = new Date().toISOString().slice(0, 10);
@@ -1232,20 +1353,23 @@ export function DataProvider({ children }) {
       }
 
       const linked = [];
-      for (const b of toAdd) {
+      for (let i = 0; i < toAdd.length; i++) {
+        const b = toAdd[i];
         const bookId = b.bookId || (await upsertBookOnServer(b));
-        if (!bookId) continue;
-        const { error } = await supabase.from('read_books').upsert(
-          {
-            user_id: user.id,
-            book_id: bookId,
-            rating: b.rating && b.rating > 0 ? b.rating : null,
-            read_at: today,
-            source: 'manual',
-          },
-          { onConflict: 'user_id,book_id' }
-        );
-        if (!error) linked.push({ ...b, bookId, dateRead: today });
+        if (bookId) {
+          const { error } = await supabase.from('read_books').upsert(
+            {
+              user_id: user.id,
+              book_id: bookId,
+              rating: b.rating && b.rating > 0 ? b.rating : null,
+              read_at: today,
+              source: 'manual',
+            },
+            { onConflict: 'user_id,book_id' }
+          );
+          if (!error) linked.push({ ...b, bookId, dateRead: today });
+        }
+        onProgress?.(i + 1, toAdd.length);
       }
       setState((s) => ({
         ...s,
@@ -2041,6 +2165,10 @@ export function DataProvider({ children }) {
     removeFromCurrentlyReading,
     // v0.28: reading progress
     updateReadingProgress,
+    // v0.44: reading memory
+    memoriesForBook,
+    addReadingMemory,
+    deleteReadingMemory,
     importGoodreads,
     bulkAddToLibrary,
     cacheBookFields,

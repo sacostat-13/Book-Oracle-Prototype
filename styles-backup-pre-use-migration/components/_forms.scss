@@ -1,0 +1,150 @@
+// components/_forms.scss — The Books Oracle
+// Search field, text inputs, selects, text areas — exact to the DS.
+//   .search       pill search field with leading magnifier
+//   .field        labelled input wrapper
+//   .input        text input
+//   .select       native select styled as a soft field
+//   .textarea     multi-line notes field with footer meta
+//   .field-label  mono uppercase label above a control
+
+.field-label {
+  font-family: var(--ro-font-mono);
+  font-weight: 600;
+  font-size: 10px;
+  line-height: 1;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+  color: var(--ro-gold);
+  margin-bottom: 12px;
+  display: block;
+}
+
+// ── Search (pill) ─────────────────────────────────────────────────────────────
+.search {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: var(--ro-surface-2);
+  border: 1px solid var(--ro-border-strong);
+  border-radius: var(--ro-radius-pill);
+  padding: 16px 22px;
+
+  &__icon {
+    color: var(--ro-muted);
+    flex-shrink: 0;
+  }
+
+  &__input {
+    flex: 1;
+    border: 0;
+    background: transparent;
+    outline: none;
+    color: var(--ro-text);
+    font-family: var(--ro-font-body);
+    font-size: 15px;
+
+    &::placeholder {
+      color: var(--ro-muted);
+    }
+  }
+
+  &--sm {
+    padding: 11px 16px;
+  }
+}
+
+// ── Text input ────────────────────────────────────────────────────────────────
+.input {
+  width: 100%;
+  border: 1px solid var(--ro-border-strong);
+  background: var(--ro-field);
+  border-radius: var(--ro-radius-md);
+  padding: 13px 16px;
+  outline: none;
+  font-family: var(--ro-font-body);
+  font-size: 15px;
+  color: var(--ro-text);
+  transition: border-color .15s;
+
+  &::placeholder {
+    color: var(--ro-muted);
+  }
+
+  &:focus {
+    border-color: var(--ro-gold);
+  }
+
+  &:disabled {
+    opacity: .5;
+    cursor: not-allowed;
+  }
+}
+
+// Italic display input (used for username/display name in the DS)
+.input--display {
+  font-family: var(--ro-font-display);
+  font-style: italic;
+  font-size: 1.1rem;
+}
+
+// ── Select ────────────────────────────────────────────────────────────────────
+.select {
+  width: 100%;
+  appearance: none;
+  border: 1px solid var(--ro-border-strong);
+  background: var(--ro-field);
+  border-radius: var(--ro-radius-md);
+  padding: 8px 40px 8px 16px;
+  outline: none;
+  font-family: var(--ro-font-body);
+  font-size: 15px;
+  color: var(--ro-text);
+  cursor: pointer;
+  // chevron
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8' fill='none'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23A89A86' stroke-width='1.6' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 16px center;
+  transition: border-color .15s;
+
+  &:focus {
+    border-color: var(--ro-gold);
+  }
+}
+
+// ── Textarea ──────────────────────────────────────────────────────────────────
+.textarea {
+  width: 100%;
+  min-height: 120px;
+  resize: vertical;
+  border: 1px solid var(--ro-border-strong);
+  background: var(--ro-field);
+  border-radius: 14px;
+  padding: 15px 16px;
+  outline: none;
+  font-family: var(--ro-font-body);
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--ro-text);
+  transition: border-color .15s;
+
+  &::placeholder {
+    color: var(--ro-muted);
+  }
+
+  &:focus {
+    border-color: var(--ro-gold);
+  }
+}
+
+.textarea-meta {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--ro-font-body);
+  font-size: 12px;
+  color: var(--ro-muted);
+  margin-top: 8px;
+
+  .count {
+    font-family: var(--ro-font-mono);
+  }
+}

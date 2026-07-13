@@ -1,3 +1,5 @@
+@use "tokens";
+
 // _typography.scss — The Books Oracle
 // Type utility classes generated from the $ro-type ramp.
 // Use these instead of inline font declarations:
@@ -5,9 +7,9 @@
 // Display = Instrument Serif · Body = EB Garamond · Labels = IBM Plex Mono.
 
 @each $name,
-$spec in $ro-type {
+$spec in tokens.$ro-type {
   .t-#{$name} {
-    @include ro-type($name);
+    @include tokens.ro-type($name);
   }
 }
 
@@ -35,7 +37,7 @@ $spec in $ro-type {
 
 // The recurring "eyebrow" overline used above section titles
 .eyebrow {
-  @include ro-type(overline);
+  @include tokens.ro-type(overline);
   color: var(--ro-gold);
   letter-spacing: .18em;
 }

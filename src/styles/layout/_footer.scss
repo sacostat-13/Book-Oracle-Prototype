@@ -1,3 +1,5 @@
+@use "../tokens";
+
 // layout/_footer.scss — The Books Oracle R2
 // Three-column DS footer: brand+tagline+social | Product | Legal
 // Inset card treatment (bg-deep, border, border-radius 20px) matching the DS spec.
@@ -6,7 +8,7 @@
   padding-inline: var(--ro-gutter-desktop);
   padding-bottom: 2rem;
 
-  @include ro-down(tablet) {
+  @include tokens.ro-down(tablet) {
     padding-inline: var(--ro-gutter-mobile);
   }
 }
@@ -25,13 +27,13 @@
   gap: 32px;
   padding: 40px;
 
-  @include ro-down(tablet) {
+  @include tokens.ro-down(tablet) {
     grid-template-columns: 1fr 1fr;
     gap: 28px;
     padding: 28px;
   }
 
-  @include ro-down(mobile) {
+  @include tokens.ro-down(mobile) {
     grid-template-columns: 1fr;
     gap: 24px;
     padding: 24px;
@@ -140,11 +142,11 @@
   border-top: 1px solid var(--ro-border);
   flex-wrap: wrap;
 
-  @include ro-down(tablet) {
+  @include tokens.ro-down(tablet) {
     padding: 16px 28px;
   }
 
-  @include ro-down(mobile) {
+  @include tokens.ro-down(mobile) {
     padding: 14px 24px;
   }
 }

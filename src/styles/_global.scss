@@ -1,3 +1,5 @@
+@use "tokens";
+
 // _global.scss — The Books Oracle
 // Body defaults, app shell rails, and a few cross-cutting primitives
 // (page header, breadcrumb, eyebrow) that nearly every page uses.
@@ -38,7 +40,7 @@ body {
     height: 40px;
     margin: 0 auto 1rem;
     border: 2px solid rgba(176, 140, 63, .2);
-    border-top-color: var(--gilt);
+    border-top-color: var(--ro-gold);
     border-radius: 50%;
     animation: spin 1s linear infinite;
   }
@@ -56,7 +58,7 @@ body {
   margin-inline: auto;
   padding-inline: var(--ro-gutter-mobile);
 
-  @include ro-up(desktop) {
+  @include tokens.ro-up(desktop) {
     padding-inline: var(--ro-gutter-desktop);
   }
 }
@@ -71,12 +73,12 @@ body {
 }
 
 .page-head__title {
-  @include ro-type(h1);
+  @include tokens.ro-type(h1);
   color: var(--ro-text);
 }
 
 .page-head__lead {
-  @include ro-type(body-lg);
+  @include tokens.ro-type(body-lg);
   font-family: 'Instrument Serif';
   font-size: 18px;
   font-style: italic;
@@ -85,7 +87,7 @@ body {
 
 // ── Breadcrumb (mono, uppercase) ──────────────────────────────────────────────
 .breadcrumb {
-  @include ro-type(overline);
+  @include tokens.ro-type(overline);
   font-size: 11px;
   color: var(--ro-muted);
   display: flex;
@@ -144,7 +146,7 @@ body {
   flex-direction: column;
   justify-content: space-between;
   padding: 1rem;
-  color: var(--paper);
+  color: var(--ro-accent-on);
   position: relative;
   overflow: hidden;
 

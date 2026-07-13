@@ -1,3 +1,5 @@
+@use "../tokens";
+
 // components/_book-loader.scss — The Books Oracle
 // Page-flipping book animation + rotating literary quote. Adapted from the
 // design test file to use --ro-* tokens (works in both themes).
@@ -75,7 +77,7 @@
 
 // ── Status line (the per-site loading message) ───────────────────────────────
 .book-loader__status {
-  @include ro-type(overline);
+  @include tokens.ro-type(overline);
   color: var(--ro-muted);
 }
 
@@ -163,6 +165,6 @@
 }
 
 .loading-text {
-  @include ro-type(overline);
+  @include tokens.ro-type(overline);
   color: var(--ro-muted);
 }

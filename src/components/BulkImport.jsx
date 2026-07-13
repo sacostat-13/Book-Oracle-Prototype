@@ -3,7 +3,7 @@ import { useData } from '../lib/DataContext';
 import { useT } from '../lib/I18nContext';
 import { useOracleQuota } from '../lib/OracleQuotaContext';
 import { parseGoodreadsToReadCSV, parseGoodreadsCSV } from '../lib/goodreadsImport';
-import { findBookByTitle, bookKey } from '../lib/bookHelpers';
+import { findBookByTitle, bookKey, cleanTitle } from '../lib/bookHelpers';
 import { extractAsinFromUrl, lookupByAsin, lookupByTitle, parseTitleList } from '../lib/bookLookup';
 import { callClaude, QuotaExceededError, parseJSONResponse } from '../lib/claudeApi';
 
@@ -159,6 +159,16 @@ export default function BulkImport({ onClose, target = 'wishlist' }) {
         if (byHc) return byHc;
       }
     }
+    // v0.44 (Goodreads import polish): edition-insensitive fallback. Exact
+    // bookKey misses when one side carries a parenthetical the other lacks —
+    // "The Hobbit (75th Anniversary Edition)" vs "The Hobbit". Compare again
+    // with parentheticals stripped via cleanTitle. Runs only when the exact
+    // passes above found nothing, so it can't demote a stronger match.
+    const editionKey = (b) => bookKey({ t: cleanTitle(b.t || ''), a: b.a });
+    const candEdKey = editionKey(candidate);
+    const byEdition = state.wishlist.find((b) => editionKey(b) === candEdKey)
+      || state.library.find((b) => editionKey(b) === candEdKey);
+    if (byEdition) return byEdition;
     return null;
   }
 
@@ -259,21 +269,21 @@ export default function BulkImport({ onClose, target = 'wishlist' }) {
       {hasResults && (
         <>
           <div className="bulk-source-row">
-            <span className="about-section__body">
+            <span className="bulk-summary">
               {progress ? (
                 <>{t('bulkImport.lookingUp', { done: progress.done, total: progress.total })}</>
               ) : (
                 <>
-                  <span className="lv-hl">{t('bulkImport.readyCount', { count: foundCount })}</span>
-                  {unmatchedCount > 0 && <> · <span className="lv-hl">{t('bulkImport.addAsIs', { count: unmatchedCount })}</span></>}
-                  {dupCount > 0 && <> · <span className="lv-hl-muted">{t('bulkImport.alreadyHave', { count: dupCount })}</span></>}
-                  {missCount > 0 && <> · <span className="pf-error" style={{ display: "inline" }}>{t('bulkImport.notFoundCount', { count: missCount })}</span></>}
+                  <span className="bulk-hl">{t('bulkImport.readyCount', { count: foundCount })}</span>
+                  {unmatchedCount > 0 && <> · <span className="bulk-hl">{t('bulkImport.addAsIs', { count: unmatchedCount })}</span></>}
+                  {dupCount > 0 && <> · <span className="bulk-hl-muted">{t('bulkImport.alreadyHave', { count: dupCount })}</span></>}
+                  {missCount > 0 && <> · <span className="bulk-error bulk-error--inline">{t('bulkImport.notFoundCount', { count: missCount })}</span></>}
                 </>
               )}
             </span>
           </div>
 
-          <div className="ldetail-scroll" style={{ maxHeight: "50vh", border: "1px solid var(--ro-border)" }}>
+          <div className="bulk-result-list">
             {results.map((r, i) => (
               <ResultRow key={i} row={r} t={t} onRemove={() => setResults(results.filter((_, idx) => idx !== i))} />
             ))}
@@ -297,31 +307,31 @@ export default function BulkImport({ onClose, target = 'wishlist' }) {
 
 function ResultRow({ row, onRemove, t }) {
   const statusBadge = {
-    pending: { label: t('bulkImport.statusPending'), color: 'var(--paper-aged)' },
-    found: { label: t('bulkImport.statusFound'), color: 'var(--gilt-bright)' },
-    duplicate: { label: t('bulkImport.statusDuplicate'), color: 'var(--paper-aged)' },
-    missing: { label: t('bulkImport.statusMissing'), color: 'var(--blood-bright)' },
-    unmatched: { label: t('bulkImport.statusUnmatched'), color: 'var(--gilt)' },
-  }[row.status] || { label: row.status, color: 'var(--paper-aged)' };
+    pending: { label: t('bulkImport.statusPending'), color: 'var(--ro-muted)' },
+    found: { label: t('bulkImport.statusFound'), color: 'var(--ro-gold-text)' },
+    duplicate: { label: t('bulkImport.statusDuplicate'), color: 'var(--ro-muted)' },
+    missing: { label: t('bulkImport.statusMissing'), color: 'var(--ro-error)' },
+    unmatched: { label: t('bulkImport.statusUnmatched'), color: 'var(--ro-gold)' },
+  }[row.status] || { label: row.status, color: 'var(--ro-muted)' };
 
   return (
     <div className="bulk-result-row" style={{ opacity: row.status === 'pending' || row.status === 'duplicate' || row.status === 'missing' ? 0.7 : 1 }}>
-      <div className="session-form__book-wrap">
+      <div className="bulk-result-info">
         {row.book ? (
           <>
             <div className="bulk-result-title">{row.book.t}</div>
             <div className="bulk-result-meta">
               {row.book.a}
               {row.book.g && <> · {row.book.g}</>}
-              {row.book.rating > 0 && <> · <span className="lv-hl">{'★'.repeat(row.book.rating)}</span></>}
+              {row.book.rating > 0 && <> · <span className="bulk-hl">{'★'.repeat(row.book.rating)}</span></>}
             </div>
           </>
         ) : (
           <div className="bulk-result-meta" style={{ wordBreak: "break-all" }}>{row.input}</div>
         )}
-        {row.error && <div className="pf-error">{row.error}</div>}
+        {row.error && <div className="bulk-error">{row.error}</div>}
       </div>
-      <span className="cat-auto__tag" style={{ color: statusBadge.color }}>
+      <span className="bulk-status" style={{ color: statusBadge.color }}>
         {statusBadge.label}
       </span>
       <button onClick={onRemove} className="modal-close-btn" style={{ fontSize: "1.2rem" }} title={t('bulkImport.removeRow')}>

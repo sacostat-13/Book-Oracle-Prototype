@@ -1,0 +1,28 @@
+// components/_avatars.scss — The Books Oracle
+// Round avatars with size scale + initial fallback.
+//   .avatar (default 44) · modifiers --xs 28 / --sm 36 / --lg 64
+//   .avatar--fallback     initial letter on a surface ground
+
+.avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+  border: 1px solid var(--ro-border);
+}
+.avatar--xs { width: 28px; height: 28px; }
+.avatar--sm { width: 36px; height: 36px; }
+.avatar--lg { width: 64px; height: 64px; }
+
+.avatar--fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--ro-surface-2);
+  color: var(--ro-muted);
+  font-family: var(--ro-font-display);
+  font-style: italic;
+  // letter scales with box via em on a base font-size set inline if needed
+  font-size: 1rem;
+}

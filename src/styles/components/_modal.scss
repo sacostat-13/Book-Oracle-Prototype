@@ -1,3 +1,5 @@
+@use "../tokens";
+
 // components/_modal.scss — The Books Oracle
 // Overlay + centered modal surface. Book-detail and confirm dialogs share this.
 //   .overlay        full-screen scrim (blur)
@@ -49,7 +51,7 @@
   padding: 26px 26px 22px;
 }
 .modal__title {
-  @include ro-type(h2);
+  @include tokens.ro-type(h2);
   color: var(--ro-text);
 }
 .modal__body {
@@ -81,7 +83,7 @@
 }
 
 // Mobile: dock to bottom as a sheet
-@include ro-down(mobile) {
+@include tokens.ro-down(mobile) {
   .overlay { align-items: flex-end; padding: 0; }
   .modal {
     width: 100%;

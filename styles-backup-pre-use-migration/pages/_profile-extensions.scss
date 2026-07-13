@@ -1,0 +1,386 @@
+// pages/_profile-extensions.scss — The Books Oracle
+// Supplemental partial: fills the *genuine* gaps found while auditing
+// Profile.jsx and BookPage.jsx against the existing design system.
+//
+// Ground rule: every value below is either a var(--ro-*) token, a
+// $ro-space/$ro-radius entry, or an @include ro-type()/ro-up()/ro-down() —
+// nothing here introduces a new color, font, radius, or breakpoint.
+// Where an existing global/page class already does the job (e.g. .divider,
+// .status, .db-ai__track, .progress__fill), the JSX was pointed at that
+// class instead of duplicating it here — see the audit notes for the map.
+//
+// Import this after pages/social in main.scss:
+//   @import 'pages/social';
+//   @import 'pages/profile-extensions';
+
+// ══════════════════════════════════════════════════════════════════════════════
+// Generic edit-row / value-row primitives (Username, Display Name, Challenge)
+// ══════════════════════════════════════════════════════════════════════════════
+.pf-edit-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ro-space-2);
+}
+
+.pf-edit-row {
+  display: flex;
+  align-items: center;
+  gap: var(--ro-space-3);
+
+  &--wrap {
+    flex-wrap: wrap;
+  }
+}
+
+.pf-edit-prefix {
+  font-family: var(--ro-font-mono);
+  font-weight: 600;
+  color: var(--ro-muted);
+}
+
+// Narrow variant of the global .input, for short numeric fields (e.g. the
+// reading-challenge target). Pair as: className="input pf-input--narrow"
+.pf-input--narrow {
+  width: 120px;
+  flex: 0 0 auto;
+}
+
+.pf-value-row {
+  display: flex;
+  align-items: center;
+  gap: var(--ro-space-3);
+  flex-wrap: wrap;
+  margin-top: var(--ro-space-3);
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// .status — error modifier (DS ships success/warn/read only)
+// ══════════════════════════════════════════════════════════════════════════════
+.status--error {
+  background: color-mix(in srgb, var(--ro-error) 18%, transparent);
+  color: var(--ro-error);
+  border-color: color-mix(in srgb, var(--ro-error) 40%, transparent);
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// Pace chart tooltip (hover state on the 12-month bar chart)
+// ══════════════════════════════════════════════════════════════════════════════
+.pf-pace-tooltip {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--ro-surface-2);
+  border: 1px solid var(--ro-border-strong);
+  border-radius: var(--ro-radius-sm);
+  padding: var(--ro-space-2) var(--ro-space-3);
+  font-family: var(--ro-font-body);
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--ro-text);
+  white-space: nowrap;
+  box-shadow: var(--ro-shadow);
+  z-index: 2;
+  pointer-events: none;
+}
+
+.pf-pace-tooltip__meta {
+  color: var(--ro-muted);
+}
+
+.pf-pace-tooltip__hint {
+  font-family: var(--ro-font-mono);
+  font-size: 10px;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--ro-gold-text);
+  margin-top: 4px;
+}
+
+// Drill-down row hover affordance (DS ships the row itself but not this state)
+.pf-pace-drill__row--clickable {
+  cursor: pointer;
+  border-radius: var(--ro-radius-sm);
+  transition: background .15s;
+
+  &:hover {
+    background: var(--ro-surface-2);
+  }
+}
+
+// Position context for the tooltip above
+.pf-pace-bar-col {
+  position: relative;
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// Friends callout (Profile → Friends teaser row)
+// ══════════════════════════════════════════════════════════════════════════════
+.pf-callout {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ro-space-4);
+  flex-wrap: wrap;
+}
+
+.pf-callout__label {
+  @extend .field-label;
+  margin-bottom: var(--ro-space-1);
+}
+
+.pf-callout__text {
+  font-family: var(--ro-font-body);
+  font-size: 14px;
+  color: var(--ro-text-2);
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// Reading Challenge widget
+// ══════════════════════════════════════════════════════════════════════════════
+.pf-challenge__year {
+  @extend .bp-section__label;
+  margin-bottom: var(--ro-space-3);
+}
+
+.pf-challenge__bar {
+  position: relative;
+  height: 8px;
+  border-radius: var(--ro-radius-pill);
+  background: var(--ro-ring-track);
+  overflow: visible; // marker sits on top of the rounded track
+}
+
+.pf-challenge__bar-fill {
+  height: 100%;
+  width: var(--pf-challenge-w, 0%);
+  border-radius: var(--ro-radius-pill);
+  background: var(--ro-gold);
+  transition: width .4s ease;
+
+  &--reached {
+    background: var(--ro-success);
+  }
+}
+
+.pf-challenge__marker {
+  position: absolute;
+  top: -3px;
+  left: var(--pf-marker-x, 0%);
+  width: 2px;
+  height: 14px;
+  background: var(--ro-text);
+  opacity: .5;
+}
+
+.pf-challenge__counts {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-top: var(--ro-space-3);
+}
+
+.pf-challenge__done {
+  font-family: var(--ro-font-display);
+  font-size: 28px;
+  color: var(--ro-text);
+
+  &--reached {
+    color: var(--ro-success);
+  }
+}
+
+.pf-challenge__target {
+  font-family: var(--ro-font-body);
+  font-size: 15px;
+  color: var(--ro-muted);
+}
+
+.pf-challenge__pct {
+  font-family: var(--ro-font-mono);
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--ro-muted);
+}
+
+.pf-challenge__status {
+  font-family: var(--ro-font-body);
+  font-size: 13px;
+  margin-top: var(--ro-space-2);
+}
+
+.pf-hl-success {
+  color: var(--ro-success);
+}
+
+.pf-hl-warn {
+  color: var(--ro-gold-text);
+}
+
+// .pf-hl-muted intentionally omitted — use the existing .lv-hl-muted instead.
+
+.pf-prompt {
+  @extend .pf-account-card__hint;
+  margin-bottom: var(--ro-space-3);
+}
+
+.pf-btn-link {
+  @extend .btn-text;
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// Subscription — tier row (badge reuses .status, this is just the flex row)
+// ══════════════════════════════════════════════════════════════════════════════
+.pf-tier-row {
+  display: flex;
+  align-items: center;
+  gap: var(--ro-space-3);
+  flex-wrap: wrap;
+  margin-bottom: var(--ro-space-4);
+}
+
+.pf-upgrade {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ro-space-2);
+  align-items: flex-start;
+}
+
+.pf-upgrade__features {
+  font-family: var(--ro-font-body);
+  font-size: 12px;
+  color: var(--ro-muted);
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// Notification preference rows (reuses .pf-toggle-row/.pf-toggle-label shape,
+// this just adds the description line under the label)
+// ══════════════════════════════════════════════════════════════════════════════
+.pf-notif-desc {
+  @extend .pf-account-card__hint;
+  margin-top: 2px;
+}
+
+.pf-notif-label--locked {
+  opacity: .6;
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// Misc small text utilities used throughout the Account panel
+// ══════════════════════════════════════════════════════════════════════════════
+.pf-text {
+  font-family: var(--ro-font-body);
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--ro-text-2);
+  padding-bottom: var(--ro-space-2);
+
+  &--gap-lg {
+    margin-top: var(--ro-space-4);
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// Reading-stats section rhythm
+// Per the DS Profile pattern, Reading Stats / Pace / Top Genres / Most Read
+// Author / Series in Progress are free-standing sections directly on the
+// page background (each subsection's own cards/rows already carry their own
+// borders) — NOT nested inside one shared bordered panel. Only the Account
+// settings block below is a single bordered card.
+// ══════════════════════════════════════════════════════════════════════════════
+.profile-stats {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ro-space-8);
+}
+
+// v0.43.1 spacing pass: sections were floating in too much air (space-6 top
+// padding + another space-6 on the first title inside = ~2 full rows of gap).
+// Tightened to space-4 while keeping the hairline separators.
+.pf-section {
+  border-top: 1px solid var(--ro-border);
+  padding-top: var(--ro-space-4);
+  padding-bottom: var(--ro-space-2);
+
+  &:first-child {
+    border-top: 0;
+    padding-top: 0;
+    margin-top: 0;
+  }
+}
+
+.pf-section__title {
+  font-family: var(--ro-font-display);
+  font-style: italic;
+  font-size: 21px;
+  color: var(--ro-text);
+  margin-bottom: var(--ro-space-2);
+  margin-top: var(--ro-space-4);
+
+  // Directly after a section separator (or the tab row), the title is the
+  // first thing in its block — no extra top margin on top of the padding.
+  .pf-section > &:first-child,
+  &:first-child {
+    margin-top: 0;
+  }
+}
+
+// ── v0.43.1: settings tabs (Account · Privacy · Subscription · Notifications) ─
+.pf-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ro-space-1);
+  border-bottom: 1px solid var(--ro-border);
+  margin-bottom: var(--ro-space-6);
+}
+
+.pf-tab {
+  background: none;
+  border: 0;
+  cursor: pointer;
+  padding: 10px 14px 12px;
+  margin-bottom: -1px; // active underline sits ON the row's border
+  font-family: var(--ro-font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ro-muted);
+  border-bottom: 2px solid transparent;
+  transition: color 120ms ease, border-color 120ms ease;
+
+  &:hover { color: var(--ro-text); }
+
+  &--active {
+    color: var(--ro-gold-text);
+    border-bottom-color: var(--ro-gold);
+  }
+}
+
+// Content directly after the tab row starts flush — no doubled separators.
+.pf-tabs + .pf-section,
+.pf-tabs + div > .pf-section:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+
+// ── v0.43.1: Reading Challenge — last Overview section, panel-wrapped ────────
+.pf-challenge-block {
+  margin-top: var(--ro-space-6);
+
+  // The challenge component renders .pf-section wrappers internally — inside
+  // its panel they don't need the settings-card separators or padding.
+  .pf-section {
+    border-top: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+  }
+}
+
+.pf-section__hint {
+  font-family: var(--ro-font-body);
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--ro-muted);
+  margin-bottom: var(--ro-space-4);
+}

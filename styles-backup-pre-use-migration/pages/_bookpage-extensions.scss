@@ -1,0 +1,325 @@
+// pages/_bookpage-extensions.scss — The Books Oracle
+// Supplemental partial: fills the genuine gaps found while auditing
+// BookPage.jsx against the existing design system. Same ground rule as
+// pages/_profile-extensions.scss — only existing tokens are consumed.
+//
+// Import this after pages/book-pages in main.scss:
+//   @import 'pages/book-pages';
+//   @import 'pages/bookpage-extensions';
+
+// ══════════════════════════════════════════════════════════════════════════════
+// Category pill — verified/unverified modifier
+// (.bp-cat as shipped is a single fixed "verified" look; the unverified/
+// private-category state was previously done with inline styles referencing
+// --gilt/--paper-aged, tokens that don't exist post theme-rename.)
+// ══════════════════════════════════════════════════════════════════════════════
+.bp-cat--unverified {
+  border-color: var(--ro-border-strong);
+  background: color-mix(in srgb, var(--ro-gold) 4%, transparent);
+  color: var(--ro-text-2);
+}
+
+.bp-cat--removing {
+  opacity: .4;
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// Series — compact dot track (≤6 books) and progress track (>6 books)
+// Same visual language as .sp-bar/.sp-bar__fill (Series Page) and
+// .pf-pip/.pf-pip--filled (Profile), scoped for the Book Page hero.
+// ══════════════════════════════════════════════════════════════════════════════
+.bp-series__dots {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: var(--ro-space-2);
+}
+
+.bp-series__dot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 1px solid var(--ro-border-strong);
+  background: transparent;
+  color: var(--ro-muted);
+  font-family: var(--ro-font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+
+  &--read {
+    background: var(--ro-forest);
+    border-color: var(--ro-forest);
+    color: #fff;
+  }
+
+  &--queued {
+    border-style: dashed;
+    border-color: var(--ro-gold);
+    color: var(--ro-gold-text);
+  }
+
+  &--current {
+    border-color: var(--ro-gold);
+    background: var(--ro-gold);
+    color: var(--ro-gold-on);
+    cursor: default;
+  }
+}
+
+.bp-series__track {
+  position: relative;
+  height: 6px;
+  border-radius: var(--ro-radius-pill);
+  background: var(--ro-ring-track);
+  overflow: visible;
+  margin-top: var(--ro-space-2);
+}
+
+.bp-series__track-fill {
+  height: 100%;
+  border-radius: var(--ro-radius-pill);
+  background: var(--ro-gold);
+  width: var(--sp-pct, 0%);
+  transition: width .4s;
+}
+
+.bp-series__track-cursor {
+  position: absolute;
+  top: -3px;
+  width: 2px;
+  height: 12px;
+  background: var(--ro-text);
+  opacity: .6;
+}
+
+.bp-series__progress-text {
+  display: block;
+  font-family: var(--ro-font-mono);
+  font-weight: 600;
+  font-size: 11px;
+  letter-spacing: .04em;
+  color: var(--ro-muted);
+  margin-top: var(--ro-space-2);
+}
+
+.bp-series__desc {
+  font-family: var(--ro-font-body);
+  font-size: 15px;
+  line-height: 1.7;
+  color: var(--ro-text-2);
+  max-width: 680px;
+  margin-top: var(--ro-space-3);
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// v0.40 — Book Page actions redesign
+// Replaces the old flat 6-button ".bp-actions" row with a state-driven,
+// grouped block: one primary action per reading state (want to read /
+// currently reading / finished), a demoted "remove" once a book has been
+// started, and buying pulled into its own "Find a copy" zone. Reference:
+// "Book Page — Actions Redesign.dc.html" (canvas, states 2a/2b/2c).
+//
+// Deliberately namespaced as .bp-action-block rather than reusing
+// .bp-actions — that class is a shared flat-row container used by several
+// other views (BookModal, Lists, PlanView, BookClubDetail, SessionDetail,
+// ListDetail); giving it a column layout here would have reflowed all of
+// those too.
+// ══════════════════════════════════════════════════════════════════════════════
+.bp-action-block {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ro-space-4);
+  margin: var(--ro-space-4) 0;
+}
+
+// "Want to read" state — CTA + two ranked rows of shelf actions
+.bp-primary-zone {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ro-space-3);
+}
+
+.bp-actions-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+
+  > * {
+    flex: 1;
+    min-width: 140px;
+  }
+
+  @include ro-down(mobile) {
+    flex-direction: column;
+
+    > * {
+      min-width: 0;
+    }
+  }
+}
+
+// Tertiary row (Add to list / Mark as read) — same layout, just carries the
+// smaller .btn--sm buttons so it visually reads as lower priority than the
+// Wishlist / Read Next row above it.
+.bp-actions-row--tertiary {
+  gap: 8px;
+}
+
+// Progress / rating panel — the primary zone for the reading & finished states
+.bp-panel {
+  background: var(--ro-surface-2);
+  border: 1px solid var(--ro-border);
+  border-radius: 14px;
+  padding: 20px;
+
+  @include ro-down(mobile) {
+    padding: 16px;
+  }
+}
+
+.bp-panel__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.bp-panel__label {
+  font-family: var(--ro-font-mono);
+  font-weight: 600;
+  font-size: 10px;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+  color: var(--ro-gold-text);
+}
+
+.bp-panel__pct {
+  font-family: var(--ro-font-mono);
+  font-weight: 600;
+  font-size: 11px;
+  color: var(--ro-muted);
+}
+
+.bp-panel__value {
+  font-family: var(--ro-font-display);
+  font-size: 26px;
+  line-height: 1;
+  margin-top: 10px;
+  color: var(--ro-text);
+}
+
+.bp-panel__value-muted {
+  color: var(--ro-muted);
+  font-size: 19px;
+}
+
+.bp-panel__bar-track {
+  height: 8px;
+  border-radius: var(--ro-radius-pill);
+  background: var(--ro-ring-track);
+  margin-top: 14px;
+  overflow: hidden;
+}
+
+.bp-panel__bar-fill {
+  height: 100%;
+  border-radius: var(--ro-radius-pill);
+  background: linear-gradient(90deg, var(--ro-gold), var(--ro-gold-text));
+  transition: width .4s ease;
+}
+
+// Star row / "not rated yet" note sit between the head and the action row
+.bp-panel__stars {
+  margin-top: 12px;
+}
+
+.bp-panel__actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 18px;
+  flex-wrap: wrap;
+
+  > * {
+    flex: 1;
+    min-width: 140px;
+  }
+
+  @include ro-down(mobile) {
+    flex-direction: column;
+
+    > * {
+      min-width: 0;
+    }
+  }
+}
+
+// Demoted "Remove" — small muted text button, right-aligned, away from the
+// actions someone actually reaches for.
+.bp-shelf-secondary {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.bp-remove-link {
+  color: var(--ro-muted);
+
+  &:hover:not(:disabled) {
+    opacity: .8;
+    color: var(--ro-muted);
+  }
+}
+
+// "Find a copy" — buying, separated from the shelf/reading actions above by
+// a divider. Recessed surface, no gold, deliberately quiet.
+.bp-buy {
+  margin-top: 4px;
+  padding-top: 22px;
+  border-top: 1px solid var(--ro-border);
+}
+
+.bp-buy__label {
+  margin-bottom: 13px;
+}
+
+.bp-buy__links {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+
+  @include ro-down(mobile) {
+    flex-direction: column;
+  }
+}
+
+.bp-buy__link {
+  flex: 1;
+  min-width: 140px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 11px 14px;
+  border-radius: var(--ro-radius-md);
+  border: 1px solid var(--ro-border);
+  background: var(--ro-surface-3);
+  color: var(--ro-text-2);
+  font-family: var(--ro-font-body);
+  font-weight: 500;
+  font-size: 14px;
+  text-decoration: none;
+  transition: border-color .15s, color .15s;
+
+  &:hover {
+    border-color: var(--ro-gold);
+    color: var(--ro-gold-text);
+  }
+}
+
+.bp-buy__icon {
+  color: var(--ro-gold-text);
+  font-size: 12px;
+}

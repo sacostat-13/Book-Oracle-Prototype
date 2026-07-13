@@ -184,12 +184,12 @@ function RowContent({ name, verified, usageCount, t }) {
             ☩
           </span>
         )}
-        <span style={{ color: 'var(--paper)', fontSize: '0.95rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        <span style={{ color: 'var(--ro-text)', fontSize: '0.95rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {name}
         </span>
       </div>
       {usageCount > 0 && (
-        <span style={{ fontFamily: 'var(--ro-font-mono)', fontSize: '0.7rem', color: 'var(--paper-aged)', opacity: 0.55, flexShrink: 0 }} title={t('categories.usedByReaders', { count: usageCount })}>
+        <span style={{ fontFamily: 'var(--ro-font-mono)', fontSize: '0.7rem', color: 'var(--ro-muted)', opacity: 0.55, flexShrink: 0 }} title={t('categories.usedByReaders', { count: usageCount })}>
           {usageCount}
         </span>
       )}

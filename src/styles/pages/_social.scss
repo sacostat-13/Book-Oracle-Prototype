@@ -1,3 +1,5 @@
+@use "../tokens";
+
 // pages/_social.scss — The Books Oracle R5
 // Profile, Friends, FriendProfile, Lists, ListView, ListDetail, RatingModal.
 // DS patterns: profile, friends, activity, ratingmodal.
@@ -801,7 +803,7 @@
     font-style: italic;
   }
 
-  @include ro-down(mobile) {
+  @include tokens.ro-down(mobile) {
     font-size: 34px;
   }
 }
@@ -833,7 +835,7 @@
 }
 
 .ls-page-head__label {
-  @include ro-type(overline);
+  @include tokens.ro-type(overline);
   color: var(--ro-muted);
 }
 
@@ -844,7 +846,7 @@
   line-height: 1.02;
   color: var(--ro-text);
 
-  @include ro-down(mobile) {
+  @include tokens.ro-down(mobile) {
     font-size: 32px;
   }
 }

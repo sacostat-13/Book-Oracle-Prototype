@@ -1,3 +1,5 @@
+@use "../tokens";
+
 // pages/_bookpage-extensions.scss — The Books Oracle
 // Supplemental partial: fills the genuine gaps found while auditing
 // BookPage.jsx against the existing design system. Same ground rule as
@@ -154,7 +156,7 @@
     min-width: 140px;
   }
 
-  @include ro-down(mobile) {
+  @include tokens.ro-down(mobile) {
     flex-direction: column;
 
     > * {
@@ -177,7 +179,7 @@
   border-radius: 14px;
   padding: 20px;
 
-  @include ro-down(mobile) {
+  @include tokens.ro-down(mobile) {
     padding: 16px;
   }
 }
@@ -248,7 +250,7 @@
     min-width: 140px;
   }
 
-  @include ro-down(mobile) {
+  @include tokens.ro-down(mobile) {
     flex-direction: column;
 
     > * {
@@ -290,7 +292,7 @@
   gap: 10px;
   flex-wrap: wrap;
 
-  @include ro-down(mobile) {
+  @include tokens.ro-down(mobile) {
     flex-direction: column;
   }
 }

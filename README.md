@@ -450,6 +450,20 @@ a real bug — a production build (`npm run build`) compiles clean, and a
 dev-server restart (or hard browser reload) clears it.
 
 
+### v0.43.2 — Styling-debt sweep: bulk import, Discover filters, dead tokens, Sass module migration
+
+**No migration required.** No new dependencies.
+
+**Bulk import styling rebuilt.** `BulkImport.jsx`'s tabs referenced `.toggle-btn`/`.toggle-sub` — classes added for the Oracle pages in v0.37.1 but removed since, leaving the tabs unstyled. They now use the DS "Tabs" pattern (`.source-tab` with `__title`/`__sub`, same as the book-page source selector). `.bulk-form` is a proper raised panel (`%widget-surface` gradient + strong border + shadow) so the inline form stands apart from the page on both Wishlist and Library, in both themes. Four more classes in the component had no CSS anywhere (`manual-add-header/-close/-note`, `file-hidden` — the raw CSV file input was visible); all defined in `_misc.scss` now. The component also borrowed classes from unrelated pages (`.about-section__body`, `.session-form__book-wrap`, `.cat-auto__tag`, `.ldetail-scroll`); replaced with dedicated `bulk-summary`/`bulk-hl`/`bulk-error`/`bulk-result-list`/`bulk-result-info`/`bulk-status` classes so restyling those pages can't silently break the import flow. Result-row status badges were colored with dead `--gilt-bright`/`--paper-aged`/`--blood-bright` tokens (every status rendered the same); they now use `--ro-gold-text`/`--ro-muted`/`--ro-error`.
+
+**Missing `--ro-space-5` token.** The spacing scale skipped from 4 to 6, but eight rules across `_book-pages`, `_social`, and `_misc` referenced `var(--ro-space-5)` — all silently resolving to nothing (this was also why `.bulk-form` had no padding). Added `--ro-space-5: 20px` to `_themes.scss` and `5: 20px` to the `$ro-space` map.
+
+**Discover page decluttered.** `/clubs/discover` stacked genre chips + mood chips between the search bar and the results, pushing the actual clubs below the fold. Both chip rows moved into a Filters modal (existing `.overlay`/`.modal` pattern) opened from a toolbar button that shows the active-filter count; Clear all + Done actions; filters still apply live behind the overlay. New `clubs.directory.filters*` keys in both i18n files.
+
+**Dead-token sweep (post theme-rename stragglers).** Same class of bug the v0.37.1 sweep fixed, six more spots: `SessionCreate.jsx` still had the `inputStyle`/`labelStyle` objects built from `--paper`/`--gilt` that were removed from `SessionDetail.jsx` — replaced with `.field-label`/`.input`; `CategoryAutocomplete.jsx` inline styles (`--paper`, `--paper-aged` → `--ro-text`, `--ro-muted`); the loading spinner's `--gilt` accent in `_global.scss` (the spinner had no visible spinning segment); `.placeholder`'s `--paper` → `--ro-accent-on` to match its children; selection-bar count (`--paper-aged`/`--gilt`) and two `--text-muted` references in `_book-pages.scss`.
+
+**Sass module migration.** Every `@import` in the styles tree replaced with `@use` (`sass-migrator module` + manual follow-up): the module system scopes `@extend` to a file's own dependency graph, so the five partials extending selectors defined elsewhere (`.rating-modal` et al from `_social`, `%widget-surface` from `_dashboard`, `.btn-*` from `_buttons`, …) got explicit `@use` lines, each marked `// dependency for cross-file @extend`. Verified by compiling before/after and comparing rule-for-rule: zero rules changed or lost except six extend-generated selector combinations that cannot co-occur in the DOM (e.g. `.sign-in-confirm .report-book-trigger`). All `@import`/global-builtin deprecation warnings are gone; the build is Dart Sass 3.0-ready. `themes.css` — an unimported hand-synced copy of `_themes.scss` that had already drifted — deleted. Pre-migration styles snapshot in `styles-backup-pre-use-migration/` (delete after verifying).
+
 ### v0.43 — Share Cards: page shares, action shares, and reading milestones
 
 **No migration required.** New dependency: `html-to-image` (client-side card → PNG export).

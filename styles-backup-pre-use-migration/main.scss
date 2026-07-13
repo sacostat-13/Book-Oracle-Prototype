@@ -1,0 +1,41 @@
+// main.scss — The Books Oracle
+// Single entry point. @import for reliable Vite HMR across all partials.
+// Order: tokens → themes → reset/type/global → layout → components → pages.
+
+// ── Foundation ────────────────────────────────────────────────────────────────
+@import 'tokens';
+@import 'themes';
+@import 'reset';
+@import 'typography';
+@import 'global';
+
+// ── Layout ────────────────────────────────────────────────────────────────────
+@import 'layout/shell';
+@import 'layout/nav';
+@import 'layout/footer';
+
+// ── Components ────────────────────────────────────────────────────────────────
+@import 'components/buttons';
+@import 'components/cards';
+@import 'components/badges';
+@import 'components/forms';
+@import 'components/rating';
+@import 'components/progress';
+@import 'components/avatars';
+@import 'components/modal';
+@import 'components/onboarding';
+@import 'components/corner-brackets';
+@import 'components/book-loader';
+@import 'components/share';
+
+// ── Pages ─────────────────────────────────────────────────────────────────────
+@import 'pages/dashboard';
+@import 'pages/book-pages';
+@import 'pages/bookpage-extensions';
+@import 'pages/profile-extensions';
+@import 'pages/social';
+@import 'pages/clubs';
+@import 'pages/misc';
+@import 'pages/landing';
+@import 'pages/oracle-intro';
+

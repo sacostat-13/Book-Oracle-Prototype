@@ -1,3 +1,5 @@
+@use "../tokens";
+
 // pages/_oracle-intro.scss — "The Reading" intro overlay + the constellation
 // thread that carries its motif down the Landing page.
 //
@@ -480,13 +482,13 @@
 .lp-thread {
   position: absolute;
   top: 0; bottom: 0;
-  left: max(20px, calc((100vw - #{$ro-rail-max}) / 2 - 64px));
+  left: max(20px, calc((100vw - #{tokens.$ro-rail-max}) / 2 - 64px));
   width: 24px;
   pointer-events: none;
   z-index: 1;
   display: none;
 
-  @include ro-up(wide) { display: block; }
+  @include tokens.ro-up(wide) { display: block; }
 
   @media (prefers-reduced-motion: reduce) { display: none; }
 

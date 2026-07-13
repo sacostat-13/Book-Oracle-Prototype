@@ -1,3 +1,5 @@
+@use "../tokens";
+
 // layout/_shell.scss — The Books Oracle R2
 // App shell: top nav bar + scrollable content area + optional footer rail.
 // The topnav is sticky at 64px. Content sits below it. No sidebar.
@@ -27,7 +29,7 @@
   margin-inline: auto;
   padding: var(--ro-space-8) var(--ro-gutter-desktop);
 
-  @include ro-down(tablet) {
+  @include tokens.ro-down(tablet) {
     padding: var(--ro-space-6) var(--ro-gutter-mobile);
     // account for mobile bottom safe area
     padding-bottom: calc(var(--ro-space-6) + env(safe-area-inset-bottom, 0px));
