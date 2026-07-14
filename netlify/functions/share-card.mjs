@@ -228,6 +228,9 @@ function card(p, cover) {
 
 /* ── handler ── */
 export const handler = async (event) => {
+  const t0 = Date.now();
+  const ms = () => `${Date.now() - t0}ms`;
+  console.log('[share-card] invoked', (event.queryStringParameters || {}).type || '(book)');
   try {
     const q = event.queryStringParameters || {};
     const p = {
@@ -240,9 +243,12 @@ export const handler = async (event) => {
     };
 
     const [fonts, cover] = await Promise.all([loadFonts(), loadCover(q.cover), ensureWasm()]);
+    console.log(`[share-card] deps ready ${ms()} — fonts=${fonts.length} cover=${!!cover}`);
 
     const svg = await satori(card(p, cover), { width: 540, height: 675, fonts });
+    console.log(`[share-card] satori done ${ms()}`);
     const png = new Resvg(svg, { fitTo: { mode: 'width', value: 1080 } }).render().asPng();
+    console.log(`[share-card] png done ${ms()} — ${png.length} bytes`);
 
     return {
       statusCode: 200,
