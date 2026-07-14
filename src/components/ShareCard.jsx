@@ -1,15 +1,17 @@
 // src/components/ShareCard.jsx — v0.43
 //
-// The branded share-card template. Rendered in the DOM at 540×675 (4:5) and
-// exported at 2× (1080×1350) via html-to-image, so it works for Instagram,
-// X, WhatsApp and stories-style sharing.
+// The branded share-card template. Rendered in the DOM at 540×675 (4:5) as an
+// on-screen preview; the shared PNG (1080×1350) is produced server-side by
+// netlify/functions/share-card.js, so it works for Instagram, X, WhatsApp and
+// stories-style sharing without CORS-tainting on third-party covers.
 //
 // NOTE on styling: unlike app surfaces, the card deliberately does NOT use
 // the --ro-* theme variables. It's a fixed brand asset — the exported PNG
 // must look identical whether the user is in dark or parchment theme, so
 // its palette is hardcoded to the Dark Academia brand constants here.
-// (Same design will be ported to a satori endpoint for OG images in a
-// follow-up release — keep the two in sync when touching this.)
+// (This same design is reproduced with satori in
+// netlify/functions/share-card.js for the shared/OG PNG — keep the two in
+// sync when touching either.)
 //
 // `moment` shapes come from src/lib/shareMoments.js, plus the non-completion
 // variants fired directly by views:
@@ -21,7 +23,11 @@ import { useT } from '../lib/I18nContext';
 export const SHARE_CARD_WIDTH = 540;
 export const SHARE_CARD_HEIGHT = 675;
 
-function momentCopy(moment, t) {
+// Exported so the server-render URL builder (src/lib/shareCardImage.js) can
+// resolve the exact same copy with the client's t() and pass finished strings
+// to the share-card function — keeping i18n on the client and the two renders
+// in sync.
+export function momentCopy(moment, t) {
   const b = moment.book;
   const bookLine = b ? { title: b.t, author: b.a, coverUrl: b.coverUrl } : {};
   switch (moment.type) {
@@ -129,11 +135,14 @@ export default function ShareCard({ moment, cardRef }) {
 
         {copy.coverUrl && (
           <div className="share-card__cover-wrap">
+            {/* No crossOrigin: this <img> is now only an on-screen preview.
+                The shared PNG is rendered server-side by the share-card
+                function, so we no longer draw this cover onto a canvas — which
+                is what forced (and then failed) the CORS request before. */}
             <img
               className="share-card__cover"
               src={copy.coverUrl}
               alt=""
-              crossOrigin="anonymous"
             />
           </div>
         )}

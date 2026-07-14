@@ -2,27 +2,27 @@
 //
 // Action-share modal: appears after a completion event (book, series, plan,
 // reading goal, club session, milestone) and shows the branded ShareCard
-// with share/download actions. The card is a live DOM node exported to PNG
-// with html-to-image at 2× (1080×1350).
+// with share/download actions. The on-screen card is a live DOM preview; the
+// shared PNG (1080×1350) is rendered by the share-card Netlify function.
 //
 // Rendered once, globally, from App.jsx — reads the pending moment from
 // DataContext (state-only, never persisted). Views that own their own
 // moments (SessionCreate/SessionDetail) fire showShareMoment() with a
 // prebuilt moment object instead.
 //
-// Cover images come from third-party hosts (OpenLibrary, Wikimedia, …).
-// Export needs CORS-approved image data; when a host refuses, html-to-image
-// throws and we fall back to sharing text + link — never a broken PNG.
+// The shared image is rendered server-side by the share-card Netlify function
+// (netlify/functions/share-card.js). It fetches the cover server-to-server, so
+// the CORS-taint that used to break the old html-to-image canvas export is
+// gone. The on-screen <ShareCard> is now purely a preview. If the function
+// ever fails we still degrade to sharing text + link — never a broken PNG.
 
 import { useRef, useState } from 'react';
-import { toPng } from 'html-to-image';
 import { useData } from '../lib/DataContext';
 import { useT } from '../lib/I18nContext';
 import CornerBrackets from './CornerBrackets';
 import ShareCard from './ShareCard';
 import { shareOrCopy, canShareFile } from '../lib/shareService';
-
-const EXPORT_PIXEL_RATIO = 2; // 540×675 → 1080×1350
+import { momentCardFile } from '../lib/shareCardImage';
 
 function momentShareText(moment, t) {
   switch (moment.type) {
@@ -52,23 +52,13 @@ export default function ShareMomentModal() {
   const text = momentShareText(moment, t);
   const url = moment.url || 'https://thebooksoracle.com';
 
-  async function exportPng() {
-    // filter skips the corner-bracket helper if it ever ends up inside the
-    // card; fontEmbedCSS is left to html-to-image's default (it inlines the
-    // Google-hosted fonts so the PNG matches the DOM).
-    return toPng(cardRef.current, {
-      pixelRatio: EXPORT_PIXEL_RATIO,
-      cacheBust: true,
-    });
-  }
-
   async function handleShareImage() {
     setBusy(true);
     setFeedback(null);
+    let objectUrl = null;
     try {
-      const dataUrl = await exportPng();
-      const blob = await (await fetch(dataUrl)).blob();
-      const file = new File([blob], 'books-oracle-card.png', { type: 'image/png' });
+      // Server-rendered PNG (cover fetched server-side — no CORS taint).
+      const file = await momentCardFile(moment, t);
       if (canShareFile(file)) {
         try {
           await navigator.share({ files: [file], title: 'The Books Oracle', text: `${text} ${url}` });
@@ -80,17 +70,19 @@ export default function ShareMomentModal() {
         }
       }
       // Desktop path: download the PNG, put the text on the clipboard.
+      objectUrl = URL.createObjectURL(file);
       const a = document.createElement('a');
-      a.href = dataUrl;
+      a.href = objectUrl;
       a.download = 'books-oracle-card.png';
       a.click();
       try { await navigator.clipboard.writeText(`${text} ${url}`); } catch { /* optional */ }
       setFeedback('downloaded');
     } catch (err) {
-      // Almost always a CORS-tainted cover image. Degrade to text + link.
-      console.warn('share card export failed', err);
+      // Function unreachable / render error. Degrade to text + link.
+      console.warn('share card image failed', err);
       setFeedback('image_failed');
     } finally {
+      if (objectUrl) setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
       setBusy(false);
     }
   }
