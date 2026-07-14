@@ -1498,6 +1498,24 @@
   position: relative;
 }
 
+// v0.46: coach-mark anchored just below the top-right settings gear. Higher
+// specificity than the base .coachmark--bottom so it overrides the centering.
+.coachmark.coachmark--dash {
+  top: 46px;
+  right: 0;
+  left: auto;
+  transform: none;
+
+  &::after {
+    top: -6px;
+    right: 12px;
+    left: auto;
+    margin-left: 0;
+    border-right: 0;
+    border-bottom: 0;
+  }
+}
+
 // ── Feed stars (inline rating) ────────────────────────────────────────────────
 .feed-stars {
   color: var(--ro-gold-text);

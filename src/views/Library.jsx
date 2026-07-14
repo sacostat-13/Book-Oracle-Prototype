@@ -11,6 +11,7 @@ import { useT, useTNode } from '../lib/I18nContext';
 import { useSelection } from '../lib/useSelection';
 import SelectionBar from '../components/SelectionBar';
 import { usePagedList } from '../lib/usePagedList';
+import EmptyState from '../components/EmptyState';
 
 // v0.15 phase 2.5: two-dropdown filter (genres + categories) + Oracle genre grouping.
 // v0.16 DS pass: migrated to .lv-* / .btn-* / .select tokens.
@@ -229,16 +230,12 @@ export default function Library({ onOpenBook }) {
       />
 
       {lib.length === 0 ? (
-        <div className="lv-empty">
-          <div className="lv-empty-icon">📚</div>
-          <div className="lv-empty-title">Empty library</div>
-          <div className="lv-empty-text">
-            As you mark books as read, they'll appear here and fill your shelves on the dashboard.
-          </div>
-          <div className="lv-load-more">
-            <button className="btn btn-secondary" onClick={() => setBulkOpen(true)}>+ Bulk add read books</button>
-          </div>
-        </div>
+        <EmptyState
+          ornament="📚"
+          title={t('library.emptyTitle')}
+          body={t('library.emptyText')}
+          action={{ label: t('library.emptyCta'), onClick: () => setBulkOpen(true) }}
+        />
       ) : filtered.length === 0 ? (
         <div className="lv-empty">
           <div className="lv-empty-icon">📚</div>

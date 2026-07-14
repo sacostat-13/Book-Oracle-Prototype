@@ -21,6 +21,7 @@ import AddToListPicker from '../components/AddToListPicker';
 import RatingModal from '../components/RatingModal';
 import ProgressUpdateModal from '../components/ProgressUpdateModal';
 import CategoryAutocomplete from '../components/CategoryAutocomplete';
+import CoachMark from '../components/CoachMark';
 import ShareModal from '../components/ShareModal';
 import { bookShareUrl } from '../lib/shareService';
 
@@ -152,6 +153,7 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
     startReading,
     memoriesForBook,
     deleteReadingMemory,
+    dismissCoachmark,
   } = useData();
   const { route, go } = useRouter();
   const t = useT();
@@ -916,7 +918,7 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
 
       {/* Categories */}
       <div className="bp-section">
-        <div className="bp-section__head">
+        <div className="bp-section__head" style={{ position: 'relative' }}>
           <span className="bp-section__label">
             {t('bookModal.categories')}
             {categories.length > 0 && (
@@ -926,10 +928,19 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
           {canAddCategories && !atCategoryCap && (
             <button
               className="btn-text"
-              onClick={() => setAdderOpen((v) => !v)}
+              onClick={() => { dismissCoachmark('bookpage-categories'); setAdderOpen((v) => !v); }}
             >
               {adderOpen ? t('bookModal.done') : t('bookModal.addCategory')}
             </button>
+          )}
+          {/* v0.46: one-time hint — user categories are easy to miss */}
+          {canAddCategories && !atCategoryCap && categories.length === 0 && !adderOpen && (
+            <CoachMark
+              id="bookpage-categories"
+              placement="bottom"
+              title={t('coachmark.categoriesTitle')}
+              body={t('coachmark.categoriesBody')}
+            />
           )}
         </div>
 

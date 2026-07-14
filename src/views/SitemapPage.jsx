@@ -14,6 +14,7 @@ const SECTIONS = [
     links: [
       { route: 'dashboard', label: 'Home' },
       { route: 'about', label: 'About' },
+      { route: 'changelog', label: 'What’s New' },
       { route: 'oracle', label: 'The Oracle' },
       { route: 'oracle-categories', label: 'Explore by genre' },
       { route: 'oracle-similar', label: 'Find similar books' },

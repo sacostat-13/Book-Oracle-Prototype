@@ -4,7 +4,7 @@ A reading companion — wishlist, library, reading plans, book clubs, and an AI-
 for book discovery. Built with React + Vite + SCSS, backed by Supabase for auth
 and cross-device sync, and Netlify Functions for API proxying.
 
-> Current version: **v0.45.1** — see [Releases](#releases) below for changelog.
+> Current version: **v0.46** — see [Releases](#releases) below for changelog.
 > Upgrading from an earlier version? Check the matching `MIGRATION_*.md` / `UPDATE_*.md`.
 
 ---
@@ -449,6 +449,18 @@ its normal one-file-at-a-time watch flow. It's a dev-server cache hiccup, not
 a real bug — a production build (`npm run build`) compiles clean, and a
 dev-server restart (or hard browser reload) clears it.
 
+
+### v0.46 — Feature Discovery (empty states, coach-marks, public changelog)
+
+**Migrations required:** none. Two new preference keys ride the existing `profiles.preferences` jsonb (and guest localStorage): `coachmarksSeen` (string[]) and `lastSeenVersion` (string). No new dependencies.
+
+**Feature-discovery pass** (`docs/feature-discovery-v1-spec.md`), organic and non-blocking, in three moves.
+
+*Move 1 — teaching empty states.* New shared `EmptyState` component (`src/components/EmptyState.jsx`, styles in `_global.scss`) renders the canonical `.empty-state` DOM plus an optional primary action; it reads crisp (`is-actionable`) when there's an action or a `children` button group, and stays quietly dimmed when purely informational. Rolled out to seven zero-states — Read Next, Lists, Plans, Book Clubs, Currently Reading, Wishlist, Library — each now teaching what the feature is for and offering the action that fills it. This also fixed a latent bug: the Library empty state was hardcoded English; it's now bilingual via the existing `library.*` keys plus a new `library.emptyCta`.
+
+*Move 2 — contextual coach-marks.* New `CoachMark` primitive (`src/components/CoachMark.jsx`, `_coachmark.scss`): one quiet, dismissible pointer per page, shown only if its `id` isn't in `state.coachmarksSeen`; dismissing (× or acting on the target) adds the id via `dismissCoachmark(id)` and it never returns. Seen-state persists like `dashboardLayout` (authed `profile.preferences`, guest localStorage). Five placements: Book Page categories, the Oracle "categorize" button (Wishlist + Library, only when uncategorised books exist), the progress-modal "note to your future self", and the Dashboard customize gear. Not a multi-step tour; never blocking.
+
+*Move 3 — public changelog + "what's new" dot.* New public, indexable `/changelog` route (`src/views/Changelog.jsx`) rendering `publishedReleases()` with real per-version headings — no login — added to `sitemap.js`, the human sitemap, and linked from About. A "what's new" button in the nav icon cluster (desktop) opens the existing `ReleaseNotesModal` and lights a dot when `CURRENT_VERSION` differs from `state.lastSeenVersion` (cleared by `markReleasesSeen()` on open). i18n `coachmark.*` / `changelog.*` / `nav.whatsNew` (EN + rioplatense ES). Known follow-up: the nav dot is desktop-only (the icon cluster is hidden on tablet-down); a mobile-menu entry is a candidate for a later pass. The blog phase from the spec is deliberately deferred.
 
 ### v0.45.1 — Share Card images: server-rendered PNGs
 

@@ -1,0 +1,110 @@
+// components/_coachmark.scss — The Books Oracle (v0.46)
+//
+// A single contextual coach-mark: a quiet gold-accented bubble pinned to one
+// edge of a `position: relative` container that wraps the target element.
+// See src/components/CoachMark.jsx and the feature-discovery spec (Move 2).
+//
+//   <div style="position: relative">
+//     <button>Add a category</button>
+//     <CoachMark id="…" placement="bottom" body="…" />
+//   </div>
+//
+// One per page, dismissible, once-then-gone. DS tokens only.
+
+.coachmark {
+  position: absolute;
+  z-index: 40;
+  width: max-content;
+  max-width: 260px;
+  padding: var(--ro-space-3) var(--ro-space-4);
+  padding-right: var(--ro-space-6); // room for the × control
+  background: var(--ro-surface-2);
+  border: 1px solid var(--ro-gold);
+  border-radius: var(--ro-radius-sm);
+  box-shadow: var(--ro-shadow);
+  text-align: left;
+  animation: coachmark-in 0.22s ease-out both;
+
+  &__close {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    width: 22px;
+    height: 22px;
+    display: grid;
+    place-items: center;
+    background: transparent;
+    border: 0;
+    cursor: pointer;
+    font-size: 12px;
+    line-height: 1;
+    color: var(--ro-muted);
+    border-radius: var(--ro-radius-sm);
+
+    &:hover { color: var(--ro-text); }
+    &:focus-visible { outline: 2px solid var(--ro-gold); outline-offset: 1px; }
+  }
+
+  &__title {
+    font-family: var(--ro-font-display);
+    font-style: italic;
+    font-size: 1rem;
+    color: var(--ro-text);
+    margin-bottom: 2px;
+  }
+
+  &__body {
+    font-family: var(--ro-font-body);
+    font-size: 0.85rem;
+    line-height: 1.45;
+    color: var(--ro-text-2);
+  }
+
+  // ── Arrow: a small rotated square straddling the anchored edge ──────────
+  &::after {
+    content: '';
+    position: absolute;
+    width: 10px;
+    height: 10px;
+    background: var(--ro-surface-2);
+    border: 1px solid var(--ro-gold);
+    transform: rotate(45deg);
+  }
+
+  // ── Placements (relative to the wrapping container) ─────────────────────
+  &--bottom {
+    top: calc(100% + 10px);
+    left: 50%;
+    transform: translateX(-50%);
+    &::after { top: -6px; left: 50%; margin-left: -5px; border-right: 0; border-bottom: 0; }
+  }
+  &--top {
+    bottom: calc(100% + 10px);
+    left: 50%;
+    transform: translateX(-50%);
+    &::after { bottom: -6px; left: 50%; margin-left: -5px; border-left: 0; border-top: 0; }
+  }
+  &--right {
+    left: calc(100% + 10px);
+    top: 50%;
+    transform: translateY(-50%);
+    &::after { left: -6px; top: 50%; margin-top: -5px; border-top: 0; border-right: 0; }
+  }
+  &--left {
+    right: calc(100% + 10px);
+    top: 50%;
+    transform: translateY(-50%);
+    &::after { right: -6px; top: 50%; margin-top: -5px; border-bottom: 0; border-left: 0; }
+  }
+}
+
+// Opacity-only so it never fights the placement transforms above
+// (which handle centering via translateX/translateY).
+@keyframes coachmark-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .coachmark { animation: none; }
+}

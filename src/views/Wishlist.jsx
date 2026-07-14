@@ -10,6 +10,7 @@ import { useT, useTNode } from '../lib/I18nContext';
 import { useSelection } from '../lib/useSelection';
 import SelectionBar from '../components/SelectionBar';
 import { usePagedList } from '../lib/usePagedList';
+import EmptyState from '../components/EmptyState';
 
 // v0.15 phase 2.5: two-dropdown filter (genres + categories).
 // v0.16 DS pass: migrated to .lv-* / .btn-* / .select tokens.
@@ -223,13 +224,12 @@ export default function Wishlist({ onOpenBook }) {
       />
 
       {wl.length === 0 ? (
-        <div className="lv-empty">
-          <div className="lv-empty-icon">❦</div>
-          <div className="lv-empty-title">{t('wishlist.subtitleEmpty')}</div>
-          <div className="lv-empty-text">
-            {t('wishlist.emptyText')}
-          </div>
-          <div className="lv-load-more">
+        <EmptyState
+          ornament="❦"
+          title={t('wishlist.subtitleEmpty')}
+          body={t('wishlist.emptyText')}
+        >
+          <div className="empty-state-action">
             <button className="btn btn-secondary" onClick={() => setBulkOpen(true)}>+ {t('wishlist.bulkImport')}</button>
             <button
               className="btn btn-tertiary"
@@ -243,7 +243,7 @@ export default function Wishlist({ onOpenBook }) {
               Browse curated catalog
             </button>
           </div>
-        </div>
+        </EmptyState>
       ) : filtered.length === 0 ? (
         <div className="lv-empty">
           <div className="lv-empty-icon">❦</div>

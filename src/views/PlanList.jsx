@@ -2,6 +2,7 @@ import { useData } from '../lib/DataContext';
 import { useRouter } from '../lib/RouterContext';
 import { bookKey, findBookByTitle } from '../lib/bookHelpers';
 import { useT, useTNode, useI18n } from '../lib/I18nContext';
+import EmptyState from '../components/EmptyState';
 
 // How many books in this plan does the user already have in their library?
 function planProgress(plan, state) {
@@ -56,14 +57,12 @@ export default function PlanList() {
       </div>
 
       {plans.length === 0 ? (
-        <div className="lv-empty">
-          <div className="lv-empty-icon">❦</div>
-          <div className="lv-empty-title">{t('plans.noPlansTitle')}</div>
-          <div className="lv-empty-text">{t('plans.noPlansText')}</div>
-          <button className="btn-primary" onClick={() => go('plan-create')}>
-            {t('plans.createOwnPlan')}
-          </button>
-        </div>
+        <EmptyState
+          ornament="❦"
+          title={t('plans.noPlansTitle')}
+          body={t('plans.noPlansText')}
+          action={{ label: t('plans.createOwnPlan'), onClick: () => go('plan-create') }}
+        />
       ) : (
         <div className="plan-list">
           {plans.map((plan) => {

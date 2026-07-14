@@ -40,6 +40,7 @@
     "friends": "Amigos",
     "notifications": "Notificaciones",
     "noNotifications": "Sin notificaciones todavía",
+    "whatsNew": "Novedades",
     "notifFriendRequest": "quiere ser tu amigo/a de lectura",
     "notifFriendAccepted": "aceptó tu solicitud de amistad",
     "accept": "Aceptar",
@@ -259,6 +260,7 @@
     "subtitleEmpty": "Tu biblioteca está vacía.",
     "emptyTitle": "Todavía no hay nada",
     "emptyText": "Marcá libros como leídos desde tu lista o importá desde Goodreads.",
+    "emptyCta": "Agregar leídos en lote",
     "searchPlaceholder": "Buscar título o autora…",
     "allGenres": "— Todos los géneros —",
     "allCategories": "— Todas las categorías —",
@@ -384,6 +386,7 @@
     "eyebrow": "Mis Listas",
     "emptyTitle": "Todavía no hay listas",
     "emptyText": "Creá una lista para curar y compartir tus lecturas favoritas.",
+    "emptyCta": "Creá tu primera lista",
     "newList": "+ Nueva lista",
     "publicBadge": "Pública",
     "privateBadge": "Privada",
@@ -775,6 +778,26 @@
     "genreCountLabel": "{n} en {genre}",
     "newGenreLabel": "Primero en {genre}"
   },
+  "coachmark": {
+    "dismiss": "Cerrar",
+    "categoriesTitle": "Hacelo tuyo",
+    "categoriesBody": "Agregá tus propias categorías para ordenar este libro como quieras — “acogedor”, “para releer”, lo que te sirva.",
+    "ledgerTitle": "Compartí un hito",
+    "ledgerBody": "Tocá cualquier marca de tu registro para publicarla como tarjeta.",
+    "oracleTitle": "Dejá que el Oráculo ayude",
+    "oracleBody": "El Oráculo puede ordenar estos libros por género — con un toque.",
+    "memoryTitle": "Una nota para tu yo futuro",
+    "memoryBody": "Anotá dónde vas y qué se te quedó — te va a estar esperando cuando vuelvas.",
+    "dashboardTitle": "Hacé tuyo el panel",
+    "dashboardBody": "Mostrá, ocultá y reordená estos widgets desde acá."
+  },
+  "changelog": {
+    "breadcrumb": "Panel",
+    "eyebrow": "Novedades",
+    "pageTitle": "Registro de cambios",
+    "subtitle": "Todo lo nuevo en The Books Oracle — lo más reciente primero.",
+    "aboutLink": "Ver el registro completo →"
+  },
   "report": {
     "trigger": "⚑ Reportar un error",
     "formTitle": "¿Qué está incorrecto?",
@@ -870,6 +893,7 @@
     "newClub": "+ Nuevo club de lectura",
     "emptyTitle": "Todavía no hay clubs",
     "emptyText": "Creá un club o pedile a alguien que te comparta su enlace de unión.",
+    "emptyCta": "Creá un club de lectura",
     "roleAdmin": "✦ Admin",
     "roleMember": "Miembro",
     "createEyebrow": "Comunidad",

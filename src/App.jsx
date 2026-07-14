@@ -26,6 +26,7 @@ import Profile from './views/Profile';
 import FriendProfile from './views/FriendProfile';
 import Friends from './views/Friends';
 import About from './views/About';
+import Changelog from './views/Changelog';
 import Privacy from './views/Privacy';
 import Terms from './views/Terms';
 import Refund from './views/Refund';
@@ -77,6 +78,7 @@ export default function App() {
     'currently-reading': { title: 'Currently Reading — The Books Oracle' },
     profile: { title: 'Profile — The Books Oracle' },
     about: { title: 'About — The Books Oracle', description: 'The Books Oracle — wishlist, library, reading plans and an Oracle that knows what you will love next.' },
+    changelog: { title: 'What’s New — The Books Oracle', description: 'Every release of The Books Oracle: new features, improvements, and fixes across the reading app.' },
     oracle: { title: 'Oracle — The Books Oracle' },
     'oracle-categories': { title: 'Explore by Genre — The Books Oracle' },
     'oracle-similar': { title: 'Find Similar Books — The Books Oracle' },
@@ -275,6 +277,7 @@ export default function App() {
     case 'friend-profile': page = <FriendProfile />; break;
     case 'friends': page = <Friends />; break;
     case 'about': page = <About />; break;
+    case 'changelog': page = <Changelog />; break;
     case 'privacy': page = <Privacy />; break;
     case 'terms': page = <Terms />; break;
     case 'refund': page = <Refund />; break;

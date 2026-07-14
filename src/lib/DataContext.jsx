@@ -12,6 +12,7 @@ import {
   rowToMoment,
   computeBackfillAccomplishments,
 } from './accomplishments';
+import { CURRENT_VERSION } from './releases';
 
 const LOCAL_KEY    = 'wishlist_oracle_state_v2';
 const SESSION_KEY  = 'wishlist_oracle_session_v3'; // bumped v0.31: genres now included in cache
@@ -74,6 +75,13 @@ const defaultState = {
   // Flat array of { id, key, kind, bookId, meta, earnedAt }, newest first.
   // Earned once and kept; deduped by `key`. Guests persist via localStorage.
   accomplishments: [],
+  // v0.46: Feature-discovery coach-marks the reader has dismissed. Flat array
+  // of mark ids; a mark whose id is here never renders again. Rides
+  // profile.preferences (authed) / localStorage (guest), like dashboardLayout.
+  coachmarksSeen: [],
+  // v0.46: the release version the reader last opened in the "what's new"
+  // panel. When it differs from CURRENT_VERSION, the nav shows an unseen dot.
+  lastSeenVersion: null,
 };
 
 const DataContext = createContext(null);
@@ -148,6 +156,10 @@ function loadLocal() {
       memories: parsed.memories || {},
       // v0.45: guest-mode accomplishments ride localStorage too
       accomplishments: parsed.accomplishments || [],
+      // v0.46: guest-mode dismissed coach-marks ride localStorage too
+      coachmarksSeen: parsed.coachmarksSeen || [],
+      // v0.46: guest-mode "what's new" seen-marker rides localStorage too
+      lastSeenVersion: parsed.lastSeenVersion || null,
     };
   } catch {
     return { ...defaultState };
@@ -615,6 +627,8 @@ async function loadFromSupabase(userId) {
     oracleMode: profile.preferences?.oracleMode || 'wishlist',
     dashboardLayout: profile.preferences?.dashboardLayout || null,
     readingGoalCount: profile.preferences?.readingGoalCount || null,
+    coachmarksSeen: profile.preferences?.coachmarksSeen || [],
+    lastSeenVersion: profile.preferences?.lastSeenVersion || null,
     categoriesByBookId,
     genresByBookId,
     genres,
@@ -653,6 +667,8 @@ async function savePreferences(userId, state) {
         oracleMode: state.oracleMode,
         dashboardLayout: state.dashboardLayout,
         readingGoalCount: state.readingGoalCount,
+        coachmarksSeen: state.coachmarksSeen || [],
+        lastSeenVersion: state.lastSeenVersion,
       },
       updated_at: new Date().toISOString(),
     })
@@ -1877,6 +1893,24 @@ export function DataProvider({ children }) {
     setState((s) => ({ ...s, dashboardLayout: layout }));
   }, []);
 
+  // v0.46: dismiss a feature-discovery coach-mark for good. Idempotent — a mark
+  // already seen is not re-added. Persists via the normal preferences path.
+  const dismissCoachmark = useCallback((id) => {
+    if (!id) return;
+    setState((s) => {
+      const seen = s.coachmarksSeen || [];
+      if (seen.includes(id)) return s;
+      return { ...s, coachmarksSeen: [...seen, id] };
+    });
+  }, []);
+
+  // v0.46: mark the current release as seen — clears the nav "what's new" dot.
+  const markReleasesSeen = useCallback(() => {
+    setState((s) => (s.lastSeenVersion === CURRENT_VERSION
+      ? s
+      : { ...s, lastSeenVersion: CURRENT_VERSION }));
+  }, []);
+
   // v0.35: numeric reading goal (books per year)
   const setReadingGoalCount = useCallback((count) => {
     setState((s) => ({ ...s, readingGoalCount: count }));
@@ -2362,6 +2396,12 @@ export function DataProvider({ children }) {
     // v0.45: reading accomplishments (the Ledger)
     accomplishments: state.accomplishments || [],
     shareAccomplishment,
+    // v0.46: feature-discovery coach-marks
+    coachmarksSeen: state.coachmarksSeen || [],
+    dismissCoachmark,
+    // v0.46: "what's new" seen-marker
+    lastSeenVersion: state.lastSeenVersion || null,
+    markReleasesSeen,
     importGoodreads,
     bulkAddToLibrary,
     cacheBookFields,

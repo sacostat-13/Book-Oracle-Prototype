@@ -5,10 +5,11 @@ import { useEffect, useState } from 'react';
 import { useT } from '../lib/I18nContext';
 import { useData } from '../lib/DataContext';
 import CornerBrackets from './CornerBrackets';
+import CoachMark from './CoachMark';
 
 export default function ProgressUpdateModal({ book, onSave, onClose }) {
   const t = useT();
-  const { memoriesForBook, addReadingMemory } = useData();
+  const { memoriesForBook, addReadingMemory, dismissCoachmark } = useData();
   const catalogPages = book?.pp || null;
   const initialPages = book?.pagesRead ?? 0;
   const initialOverride = book?.userPageCount ?? null;
@@ -152,9 +153,18 @@ export default function ProgressUpdateModal({ book, onSave, onClose }) {
         ) : null}
 
         {!memoryOpen ? (
-          <button type="button" className="btn-text btn--sm" onClick={() => setMemoryOpen(true)}>
-            ✎ {t('memory.captureLink')}
-          </button>
+          <div style={{ position: 'relative', display: 'inline-block' }}>
+            <button type="button" className="btn-text btn--sm" onClick={() => { dismissCoachmark('memory-note'); setMemoryOpen(true); }}>
+              ✎ {t('memory.captureLink')}
+            </button>
+            {/* v0.46: one-time hint — Reading Memory is easy to overlook */}
+            <CoachMark
+              id="memory-note"
+              placement="top"
+              title={t('coachmark.memoryTitle')}
+              body={t('coachmark.memoryBody')}
+            />
+          </div>
         ) : (
           <div className="memory-capture">
             <label className="field-label">

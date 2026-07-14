@@ -44,6 +44,7 @@ function urlEntry(path, { changefreq = 'weekly', priority = '0.5' } = {}) {
 const STATIC_ENTRIES = [
   urlEntry('/', { changefreq: 'daily', priority: '1.0' }),
   urlEntry('/about', { priority: '0.6' }),
+  urlEntry('/changelog', { changefreq: 'weekly', priority: '0.5' }),
   urlEntry('/sitemap', { changefreq: 'monthly', priority: '0.3' }),
   urlEntry('/privacy', { changefreq: 'yearly', priority: '0.2' }),
   urlEntry('/terms', { changefreq: 'yearly', priority: '0.2' }),

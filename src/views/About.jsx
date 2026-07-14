@@ -269,8 +269,14 @@ export default function About() {
 
         {/* v0.13: current version + "what's new" entry point. The footer
             keeps its own state for the modal; About stays simple. The
-            content is fully bilingual via i18n, sourced from releases.js. */}
+            content is fully bilingual via i18n, sourced from releases.js.
+            v0.46: also link out to the public, indexable /changelog page. */}
         <CurrentReleaseFooter />
+        <div className="about-links">
+          <a onClick={() => go('changelog')} className="footer-link lv-hl">
+            {t('changelog.aboutLink')}
+          </a>
+        </div>
       </div>
     </>
   );

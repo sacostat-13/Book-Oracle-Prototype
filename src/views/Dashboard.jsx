@@ -12,6 +12,7 @@ import { callClaude, QuotaExceededError } from '../lib/claudeApi';
 import { bookKey, openBookTab } from '../lib/bookHelpers';
 import { getFriendsFeedEvents } from '../lib/useFriends';
 import { supabase } from '../lib/supabase';
+import CoachMark from '../components/CoachMark';
 
 const FEED_PAGE_SIZE = 5;
 
@@ -1025,7 +1026,7 @@ function WidgetSettings({ layout, onClose, onChange, t }) {
 
 // ─── Main Dashboard ───────────────────────────────────────────────────────────
 export default function Dashboard({ onOpenBook }) {
-  const { state, setDashboardLayout, setReadingGoalCount } = useData();
+  const { state, setDashboardLayout, setReadingGoalCount, dismissCoachmark } = useData();
   const { go } = useRouter();
   const { user } = useAuth();
   const t = useT();
@@ -1130,7 +1131,7 @@ export default function Dashboard({ onOpenBook }) {
       <div className="db-widgets">
         <button
           className="db-hero__settings"
-          onClick={() => setSettingsOpen(true)}
+          onClick={() => { dismissCoachmark('dashboard-customize'); setSettingsOpen(true); }}
           title={t('dashboard.widgetSettingsTitle')}
           aria-label={t('dashboard.widgetSettingsTitle')}
         >
@@ -1139,6 +1140,14 @@ export default function Dashboard({ onOpenBook }) {
             <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
           </svg>
         </button>
+        {/* v0.46: one-time hint — dashboard customization is easy to miss */}
+        <CoachMark
+          id="dashboard-customize"
+          placement="bottom"
+          className="coachmark--dash"
+          title={t('coachmark.dashboardTitle')}
+          body={t('coachmark.dashboardBody')}
+        />
         {layout.filter((w) => w.visible).map((w) => renderWidget(w.id))}
       </div>
 

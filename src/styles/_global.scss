@@ -253,4 +253,21 @@ body {
     margin: 0 auto;
   }
 
+  // v0.46: teaching zero-states (shared EmptyState component). When a
+  // call-to-action is present the block reads crisp instead of faded — the
+  // dimmed look is for purely informational empties, not ones we want a reader
+  // to act on. Text stays gently muted; only the whole-block opacity is lifted.
+  &.is-actionable {
+    opacity: 1;
+    color: var(--ro-muted);
+
+    .ornament { opacity: .8; }
+  }
+
+  .empty-state-action {
+    margin-top: var(--ro-space-4);
+        gap: var(--ro-space-5);
+        display: flex;
+        justify-content: center;
+  }
 }

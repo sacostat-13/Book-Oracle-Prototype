@@ -16,9 +16,24 @@
 
 // The version label shown as "current" — keep in sync with package.json and
 // the README version line.
-export const CURRENT_VERSION = 'v0.45.1';
+export const CURRENT_VERSION = 'v0.46.0';
 
 export const RELEASES = [{
+    version: 'v0.46',
+    date: '2026-07-14',
+    titleEn: 'Find your way around: a friendlier Books Oracle',
+    titleEs: 'Encontrá tu camino: un Books Oracle más amable',
+    bodyEn: [
+      'Empty pages now teach as you go. When a shelf, list, plan, or club is empty, it tells you what the feature is for and gives you the button to start — no more guessing what a blank page is waiting for.',
+      'New: gentle one-time tips. A quiet pointer appears the first time you land somewhere with a feature that’s easy to miss — adding your own categories to a book, letting the Oracle sort your genres, leaving a note for your future self, or rearranging your dashboard. Dismiss it once and it’s gone for good.',
+      'New: a public changelog. Every update now lives at /changelog, and a “what’s new” dot in the top bar lights up when there’s something you haven’t seen.',
+    ],
+    bodyEs: [
+      'Las páginas vacías ahora te enseñan a medida que avanzás. Cuando un estante, lista, plan o club está vacío, te dice para qué sirve la función y te da el botón para empezar — se acabó adivinar qué espera una página en blanco.',
+      'Nuevo: consejos suaves que aparecen una sola vez. Un aviso tranquilo aparece la primera vez que llegás a un lugar con una función fácil de pasar por alto — agregar tus propias categorías a un libro, dejar que el Oráculo ordene tus géneros, dejarte una nota para tu yo futuro o reorganizar tu panel. Lo cerrás una vez y no vuelve.',
+      'Nuevo: un registro de cambios público. Cada novedad ahora vive en /changelog, y un punto de “novedades” en la barra superior se enciende cuando hay algo que no viste.',
+    ],
+  }, {
     version: 'v0.45.1',
     date: '2026-07-14',
     titleEn: 'Share cards now post as images',

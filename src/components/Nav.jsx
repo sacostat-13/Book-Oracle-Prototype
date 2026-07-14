@@ -12,6 +12,8 @@ import { useTheme } from '../lib/ThemeContext';
 import { useNotifications, notificationLabel, notificationRoute } from '../lib/useNotifications';
 import { useFriends } from '../lib/useFriends';
 import AnnouncementModal from './AnnouncementModal';
+import ReleaseNotesModal from './ReleaseNotesModal';
+import { CURRENT_VERSION } from '../lib/releases';
 import NavSearch from './NavSearch';
 import { useT } from '../lib/I18nContext';
 
@@ -111,7 +113,7 @@ function NotifItem({ n, t, onClose, go, markOneRead, onAnnouncement, handleAccep
 
 // ── Main component ─────────────────────────────────────────────────────────────
 export default function Nav({ onPreviewBook, guestMode = false }) {
-  const { state } = useData();
+  const { state, markReleasesSeen } = useData();
   const { route, go } = useRouter();
   const { user, signInWithGoogle, signOut } = useAuth();
   const { lang, toggleLang, t, tNode } = useI18n();
@@ -125,6 +127,12 @@ export default function Nav({ onPreviewBook, guestMode = false }) {
   const [bellOpen, setBellOpen] = useState(false);
   const [userOpen, setUserOpen] = useState(false);
   const [activeAnnouncement, setActiveAnnouncement] = useState(null);
+  const [releaseOpen, setReleaseOpen] = useState(false);
+
+  // v0.46: the nav "what's new" dot lights when a newer release has shipped
+  // than the one the reader last opened.
+  const hasUnseenRelease = state.lastSeenVersion !== CURRENT_VERSION;
+  const openReleases = () => { setReleaseOpen(true); markReleasesSeen(); };
 
   const booksRef = useRef(null);
   const socialRef = useRef(null);
@@ -295,6 +303,19 @@ export default function Nav({ onPreviewBook, guestMode = false }) {
         {/* ── Icon cluster ── */}
         <div className="nav-icons">
 
+          {/* What's new */}
+          <button
+            className="nav-whatsnew"
+            onClick={openReleases}
+            aria-label={t('nav.whatsNew')}
+            title={t('nav.whatsNew')}
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M12 3l1.9 4.6L18.5 9l-4.6 1.9L12 15.5 10.1 10.9 5.5 9l4.6-1.4L12 3z" />
+            </svg>
+            {hasUnseenRelease && <span className="nav-whatsnew__dot" aria-hidden="true" />}
+          </button>
+
           {/* Bell */}
           {user && (
             <div style={{ position: 'relative' }} ref={bellRef}>
@@ -458,6 +479,9 @@ export default function Nav({ onPreviewBook, guestMode = false }) {
 
       {activeAnnouncement && (
         <AnnouncementModal announcement={activeAnnouncement} onClose={() => setActiveAnnouncement(null)} />
+      )}
+      {releaseOpen && (
+        <ReleaseNotesModal onClose={() => setReleaseOpen(false)} />
       )}
     </>
   );

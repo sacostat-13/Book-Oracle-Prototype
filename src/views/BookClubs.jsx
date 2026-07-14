@@ -4,6 +4,7 @@ import { useData } from '../lib/DataContext';
 import { useRouter } from '../lib/RouterContext';
 import { useAuth } from '../lib/AuthContext';
 import { useT, useTNode } from '../lib/I18nContext';
+import EmptyState from '../components/EmptyState';
 
 export default function BookClubs() {
   const { state } = useData();
@@ -36,11 +37,12 @@ export default function BookClubs() {
       )}
 
       {clubs.length === 0 ? (
-        <div className="empty-state">
-          <div className="ornament">❦</div>
-          <div className="empty-state-title">{t('clubs.emptyTitle')}</div>
-          <div className="empty-state-text">{t('clubs.emptyText')}</div>
-        </div>
+        <EmptyState
+          ornament="❦"
+          title={t('clubs.emptyTitle')}
+          body={t('clubs.emptyText')}
+          action={user ? { label: t('clubs.emptyCta'), onClick: () => go('book-club-create') } : undefined}
+        />
       ) : (
         <div className="clubs-list">
           {clubs.map((club) => (

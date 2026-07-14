@@ -6,6 +6,7 @@ import { bookKey } from '../lib/bookHelpers';
 import BookCover from '../components/BookCover';
 import RatingModal from '../components/RatingModal';
 import ProgressUpdateModal from '../components/ProgressUpdateModal';
+import EmptyState from '../components/EmptyState';
 
 export default function CurrentlyReading({ onOpenBook }) {
   const { state, removeFromCurrentlyReading, finishReading, updateReadingProgress } = useData();
@@ -57,17 +58,16 @@ export default function CurrentlyReading({ onOpenBook }) {
       </div>
 
       {currentlyReading.length === 0 ? (
-        <div className="empty-state">
-          <div className="ornament">❦</div>
-          <div className="empty-state-title">{t('currentlyReading.emptyTitle')}</div>
-          <div className="empty-state-text">
-            {t('currentlyReading.emptyText')}
-          </div>
-          <div className="lv-load-more">
+        <EmptyState
+          ornament="❦"
+          title={t('currentlyReading.emptyTitle')}
+          body={t('currentlyReading.emptyText')}
+        >
+          <div className="empty-state-action">
             <button className="btn btn-secondary" onClick={() => go('read-next')}>{t('nav.readNext')}</button>
             <button className="btn btn-secondary" onClick={() => go('wishlist')}>{t('nav.wishlist')}</button>
           </div>
-        </div>
+        </EmptyState>
       ) : (
         <div className="cr-grid">
           {currentlyReading.map((b) => {

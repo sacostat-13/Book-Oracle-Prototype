@@ -2,6 +2,7 @@ import { useData } from '../lib/DataContext';
 import { useRouter } from '../lib/RouterContext';
 import { useT, useTNode } from '../lib/I18nContext';
 import { bookKey } from '../lib/bookHelpers';
+import EmptyState from '../components/EmptyState';
 
 export default function ReadNext({ onOpenBook }) {
   const { state, markAsRead, removeFromReadNext, startReading } = useData();
@@ -26,14 +27,12 @@ export default function ReadNext({ onOpenBook }) {
       </div>
 
       {queue.length === 0 ? (
-        <div className="empty-state">
-          <div className="ornament">❦</div>
-          <div className="empty-state-title">{t('readNext.emptyTitle')}</div>
-          <div className="empty-state-text">{t('readNext.emptyText')}</div>
-          <div className="lv-load-more">
-            <button className="btn btn-primary" onClick={() => go('oracle')}>{t('readNext.openOracle')}</button>
-          </div>
-        </div>
+        <EmptyState
+          ornament="❦"
+          title={t('readNext.emptyTitle')}
+          body={t('readNext.emptyText')}
+          action={{ label: t('readNext.openOracle'), onClick: () => go('oracle') }}
+        />
       ) : (
         queue.map((b, i) => (
           <div className="rn-item" key={`${bookKey(b)}-${i}`}>

@@ -258,6 +258,38 @@ body.theme-parchment .nav-logo__img--light {
   }
 }
 
+// v0.46: "what's new" button — same footprint as the bell, with an unseen dot
+.nav-whatsnew {
+  position: relative;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--ro-radius-md);
+  background: transparent;
+  border: 1px solid transparent;
+  cursor: pointer;
+  color: var(--ro-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background .15s, color .15s, border-color .15s;
+
+  &:hover {
+    background: var(--ro-surface-2);
+    color: var(--ro-gold-text);
+  }
+
+  &__dot {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    width: 8px;
+    height: 8px;
+    background: var(--ro-gold);
+    border-radius: 50%;
+    box-shadow: 0 0 0 2px var(--ro-surface);
+  }
+}
+
 .nav-bell {
   position: relative;
   width: 36px;

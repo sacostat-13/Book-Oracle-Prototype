@@ -7,6 +7,7 @@ import { useT, useTNode, useI18n } from '../lib/I18nContext';
 import { openBookTab } from '../lib/bookHelpers';
 import BookCover from '../components/BookCover';
 import CornerBrackets from '../components/CornerBrackets';
+import EmptyState from '../components/EmptyState';
 
 // How many covers to show per list before collapsing into a "+N more" box.
 const COVER_PREVIEW = 6;
@@ -121,11 +122,12 @@ export default function Lists() {
       </div>
 
       {lists.length === 0 ? (
-        <div className="lv-empty">
-          <div className="lv-empty-icon">❦</div>
-          <div className="lv-empty-title">{t('lists.emptyTitle')}</div>
-          <div className="lv-empty-text">{t('lists.emptyText')}</div>
-        </div>
+        <EmptyState
+          ornament="❦"
+          title={t('lists.emptyTitle')}
+          body={t('lists.emptyText')}
+          action={{ label: t('lists.emptyCta'), onClick: () => setCreating(true) }}
+        />
       ) : (
         <div className="ls-dash-lists">
           {lists.map(list => {

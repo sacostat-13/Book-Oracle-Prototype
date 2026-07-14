@@ -40,6 +40,7 @@
     "friends": "Friends",
     "notifications": "Notifications",
     "noNotifications": "No notifications yet",
+    "whatsNew": "What’s new",
     "notifFriendRequest": "wants to be your reading friend",
     "notifFriendAccepted": "accepted your friend request",
     "accept": "Accept",
@@ -259,6 +260,7 @@
     "subtitleEmpty": "Your library is empty.",
     "emptyTitle": "Nothing here yet",
     "emptyText": "Mark books as read from your wishlist or import from Goodreads.",
+    "emptyCta": "Bulk add read books",
     "searchPlaceholder": "Search title or author…",
     "allGenres": "— All genres —",
     "allCategories": "— All categories —",
@@ -384,6 +386,7 @@
     "eyebrow": "My Lists",
     "emptyTitle": "No lists yet",
     "emptyText": "Create a list to curate and share your favourite reads.",
+    "emptyCta": "Create your first list",
     "newList": "+ New list",
     "publicBadge": "Public",
     "privateBadge": "Private",
@@ -775,6 +778,26 @@
     "genreCountLabel": "{n} in {genre}",
     "newGenreLabel": "First in {genre}"
   },
+  "coachmark": {
+    "dismiss": "Dismiss",
+    "categoriesTitle": "Make it yours",
+    "categoriesBody": "Add your own categories to shelve this book any way you like — “cozy”, “to reread”, whatever fits.",
+    "ledgerTitle": "Share a milestone",
+    "ledgerBody": "Tap any mark in your ledger to post it as a card.",
+    "oracleTitle": "Let the Oracle help",
+    "oracleBody": "The Oracle can sort these books into genres for you — one tap.",
+    "memoryTitle": "A note to future you",
+    "memoryBody": "Jot where you are and what's staying with you — it'll greet you when you return.",
+    "dashboardTitle": "Make it your dashboard",
+    "dashboardBody": "Show, hide, and reorder these widgets from here."
+  },
+  "changelog": {
+    "breadcrumb": "Dashboard",
+    "eyebrow": "What’s New",
+    "pageTitle": "Changelog",
+    "subtitle": "Everything new in The Books Oracle — newest first.",
+    "aboutLink": "See the full changelog →"
+  },
   "report": {
     "trigger": "⚑ Report an issue",
     "formTitle": "What's incorrect?",
@@ -870,6 +893,7 @@
     "newClub": "+ New book club",
     "emptyTitle": "No clubs yet",
     "emptyText": "Create a club or ask someone to share their join link with you.",
+    "emptyCta": "Start a book club",
     "roleAdmin": "✦ Admin",
     "roleMember": "Member",
     "createEyebrow": "Community",

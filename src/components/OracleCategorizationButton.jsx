@@ -6,13 +6,14 @@ import { useData } from '../lib/DataContext';
 import { useT } from '../lib/I18nContext';
 import { QuotaExceededError } from '../lib/claudeApi';
 import { useOracleQuota } from '../lib/OracleQuotaContext';
+import CoachMark from './CoachMark';
 import {
   getBooksNeedingGenres,
   runOracleCategorization,
 } from '../lib/oracleCategorizationService';
 
 export default function OracleCategorizationButton({ books }) {
-  const { state, setBookGenres, showToast } = useData();
+  const { state, setBookGenres, showToast, dismissCoachmark } = useData();
   const { genresByBookId } = state;
   const t = useT();
   const { handleQuotaError } = useOracleQuota();
@@ -64,16 +65,25 @@ export default function OracleCategorizationButton({ books }) {
     : 0;
 
   return (
-    <div className="oracle-categorization-button">
+    <div className="oracle-categorization-button" style={{ position: 'relative' }}>
       {!running ? (
+        <>
         <button
           className="btn-oracle oracle-btn"
-          onClick={handleRun}
+          onClick={() => { dismissCoachmark('oracle-categorize'); handleRun(); }}
           title={`${count} book${count !== 1 ? 's' : ''} without genre assignments`}
         >
           {t('oracle.categorizeBtnLabel')}
           <span className="oracle-btn-count"> {count}</span>
         </button>
+        {/* v0.46: one-time hint — the Oracle's signature feature is easy to miss */}
+        <CoachMark
+          id="oracle-categorize"
+          placement="bottom"
+          title={t('coachmark.oracleTitle')}
+          body={t('coachmark.oracleBody')}
+        />
+        </>
       ) : (
         <div className="oracle-progress">
           <div className="oracle-progress-label">
