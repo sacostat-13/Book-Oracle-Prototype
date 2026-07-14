@@ -249,6 +249,10 @@ export const handler = async (event) => {
     console.log(`[share-card] satori done ${ms()}`);
     const png = new Resvg(svg, { fitTo: { mode: 'width', value: 1080 } }).render().asPng();
     console.log(`[share-card] png done ${ms()} — ${png.length} bytes`);
+    // @resvg/resvg-wasm's asPng() returns a Uint8Array (not a Node Buffer).
+    // Uint8Array.toString('base64') does NOT base64-encode — it returns
+    // "137,80,78,..." — so it must be wrapped in Buffer.from() before encoding.
+    const pngB64 = Buffer.from(png).toString('base64');
 
     return {
       statusCode: 200,
@@ -258,7 +262,7 @@ export const handler = async (event) => {
         // long-ish cache is safe; pass &v=<hash> for immutable caching.
         'Cache-Control': q.v ? 'public, max-age=31536000, immutable' : 'public, max-age=86400',
       },
-      body: png.toString('base64'),
+      body: pngB64,
       isBase64Encoded: true,
     };
   } catch (err) {
