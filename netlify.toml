@@ -7,15 +7,6 @@
 [build.environment]
   NODE_VERSION = "20"
 
-# share-card uses satori (which loads its Yoga layout engine from a bundled
-# yoga.wasm) and @resvg/resvg-wasm. esbuild can't inline .wasm assets, and
-# bundling satori leaves yoga.wasm behind — the function then throws at load
-# time in prod (a 502). Marking these external ships each package whole (wasm
-# assets included) into the function bundle instead of inlining it.
-[functions]
-  node_bundler = "esbuild"
-  external_node_modules = ["satori", "@resvg/resvg-wasm"]
-
 [dev]
   command = "npm run dev"
   port = 8888
