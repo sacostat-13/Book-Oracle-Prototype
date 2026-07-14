@@ -25,15 +25,32 @@
 //
 // Deps (root package.json): satori, @resvg/resvg-wasm, image-size
 
-import satori from 'satori';
-import { Resvg, initWasm } from '@resvg/resvg-wasm';
 import { imageSize } from 'image-size';
+
+// satori and @resvg/resvg-wasm are ESM-only and marked external in
+// netlify.toml (they ship wasm assets esbuild can't inline). Netlify still
+// bundles this function to CommonJS, and a static `import satori from 'satori'`
+// becomes broken interop at runtime (`import_satori.default is not a
+// function`). Loading them via dynamic import() sidesteps that entirely:
+// esbuild leaves import() of an external module as-is, so Node resolves the
+// package's native ESM entry at runtime. Cached after the first call.
+let _libs = null;
+async function loadLibs() {
+  if (!_libs) {
+    const [satoriMod, resvgMod] = await Promise.all([
+      import('satori'),
+      import('@resvg/resvg-wasm'),
+    ]);
+    _libs = { satori: satoriMod.default, Resvg: resvgMod.Resvg, initWasm: resvgMod.initWasm };
+  }
+  return _libs;
+}
 
 // The resvg wasm is loaded once at cold start, the same way fonts are.
 // Keep this version pinned to the installed @resvg/resvg-wasm version.
 const RESVG_WASM_URL = 'https://cdn.jsdelivr.net/npm/@resvg/resvg-wasm@2.6.2/index_bg.wasm';
 let _wasmReady = null;
-function ensureWasm() {
+function ensureWasm(initWasm) {
   if (!_wasmReady) {
     _wasmReady = fetch(RESVG_WASM_URL)
       .then((r) => {
@@ -231,7 +248,8 @@ export const handler = async (event) => {
       captionAuthor: q.captionAuthor || '',
     };
 
-    const [fonts, cover] = await Promise.all([loadFonts(), loadCover(q.cover), ensureWasm()]);
+    const { satori, Resvg, initWasm } = await loadLibs();
+    const [fonts, cover] = await Promise.all([loadFonts(), loadCover(q.cover), ensureWasm(initWasm)]);
 
     const svg = await satori(card(p, cover), { width: 540, height: 675, fonts });
     const png = new Resvg(svg, { fitTo: { mode: 'width', value: 1080 } }).render().asPng();
