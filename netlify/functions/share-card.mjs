@@ -1,4 +1,4 @@
-// netlify/functions/share-card.js — v0.43
+// netlify/functions/share-card.mjs — v0.43
 //
 // Server-rendered share card (PNG) for The Books Oracle.
 //
@@ -17,16 +17,20 @@
 //
 // Output: 1080×1350 PNG (2× of the 540×675 DOM card), image/png.
 //
+// NOTE — this file is .mjs on purpose. satori and @resvg/resvg-wasm are
+// ESM-only and marked external in netlify.toml (they ship wasm assets esbuild
+// can't inline). A .js function gets bundled to CommonJS, turning `import
+// satori` into `require('satori')`, which fails on the ESM-only package
+// (`Cannot find module satori/dist/index.cjs`). .mjs keeps it native ESM.
+//
 // Deps (root package.json): satori, @resvg/resvg-wasm, image-size
 
 import satori from 'satori';
 import { Resvg, initWasm } from '@resvg/resvg-wasm';
 import { imageSize } from 'image-size';
 
-// resvg-wasm has no native binary (unlike @resvg/resvg-js), so nothing needs
-// bundling/compiling — it works identically in `netlify dev` on any OS and on
-// the Linux deploy. The wasm is loaded once at cold start, the same way fonts
-// are. Keep this version pinned to the installed @resvg/resvg-wasm version.
+// The resvg wasm is loaded once at cold start, the same way fonts are.
+// Keep this version pinned to the installed @resvg/resvg-wasm version.
 const RESVG_WASM_URL = 'https://cdn.jsdelivr.net/npm/@resvg/resvg-wasm@2.6.2/index_bg.wasm';
 let _wasmReady = null;
 function ensureWasm() {
