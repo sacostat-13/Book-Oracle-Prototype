@@ -226,13 +226,18 @@ function card(p, cover) {
   );
 }
 
-/* ── handler ── */
-export const handler = async (event) => {
+/* ── handler (Netlify Functions v2) ──
+ * Returns a standard web Response. Binary bodies are native in v2, so we hand
+ * back the raw PNG bytes directly — no base64 / isBase64Encoded step, which is
+ * what was corrupting the image (asPng() is a Uint8Array, and the v1 base64
+ * flag was being mishandled for this ESM function). */
+export default async (req) => {
   const t0 = Date.now();
   const ms = () => `${Date.now() - t0}ms`;
-  console.log('[share-card] invoked', (event.queryStringParameters || {}).type || '(book)');
+  const url = new URL(req.url);
+  const q = Object.fromEntries(url.searchParams);
+  console.log('[share-card] invoked', q.type || '(book)');
   try {
-    const q = event.queryStringParameters || {};
     const p = {
       ornament:      q.ornament || '',
       eyebrow:       q.eyebrow || '',
@@ -249,24 +254,23 @@ export const handler = async (event) => {
     console.log(`[share-card] satori done ${ms()}`);
     const png = new Resvg(svg, { fitTo: { mode: 'width', value: 1080 } }).render().asPng();
     console.log(`[share-card] png done ${ms()} — ${png.length} bytes`);
-    // @resvg/resvg-wasm's asPng() returns a Uint8Array (not a Node Buffer).
-    // Uint8Array.toString('base64') does NOT base64-encode — it returns
-    // "137,80,78,..." — so it must be wrapped in Buffer.from() before encoding.
-    const pngB64 = Buffer.from(png).toString('base64');
 
-    return {
-      statusCode: 200,
+    // Buffer.from(png) copies the bytes out of wasm memory into a stable buffer;
+    // Response streams it as raw binary — no base64 encoding involved.
+    return new Response(Buffer.from(png), {
+      status: 200,
       headers: {
         'Content-Type': 'image/png',
         // Share cards are essentially content-addressed by their params, so a
         // long-ish cache is safe; pass &v=<hash> for immutable caching.
         'Cache-Control': q.v ? 'public, max-age=31536000, immutable' : 'public, max-age=86400',
       },
-      body: pngB64,
-      isBase64Encoded: true,
-    };
+    });
   } catch (err) {
     console.error('share-card render failed', err);
-    return { statusCode: 500, headers: { 'Content-Type': 'text/plain' }, body: `share-card error: ${err.message}` };
+    return new Response(`share-card error: ${err.message}`, {
+      status: 500,
+      headers: { 'Content-Type': 'text/plain' },
+    });
   }
 };
