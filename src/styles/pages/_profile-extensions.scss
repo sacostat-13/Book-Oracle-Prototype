@@ -388,3 +388,90 @@
   color: var(--ro-muted);
   margin-bottom: var(--ro-space-4);
 }
+
+// ── v0.45: The Ledger — retroactive accomplishments shelf ───────────────────
+// Dark-academia plaques grouped by kind. Ledger, not scoreboard: quiet marks,
+// dated, tappable to re-open the branded share card. DS tokens only.
+.pf-ledger-lede {
+  font-family: var(--ro-font-body);
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--ro-muted);
+  margin: 0 0 var(--ro-space-4);
+}
+
+.pf-ledger-group {
+  margin-bottom: var(--ro-space-6);
+
+  &:last-child { margin-bottom: 0; }
+}
+
+.pf-ledger-group__label {
+  font-family: var(--ro-font-mono);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ro-text-2);
+  margin-bottom: var(--ro-space-3);
+}
+
+.pf-ledger-shelf {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: var(--ro-space-2);
+}
+
+.pf-ledger-plaque {
+  display: flex;
+  align-items: center;
+  gap: var(--ro-space-3);
+  width: 100%;
+  text-align: left;
+  padding: var(--ro-space-3);
+  background: var(--ro-surface-2);
+  border: 1px solid var(--ro-border);
+  border-radius: var(--ro-radius-sm);
+  cursor: pointer;
+  transition: border-color 0.15s ease, transform 0.15s ease;
+
+  &:hover {
+    border-color: var(--ro-gold);
+    transform: translateY(-1px);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--ro-gold);
+    outline-offset: 2px;
+  }
+}
+
+.pf-ledger-plaque__ornament {
+  flex: none;
+  font-family: var(--ro-font-display);
+  font-size: 22px;
+  line-height: 1;
+  color: var(--ro-gold-text);
+}
+
+.pf-ledger-plaque__body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.pf-ledger-plaque__label {
+  font-family: var(--ro-font-body);
+  font-size: 14px;
+  color: var(--ro-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pf-ledger-plaque__date {
+  font-family: var(--ro-font-mono);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: var(--ro-muted);
+}

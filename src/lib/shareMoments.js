@@ -20,7 +20,9 @@ export const GENRE_MILESTONES = [5, 10, 25, 50];
 
 // Don't announce "first book in a new genre" until the library is big enough
 // for it to mean something — otherwise every early read triggers it.
-const NEW_GENRE_MIN_LIBRARY = 5;
+// Exported so the persistent-accomplishments backfill (accomplishments.js)
+// replays the exact same rule as the live moment computation.
+export const NEW_GENRE_MIN_LIBRARY = 5;
 
 function readYear(b) {
   return (b.dateRead || '').slice(0, 4);
@@ -28,8 +30,9 @@ function readYear(b) {
 
 // genreNamesFor: canonical genre names for a book, via genresByBookId
 // (bookId-keyed) with a fallback to the book's own single `g` field for
-// guest/unenriched books.
-function genreNamesFor(book, genresByBookId) {
+// guest/unenriched books. Exported for accomplishments.js (same reason as
+// NEW_GENRE_MIN_LIBRARY above).
+export function genreNamesFor(book, genresByBookId) {
   const rows = book.bookId ? genresByBookId?.[book.bookId] : null;
   if (rows && rows.length) return rows.map((r) => r.name);
   return book.g ? [book.g] : [];

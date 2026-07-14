@@ -7,6 +7,11 @@ import { supabase } from './supabase';
 import { useAuth } from './AuthContext';
 import { ALL_BOOKS, bookKey } from './bookHelpers';
 import { computeCompletionMoments } from './shareMoments';
+import {
+  entryFromMoment,
+  rowToMoment,
+  computeBackfillAccomplishments,
+} from './accomplishments';
 
 const LOCAL_KEY    = 'wishlist_oracle_state_v2';
 const SESSION_KEY  = 'wishlist_oracle_session_v3'; // bumped v0.31: genres now included in cache
@@ -24,6 +29,10 @@ const defaultState = {
     avatarUrl: null,
     isDiscoverable: true,
     emailNotifications: true,
+    // v0.45: set once the retroactive accomplishments backfill has run for
+    // this profile (server column profiles.accomplishments_backfilled_at;
+    // for guests it rides localStorage with the rest of profile).
+    accomplishmentsBackfilledAt: null,
   },
   library: [],
   readNext: [],
@@ -61,6 +70,10 @@ const defaultState = {
   // createdAt }, newest first. Private per user; guests persist via
   // localStorage with the rest of state.
   memories: {},
+  // v0.45: Reading Accomplishments — the persistent, retroactive ledger.
+  // Flat array of { id, key, kind, bookId, meta, earnedAt }, newest first.
+  // Earned once and kept; deduped by `key`. Guests persist via localStorage.
+  accomplishments: [],
 };
 
 const DataContext = createContext(null);
@@ -133,6 +146,8 @@ function loadLocal() {
       currentlyReading: dedupeBooks(parsed.currentlyReading || []),
       // v0.44: guest-mode reading memories ride localStorage too
       memories: parsed.memories || {},
+      // v0.45: guest-mode accomplishments ride localStorage too
+      accomplishments: parsed.accomplishments || [],
     };
   } catch {
     return { ...defaultState };
@@ -268,7 +283,7 @@ function rollupGenres(rows) {
 
 // ---------- Supabase loaders ----------
 async function loadFromSupabase(userId) {
-  const [profileRes, wishlistRes, readBooksRes, plansRes, currentlyReadingRes, memoriesRes] = await Promise.all([
+  const [profileRes, wishlistRes, readBooksRes, plansRes, currentlyReadingRes, memoriesRes, accomplishmentsRes] = await Promise.all([
     supabase.from('profiles').select('*').eq('id', userId).maybeSingle(),
     supabase
       .from('wishlist_items')
@@ -293,6 +308,12 @@ async function loadFromSupabase(userId) {
       .select('id, book_id, kind, body, pages_at, pct_at, created_at')
       .eq('user_id', userId)
       .order('created_at', { ascending: false }),
+    // v0.45: reading accomplishments — flat ledger, newest first
+    supabase
+      .from('reading_accomplishments')
+      .select('id, key, kind, book_id, meta, earned_at')
+      .eq('user_id', userId)
+      .order('earned_at', { ascending: false }),
   ]);
 
   // v0.44: group memories by book_id (newest first, from the query order).
@@ -311,6 +332,22 @@ async function loadFromSupabase(userId) {
         createdAt: m.created_at,
       });
     }
+  }
+
+  // v0.45: reading accomplishments — flat array, newest first (query order).
+  // A failed query degrades to "no ledger" — never blocks the main load.
+  let accomplishments = [];
+  if (accomplishmentsRes.error) {
+    console.warn('reading_accomplishments load failed — continuing without ledger', accomplishmentsRes.error);
+  } else {
+    accomplishments = (accomplishmentsRes.data || []).map((a) => ({
+      id: a.id,
+      key: a.key,
+      kind: a.kind,
+      bookId: a.book_id,
+      meta: a.meta || {},
+      earnedAt: a.earned_at,
+    }));
   }
 
   // Lists loaded separately — a failure here must not break genres/library load
@@ -556,6 +593,8 @@ async function loadFromSupabase(userId) {
       avatarUrl: profile.avatar_url,
       isDiscoverable: profile.is_discoverable ?? true,
       emailNotifications: profile.email_notifications ?? true,
+      // v0.45: dedicated column (not preferences) — stamped once by the backfill
+      accomplishmentsBackfilledAt: profile.accomplishments_backfilled_at || null,
     },
     wishlist: dedupeBooks(wishlist),
     library: dedupeBooks(library),
@@ -581,6 +620,7 @@ async function loadFromSupabase(userId) {
     genres,
     currentlyReading: dedupeBooks(currentlyReading),
     memories,
+    accomplishments,
     clubs: (clubsRes.data || []).map((m) => ({
       id: m.club?.id,
       name: m.club?.name,
@@ -639,6 +679,9 @@ export function DataProvider({ children }) {
   // True once we have real Supabase data (not just cache or localStorage).
   // Prevents the persist effect from overwriting localStorage with stale data.
   const supabaseLoadedRef = useRef(false);
+  // v0.45: guards the one-time accomplishments backfill against re-running
+  // within a session (belt-and-braces on top of the persisted stamp).
+  const backfillRanRef = useRef(false);
 
   // ---------- Initial load ----------
   useEffect(() => {
@@ -722,6 +765,12 @@ export function DataProvider({ children }) {
     if (moment) setShareMoment(moment);
   }, []);
   const dismissShareMoment = useCallback(() => setShareMoment(null), []);
+
+  // v0.45: re-open the share card for an already-earned accomplishment from the
+  // Ledger. Reconstructs the moment from the stored row — no library lookup.
+  const shareAccomplishment = useCallback((entry) => {
+    if (entry) setShareMoment(rowToMoment(entry));
+  }, []);
 
   // ---------- Mutations ----------
 
@@ -940,10 +989,61 @@ export function DataProvider({ children }) {
     setState((s) => ({ ...s, readNext: s.readNext.filter((b) => bookKey(b) !== k) }));
   }, []);
 
+  // v0.45: persist a batch of earned accomplishments. Idempotent via the DB's
+  // unique(user_id, key) (on-conflict-do-nothing) and, in memory, by deduping
+  // against keys already held. Optimistic: merges into state immediately so the
+  // ledger updates without a round-trip; server ids reconcile on next load.
+  const earnAccomplishments = useCallback(
+    async (entries) => {
+      const earnable = (entries || []).filter((e) => e && e.key);
+      if (!earnable.length) return;
+
+      setState((s) => {
+        const have = new Set((s.accomplishments || []).map((a) => a.key));
+        const additions = [];
+        const seen = new Set();
+        for (const e of earnable) {
+          if (have.has(e.key) || seen.has(e.key)) continue;
+          seen.add(e.key);
+          additions.push({
+            id: (typeof crypto !== 'undefined' && crypto.randomUUID)
+              ? crypto.randomUUID()
+              : `local-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+            key: e.key,
+            kind: e.kind,
+            bookId: e.bookId ?? null,
+            meta: e.meta || {},
+            earnedAt: e.earnedAt || new Date().toISOString(),
+          });
+        }
+        if (!additions.length) return s;
+        return { ...s, accomplishments: [...additions, ...(s.accomplishments || [])] };
+      });
+
+      if (user) {
+        const rows = earnable.map((e) => ({
+          user_id: user.id,
+          key: e.key,
+          kind: e.kind,
+          book_id: e.bookId ?? null,
+          meta: e.meta || {},
+          earned_at: e.earnedAt || new Date().toISOString(),
+        }));
+        const { error } = await supabase
+          .from('reading_accomplishments')
+          .upsert(rows, { onConflict: 'user_id,key', ignoreDuplicates: true });
+        if (error) console.warn('reading_accomplishments upsert failed', error);
+      }
+    },
+    [user]
+  );
+
   // v0.43: after a completion lands in the library, compute the share moment
   // it produced (goal / series / plan / milestone / plain book card) and
   // queue the action-share modal. Skipped for Goodreads imports — a bulk
-  // import of 400 books is not 400 celebrations.
+  // import of 400 books is not 400 celebrations (imported books earn their
+  // accomplishments through the retroactive backfill instead, dated to each
+  // book's read date, so no modal fires).
   const fireCompletionMoment = useCallback(
     (book, newLibrary) => {
       if (book.fromGoodreads) return;
@@ -956,13 +1056,65 @@ export function DataProvider({ children }) {
           plans: state.plans,
         });
         if (moments[0]) setShareMoment(moments[0]);
+        // v0.45: the same computation feeds the persistent ledger — every
+        // milestone-bearing moment (all but the plain book_completed fallback)
+        // is earned. One computation, two consumers.
+        earnAccomplishments(moments.map((m) => entryFromMoment(m)).filter((e) => e.key));
       } catch (err) {
-        // A share card must never break a completion.
+        // A share card (or ledger write) must never break a completion.
         console.warn('share moment computation failed', err);
       }
     },
-    [state.genresByBookId, state.readingGoalCount, state.plans]
+    [state.genresByBookId, state.readingGoalCount, state.plans, earnAccomplishments]
   );
+
+  // v0.45: one-time retroactive backfill. On the first load where this profile
+  // has no backfill stamp, replay the milestone ladders over the existing
+  // library (dated to each crossing read) and earn everything already implied —
+  // pre-feature history and Goodreads imports included. Idempotent against the
+  // DB unique key; the stamp is only an optimisation to skip the recompute.
+  useEffect(() => {
+    if (loading) return;
+    if (user && !supabaseLoadedRef.current) return;        // wait for real data
+    if (!user && loadedUserIdRef.current !== null) return; // guest not loaded yet
+    if (state.profile.accomplishmentsBackfilledAt) return;
+    if (backfillRanRef.current) return;
+    backfillRanRef.current = true;
+    (async () => {
+      try {
+        const entries = computeBackfillAccomplishments({
+          library: state.library,
+          genresByBookId: state.genresByBookId,
+          plans: state.plans,
+          goal: state.readingGoalCount,
+        });
+        await earnAccomplishments(entries);
+        const stamp = new Date().toISOString();
+        if (user) {
+          await supabase
+            .from('profiles')
+            .update({ accomplishments_backfilled_at: stamp })
+            .eq('id', user.id);
+        }
+        setState((s) => ({
+          ...s,
+          profile: { ...s.profile, accomplishmentsBackfilledAt: stamp },
+        }));
+      } catch (e) {
+        console.warn('accomplishments backfill failed', e);
+        backfillRanRef.current = false; // allow a retry on the next mount
+      }
+    })();
+  }, [
+    user,
+    loading,
+    state.profile.accomplishmentsBackfilledAt,
+    state.library,
+    state.genresByBookId,
+    state.plans,
+    state.readingGoalCount,
+    earnAccomplishments,
+  ]);
 
   // ── v0.44: Reading Memory ────────────────────────────────────────────────
   // Private notes tied to the moment a book is put down or finished.
@@ -2207,6 +2359,9 @@ export function DataProvider({ children }) {
     memoriesForBook,
     addReadingMemory,
     deleteReadingMemory,
+    // v0.45: reading accomplishments (the Ledger)
+    accomplishments: state.accomplishments || [],
+    shareAccomplishment,
     importGoodreads,
     bulkAddToLibrary,
     cacheBookFields,

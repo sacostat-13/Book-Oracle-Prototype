@@ -16,9 +16,24 @@
 
 // The version label shown as "current" — keep in sync with package.json and
 // the README version line.
-export const CURRENT_VERSION = 'v0.44.0';
+export const CURRENT_VERSION = 'v0.45.0';
 
 export const RELEASES = [{
+    version: 'v0.45',
+    date: '2026-07-13',
+    titleEn: 'The Ledger: your reading accomplishments',
+    titleEs: 'El Registro: tus logros de lectura',
+    bodyEn: [
+      'New: The Ledger, on your Profile. A quiet, dated record of what your reading has already earned — reading goals met, series finished, plans completed, your milestone books of each year, and your genre devotions. It’s a ledger, not a scoreboard: no streaks, no nudges, nothing to keep up with.',
+      'It counts your history too. Everything you’ve already read — including your Goodreads imports — is honoured retroactively, dated to when you read it, the first time you open the page.',
+      'Tap any mark to re-open its dark-academia share card and post it anywhere.',
+    ],
+    bodyEs: [
+      'Nuevo: El Registro, en tu Perfil. Un registro tranquilo y fechado de lo que tu lectura ya ganó — metas de lectura cumplidas, sagas terminadas, planes completados, tus libros-hito de cada año y tus devociones por género. Es un registro, no un tablero de puntajes: sin rachas, sin insistencias, nada que mantener al día.',
+      'También cuenta tu historia. Todo lo que ya leíste — incluidas tus importaciones de Goodreads — se reconoce de forma retroactiva, con la fecha en que lo leíste, la primera vez que abrís la página.',
+      'Tocá cualquier marca para volver a abrir su tarjeta dark academia y compartirla donde quieras.',
+    ],
+  }, {
     version: 'v0.44',
     date: '2026-07-13',
     titleEn: 'Reading Memory: notes for your future self',

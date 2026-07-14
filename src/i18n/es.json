@@ -757,6 +757,24 @@
     "delete": "Borrar este recuerdo",
     "deleteConfirm": "¿Borrás este recuerdo? No se puede deshacer."
   },
+  "ledger": {
+    "sectionTitle": "El Registro",
+    "lede": "Un registro de lo que ganó tu lectura. Tocá cualquier marca para compartirla.",
+    "shareHint": "Compartir esto",
+    "group": {
+      "goals": "Objetivos de lectura",
+      "series": "Sagas completadas",
+      "plans": "Planes de lectura",
+      "years": "Hitos",
+      "genres": "Géneros"
+    },
+    "goalLabel": "Objetivo {year} · {goal} libros",
+    "seriesLabel": "{series} · {total} libros",
+    "planLabel": "{plan}",
+    "nthLabel": "Libro n.º {n} de {year}",
+    "genreCountLabel": "{n} en {genre}",
+    "newGenreLabel": "Primero en {genre}"
+  },
   "report": {
     "trigger": "⚑ Reportar un error",
     "formTitle": "¿Qué está incorrecto?",

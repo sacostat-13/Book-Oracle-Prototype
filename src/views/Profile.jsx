@@ -2,7 +2,7 @@ import { useRef, useMemo, useState, useEffect } from 'react';
 import { useData } from '../lib/DataContext';
 import { useAuth } from '../lib/AuthContext';
 import { useRouter } from '../lib/RouterContext';
-import { useT, useTNode } from '../lib/I18nContext';
+import { useT, useTNode, useI18n } from '../lib/I18nContext';
 import { useOracleQuota } from '../lib/OracleQuotaContext';
 import { parseGoodreadsCSV } from '../lib/goodreadsImport';
 import { findBookByTitle, bookKey, openBookTab } from '../lib/bookHelpers';
@@ -29,6 +29,98 @@ function StatCard({ value, label, sub }) {
       <div className="pf-stat-label">{label}</div>
       {sub && <div className="pf-stat-sub">{sub}</div>}
     </div>
+  );
+}
+
+// ── v0.45: The Ledger — retroactive trophy shelf ─────────────────────────────
+// A record of what the reader's library has already earned, grouped and dated.
+// Ledger discipline (docs/reading-accomplishments-v1-spec.md): past tense,
+// dated, no streaks, no countdowns, no "N to go". Tapping a plaque re-opens
+// its branded share card. The forward-looking "next rung" line is deliberately
+// omitted in v1 — it could not be made to read as a ledger line rather than a
+// nudge, so per the spec it was cut.
+const LEDGER_ORNAMENT = {
+  goal_completed: '✦',
+  series_completed: '☩',
+  plan_completed: '❦',
+  nth_book: '✺',
+  genre_count: '⚜',
+  new_genre: '✧',
+};
+// Group order = significance order, matching the share-moment PRIORITY ladder.
+const LEDGER_GROUPS = [
+  { id: 'goals', kinds: ['goal_completed'] },
+  { id: 'series', kinds: ['series_completed'] },
+  { id: 'plans', kinds: ['plan_completed'] },
+  { id: 'years', kinds: ['nth_book'] },
+  { id: 'genres', kinds: ['genre_count', 'new_genre'] },
+];
+
+function ledgerPlaqueLabel(entry, t) {
+  const m = entry.meta || {};
+  switch (entry.kind) {
+    case 'goal_completed': return t('ledger.goalLabel', { goal: m.goal, year: m.year });
+    case 'series_completed': return t('ledger.seriesLabel', { series: m.seriesName, total: m.total });
+    case 'plan_completed': return t('ledger.planLabel', { plan: m.planTitle });
+    case 'nth_book': return t('ledger.nthLabel', { n: m.n, year: m.year });
+    case 'genre_count': return t('ledger.genreCountLabel', { n: m.n, genre: m.genre });
+    case 'new_genre': return t('ledger.newGenreLabel', { genre: m.genre });
+    default: return '';
+  }
+}
+
+function Ledger({ accomplishments, onShare, t, locale }) {
+  if (!accomplishments || accomplishments.length === 0) return null;
+
+  const byKind = {};
+  for (const a of accomplishments) {
+    (byKind[a.kind] = byKind[a.kind] || []).push(a);
+  }
+
+  const fmtDate = (iso) => {
+    try {
+      return new Date(iso).toLocaleDateString(locale === 'es' ? 'es-AR' : 'en-US', {
+        year: 'numeric', month: 'short',
+      });
+    } catch { return ''; }
+  };
+
+  return (
+    <section>
+      <div className="pf-overline">{t('ledger.sectionTitle')}</div>
+      <p className="pf-ledger-lede">{t('ledger.lede')}</p>
+
+      {LEDGER_GROUPS.map((group) => {
+        const items = group.kinds
+          .flatMap((k) => byKind[k] || [])
+          .sort((a, b) => (a.earnedAt < b.earnedAt ? 1 : a.earnedAt > b.earnedAt ? -1 : 0));
+        if (!items.length) return null;
+        return (
+          <div className="pf-ledger-group" key={group.id}>
+            <div className="pf-ledger-group__label">{t(`ledger.group.${group.id}`)}</div>
+            <div className="pf-ledger-shelf">
+              {items.map((entry) => (
+                <button
+                  type="button"
+                  key={entry.id || entry.key}
+                  className="pf-ledger-plaque"
+                  onClick={() => onShare(entry)}
+                  title={t('ledger.shareHint')}
+                >
+                  <span className="pf-ledger-plaque__ornament" aria-hidden="true">
+                    {LEDGER_ORNAMENT[entry.kind] || '❧'}
+                  </span>
+                  <span className="pf-ledger-plaque__body">
+                    <span className="pf-ledger-plaque__label">{ledgerPlaqueLabel(entry, t)}</span>
+                    <span className="pf-ledger-plaque__date">{fmtDate(entry.earnedAt)}</span>
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+        );
+      })}
+    </section>
   );
 }
 
@@ -591,11 +683,12 @@ function ReadingChallenge({ library, readingGoalCount, setReadingGoalCount, t })
 }
 
 export default function Profile() {
-  const { state, resetAll, importGoodreads, showToast, setReadingGoalCount, updateUsername, updateDisplayName, updatePrivacyPrefs, setProfile } = useData();
+  const { state, resetAll, importGoodreads, showToast, setReadingGoalCount, updateUsername, updateDisplayName, updatePrivacyPrefs, setProfile, accomplishments, shareAccomplishment } = useData();
   const { user } = useAuth();
   const { go, route } = useRouter();
   const t = useT();
   const tNode = useTNode();
+  const { lang } = useI18n();
   const fileRef = useRef(null);
   const { quota, refresh: refreshQuota } = useOracleQuota();
   const [checkoutLoading, setCheckoutLoading] = useState(false);
@@ -1066,6 +1159,14 @@ export default function Profile() {
               {t('profile.paceNudge')}
             </p>
           )}
+
+          {/* v0.45: The Ledger — retroactive accomplishments shelf */}
+          <Ledger
+            accomplishments={accomplishments}
+            onShare={shareAccomplishment}
+            t={t}
+            locale={lang}
+          />
         </div>
       )}
 

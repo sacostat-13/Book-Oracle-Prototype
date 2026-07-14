@@ -4,7 +4,7 @@ A reading companion — wishlist, library, reading plans, book clubs, and an AI-
 for book discovery. Built with React + Vite + SCSS, backed by Supabase for auth
 and cross-device sync, and Netlify Functions for API proxying.
 
-> Current version: **v0.43** — see [Releases](#releases) below for changelog.
+> Current version: **v0.45** — see [Releases](#releases) below for changelog.
 > Upgrading from an earlier version? Check the matching `MIGRATION_*.md` / `UPDATE_*.md`.
 
 ---
@@ -449,6 +449,12 @@ its normal one-file-at-a-time watch flow. It's a dev-server cache hiccup, not
 a real bug — a production build (`npm run build`) compiles clean, and a
 dev-server restart (or hard browser reload) clears it.
 
+
+### v0.45 — Reading Accomplishments (The Ledger)
+
+**Migrations required:** `schema_v32_migration.sql` (new `reading_accomplishments` table + `unique(user_id, key)`; adds `profiles.accomplishments_backfilled_at`). No new dependencies.
+
+**Reading Accomplishments v1** (`docs/reading-accomplishments-v1-spec.md`). The persistent, retroactive counterpart to v0.43's ephemeral share moments — a dated ledger of earned milestones on Profile, framed as a record, not a scoreboard. The milestone logic is unchanged: `shareMoments.js` already computes every moment (`goal_completed`, `series_completed`, `plan_completed`, `nth_book`, `genre_count`, `new_genre`), so the new work is persistence, retroactivity, and the shelf. New pure module `accomplishments.js` translates between a live moment and a stored row (`keyForMoment`/`momentToMeta`/`rowToMoment`) and replays the ladders over an existing library (`computeBackfillAccomplishments`), so both the live earn path and the backfill converge on identical stable `key`s and are idempotent against the DB unique key. **Earning** rides the existing `fireCompletionMoment`: one computation now feeds two consumers — the share modal (unchanged) and the ledger. **Retroactivity**: a one-time, date-ordered backfill runs on first load where `profiles.accomplishments_backfilled_at` is null, dating each rung to the read that crossed it; Goodreads imports still skip the celebration *modal* but earn through this backfill (dated to each book's read date), so imported history fills the shelf without firing hundreds of cards. **UI**: a new "The Ledger" section on the Profile Overview tab — plaques grouped by kind (goals, series, plans, milestones, genres), each tappable to re-open its `ShareMomentModal` card via `shareAccomplishment`. **No-streaks** is a permanent, load-bearing rule (see spec): no cadence mechanics, no countdowns, no "N to go"; the optional next-rung line was cut in v1 because it couldn't be made to read as a ledger line rather than a nudge. Data: owner-only RLS in all directions, no update policy (accomplishments are immutable). Guests get the same feature via `state.accomplishments` in localStorage. i18n `ledger.*` (EN/ES); styles `_profile-extensions.scss` (`pf-ledger-*`, DS tokens only); the share *card* keeps its hardcoded brand palette.
 
 ### v0.44 — Reading Memory, Goodreads import polish, book-status consistency
 

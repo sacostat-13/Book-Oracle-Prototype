@@ -757,6 +757,24 @@
     "delete": "Delete this memory",
     "deleteConfirm": "Delete this memory? This can't be undone."
   },
+  "ledger": {
+    "sectionTitle": "The Ledger",
+    "lede": "A record of what your reading has earned. Tap any mark to share it.",
+    "shareHint": "Share this",
+    "group": {
+      "goals": "Reading goals",
+      "series": "Series completed",
+      "plans": "Reading plans",
+      "years": "Milestones",
+      "genres": "Genres"
+    },
+    "goalLabel": "{year} reading goal · {goal} books",
+    "seriesLabel": "{series} · {total} books",
+    "planLabel": "{plan}",
+    "nthLabel": "{n}th book of {year}",
+    "genreCountLabel": "{n} in {genre}",
+    "newGenreLabel": "First in {genre}"
+  },
   "report": {
     "trigger": "⚑ Report an issue",
     "formTitle": "What's incorrect?",
