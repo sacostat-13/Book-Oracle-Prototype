@@ -66,7 +66,7 @@ const C = {
  * single flaky CDN can't take the whole card down. */
 const FONTS = [
   { key: 'serif',  name: 'Instrument Serif', weight: 400, style: 'normal',
-    url: 'https://cdn.jsdelivr.net/gh/google/fonts/ofl/instrumentserif/InstrumentSerif-Regular.ttf' },
+    url: 'https://cdn.jsdelivr.net/fontsource/fonts/instrument-serif@latest/latin-400-normal.woff' },
   { key: 'mono',   name: 'IBM Plex Mono',    weight: 400, style: 'normal',
     url: 'https://cdn.jsdelivr.net/fontsource/fonts/ibm-plex-mono@latest/latin-400-normal.woff' },
   { key: 'monoSb', name: 'IBM Plex Mono',    weight: 600, style: 'normal',
@@ -96,8 +96,11 @@ async function loadFonts() {
     })
   );
   _fontCache = loaded.filter(Boolean);
-  if (!_fontCache.some((f) => f.name === 'Instrument Serif')) {
-    throw new Error('required display font unavailable');
+  // satori needs at least one font to render text; a single missing typeface
+  // just falls back rather than failing the whole card.
+  if (_fontCache.length === 0) {
+    _fontCache = null; // allow retry on next invocation
+    throw new Error('no fonts available');
   }
   return _fontCache;
 }
