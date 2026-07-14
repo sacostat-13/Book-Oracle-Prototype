@@ -232,11 +232,8 @@ function card(p, cover) {
  * what was corrupting the image (asPng() is a Uint8Array, and the v1 base64
  * flag was being mishandled for this ESM function). */
 export default async (req) => {
-  const t0 = Date.now();
-  const ms = () => `${Date.now() - t0}ms`;
   const url = new URL(req.url);
   const q = Object.fromEntries(url.searchParams);
-  console.log('[share-card] invoked', q.type || '(book)');
   try {
     const p = {
       ornament:      q.ornament || '',
@@ -248,12 +245,8 @@ export default async (req) => {
     };
 
     const [fonts, cover] = await Promise.all([loadFonts(), loadCover(q.cover), ensureWasm()]);
-    console.log(`[share-card] deps ready ${ms()} — fonts=${fonts.length} cover=${!!cover}`);
-
     const svg = await satori(card(p, cover), { width: 540, height: 675, fonts });
-    console.log(`[share-card] satori done ${ms()}`);
     const png = new Resvg(svg, { fitTo: { mode: 'width', value: 1080 } }).render().asPng();
-    console.log(`[share-card] png done ${ms()} — ${png.length} bytes`);
 
     // Buffer.from(png) copies the bytes out of wasm memory into a stable buffer;
     // Response streams it as raw binary — no base64 encoding involved.

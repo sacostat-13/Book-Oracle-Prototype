@@ -16,9 +16,22 @@
 
 // The version label shown as "current" — keep in sync with package.json and
 // the README version line.
-export const CURRENT_VERSION = 'v0.45.0';
+export const CURRENT_VERSION = 'v0.45.1';
 
 export const RELEASES = [{
+    version: 'v0.45.1',
+    date: '2026-07-14',
+    titleEn: 'Share cards now post as images',
+    titleEs: 'Las tarjetas ahora se publican como imágenes',
+    bodyEn: [
+      'Share cards now save and post as a crisp image every time — the book cover baked right in — so you can share the card itself to Instagram, WhatsApp, your Stories, or anywhere, not just as a link.',
+      'It works the same across phone and desktop, and for every card: finished books, series, reading plans, goals, and your milestones.',
+    ],
+    bodyEs: [
+      'Las tarjetas para compartir ahora se guardan y publican como una imagen nítida siempre — con la portada del libro incluida — así podés compartir la tarjeta en sí en Instagram, WhatsApp, tus Historias o donde quieras, no solo como enlace.',
+      'Funciona igual en teléfono y computadora, y para todas las tarjetas: libros terminados, sagas, planes de lectura, metas y tus hitos.',
+    ],
+  }, {
     version: 'v0.45',
     date: '2026-07-13',
     titleEn: 'The Ledger: your reading accomplishments',

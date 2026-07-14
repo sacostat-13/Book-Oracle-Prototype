@@ -4,7 +4,7 @@ A reading companion — wishlist, library, reading plans, book clubs, and an AI-
 for book discovery. Built with React + Vite + SCSS, backed by Supabase for auth
 and cross-device sync, and Netlify Functions for API proxying.
 
-> Current version: **v0.45** — see [Releases](#releases) below for changelog.
+> Current version: **v0.45.1** — see [Releases](#releases) below for changelog.
 > Upgrading from an earlier version? Check the matching `MIGRATION_*.md` / `UPDATE_*.md`.
 
 ---
@@ -450,6 +450,18 @@ a real bug — a production build (`npm run build`) compiles clean, and a
 dev-server restart (or hard browser reload) clears it.
 
 
+### v0.45.1 — Share Card images: server-rendered PNGs
+
+**No migration required.** New dependencies: `satori`, `@resvg/resvg-wasm`, `image-size` (server-side, used only by the function). Removed: `html-to-image`.
+
+Delivers the v0.43.x follow-up flagged below: the share-card *image* is now rendered by a Netlify Function (`netlify/functions/share-card.mjs`) instead of client-side `html-to-image`. The old path drew third-party covers (OpenLibrary/Wikimedia/Hardcover) onto a `<canvas>`; those hosts don't send CORS headers, so the canvas tainted and the export threw (the `share card export failed` / `img.error` you'd see) — meaning the "share as image" action never actually produced a shareable PNG. The function fetches the cover **server-to-server** (no CORS), so it always works.
+
+**Rendering.** `satori` (flexbox/JSX → SVG) + `@resvg/resvg-wasm` (SVG → PNG), output 1080×1350 — a faithful reproduction of `ShareCard.jsx`'s 4:5 brand template (ornament, mono eyebrow, serif headline, italic sub, cover with gold frame + shadow, book caption, footer wordmark). The function is **i18n-agnostic**: the client resolves all copy with its own `t()` via the now-exported `momentCopy()` and passes finished strings as query params (`src/lib/shareCardImage.js` → `momentCardUrl`/`momentCardFile`), so the endpoint just renders strings + cover and can double as the OG link-preview image later. Ornaments render from a symbol font (DejaVu Sans covers `✦☩❦✺⚜✧❧`); fonts and the resvg wasm are fetched from CDN once per cold start and cached across warm invocations.
+
+**Client.** `ShareMomentModal.handleShareImage` now fetches the PNG from the function and shares it as a `File` via the Web Share API (unchanged download + clipboard fallback on desktop). The on-screen `<ShareCard>` is now a **preview only** — its cover `<img>` dropped `crossOrigin="anonymous"` (it no longer feeds a canvas), which also removes the console `img.error`.
+
+**Netlify gotchas worth recording** (each cost a deploy): the function is **Functions v2** (`export default` returning a `Response`) so binary PNG bytes stream natively — the v1 `{ body, isBase64Encoded }` path corrupted the image (`asPng()` returns a `Uint8Array`, whose `.toString('base64')` yields `"137,80,…"`, and the base64 flag was mishandled for this ESM function). `satori`/`@resvg/resvg-wasm` must **not** be `external_node_modules`: marking them external forces esbuild to `require()` ESM-only packages, which fails on Lambda (`Cannot find module …/index.cjs`, then `import_satori.default is not a function`). satori embeds its Yoga engine inline (base64 wasm) so it bundles cleanly with no external config. File is `.mjs`. First (cold) render is ~4s, warm is sub-second — comfortably under the 10s limit.
+
 ### v0.45 — Reading Accomplishments (The Ledger)
 
 **Migrations required:** `schema_v32_migration.sql` (new `reading_accomplishments` table + `unique(user_id, key)`; adds `profiles.accomplishments_backfilled_at`). No new dependencies.
@@ -496,7 +508,7 @@ dev-server restart (or hard browser reload) clears it.
 
 **The card.** `ShareCard.jsx` renders at a fixed 540×675 (4:5) and exports at 2× (1080×1350) via `html-to-image`'s `toPng` — the DOM node stays true-size and is scaled down in the modal with `zoom` (with a `transform: scale()` fallback), so exports stay crisp regardless of viewport. The card is a fixed **brand asset, not an app surface**: its palette is deliberately hardcoded to the Dark Academia constants instead of `var(--ro-*)` so the PNG looks identical in both themes — the one sanctioned exception to the no-hardcoded-parchment rule, flagged as such in `_share.scss`. Cover images are third-party (OpenLibrary/Wikimedia/…); when a host refuses CORS the export throws and the modal degrades to text + link with an explanatory note — never a broken PNG. On no-file-share platforms (desktop) the image downloads and the caption is placed on the clipboard instead.
 
-**Follow-up (v0.43.x):** port the same card template to a satori-based Netlify function so OG *link previews* also show the branded card instead of the raw cover art. Keep `ShareCard.jsx` and that endpoint in sync when either changes.
+**Follow-up (v0.43.x):** port the same card template to a satori-based Netlify function so OG *link previews* also show the branded card instead of the raw cover art. Keep `ShareCard.jsx` and that endpoint in sync when either changes. — **Done in v0.45.1** (`netlify/functions/share-card.mjs`): the satori template now renders the shared image; wiring it into the OG/Twitter `<meta>` tags in `og-prerender.js` is the remaining step to also brand link previews.
 
 i18n: full new `share.*` block (modal labels, card copy per moment type, share texts per entity) in both `en.json` and `es.json`.
 
