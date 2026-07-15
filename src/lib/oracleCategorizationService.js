@@ -71,9 +71,15 @@ async function fetchAllGenres() {
 }
 
 function buildPrompt(books, existingGenres) {
-  // Short catalog: just names, no descriptions, to keep the prompt lean.
+  // Full catalog WITH descriptions. Names alone were not enough context —
+  // the Oracle kept creating near-duplicates ("Epic Fantasy" / "Dark
+  // Fantasy" / "Epic & Dark Fantasy" all existing side by side, "Gothic"
+  // next to "Classic & Older Gothic") because a bare name reads as
+  // ambiguous without the curatorial description clarifying what each
+  // genre actually covers. Every genre in the table has a description now
+  // specifically so this list can carry real disambiguating signal.
   const catalogList = existingGenres
-    .map((g) => `- ${g.name}`)
+    .map((g) => `- ${g.name}${g.description ? `: ${g.description}` : ''}`)
     .join('\n');
 
   const bookList = books
@@ -110,9 +116,12 @@ For each book you will return:
 5. DEPTH — thematic/genre depth, 1-5
 
 GENRE RULES:
-- STRONGLY prefer genres from the existing catalog. Use descriptions to understand precise curatorial intent.
-- Only invent a new genre when NO existing genre fits at all.
-- Match established naming style: evocative, specific, often using "&" (e.g. "Classic & Older Gothic").
+- The existing catalog above is the source of truth. Read every description before deciding — a genre that looks unrelated by name alone (e.g. "International Fiction") may be exactly the right fit once you read what it actually covers.
+- Reuse an existing genre whenever it reasonably fits, even if the wording isn't a perfect match. Do NOT create a new genre that is a synonym, word-reordering, or narrower/broader variant of one that already exists. For example: if "Dark & Epic Fantasy" exists, do not also create "Epic Fantasy" or "Epic & Dark Fantasy" for a similar book. If "Folk Horror" exists, do not create "British Folk Horror" or "Regional Folk Horror" — a regional or stylistic flavor of an existing genre is not a new genre.
+- Before proposing a new genre, check: is this genre distinguishable from every existing genre by more than region, word order, or a synonym substitution? If not, use the existing one instead.
+- When reusing an existing genre, copy its name EXACTLY as listed above — do not paraphrase, reorder words, or change punctuation.
+- Only create a new genre when the catalog has a genuine gap: a book that doesn't fit any existing genre even loosely.
+- When you do create a new genre, keep it specific and non-overlapping with anything already in the catalog, and match established naming style: evocative, specific, often using "&" (e.g. "Classic & Older Gothic").
 - Assign 1-3 genres. Assign only 1 if the book clearly belongs to one category.
 
 SERIES RULES:
@@ -258,7 +267,15 @@ async function writeBookEnrichment(bookId, genreIds, seriesData, description, co
  * @param {Function} opts.onProgress    — (done, total) callback
  * @param {Function} opts.onBatchResult — ({ assignments, batchIndex }) callback
  * @param {Function} opts.onError       — (err, batchIndex) non-fatal
- * @returns {Promise<{ processed: number, failed: number }>}
+ * @returns {Promise<{ processed: number, failed: number, newGenres: string[] }>}
+ *   newGenres — names of any genre the Oracle created that wasn't already
+ *   in the catalog at the start of this run. Genre creation isn't disabled
+ *   (a hard block would force genuinely novel books into the wrong
+ *   existing bucket), but every creation is worth a look — this is the
+ *   audit trail. Log to console immediately and surface via the return
+ *   value so the caller (OracleCategorizationButton) can show it, e.g. in
+ *   a toast or the completion summary, instead of it going unnoticed until
+ *   the genre list is audited by hand again.
  */
 export async function runOracleCategorization({
   books,
@@ -269,6 +286,7 @@ export async function runOracleCategorization({
   const total = books.length;
   let processed = 0;
   let failed = 0;
+  const newGenreNames = new Set();
 
   const existingGenres = await fetchAllGenres();
   const batches = [];
@@ -328,6 +346,8 @@ export async function runOracleCategorization({
               if (!id) return null;
               const existing = existingGenres.find((g) => g.id === id);
               if (!existing) {
+                newGenreNames.add(name);
+                console.warn(`[Oracle] Created new genre not in catalog: "${name}"`);
                 existingGenres.push({
                   id,
                   name,
@@ -393,8 +413,13 @@ export async function runOracleCategorization({
     onProgress ?.(processed, total);
   }
 
+  if (newGenreNames.size > 0) {
+    console.warn(`[Oracle] ${newGenreNames.size} new genre(s) created this run:`, Array.from(newGenreNames));
+  }
+
   return {
     processed,
-    failed
+    failed,
+    newGenres: Array.from(newGenreNames)
   };
 }

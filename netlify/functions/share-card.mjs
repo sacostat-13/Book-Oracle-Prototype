@@ -75,6 +75,8 @@ const C = {
 const FONTS = [
   { key: 'serif',  name: 'Instrument Serif', weight: 400, style: 'normal',
     url: 'https://cdn.jsdelivr.net/fontsource/fonts/instrument-serif@latest/latin-400-normal.woff' },
+  { key: 'serifIt', name: 'Instrument Serif', weight: 400, style: 'italic',
+    url: 'https://cdn.jsdelivr.net/fontsource/fonts/instrument-serif@latest/latin-400-italic.woff' },
   { key: 'mono',   name: 'IBM Plex Mono',    weight: 400, style: 'normal',
     url: 'https://cdn.jsdelivr.net/fontsource/fonts/ibm-plex-mono@latest/latin-400-normal.woff' },
   { key: 'monoSb', name: 'IBM Plex Mono',    weight: 600, style: 'normal',
@@ -226,11 +228,107 @@ function card(p, cover) {
   );
 }
 
-/* ── handler (Netlify Functions v2) ──
+/* ══════════════════════════════════════════════════════════════════════════
+ * FRAMED GENRE CARD
+ * For genre_count / new_genre moments the client passes ?genre=<name>. We load
+ * that genre's illustrated frame + trimmed art from the deployed site
+ * (public/cards/<genre>/frame.png + art-trim.png) and compose them with the
+ * live eyebrow/headline/sub. Text stays a render-time param — one asset pair
+ * serves every milestone (first book, 5, 10, 25, 50) with no baked-in copy.
+ * Authored natively at 1080×1350 (not the 540×675 → 2× path of the base card).
+ * ════════════════════════════════════════════════════════════════════════ */
+
+// Content-safe opening inside the frame's inner oval, measured from the shared
+// frame template (all genre frames use the same border, so one box fits all).
+// If a future frame changes its opening, re-measure and switch to a per-genre map.
+const FRAME_BOX = { x: 291, y: 256, w: 485, h: 782 };
+
+const CF = { ink: '#141210', gold: '#C9A84C', goldText: '#D8B85E',
+             parchment: '#E9DFCA', sub: 'rgba(233,223,202,0.72)',
+             url: 'rgba(201,168,76,0.72)' };
+
+// Moment marker (an open book), rasterised once to a PNG data-URI at cold start.
+const BOOK_ICON_SVG =
+  `<svg xmlns="http://www.w3.org/2000/svg" width="108" height="108" viewBox="0 0 100 100">` +
+  `<g fill="none" stroke="${CF.goldText}" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round">` +
+  `<path d="M50,30 C40,22 24,22 14,28 L14,72 C24,66 40,66 50,74 C60,66 76,66 86,72 L86,28 C76,22 60,22 50,30 Z"/>` +
+  `<path d="M50,30 L50,74" stroke-width="2.6"/>` +
+  `<path d="M22,40 C30,37 38,37 44,40 M22,52 C30,49 38,49 44,52" stroke="${CF.gold}" stroke-width="2"/>` +
+  `<path d="M56,40 C62,37 70,37 78,40 M56,52 C62,49 70,49 78,52" stroke="${CF.gold}" stroke-width="2"/>` +
+  `</g></svg>`;
+let _iconUri = null;
+function bookIconUri() { // requires wasm ready (ensureWasm) before first call
+  if (!_iconUri) {
+    const png = new Resvg(BOOK_ICON_SVG, { fitTo: { mode: 'width', value: 108 } }).render().asPng();
+    _iconUri = `data:image/png;base64,${Buffer.from(png).toString('base64')}`;
+  }
+  return _iconUri;
+}
+
+// Fetch a card asset (frame / art) -> PNG data-URI, or null if unavailable.
+async function loadCardAsset(url) {
+  try {
+    const r = await fetch(url, { headers: { 'User-Agent': 'BooksOracle/1.0 (share-card)' } });
+    if (!r.ok) return null;
+    const type = r.headers.get('content-type') || 'image/png';
+    if (!type.startsWith('image/')) return null;
+    const buf = Buffer.from(await r.arrayBuffer());
+    if (buf.length > 8_000_000) return null;
+    return `data:${type};base64,${buf.toString('base64')}`;
+  } catch { return null; }
+}
+
+const framedTitleSize = (s) => (s.length > 44 ? 38 : s.length > 30 ? 46 : s.length > 22 ? 52 : 58);
+
+function framedCard(p, { frameSrc, artSrc, iconUri }) {
+  const B = FRAME_BOX;
+  const header = box(
+    { flexDirection: 'column', alignItems: 'center', width: '100%' },
+    [
+      img(iconUri, { width: 54, height: 54, marginBottom: 12 }),
+      p.eyebrow ? txt(
+        { fontFamily: 'IBM Plex Mono', fontWeight: 600, fontSize: 22, letterSpacing: 6,
+          textTransform: 'uppercase', color: CF.goldText, marginBottom: 16,
+          justifyContent: 'center', textAlign: 'center', maxWidth: B.w }, p.eyebrow) : null,
+      txt(
+        { fontFamily: 'Instrument Serif', fontSize: framedTitleSize(clamp(p.headline, 80)),
+          lineHeight: 1.0, color: CF.parchment, justifyContent: 'center', textAlign: 'center',
+          maxWidth: B.w }, clamp(p.headline, 80)),
+      p.sub ? txt(
+        { fontFamily: 'Instrument Serif', fontStyle: 'italic', fontSize: 26, color: CF.sub,
+          justifyContent: 'center', textAlign: 'center', maxWidth: B.w - 30, marginTop: 14,
+          lineHeight: 1.28 }, clamp(p.sub, 140)) : null,
+    ].filter(Boolean)
+  );
+
+  const artBox = box(
+    { flex: 1, alignItems: 'center', justifyContent: 'center', width: '100%', paddingTop: 20, paddingBottom: 18 },
+    [ box(
+        { padding: 5, backgroundColor: CF.ink, border: `2px solid ${CF.gold}`, borderRadius: 5,
+          boxShadow: '0 16px 40px rgba(0,0,0,0.6)' },
+        [ img(artSrc, { maxWidth: B.w - 40, maxHeight: 300, objectFit: 'contain', borderRadius: 2 }) ]) ]
+  );
+
+  const link = txt(
+    { fontFamily: 'IBM Plex Mono', fontWeight: 600, fontSize: 17, letterSpacing: 2.5,
+      textTransform: 'uppercase', color: CF.url, justifyContent: 'center', textAlign: 'center' },
+    'The Books Oracle · thebooksoracle.com');
+
+  const stack = box(
+    { flexDirection: 'column', alignItems: 'center', justifyContent: 'space-between', width: B.w, height: B.h },
+    [header, artBox, link]);
+
+  return box(
+    { width: 1080, height: 1350, position: 'relative', backgroundColor: CF.ink },
+    [
+      img(frameSrc, { position: 'absolute', top: 0, left: 0, width: 1080, height: 1350 }),
+      box({ position: 'absolute', left: B.x, top: B.y, width: B.w, height: B.h }, [stack]),
+    ]);
+}
+
+/* -- handler (Netlify Functions v2) --
  * Returns a standard web Response. Binary bodies are native in v2, so we hand
- * back the raw PNG bytes directly — no base64 / isBase64Encoded step, which is
- * what was corrupting the image (asPng() is a Uint8Array, and the v1 base64
- * flag was being mishandled for this ESM function). */
+ * back the raw PNG bytes directly. */
 export default async (req) => {
   const url = new URL(req.url);
   const q = Object.fromEntries(url.searchParams);
@@ -244,18 +342,39 @@ export default async (req) => {
       captionAuthor: q.captionAuthor || '',
     };
 
-    const [fonts, cover] = await Promise.all([loadFonts(), loadCover(q.cover), ensureWasm()]);
-    const svg = await satori(card(p, cover), { width: 540, height: 675, fonts });
-    const png = new Resvg(svg, { fitTo: { mode: 'width', value: 1080 } }).render().asPng();
+    await ensureWasm();
+    const fonts = await loadFonts();
 
-    // Buffer.from(png) copies the bytes out of wasm memory into a stable buffer;
-    // Response streams it as raw binary — no base64 encoding involved.
+    let png;
+    // Framed genre card: pull the genre's illustrated frame + trimmed art from
+    // the deployed site. Render the 1080x1350 framed layout when both assets
+    // exist; fall through to the standard cover card if either is missing.
+    let framed = false;
+    if (q.genre) {
+      const seg = encodeURIComponent(q.genre);
+      const [frameSrc, artSrc] = await Promise.all([
+        loadCardAsset(`${url.origin}/cards/${seg}/frame.png`),
+        loadCardAsset(`${url.origin}/cards/${seg}/art-trim.png`),
+      ]);
+      if (frameSrc && artSrc) {
+        const svg = await satori(
+          framedCard(p, { frameSrc, artSrc, iconUri: bookIconUri() }),
+          { width: 1080, height: 1350, fonts });
+        png = new Resvg(svg, { fitTo: { mode: 'width', value: 1080 } }).render().asPng();
+        framed = true;
+      }
+    }
+
+    if (!framed) {
+      const cover = await loadCover(q.cover);
+      const svg = await satori(card(p, cover), { width: 540, height: 675, fonts });
+      png = new Resvg(svg, { fitTo: { mode: 'width', value: 1080 } }).render().asPng();
+    }
+
     return new Response(Buffer.from(png), {
       status: 200,
       headers: {
         'Content-Type': 'image/png',
-        // Share cards are essentially content-addressed by their params, so a
-        // long-ish cache is safe; pass &v=<hash> for immutable caching.
         'Cache-Control': q.v ? 'public, max-age=31536000, immutable' : 'public, max-age=86400',
       },
     });

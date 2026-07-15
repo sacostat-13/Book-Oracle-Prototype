@@ -261,13 +261,15 @@ body {
     opacity: 1;
     color: var(--ro-muted);
 
-    .ornament { opacity: .8; }
+    .ornament {
+      opacity: .8;
+    }
   }
 
   .empty-state-action {
     margin-top: var(--ro-space-4);
-        gap: var(--ro-space-5);
-        display: flex;
-        justify-content: center;
+    gap: var(--ro-space-5);
+    display: flex;
+    justify-content: center;
   }
 }

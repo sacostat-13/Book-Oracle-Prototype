@@ -18,7 +18,7 @@
 
 import { useRef, useState } from 'react';
 import { useData } from '../lib/DataContext';
-import { useT } from '../lib/I18nContext';
+import { useI18n } from '../lib/I18nContext';
 import CornerBrackets from './CornerBrackets';
 import ShareCard from './ShareCard';
 import { shareOrCopy, canShareFile } from '../lib/shareService';
@@ -41,7 +41,7 @@ function momentShareText(moment, t) {
 
 export default function ShareMomentModal() {
   const { shareMoment, dismissShareMoment } = useData();
-  const t = useT();
+  const { t, lang } = useI18n();
   const cardRef = useRef(null);
   const [busy, setBusy] = useState(false);
   const [feedback, setFeedback] = useState(null); // 'shared' | 'copied' | 'downloaded' | 'image_failed'
@@ -58,7 +58,7 @@ export default function ShareMomentModal() {
     let objectUrl = null;
     try {
       // Server-rendered PNG (cover fetched server-side — no CORS taint).
-      const file = await momentCardFile(moment, t);
+      const file = await momentCardFile(moment, t, lang);
       if (canShareFile(file)) {
         try {
           await navigator.share({ files: [file], title: 'The Books Oracle', text: `${text} ${url}` });
