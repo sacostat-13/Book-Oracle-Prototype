@@ -278,39 +278,40 @@ async function loadCardAsset(url) {
   } catch { return null; }
 }
 
-const framedTitleSize = (s) => (s.length > 44 ? 38 : s.length > 30 ? 46 : s.length > 22 ? 52 : 58);
+const framedTitleSize = (s) => (s.length > 44 ? 48 : s.length > 32 ? 58 : s.length > 22 ? 68 : 78);
 
-function framedCard(p, { frameSrc, artSrc, iconUri }) {
-  const B = FRAME_BOX;
+function framedCard(p, { frameSrc, artSrc, iconUri, box: bx }) {
+  const B = bx || FRAME_BOX;
+  const head = clamp(p.headline, 80);
+  const size = framedTitleSize(head);
+  // Reserve room for a (possibly 2-line) headline so the art never overlaps it.
+  const lines = Math.max(1, Math.ceil((head.length * 0.40 * size) / B.w));
+  const artMaxH = Math.max(180, Math.min(470, B.h - (196 + lines * size * 1.05)));
   const header = box(
     { flexDirection: 'column', alignItems: 'center', width: '100%' },
     [
-      img(iconUri, { width: 54, height: 54, marginBottom: 12 }),
+      img(iconUri, { width: 68, height: 68, marginBottom: 18 }),
       p.eyebrow ? txt(
-        { fontFamily: 'IBM Plex Mono', fontWeight: 600, fontSize: 22, letterSpacing: 6,
-          textTransform: 'uppercase', color: CF.goldText, marginBottom: 16,
+        { fontFamily: 'IBM Plex Mono', fontWeight: 600, fontSize: 26, letterSpacing: 7,
+          textTransform: 'uppercase', color: CF.goldText, marginBottom: 22,
           justifyContent: 'center', textAlign: 'center', maxWidth: B.w }, p.eyebrow) : null,
       txt(
-        { fontFamily: 'Instrument Serif', fontSize: framedTitleSize(clamp(p.headline, 80)),
-          lineHeight: 1.0, color: CF.parchment, justifyContent: 'center', textAlign: 'center',
-          maxWidth: B.w }, clamp(p.headline, 80)),
-      p.sub ? txt(
-        { fontFamily: 'Instrument Serif', fontStyle: 'italic', fontSize: 26, color: CF.sub,
-          justifyContent: 'center', textAlign: 'center', maxWidth: B.w - 30, marginTop: 14,
-          lineHeight: 1.28 }, clamp(p.sub, 140)) : null,
+        { fontFamily: 'Instrument Serif', fontSize: size,
+          lineHeight: 1.05, color: CF.parchment, justifyContent: 'center', textAlign: 'center',
+          maxWidth: B.w }, head),
     ].filter(Boolean)
   );
 
   const artBox = box(
-    { flex: 1, alignItems: 'center', justifyContent: 'center', width: '100%', paddingTop: 20, paddingBottom: 18 },
+    { alignItems: 'center', justifyContent: 'center', width: '100%' },
     [ box(
-        { padding: 5, backgroundColor: CF.ink, border: `2px solid ${CF.gold}`, borderRadius: 5,
-          boxShadow: '0 16px 40px rgba(0,0,0,0.6)' },
-        [ img(artSrc, { maxWidth: B.w - 40, maxHeight: 300, objectFit: 'contain', borderRadius: 2 }) ]) ]
+        { padding: 6, backgroundColor: CF.ink, border: `2px solid ${CF.gold}`, borderRadius: 6,
+          boxShadow: '0 18px 46px rgba(0,0,0,0.6)' },
+        [ img(artSrc, { maxWidth: B.w - 24, maxHeight: artMaxH, objectFit: 'contain', borderRadius: 2 }) ]) ]
   );
 
   const link = txt(
-    { fontFamily: 'IBM Plex Mono', fontWeight: 600, fontSize: 17, letterSpacing: 2.5,
+    { fontFamily: 'IBM Plex Mono', fontWeight: 600, fontSize: 18, letterSpacing: 2.5,
       textTransform: 'uppercase', color: CF.url, justifyContent: 'center', textAlign: 'center' },
     'The Books Oracle · thebooksoracle.com');
 
@@ -350,15 +351,19 @@ export default async (req) => {
     // the deployed site. Render the 1080x1350 framed layout when both assets
     // exist; fall through to the standard cover card if either is missing.
     let framed = false;
-    if (q.genre) {
-      const seg = encodeURIComponent(q.genre);
-      const [frameSrc, artSrc] = await Promise.all([
-        loadCardAsset(`${url.origin}/cards/${seg}/frame.png`),
-        loadCardAsset(`${url.origin}/cards/${seg}/art-trim.png`),
-      ]);
+    if (q.frame) {
+      const seg = encodeURIComponent(q.frame);
+      const frameSrc = await loadCardAsset(`${url.origin}/cards/${seg}/frame.png`);
+      // Slot image: the reader's cover for book_completed, else the genre/moment art.
+      const artSrc = q.cover
+        ? await loadCardAsset(q.cover)
+        : await loadCardAsset(`${url.origin}/cards/${seg}/art-trim.png`);
+      const bx = q.box ? q.box.split(',').map(Number) : null;
+      const box = (bx && bx.length === 4 && bx.every(Number.isFinite))
+        ? { x: bx[0], y: bx[1], w: bx[2], h: bx[3] } : FRAME_BOX;
       if (frameSrc && artSrc) {
         const svg = await satori(
-          framedCard(p, { frameSrc, artSrc, iconUri: bookIconUri() }),
+          framedCard(p, { frameSrc, artSrc, iconUri: bookIconUri(), box }),
           { width: 1080, height: 1350, fonts });
         png = new Resvg(svg, { fitTo: { mode: 'width', value: 1080 } }).render().asPng();
         framed = true;

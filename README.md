@@ -4,7 +4,7 @@ A reading companion — wishlist, library, reading plans, book clubs, and an AI-
 for book discovery. Built with React + Vite + SCSS, backed by Supabase for auth
 and cross-device sync, and Netlify Functions for API proxying.
 
-> Current version: **v0.46** — see [Releases](#releases) below for changelog.
+> Current version: **v0.47** — see [Releases](#releases) below for changelog.
 > Upgrading from an earlier version? Check the matching `MIGRATION_*.md` / `UPDATE_*.md`.
 
 ---
@@ -449,6 +449,16 @@ its normal one-file-at-a-time watch flow. It's a dev-server cache hiccup, not
 a real bug — a production build (`npm run build`) compiles clean, and a
 dev-server restart (or hard browser reload) clears it.
 
+
+### v0.47 — Illustrated milestone share cards (framed genre + moment art)
+
+Genre milestones, series, reading goals, year milestones, and book-completed now render as an illustrated **framed** card: a per-slug gold-on-ink frame + artwork composed with the live copy. The frame/art are the only static per-slug assets — all text stays a render-time param.
+
+**Assets & build.** `public/cards/<slug>/` holds `frame.png` + `art.png` for each genre (49) and each moment (`moment-series` | `moment-milestone` | `moment-goal` | `moment-plan` | `moment-book`; book is frame-only, the reader's cover fills the slot). `scripts/build-share-cards.mjs` (needs `pngjs` + `jpeg-js`) reads png/jpg/jpeg, normalizes frames to `frame.png`, centre-trims art → `art-trim.png` (luminance-weighted centroid crop, so off-centre art still centres and the corner watermark drops), measures each frame's inner opening, and regenerates `src/lib/cardGenres.js` (the ready-slug gate) + `src/lib/cardBoxes.js` (per-frame opening box — the generated frames vary too much for one constant). Re-run it whenever assets change; `BOX_OVERRIDES` in the script handles any frame whose opening can't be auto-detected.
+
+**Resolution & copy.** `src/lib/cardResolve.js` maps a moment → its asset slug + readiness (`frameSlugFor`, `isFramedMoment`, `MOMENT_SLUGS`). `momentCopy()` wraps `baseCopy()` with `withFramed()`: for a ready slug it drops the book cover and adds `frameUrl`/`artUrl` + the per-frame `box` (book keeps its cover in the slot). Genre sub-lines live in `src/lib/genreCards.js` (`GENRE_CARD_META`, English) and are locale-gated. `shareCardImage.js` passes `frame`, `box`, and (book) `cover`; `share-card.mjs` renders the framed layout at that box, reserving art height for a possible two-line headline so nothing overlaps. The on-screen `ShareCard.jsx` renders the same framed layout in the DOM, so the preview matches the shared PNG without calling the function.
+
+**Prompts.** `public/cards/_PROMPTS-all-genres.md` + `_MOMENT-PROMPTS.md` — self-contained image-gen prompts (one locked gold-engraving style block) for every frame + art.
 
 ### v0.46 — Feature Discovery (empty states, coach-marks, public changelog)
 

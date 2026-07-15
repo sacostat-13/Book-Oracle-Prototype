@@ -21,6 +21,8 @@
 import { useI18n } from '../lib/I18nContext';
 import { GENRE_CARD_META } from '../lib/genreCards';
 import { CARD_GENRES } from '../lib/cardGenres';
+import { frameSlugFor } from '../lib/cardResolve';
+import { CARD_BOXES, DEFAULT_BOX } from '../lib/cardBoxes';
 
 export const SHARE_CARD_WIDTH = 540;
 export const SHARE_CARD_HEIGHT = 675;
@@ -29,7 +31,7 @@ export const SHARE_CARD_HEIGHT = 675;
 // resolve the exact same copy with the client's t() and pass finished strings
 // to the share-card function — keeping i18n on the client and the two renders
 // in sync.
-export function momentCopy(moment, t, lang) {
+function baseCopy(moment, t, lang) {
   const b = moment.book;
   const bookLine = b ? { title: b.t, author: b.a, coverUrl: b.coverUrl } : {};
   switch (moment.type) {
@@ -66,33 +68,24 @@ export function momentCopy(moment, t, lang) {
         ...bookLine,
       };
     case 'genre_count': {
-      // Framed genres showcase the genre art (not the completing book's cover).
       const meta = GENRE_CARD_META[moment.genre];
-      const framed = !!meta && CARD_GENRES.includes(meta.slug);
       return {
         eyebrow: t('share.card.genreCountEyebrow'),
         headline: t('share.card.genreCountHeadline', { n: moment.n, genre: moment.genre }),
         // Per-genre sub-line (English) when available; generic i18n otherwise.
         sub: (lang === 'en' && meta?.sub) || t('share.card.genreCountSub'),
         ornament: '⚜',
-        ...(framed
-          ? { framed: true, cardGenre: meta.slug,
-              frameUrl: `/cards/${meta.slug}/frame.png`, artUrl: `/cards/${meta.slug}/art-trim.png` }
-          : bookLine),
+        ...bookLine,
       };
     }
     case 'new_genre': {
       const meta = GENRE_CARD_META[moment.genre];
-      const framed = !!meta && CARD_GENRES.includes(meta.slug);
       return {
         eyebrow: t('share.card.newGenreEyebrow'),
         headline: moment.genre,
         sub: (lang === 'en' && meta?.sub) || t('share.card.newGenreSub'),
         ornament: '✧',
-        ...(framed
-          ? { framed: true, cardGenre: meta.slug,
-              frameUrl: `/cards/${meta.slug}/frame.png`, artUrl: `/cards/${meta.slug}/art-trim.png` }
-          : bookLine),
+        ...bookLine,
       };
     }
     case 'session_created':
@@ -130,6 +123,31 @@ export function momentCopy(moment, t, lang) {
   }
 }
 
+export function momentCopy(moment, t, lang) {
+  return withFramed(moment, baseCopy(moment, t, lang));
+}
+
+// If this moment has a ready framed-card asset, swap the cover-led fields for the
+// genre/moment frame + art. book_completed keeps the reader's cover in the slot.
+function withFramed(moment, copy) {
+  const slug = frameSlugFor(moment);
+  if (!slug || !CARD_GENRES.includes(slug)) return copy;
+  const isBook = moment.type === 'book_completed';
+  const cover = copy.coverUrl;
+  if (isBook && !cover) return copy; // no cover to fill the slot -> keep the plain card
+  // eslint-disable-next-line no-unused-vars
+  const { coverUrl, title, author, headlineIsBook, ...rest } = copy;
+  return {
+    ...rest,
+    framed: true,
+    frameSlug: slug,
+    box: CARD_BOXES[slug] || DEFAULT_BOX,
+    frameUrl: `/cards/${slug}/frame.png`,
+    artUrl: isBook ? cover : `/cards/${slug}/art-trim.png`,
+    ...(isBook ? { coverUrl: cover } : {}),
+  };
+}
+
 export default function ShareCard({ moment, cardRef }) {
   const { t, lang } = useI18n();
   const copy = momentCopy(moment, t, lang);
@@ -141,9 +159,13 @@ export default function ShareCard({ moment, cardRef }) {
   // composed here in the DOM so the preview matches the server-rendered PNG
   // without needing the share-card function. Mirrors netlify/functions/share-card.mjs.
   if (copy.framed) {
-    const B = { left: 146, top: 128, width: 242, height: 391 }; // opening box @540x675
+    const bx = copy.box || DEFAULT_BOX;
+    // DOM card is half the 1080x1350 master, so halve the measured opening.
+    const B = { left: bx.x / 2, top: bx.y / 2, width: bx.w / 2, height: bx.h / 2 };
     const h = copy.headline || '';
-    const titleSize = h.length > 44 ? 19 : h.length > 30 ? 23 : h.length > 22 ? 26 : 29;
+    const titleSize = h.length > 44 ? 24 : h.length > 32 ? 29 : h.length > 22 ? 34 : 39;
+    const lines = Math.max(1, Math.ceil((h.length * 0.40 * titleSize) / B.width));
+    const artMaxH = Math.max(90, Math.min(235, B.height - (99 + lines * titleSize * 1.05)));
     return (
       <div
         ref={cardRef}
@@ -153,7 +175,7 @@ export default function ShareCard({ moment, cardRef }) {
         <img src={copy.frameUrl} alt="" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }} />
         <div style={{ position: 'absolute', left: B.left, top: B.top, width: B.width, height: B.height, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'space-between', textAlign: 'center' }}>
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-            <svg width="27" height="27" viewBox="0 0 100 100" style={{ marginBottom: 6 }}>
+            <svg width="34" height="34" viewBox="0 0 100 100" style={{ marginBottom: 9 }}>
               <g fill="none" stroke="#D8B85E" strokeWidth="3.4" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M50,30 C40,22 24,22 14,28 L14,72 C24,66 40,66 50,74 C60,66 76,66 86,72 L86,28 C76,22 60,22 50,30 Z" />
                 <path d="M50,30 L50,74" strokeWidth="2.6" />
@@ -161,18 +183,15 @@ export default function ShareCard({ moment, cardRef }) {
                 <path d="M56,40 C62,37 70,37 78,40 M56,52 C62,49 70,49 78,52" stroke="#C9A84C" strokeWidth="2" />
               </g>
             </svg>
-            <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, fontWeight: 600, letterSpacing: 3, textTransform: 'uppercase', color: '#D8B85E', marginBottom: 8 }}>{copy.eyebrow}</div>
+            <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 13, fontWeight: 600, letterSpacing: 3.5, textTransform: 'uppercase', color: '#D8B85E', marginBottom: 12 }}>{copy.eyebrow}</div>
             <div style={{ fontFamily: "'Instrument Serif', serif", fontSize: titleSize, lineHeight: 1.0, color: '#E9DFCA' }}>{copy.headline}</div>
-            {copy.sub && (
-              <div style={{ fontFamily: "'Instrument Serif', serif", fontStyle: 'italic', fontSize: 13, color: 'rgba(233,223,202,0.72)', marginTop: 7, lineHeight: 1.28 }}>{copy.sub}</div>
-            )}
           </div>
-          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', padding: '10px 0' }}>
-            <div style={{ padding: 3, backgroundColor: '#141210', border: '1px solid #C9A84C', borderRadius: 3 }}>
-              <img src={copy.artUrl} alt="" style={{ maxWidth: B.width - 20, maxHeight: 150, objectFit: 'contain', display: 'block' }} />
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', padding: '6px 0' }}>
+            <div style={{ padding: 4, backgroundColor: '#141210', border: '1px solid #C9A84C', borderRadius: 4 }}>
+              <img src={copy.artUrl} alt="" style={{ maxWidth: B.width - 14, maxHeight: artMaxH, objectFit: 'contain', display: 'block' }} />
             </div>
           </div>
-          <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 8.5, fontWeight: 600, letterSpacing: 1.25, textTransform: 'uppercase', color: 'rgba(201,168,76,0.72)' }}>The Books Oracle · thebooksoracle.com</div>
+          <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 9, fontWeight: 600, letterSpacing: 1, textTransform: 'uppercase', color: 'rgba(201,168,76,0.72)' }}>The Books Oracle · thebooksoracle.com</div>
         </div>
       </div>
     );

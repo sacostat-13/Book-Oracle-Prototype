@@ -15,6 +15,8 @@
         "npm:@supabase/supabase-js@^2.45.0",
         "npm:@vitejs/plugin-react@^4.3.1",
         "npm:image-size@^2.0.2",
+        "npm:jpeg-js@~0.4.4",
+        "npm:pngjs@7",
         "npm:react-dom@^18.3.1",
         "npm:react@^18.3.1",
         "npm:sass@^1.77.0",

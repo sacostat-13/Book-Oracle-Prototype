@@ -16,9 +16,24 @@
 
 // The version label shown as "current" — keep in sync with package.json and
 // the README version line.
-export const CURRENT_VERSION = 'v0.46.0';
+export const CURRENT_VERSION = 'v0.47.0';
 
 export const RELEASES = [{
+    version: 'v0.47',
+    date: '2026-07-15',
+    titleEn: 'Milestone cards, illustrated',
+    titleEs: 'Tarjetas de hitos, ilustradas',
+    bodyEn: [
+      'Your milestone share cards are now fully illustrated. Every genre has its own hand-drawn, gold-on-ink frame and artwork — 49 in all — and so does each kind of milestone: series completed, reading goals, and your books of the year.',
+      'Genre milestones now show the genre’s own art instead of the last book’s cover, so the card celebrates the achievement — not just the book that happened to finish it. Finishing a single book still frames your real cover.',
+      'Cleaner and bolder, too: bigger art and headings so every card reads at a glance, even as a thumbnail.',
+    ],
+    bodyEs: [
+      'Tus tarjetas de hitos ahora están completamente ilustradas. Cada género tiene su propio marco e ilustración dibujados a mano, en dorado sobre tinta — 49 en total — y también cada tipo de hito: sagas completadas, metas de lectura y tus libros del año.',
+      'Los hitos de género ahora muestran la ilustración del género en vez de la portada del último libro, así la tarjeta celebra el logro — no solo el libro que lo completó. Al terminar un libro, la tarjeta sigue mostrando tu portada real.',
+      'También más limpias y llamativas: ilustración y títulos más grandes para que cada tarjeta se lea de un vistazo, incluso en miniatura.',
+    ],
+  }, {
     version: 'v0.46',
     date: '2026-07-14',
     titleEn: 'Find your way around: a friendlier Books Oracle',

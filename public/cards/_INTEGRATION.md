@@ -1,65 +1,53 @@
-# Framed genre share cards — integration notes
+# Framed share cards — integration & build
 
-Genre milestone moments (`genre_count`, `new_genre`) render as the illustrated
-framed card. Text stays fully dynamic; the only static per-genre assets are
-`frame.png` + `art.png` (+ generated `art-trim.png`).
+Genre milestones and the achievement moments render as illustrated framed cards.
+Text is fully dynamic; the only static per-slug assets are `frame.png` + `art.png`
+(+ generated `art-trim.png`). `moment-book` is frame-only — the reader's cover
+fills the slot.
 
-## What changed
-- **`netlify/functions/share-card.mjs`** — new framed path. When the request has
-  `?genre=<name>` and both `/cards/<genre>/frame.png` and `/cards/<genre>/art-trim.png`
-  exist, it composes them with the live eyebrow/headline/sub at 1080×1350.
-  If either asset is missing it falls back to the standard cover card, so it can
-  never 500 on a not-yet-ready genre. Added Instrument Serif *italic* for the sub.
-- **`src/components/ShareCard.jsx`** — `momentCopy(moment, t, lang)`:
-  per-genre sub-line (English only) with i18n fallback; for genres with assets it
-  marks the moment `framed` and drops the book cover.
-- **`src/lib/shareCardImage.js`** — `momentCardUrl` passes `genre`; adds
-  `isFramedMoment()`.
-- **`src/components/ShareMomentModal.jsx`** — previews the real server PNG for
-  framed moments (preview == share); DOM card for everything else.
-- **`src/lib/genreDescriptions.js`** — 83 tone-matched sub-lines.
-- **`src/lib/cardGenres.js`** — auto-generated list of genres that have assets.
+## Build step (run in the repo, on your machine)
+The sandbox that generated the code can't reliably read every asset folder, so the
+prep is a portable Node script that runs where the files live:
 
-## Genre milestones showcase the ART (not the book cover)
-For `genre_count` / `new_genre` on a genre that has assets, `momentCopy()` drops
-the completing book's cover and marks the moment `framed`, so the card shows the
-genre frame + art. The modal previews the actual server-rendered PNG for these
-moments (`isFramedMoment`), so preview matches the shared image. Genres without
-assets keep the normal cover card.
-
-`cardGenres.js` is the gate that decides framed vs cover. Re-run prep after adding
-assets so new genres light up.
-
-## Per-genre assets (build step)
-Each genre needs a trimmed art file next to the frame. The prep script measures
-the frame opening, writes `art-trim.png` into each `public/cards/<genre>/`, and
-regenerates `src/lib/cardGenres.js`. Commit `frame.png`, `art.png`, `art-trim.png`.
-
-The content-safe opening box is a shared constant in the function
-(`FRAME_BOX = { x:291, y:256, w:485, h:782 }`) since all frames use the same
-border. If a frame's opening differs, re-measure and switch to a per-genre map.
-
-## Test locally (requires the function → use `netlify dev`, not plain vite)
 ```
-netlify dev
-# genre_count (10 books), English:
-/.netlify/functions/share-card?genre=Classic%20%26%20Older%20Gothic&eyebrow=A%20devoted%20reader&headline=10%20Classic%20%26%20Older%20Gothic%20books&sub=The%20house%20remembers%20every%20reader%20who%20dares%20its%20halls.
-# Spanish: eyebrow=Devoci%C3%B3n%20lectora&headline=10%20libros%20de%20Classic%20%26%20Older%20Gothic&sub=Hay%20estantes%20que%20exigen%20devoci%C3%B3n.
+npm i -D pngjs jpeg-js   # one time (handles .png and .jpg/.jpeg)
+node scripts/build-share-cards.mjs
 ```
-In the app, finish a book that crosses a genre milestone in Classic & Older
-Gothic — the modal preview and the shared PNG both show the framed art card.
 
-## Caveat — i18n
-`GENRE_DESCRIPTIONS` is English only; Spanish falls back to the generic translated
-sub. Add an `es` map + switch the gate by `lang` for bespoke Spanish lines.
+It scans `public/cards/<slug>/` and regenerates three things:
+- `public/cards/<slug>/art-trim.png` — art with the generator's dark margins removed
+- `src/lib/cardGenres.js` — slugs whose framed card is ready (the on/off gate)
+- `src/lib/cardBoxes.js` — each frame's measured content-safe opening box
 
-## Commit guidance
-The working tree shows many unrelated files as modified — a pre-existing CRLF/LF
-line-ending artifact in this checkout, not this change. Commit only:
-- `netlify/functions/share-card.mjs`
-- `src/components/ShareCard.jsx`
-- `src/components/ShareMomentModal.jsx`
-- `src/lib/shareCardImage.js`
-- `src/lib/genreDescriptions.js`
-- `src/lib/cardGenres.js`
-- `public/cards/**` (frame.png / art.png / art-trim.png per ready genre)
+Re-run it any time you add or replace a frame/art. Commit the regenerated
+`art-trim.png`, `cardGenres.js`, and `cardBoxes.js`.
+
+## How a moment resolves (src/lib/cardResolve.js)
+- `genre_count` / `new_genre` → `GENRE_CARD_META[genre].slug`
+- `series_completed → moment-series`, `nth_book → moment-milestone`,
+  `goal_completed → moment-goal`, `plan_completed → moment-plan`,
+  `book_completed → moment-book`
+- A moment renders framed only if its slug is in `CARD_GENRES` (assets present).
+  `book_completed` additionally needs a cover.
+
+## Files
+- `src/lib/genreCards.js` — 49 genres: name → { slug, sub } (sub = English card line)
+- `src/lib/cardGenres.js` — ready slugs (generated)
+- `src/lib/cardBoxes.js` — per-frame opening boxes (generated)
+- `src/lib/cardResolve.js` — frameSlugFor() + isFramedMoment() + MOMENT_SLUGS
+- `src/components/ShareCard.jsx` — momentCopy() wraps baseCopy() with withFramed();
+  framed moments drop the cover for the frame+art (book keeps the cover in the slot).
+  DOM renders the framed card using the per-frame box.
+- `src/lib/shareCardImage.js` — momentCardUrl() passes `frame`, `box`, and (book) `cover`.
+- `netlify/functions/share-card.mjs` — framed path: loads `/cards/<frame>/frame.png`
+  + art-trim (or the cover for book), renders at the passed box.
+- `src/lib/genreDescriptions.js` — ORPHANED (superseded by genreCards.js); safe to delete.
+
+## Prompts
+- `_PROMPTS-all-genres.md` — 49 genre frame+art prompts (self-contained)
+- `_MOMENT-PROMPTS.md` — series / milestone / goal / plan (frame+art) + book (frame only)
+
+## Test
+`netlify dev`, then complete a book that crosses a genre milestone / a series /
+a year milestone, or just finish a book — each shows its framed card in preview
+and share. Toggle language for the English vs. translated sub-line.

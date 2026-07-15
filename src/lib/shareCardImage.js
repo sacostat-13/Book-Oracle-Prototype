@@ -8,8 +8,6 @@
 // finished strings + cover into the brand template.
 
 import { momentCopy } from '../components/ShareCard';
-import { GENRE_CARD_META } from './genreCards';
-import { CARD_GENRES } from './cardGenres';
 
 const FN = '/.netlify/functions/share-card';
 
@@ -22,9 +20,10 @@ export function momentCardUrl(moment, t, lang) {
   if (copy.headline) q.set('headline', copy.headline);
   if (copy.sub)      q.set('sub', copy.sub);
   if (copy.coverUrl) q.set('cover', copy.coverUrl);
-  // Framed genre milestones pass the genre so the function loads that genre's
-  // illustrated frame + art (public/cards/<genre>/) instead of a book cover.
-  if (copy.cardGenre) q.set('genre', copy.cardGenre);
+  // Framed moments pass their asset-folder slug so the function loads that frame
+  // (+ art, or the reader's cover for book_completed).
+  if (copy.frameSlug) q.set('frame', copy.frameSlug);
+  if (copy.box) q.set('box', `${copy.box.x},${copy.box.y},${copy.box.w},${copy.box.h}`);
   // Caption only when the headline isn't the book title itself (mirrors
   // ShareCard's showBookCaption rule).
   if (copy.title && !copy.headlineIsBook) {
@@ -32,13 +31,6 @@ export function momentCardUrl(moment, t, lang) {
     if (copy.author) q.set('captionAuthor', copy.author);
   }
   return `${FN}?${q.toString()}`;
-}
-
-// True when a moment renders as the framed genre-art card (has card assets).
-export function isFramedMoment(moment) {
-  if (!moment || (moment.type !== 'genre_count' && moment.type !== 'new_genre')) return false;
-  const meta = GENRE_CARD_META[moment.genre];
-  return !!meta && CARD_GENRES.includes(meta.slug);
 }
 
 // Fetch the rendered PNG as a File (for navigator.share / download).
