@@ -4,7 +4,7 @@ A reading companion — wishlist, library, reading plans, book clubs, and an AI-
 for book discovery. Built with React + Vite + SCSS, backed by Supabase for auth
 and cross-device sync, and Netlify Functions for API proxying.
 
-> Current version: **v0.48** — see [Releases](#releases) below for changelog.
+> Current version: **v0.49** — see [Releases](#releases) below for changelog.
 > Upgrading from an earlier version? Check the matching `MIGRATION_*.md` / `UPDATE_*.md`.
 
 ---
@@ -449,6 +449,14 @@ its normal one-file-at-a-time watch flow. It's a dev-server cache hiccup, not
 a real bug — a production build (`npm run build`) compiles clean, and a
 dev-server restart (or hard browser reload) clears it.
 
+
+### v0.49 — Vault Source Upgrade (curator-fed catalog)
+
+The Vault is now the live union of every curator's shelves instead of the 426 `source='curated'` rows (signed-in) / bundled ~280-book `booksData.js` (guests).
+
+**Migration (`schema_v34_migration.sql`).** `get_curated_catalog()` (v11, wishlist-only, never adopted by the client) is dropped and recreated: union of curator `wishlist_items` (taste signal) and curator `read_books` (experience signal, excluding explicit ratings < 3 — NULL ratings kept, since unrated ≠ disliked). Two new return columns: `vault_source` (`wishlist`|`library`|`both`, rolled up across curators) and `curator_rating` (max). Quality floor `status in ('verified','oracle_categorized')` — same line the sitemap draws. DROP+CREATE because the return type changed; grants (authenticated + anon) re-applied, `search_path` pinned inline (keeps the v29 audit green). Verification queries at the bottom of the file.
+
+**Client (`DataContext.loadVault`).** Both guest and signed-in paths now call the RPC (anon grant makes guest mode work); rows map through `bookRowToClient` with `vaultSource`/`curatorRating` carried as extras (stored, unused — future ranking signal: "curator read and loved this" > "curator has it on the list"). `ALL_BOOKS` demoted to emergency fallback on RPC error/empty; the `user` dependency drops out of the callback. `booksData.js` itself stays for now (guest wishlist seeding + BookModal candidates still import it) — retiring it fully is a separate pass.
 
 ### v0.48 — Branded link previews (landscape OG cards)
 

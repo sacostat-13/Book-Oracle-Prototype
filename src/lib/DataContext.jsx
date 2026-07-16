@@ -2351,30 +2351,36 @@ export function DataProvider({ children }) {
   }, [user]);
 
   // ---------- The Vault ----------
+  // v0.49 Vault Source Upgrade: the Vault is fed by the get_curated_catalog
+  // RPC — the union of every curator's wishlist (taste) and library
+  // (experience; explicit ratings < 3 excluded server-side, unrated reads
+  // kept). Guests get the same catalog: the function is granted to anon and
+  // exposes no PII. This replaces both the old source='curated' books query
+  // (signed-in) and the bundled ALL_BOOKS seed (guests) — ALL_BOOKS is now
+  // only the emergency fallback when the RPC fails or returns empty.
+  // Rows carry vault_source ('wishlist'|'library'|'both') and curator_rating
+  // — stored on the client book as future ranking signal, unused for now.
   const [vault, setVault] = useState(null);
   const loadVault = useCallback(async () => {
     if (vault) return vault;
-    if (!user) {
-      const v = ALL_BOOKS.map((b) => ({ ...b, status: 'verified', verifiedSource: 'curated_seed', source: 'curated' }));
-      setVault(v);
-      return v;
+    try {
+      const { data, error } = await supabase.rpc('get_curated_catalog');
+      if (!error && Array.isArray(data) && data.length > 0) {
+        const v = data.map((b) => bookRowToClient(b, {
+          vaultSource: b.vault_source || undefined,
+          curatorRating: b.curator_rating ?? undefined,
+        }));
+        setVault(v);
+        return v;
+      }
+      console.error('Vault RPC failed or returned empty', error);
+    } catch (err) {
+      console.error('Vault RPC failed', err);
     }
-    const { data, error } = await supabase
-      .from('books')
-      .select('*, position_in_series, series:series(*)')
-      .eq('source', 'curated')
-      .eq('status', 'verified')
-      .order('title', { ascending: true });
-    if (error || !data) {
-      console.error('Vault fetch failed', error);
-      const v = ALL_BOOKS.map((b) => ({ ...b, status: 'verified', verifiedSource: 'curated_seed', source: 'curated' }));
-      setVault(v);
-      return v;
-    }
-    const v = data.map((b) => bookRowToClient(b));
+    const v = ALL_BOOKS.map((b) => ({ ...b, status: 'verified', verifiedSource: 'curated_seed', source: 'curated' }));
     setVault(v);
     return v;
-  }, [user, vault]);
+  }, [vault]);
 
   const value = {
     state,

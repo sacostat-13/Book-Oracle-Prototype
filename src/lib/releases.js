@@ -16,9 +16,24 @@
 
 // The version label shown as "current" — keep in sync with package.json and
 // the README version line.
-export const CURRENT_VERSION = 'v0.48';
+export const CURRENT_VERSION = 'v0.49';
 
 export const RELEASES = [{
+    version: 'v0.49',
+    date: '2026-07-16',
+    titleEn: 'The Vault, curator-fed',
+    titleEs: 'La Bóveda, alimentada por curadores',
+    bodyEn: [
+      'The Vault now draws from real shelves: every curator’s wishlist and library feed it directly, so it grows as curators read and discover. It jumps from ~426 books to over a thousand today.',
+      'Books a curator read but rated poorly stay out — the Vault only carries what curators want to read or can vouch for.',
+      'Guests browse the same living catalog as signed-in readers, instead of a smaller built-in list.',
+    ],
+    bodyEs: [
+      'La Bóveda ahora se nutre de estantes reales: la lista de deseos y la biblioteca de cada curador la alimentan directamente, así que crece a medida que los curadores leen y descubren. Hoy salta de ~426 libros a más de mil.',
+      'Los libros que un curador leyó pero calificó mal quedan afuera — la Bóveda solo lleva lo que los curadores quieren leer o pueden recomendar.',
+      'Los invitados navegan el mismo catálogo vivo que los lectores registrados, en vez de una lista integrada más chica.',
+    ],
+  }, {
     version: 'v0.48',
     date: '2026-07-16',
     titleEn: 'Every link wears the card',
