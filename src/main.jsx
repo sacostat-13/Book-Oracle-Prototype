@@ -7,6 +7,7 @@ import { RouterProvider } from './lib/RouterContext';
 import { I18nProvider } from './lib/I18nContext';
 import { ThemeProvider } from './lib/ThemeContext';
 import { OracleQuotaProvider } from './lib/OracleQuotaContext';
+import PWAUpdatePrompt from './components/PWAUpdatePrompt.jsx';
 import './styles/main.scss';
 
 ReactDOM.createRoot(document.getElementById('root')).render(
@@ -22,6 +23,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
             </OracleQuotaProvider>
           </DataProvider>
         </AuthProvider>
+        <PWAUpdatePrompt />
       </I18nProvider>
     </ThemeProvider>
   </React.StrictMode>

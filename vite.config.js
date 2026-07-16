@@ -27,7 +27,14 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
-      registerType: 'autoUpdate',
+      // v0.45: switched from 'autoUpdate' to 'prompt'. autoUpdate force-reloaded
+      // every open client the moment a new SW took control on each deploy. That
+      // reload raced Supabase's token refresh; with single-use refresh-token
+      // rotation, the losing request got "Invalid Refresh Token: Already Used"
+      // and the client purged sb-<ref>-auth-token from localStorage — logging
+      // users out on every deploy. 'prompt' lets the user update on their terms
+      // (see PWAUpdatePrompt), so no mid-session reload and no lost session.
+      registerType: 'prompt',
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
         // Share-card frame/art (public/cards/**) are large (2-3 MB each) and only

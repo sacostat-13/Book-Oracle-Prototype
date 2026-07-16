@@ -16,9 +16,22 @@
 
 // The version label shown as "current" — keep in sync with package.json and
 // the README version line.
-export const CURRENT_VERSION = 'v0.47.0';
+export const CURRENT_VERSION = 'v0.47.1';
 
 export const RELEASES = [{
+    version: 'v0.47.1',
+    date: '2026-07-16',
+    titleEn: 'Stay signed in across updates',
+    titleEs: 'Seguí con tu sesión entre actualizaciones',
+    bodyEn: [
+      'Fixed: updating to a new version no longer signs you out. Before, each new release could quietly log some readers out — now your session stays put across updates.',
+      'New: when a new version is ready, a small “A new version is available — Refresh” prompt appears, so you update on your own time instead of the app reloading underneath you.',
+    ],
+    bodyEs: [
+      'Corregido: actualizar a una nueva versión ya no cierra tu sesión. Antes, cada versión nueva podía desconectar a algunos lectores sin aviso — ahora tu sesión se mantiene entre actualizaciones.',
+      'Nuevo: cuando hay una versión nueva lista, aparece un pequeño aviso “Hay una nueva versión disponible — Actualizar”, así actualizás cuando quieras en vez de que la app se recargue sola.',
+    ],
+  }, {
     version: 'v0.47',
     date: '2026-07-15',
     titleEn: 'Milestone cards, illustrated',

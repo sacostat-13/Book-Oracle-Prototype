@@ -1810,5 +1810,11 @@
     "mobileNav": {
       "menuLabel": "Enlaces rápidos"
     }
+  },
+  "pwa": {
+    "updateAvailable": "Hay una nueva versión disponible.",
+    "refresh": "Actualizar",
+    "dismiss": "Descartar",
+    "updating": "Actualizando…"
   }
 }

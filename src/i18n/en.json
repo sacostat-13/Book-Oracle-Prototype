@@ -1810,5 +1810,11 @@
     "mobileNav": {
       "menuLabel": "Quick links"
     }
+  },
+  "pwa": {
+    "updateAvailable": "A new version is available.",
+    "refresh": "Refresh",
+    "dismiss": "Dismiss",
+    "updating": "Updating…"
   }
 }
