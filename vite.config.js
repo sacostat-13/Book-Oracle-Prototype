@@ -30,6 +30,11 @@ export default defineConfig({
       registerType: 'autoUpdate',
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
+        // Share-card frame/art (public/cards/**) are large (2-3 MB each) and only
+        // fetched on demand when a user shares — never needed offline. Keep them
+        // out of the SW precache so they don't exceed the size limit (which fails
+        // the build) or bloat the install with tens of MB of images.
+        globIgnores: ['**/cards/**'],
         runtimeCaching: [{
             // Google Fonts stylesheets
             urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
