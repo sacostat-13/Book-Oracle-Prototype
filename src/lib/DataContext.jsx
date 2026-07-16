@@ -2364,16 +2364,33 @@ export function DataProvider({ children }) {
   const loadVault = useCallback(async () => {
     if (vault) return vault;
     try {
-      const { data, error } = await supabase.rpc('get_curated_catalog');
-      if (!error && Array.isArray(data) && data.length > 0) {
-        const v = data.map((b) => bookRowToClient(b, {
+      // PostgREST caps every response at the project's Max Rows setting
+      // (default 1000) — including RPC results — so a single call silently
+      // truncates once the catalog outgrows it (first seen at 1352 books).
+      // Paginate with .range() until a short page, same tradeoff
+      // og-prerender.js makes. Ordering is stable (the function orders by
+      // title), so pages don't overlap. MAX_PAGES is a runaway guard.
+      const PAGE_SIZE = 1000;
+      const MAX_PAGES = 20;
+      const rows = [];
+      for (let page = 0; page < MAX_PAGES; page++) {
+        const { data, error } = await supabase
+          .rpc('get_curated_catalog')
+          .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
+        if (error) throw error;
+        if (!Array.isArray(data)) break;
+        rows.push(...data);
+        if (data.length < PAGE_SIZE) break;
+      }
+      if (rows.length > 0) {
+        const v = rows.map((b) => bookRowToClient(b, {
           vaultSource: b.vault_source || undefined,
           curatorRating: b.curator_rating ?? undefined,
         }));
         setVault(v);
         return v;
       }
-      console.error('Vault RPC failed or returned empty', error);
+      console.error('Vault RPC returned empty');
     } catch (err) {
       console.error('Vault RPC failed', err);
     }
