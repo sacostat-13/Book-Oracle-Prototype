@@ -115,9 +115,12 @@ async function loadFonts() {
   return _fontCache;
 }
 
-/* ── Cover fetch → { src, w, h } fitted into the CSS box (contain 170×240) ── */
+/* ── Cover fetch → { src, w, h } fitted into the CSS box (contain 170×240) ──
+ * v0.48: maxW/maxH are parameters now — the OG layout needs a larger fit box
+ * (310×460) than the portrait card (170×240). Defaults preserve old behavior. */
 const COVER_MAX_W = 170, COVER_MAX_H = 240;
-async function loadCover(url) {
+const OG_COVER_MAX_W = 310, OG_COVER_MAX_H = 460;
+async function loadCover(url, maxW = COVER_MAX_W, maxH = COVER_MAX_H) {
   if (!url) return null;
   try {
     const r = await fetch(url, { headers: { 'User-Agent': 'BooksOracle/1.0 (share-card)' } });
@@ -126,11 +129,11 @@ async function loadCover(url) {
     if (!type.startsWith('image/')) return null;
     const buf = Buffer.from(await r.arrayBuffer());
     if (buf.length > 6_000_000) return null;
-    let w = COVER_MAX_W, h = COVER_MAX_H;
+    let w = maxW, h = maxH;
     try {
       const dim = imageSize(buf);
       if (dim.width && dim.height) {
-        const s = Math.min(COVER_MAX_W / dim.width, COVER_MAX_H / dim.height);
+        const s = Math.min(maxW / dim.width, maxH / dim.height);
         w = Math.round(dim.width * s);
         h = Math.round(dim.height * s);
       }
@@ -224,6 +227,85 @@ function card(p, cover) {
 
   return box(
     { boxSizing: 'border-box', width: W, height: H, padding: 22, backgroundColor: C.bgSolid, backgroundImage: C.bgGrad, color: C.parchment, fontFamily: 'Inter' },
+    [frame]
+  );
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+ * OG CARD — v0.48 Branded Link Previews
+ * Landscape 1200×630 (the OG/Twitter standard ratio) for og:image. Same brand
+ * language as the portrait card: ink gradient, gold double frame, Instrument
+ * Serif headline, Plex Mono footer. Cover (when present) sits left, text
+ * right; without a cover the text column centers full-width — plans and any
+ * coverless book still get a fully branded preview instead of a bare unfurl.
+ * Requested with ?layout=og; called by netlify/edge-functions/og-prerender.js
+ * with server-built strings (that function stays i18n-agnostic English).
+ * ════════════════════════════════════════════════════════════════════════ */
+
+function ogCard(p, cover) {
+  const W = 1200, H = 630;
+  const headline = clamp(p.headline, 90);
+  const hSize = headline.length > 60 ? 46 : headline.length > 38 ? 56 : 68;
+  // With a cover the text column is left-aligned; without one it centers.
+  const centered = !cover;
+  const alignStyle = centered
+    ? { alignItems: 'center', textAlign: 'center', justifyContent: 'center' }
+    : { alignItems: 'flex-start', textAlign: 'left' };
+
+  const textChildren = [
+    p.ornament ? txt(
+      { fontFamily: 'Ornament', fontSize: 30, color: C.gold, lineHeight: 1, marginBottom: 20 },
+      p.ornament
+    ) : null,
+    p.eyebrow ? txt(
+      { fontFamily: 'IBM Plex Mono', fontWeight: 600, fontSize: 17, letterSpacing: 3.4, textTransform: 'uppercase', color: C.goldText, marginBottom: 20 },
+      p.eyebrow
+    ) : null,
+    txt(
+      { fontFamily: 'Instrument Serif', fontSize: hSize, lineHeight: 1.08, color: C.parchment, maxWidth: centered ? 920 : 660, ...(centered ? { justifyContent: 'center' } : {}) },
+      headline
+    ),
+    p.sub ? txt(
+      { fontFamily: 'Inter', fontStyle: 'italic', fontSize: 24, color: C.subDim, marginTop: 18, maxWidth: centered ? 840 : 620, ...(centered ? { justifyContent: 'center' } : {}) },
+      clamp(p.sub, 140)
+    ) : null,
+    box(
+      { marginTop: 36, alignItems: 'baseline', gap: 12, fontFamily: 'IBM Plex Mono', fontSize: 15, letterSpacing: 2.2, textTransform: 'uppercase' },
+      [
+        txt({ fontFamily: 'Ornament', color: C.gold }, '✦'),
+        txt({ color: C.goldText }, 'The Books Oracle'),
+        txt({ color: C.urlDim }, 'thebooksoracle.com'),
+      ]
+    ),
+  ].filter(Boolean);
+
+  const textCol = box(
+    { flexDirection: 'column', flex: 1, justifyContent: 'center', ...alignStyle, ...(cover ? { paddingLeft: 52 } : {}) },
+    textChildren
+  );
+
+  const row = box(
+    { flexDirection: 'row', alignItems: 'center', width: '100%', height: '100%', padding: '40px 56px' },
+    [
+      ...(cover ? [box(
+        { alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+        [img(cover.src, { width: cover.w, height: cover.h, objectFit: 'cover', border: `1px solid ${C.coverBrd}`, boxShadow: '0 12px 40px rgba(0,0,0,0.65)' })]
+      )] : []),
+      textCol,
+    ]
+  );
+
+  // Same double-frame treatment as the portrait card.
+  const frame = box(
+    { position: 'relative', boxSizing: 'border-box', width: '100%', height: '100%', border: `1px solid ${C.frame}` },
+    [
+      box({ position: 'absolute', top: 5, left: 5, right: 5, bottom: 5, border: `1px solid ${C.frameFaint}` }),
+      row,
+    ]
+  );
+
+  return box(
+    { boxSizing: 'border-box', width: W, height: H, padding: 20, backgroundColor: C.bgSolid, backgroundImage: C.bgGrad, color: C.parchment, fontFamily: 'Inter' },
     [frame]
   );
 }
@@ -351,7 +433,16 @@ export default async (req) => {
     // the deployed site. Render the 1080x1350 framed layout when both assets
     // exist; fall through to the standard cover card if either is missing.
     let framed = false;
-    if (q.frame) {
+    // v0.48: ?layout=og → landscape 1200×630 branded link preview. Takes
+    // priority over the framed path (og-prerender never sends ?frame, but a
+    // hand-built URL with both shouldn't render a portrait framed card where
+    // an OG image is expected).
+    if (q.layout === 'og') {
+      const cover = await loadCover(q.cover, OG_COVER_MAX_W, OG_COVER_MAX_H);
+      const svg = await satori(ogCard(p, cover), { width: 1200, height: 630, fonts });
+      png = new Resvg(svg, { fitTo: { mode: 'width', value: 1200 } }).render().asPng();
+      framed = true; // skip the default portrait path below
+    } else if (q.frame) {
       const seg = encodeURIComponent(q.frame);
       const frameSrc = await loadCardAsset(`${url.origin}/cards/${seg}/frame.png`);
       // Slot image: the reader's cover for book_completed, else the genre/moment art.

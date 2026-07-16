@@ -182,7 +182,6 @@ export default function About() {
             items={[
               { title: t('about.roadmapTierNear1Title'), body: t('about.roadmapTierNear1Body') },
               { title: t('about.roadmapTierNear2Title'), body: t('about.roadmapTierNear2Body') },
-              { title: t('about.roadmapTierNear3Title'), body: t('about.roadmapTierNear3Body') },
             ]}
           />
 
@@ -191,7 +190,6 @@ export default function About() {
             items={[
               { title: t('about.roadmapTierMed1Title'), body: t('about.roadmapTierMed1Body') },
               { title: t('about.roadmapTierMed2Title'), body: t('about.roadmapTierMed2Body') },
-              { title: t('about.roadmapTierMed3Title'), body: t('about.roadmapTierMed3Body') },
             ]}
           />
 
@@ -199,8 +197,6 @@ export default function About() {
             heading={t('about.roadmapTierFutureHeading')}
             items={[
               { title: t('about.roadmapTierFuture1Title'), body: t('about.roadmapTierFuture1Body') },
-              { title: t('about.roadmapTierFuture2Title'), body: t('about.roadmapTierFuture2Body') },
-              { title: t('about.roadmapTierFuture3Title'), body: t('about.roadmapTierFuture3Body') },
             ]}
           />
         </Section>

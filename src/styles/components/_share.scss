@@ -1,3 +1,5 @@
+@use "../tokens";
+
 // components/_share.scss — The Books Oracle (v0.43)
 //
 //   .share-modal          page-share modal additions (on top of .rating-modal)
@@ -71,6 +73,63 @@
   color: var(--ro-text-secondary);
   text-align: center;
   margin: 4px 0 0;
+}
+
+// ── Mobile (v0.48) ────────────────────────────────────────────────────────
+// Most testers are on phones. Three problems at ≤640px with the desktop
+// values: (1) the card at zoom .72 (389px) is wider than the space a 390px
+// viewport leaves after overlay + modal padding, (2) .modal__actions is a
+// non-wrapping flex-end row, so the leftmost button ("Not now") gets pushed
+// off the modal edge, (3) a tall framed card + actions can exceed the
+// visible viewport with no way to scroll.
+//
+// The zoom steps are sized so card width ≤ viewport − overlay pad (24) −
+// modal pad (32): .58→313px fits 375px phones, .52→281px fits 360px,
+// .46→248px fits 320px (SE).
+@include tokens.ro-down(mobile) {
+  .rating-modal-overlay:has(.share-moment-modal) { padding: 12px; }
+
+  .share-moment-modal {
+    padding: 24px 16px 16px;
+    max-height: calc(100vh - 24px);  // fallback
+    max-height: calc(100dvh - 24px); // real visible viewport on mobile
+    overflow-y: auto;
+  }
+
+  .share-moment-modal__card-scale {
+    zoom: 0.58;
+    @supports not (zoom: 1) {
+      transform: scale(0.58);
+      transform-origin: top center;
+    }
+  }
+  @media (max-width: 380px) {
+    .share-moment-modal__card-scale {
+      zoom: 0.52;
+      @supports not (zoom: 1) { transform: scale(0.52); }
+    }
+  }
+  @media (max-width: 340px) {
+    .share-moment-modal__card-scale {
+      zoom: 0.46;
+      @supports not (zoom: 1) { transform: scale(0.46); }
+    }
+  }
+
+  // Stack the actions full-width; column-reverse keeps DOM/focus order
+  // (dismiss → link → image) while rendering the primary action on top and
+  // "Not now" at the bottom, where a dismiss belongs on a phone.
+  .share-moment-modal .modal__actions {
+    flex-direction: column-reverse;
+    align-items: stretch;
+    gap: 10px;
+    padding: 16px 0 0;
+
+    button {
+      width: 100%;
+      min-height: 44px; // comfortable tap target
+    }
+  }
 }
 
 // ── The card itself (fixed brand palette — see header comment) ──────────

@@ -77,10 +77,27 @@ function escapeHtml(s) {
     .replace(/"/g, '&quot;');
 }
 
+// v0.48 Branded Link Previews: build the og:image URL for the share-card
+// function's landscape OG layout (?layout=og, 1200×630). Strings are built
+// server-side here (i18n-agnostic English, same convention as the rest of
+// this file); share-card just renders what it's given. `origin` comes from
+// the request so deploy previews render their own images.
+function ogCardImage(origin, { ornament, eyebrow, headline, sub, cover }) {
+  const params = new URLSearchParams({ layout: 'og' });
+  if (ornament) params.set('ornament', ornament);
+  if (eyebrow) params.set('eyebrow', eyebrow);
+  if (headline) params.set('headline', headline);
+  if (sub) params.set('sub', sub);
+  if (cover) params.set('cover', cover);
+  return `${origin}/.netlify/functions/share-card?${params.toString()}`;
+}
+
 function injectMeta(html, {
   title,
   description,
   image,
+  imageWidth,
+  imageHeight,
   url,
   jsonLd
 }) {
@@ -92,9 +109,12 @@ function injectMeta(html, {
     `<meta property="og:url" content="${escapeHtml(url)}">`,
     `<meta property="og:type" content="website">`,
     image ? `<meta property="og:image" content="${escapeHtml(image)}">` : '',
+    image && imageWidth ? `<meta property="og:image:width" content="${imageWidth}">` : '',
+    image && imageHeight ? `<meta property="og:image:height" content="${imageHeight}">` : '',
     `<meta name="twitter:card" content="${image ? 'summary_large_image' : 'summary'}">`,
     `<meta name="twitter:title" content="${escapeHtml(title)}">`,
     `<meta name="twitter:description" content="${escapeHtml(description || '')}">`,
+    image ? `<meta name="twitter:image" content="${escapeHtml(image)}">` : '',
     `<link rel="canonical" href="${escapeHtml(url)}">`,
     jsonLd ? `<script type="application/ld+json">${JSON.stringify(jsonLd)}</script>` : '',
   ].filter(Boolean).join('\n    ');
@@ -211,7 +231,17 @@ export default async (request, context) => {
       const injected = injectMeta(html, {
         title: `${match.title} by ${authorDisplay} — The Books Oracle`,
         description: match.description ? match.description.slice(0, 200) : undefined,
-        image: match.cover_url || undefined,
+        // v0.48: branded 1200×630 card (cover + title on the ink/gold frame)
+        // instead of the raw cover — raw covers are portrait and crop badly
+        // in landscape unfurls, and carried no branding.
+        image: ogCardImage(url.origin, {
+          ornament: '❦',
+          headline: match.title,
+          sub: `by ${authorDisplay}`,
+          cover: match.cover_url || undefined,
+        }),
+        imageWidth: 1200,
+        imageHeight: 630,
         url: SITE + url.pathname,
         jsonLd: {
           '@context': 'https://schema.org',
@@ -274,7 +304,15 @@ export default async (request, context) => {
         description: list.description
           ? list.description.slice(0, 200)
           : `${books.length} books${curator ? `, curated by ${curator}` : ''}.`,
-        image: firstCover || undefined,
+        // v0.48: branded card — first cover (when any) + list title/count.
+        image: ogCardImage(url.origin, {
+          eyebrow: 'A reading list',
+          headline: list.title,
+          sub: `${books.length} ${books.length === 1 ? 'book' : 'books'}${curator ? ` · curated by ${curator}` : ''}`,
+          cover: firstCover || undefined,
+        }),
+        imageWidth: 1200,
+        imageHeight: 630,
         url: SITE + url.pathname,
         jsonLd: {
           '@context': 'https://schema.org',
@@ -303,6 +341,16 @@ export default async (request, context) => {
         description: content.intro
           ? content.intro.slice(0, 200)
           : `${books.length} books${content.timeline ? ` over ${content.timeline} months` : ''}${curator ? `, by ${curator}` : ''}.`,
+        // v0.48: branded card. Plan content carries no cover URLs, so this is
+        // the text-only centered layout — still fully branded, no bare unfurl.
+        image: ogCardImage(url.origin, {
+          ornament: '✺',
+          eyebrow: 'A reading plan',
+          headline: title,
+          sub: `${books.length} ${books.length === 1 ? 'book' : 'books'}${content.timeline ? ` over ${content.timeline} months` : ''}${curator ? ` · by ${curator}` : ''}`,
+        }),
+        imageWidth: 1200,
+        imageHeight: 630,
         url: SITE + url.pathname,
       });
     }

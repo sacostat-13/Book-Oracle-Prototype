@@ -4,7 +4,7 @@ A reading companion — wishlist, library, reading plans, book clubs, and an AI-
 for book discovery. Built with React + Vite + SCSS, backed by Supabase for auth
 and cross-device sync, and Netlify Functions for API proxying.
 
-> Current version: **v0.47** — see [Releases](#releases) below for changelog.
+> Current version: **v0.48** — see [Releases](#releases) below for changelog.
 > Upgrading from an earlier version? Check the matching `MIGRATION_*.md` / `UPDATE_*.md`.
 
 ---
@@ -449,6 +449,18 @@ its normal one-file-at-a-time watch flow. It's a dev-server cache hiccup, not
 a real bug — a production build (`npm run build`) compiles clean, and a
 dev-server restart (or hard browser reload) clears it.
 
+
+### v0.48 — Branded link previews (landscape OG cards)
+
+Every shared book, list, and reading-plan link now unfurls with a branded 1200×630 OG card instead of a raw cover (books), a bare first-cover (lists), or nothing (plans).
+
+**Rendering.** `share-card.mjs` gains a `?layout=og` path: a landscape 1200×630 layout (`ogCard()`) in the same brand language as the portrait card — ink gradient, gold double frame, Instrument Serif headline, Plex Mono footer. Cover (when present) sits left in a larger fit box (`OG_COVER_MAX_W/H` 310×460; `loadCover()` now takes max dims as params, defaults unchanged); without a cover the text column centers full-width, so plans and coverless books still get a fully branded preview. Headline clamps at 90 chars with a 68/56/46px size ladder. The og path takes priority over `?frame` and skips the portrait fallback.
+
+**Meta injection.** `og-prerender.js` gains `ogCardImage(origin, {ornament, eyebrow, headline, sub, cover})` building the share-card URL via `URLSearchParams` (origin from the request, so deploy previews render their own). The book (`❦` + "by <author>"), list ("A reading list" + count/curator + first cover), and plan ("A reading plan" + count/timeline/curator, text-only) branches now point `og:image` at it. `injectMeta()` additionally emits `og:image:width`/`og:image:height` (passed as 1200/630) and `twitter:image`. Series/clubs/profiles are deliberately unchanged this release — each is a two-line follow-up in its own branch if wanted.
+
+**Mobile share modal.** `_share.scss` gains a `ro-down(mobile)` block: the card's fixed `zoom: .72` (389px) overflowed phones, so it steps down by viewport (.58 ≤640px / .52 ≤380px / .46 ≤340px — each sized so card ≤ viewport − 56px of overlay+modal padding); `.modal__actions` stacks `column-reverse` (primary on top, "Not now" at the bottom, DOM/focus order unchanged) with full-width 44px-tall buttons; the modal itself gets `max-height: 100dvh − 24px` + `overflow-y: auto` so tall framed cards scroll instead of clipping. Overlay padding tightens to 12px via `:has(.share-moment-modal)` (older Firefox just keeps the 1rem default).
+
+**About page.** Roadmap pruned to match reality: Branded link previews, Goodreads import polish, Reading accomplishments, and Reading memory shipped; Curated reading paths reframed as "Hand-curated reading paths" (Reading Plans already cover the generated case). Tiers are now 2/2/1 items (About.jsx arrays + `roadmapTier*` keys in both i18n files; removed keys deleted).
 
 ### v0.47 — Illustrated milestone share cards (framed genre + moment art)
 

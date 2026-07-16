@@ -16,9 +16,24 @@
 
 // The version label shown as "current" — keep in sync with package.json and
 // the README version line.
-export const CURRENT_VERSION = 'v0.47.1';
+export const CURRENT_VERSION = 'v0.48';
 
 export const RELEASES = [{
+    version: 'v0.48',
+    date: '2026-07-16',
+    titleEn: 'Every link wears the card',
+    titleEs: 'Cada enlace con su tarjeta',
+    bodyEn: [
+      'Share a link to a book, list, or reading plan anywhere — WhatsApp, Slack, X, Discord, iMessage — and it now unfurls with a proper Oracle card: gold frame, ink background, the cover front and center.',
+      'Reading plans (and books without covers) get an elegant text-only card, so no link of yours ever shows up plain again.',
+      'The share-a-moment window now fits comfortably on phones: the card scales to your screen and the buttons stack full-width instead of spilling off the edge.',
+    ],
+    bodyEs: [
+      'Compartí el enlace de un libro, una lista o un plan de lectura donde sea — WhatsApp, Slack, X, Discord, iMessage — y ahora se despliega con una tarjeta del Oráculo como corresponde: marco dorado, fondo tinta, y la portada al frente.',
+      'Los planes de lectura (y los libros sin portada) reciben una tarjeta elegante solo de texto, así ningún enlace tuyo vuelve a verse pelado.',
+      'La ventana de compartir un momento ahora entra cómoda en el teléfono: la tarjeta se ajusta a tu pantalla y los botones se apilan a lo ancho en vez de salirse del borde.',
+    ],
+  }, {
     version: 'v0.47.1',
     date: '2026-07-16',
     titleEn: 'Stay signed in across updates',
