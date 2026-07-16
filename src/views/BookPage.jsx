@@ -141,6 +141,7 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
     addToWishlist,
     addToReadNext,
     markAsRead,
+    showShareMoment,
     removeFromLibrary,
     cacheBookFields,
     upsertDiscoveredBook,
@@ -182,6 +183,7 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
   const [seriesDescription, setSeriesDescription] = useState(null);
   const [notFound, setNotFound] = useState(false);
   const [ratingEditorOpen, setRatingEditorOpen] = useState(false);
+  const [pendingMoment, setPendingMoment] = useState(null); // share moment queued behind the rating step
   const [finishing, setFinishing] = useState(false);
   const [updatingProgress, setUpdatingProgress] = useState(false);
   const [adderOpen, setAdderOpen] = useState(false);
@@ -442,6 +444,7 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
     if (!libraryRow) return;
     await updateReadBook(libraryRow, { rating, notes, readAt });
     setRatingEditorOpen(false);
+    if (pendingMoment) { showShareMoment(pendingMoment); setPendingMoment(null); }
   }
 
   async function handleFinishReading({ rating, notes, readAt }) {
@@ -791,7 +794,7 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
                   <AddToListPicker book={display} className="btn-tertiary btn--sm" />
                   <button
                     className="btn-tertiary btn--sm"
-                    onClick={async () => { await markAsRead(display); setRatingEditorOpen(true); }}
+                    onClick={async () => { const m = await markAsRead(display, {}, { defer: true }); setPendingMoment(m); setRatingEditorOpen(true); }}
                   >
                     {t('bookPage.markAsRead')}
                   </button>
@@ -988,7 +991,7 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
           initialReadAt={libraryRow?.dateRead}
           mode={liveRating > 0 ? 'edit' : 'create'}
           onSave={handleSaveRating}
-          onSkip={() => setRatingEditorOpen(false)}
+          onSkip={() => { setRatingEditorOpen(false); if (pendingMoment) { showShareMoment(pendingMoment); setPendingMoment(null); } }}
         />
       )}
 

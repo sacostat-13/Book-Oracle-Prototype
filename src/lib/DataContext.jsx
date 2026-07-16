@@ -1061,8 +1061,8 @@ export function DataProvider({ children }) {
   // accomplishments through the retroactive backfill instead, dated to each
   // book's read date, so no modal fires).
   const fireCompletionMoment = useCallback(
-    (book, newLibrary) => {
-      if (book.fromGoodreads) return;
+    (book, newLibrary, opts = {}) => {
+      if (book.fromGoodreads) return null;
       try {
         const moments = computeCompletionMoments({
           book,
@@ -1071,14 +1071,19 @@ export function DataProvider({ children }) {
           goal: state.readingGoalCount,
           plans: state.plans,
         });
-        if (moments[0]) setShareMoment(moments[0]);
         // v0.45: the same computation feeds the persistent ledger — every
         // milestone-bearing moment (all but the plain book_completed fallback)
         // is earned. One computation, two consumers.
         earnAccomplishments(moments.map((m) => entryFromMoment(m)).filter((e) => e.key));
+        // opts.defer lets the caller open the share modal itself later — e.g. the
+        // Book page rates the finished book first, then celebrates — instead of
+        // the share modal opening hidden behind the rating modal.
+        if (moments[0] && !opts.defer) setShareMoment(moments[0]);
+        return moments[0] || null;
       } catch (err) {
         // A share card (or ledger write) must never break a completion.
         console.warn('share moment computation failed', err);
+        return null;
       }
     },
     [state.genresByBookId, state.readingGoalCount, state.plans, earnAccomplishments]
@@ -1205,7 +1210,7 @@ export function DataProvider({ children }) {
   );
 
   const markAsRead = useCallback(
-    async (book, extra = {}) => {
+    async (book, extra = {}, opts = {}) => {
       const k = bookKey(book);
       if (state.library.some((b) => bookKey(b) === k)) return;
       const today = new Date().toISOString().slice(0, 10);
@@ -1231,14 +1236,14 @@ export function DataProvider({ children }) {
           library: [...s.library, enriched],
         }));
         showToast(`"${book.t}" added to your library`);
-        fireCompletionMoment(enriched, [...state.library, enriched]);
+        const moment = fireCompletionMoment(enriched, [...state.library, enriched], opts);
         // v0.44: a note written at the finish moment joins the book's memory
         // thread (kind 'finished'). Only notes typed in this flow — not
         // wishlist notes carried on the book object.
         if (extra.notes != null && extra.notes.trim()) {
           addReadingMemory(enriched, extra.notes, { kind: 'finished' });
         }
-        return;
+        return moment;
       }
 
       const bookId = book.bookId || (await upsertBookOnServer(book));
@@ -1285,11 +1290,12 @@ export function DataProvider({ children }) {
         library: [...s.library, { ...enriched, bookId }],
       }));
       showToast(`"${book.t}" added to your library`);
-      fireCompletionMoment({ ...enriched, bookId }, [...state.library, { ...enriched, bookId }]);
+      const moment = fireCompletionMoment({ ...enriched, bookId }, [...state.library, { ...enriched, bookId }], opts);
       // v0.44: same finished-moment memory as the guest path
       if (extra.notes != null && extra.notes.trim()) {
         addReadingMemory({ ...enriched, bookId }, extra.notes, { kind: 'finished' });
       }
+      return moment;
     },
     [user, state.library, showToast, upsertBookOnServer, fireCompletionMoment, addReadingMemory]
   );
