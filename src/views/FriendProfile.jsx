@@ -11,6 +11,8 @@ import { useFriends, getProfileByUsername, getFriendLibrary, getFriendCurrentlyR
 import { openBookTab } from '../lib/bookHelpers';
 import ShareModal from '../components/ShareModal';
 import { profileShareUrl } from '../lib/shareService';
+import { titleLabel } from '../lib/titles';
+import Avatar from '../components/Avatar';
 
 const PAGE_SIZE = 48;
 
@@ -361,13 +363,7 @@ export default function FriendProfile() {
 
       {/* Header */}
       <div className="fp-hero">
-        {profile.avatar_url ? (
-          <img src={profile.avatar_url} alt={displayName} className="friend-avatar" style={{ '--fa-sz': '88px' }} />
-        ) : (
-          <div className="friend-avatar--fallback" style={{ '--fa-sz': '88px' }}>
-            {displayName[0].toUpperCase()}
-          </div>
-        )}
+        <Avatar displayName={displayName} avatarUrl={profile.avatar_url} size={88} />
 
         <div className="fp-hero__info">
           <h1 className="fp-hero__name">
@@ -376,6 +372,13 @@ export default function FriendProfile() {
           {profile.username && (
             <div className="fp-hero__handle">
               @{profile.username}
+            </div>
+          )}
+          {/* v0.51: earned Reader Title — app-granted, so seeing one on a
+              profile always means the reading behind it actually happened */}
+          {titleLabel(profile.preferences?.displayTitle, t) && (
+            <div className="reader-title">
+              {titleLabel(profile.preferences?.displayTitle, t)}
             </div>
           )}
           <div className="bp-meta">

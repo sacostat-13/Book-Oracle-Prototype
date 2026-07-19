@@ -475,3 +475,136 @@
   letter-spacing: 0.04em;
   color: var(--ro-muted);
 }
+
+// ── v0.51: Reader Titles — the rank ladder picker ────────────────────────────
+// Rows read like ledger plaques: earned tiers glow gold and invite a click,
+// locked tiers sit dim behind their threshold. The active row is the one the
+// reader is currently "wearing".
+
+.pf-titles {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.pf-title-row {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  width: 100%;
+  padding: 9px 12px;
+  background: var(--ro-surface-2);
+  border: 1px solid var(--ro-border);
+  border-radius: var(--ro-radius-sm);
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.15s ease, background 0.15s ease;
+
+  &:hover:not(:disabled) {
+    border-color: var(--ro-gold);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--ro-gold);
+    outline-offset: 2px;
+  }
+}
+
+.pf-title-row--active {
+  border-color: var(--ro-gold);
+}
+
+.pf-title-row--locked {
+  cursor: default;
+  opacity: 0.55;
+}
+
+.pf-title-row__glyph {
+  flex: none;
+  font-size: 13px;
+  color: var(--ro-gold-text);
+}
+
+.pf-title-row__name {
+  font-family: var(--ro-font-display);
+  font-size: 16px;
+  color: var(--ro-text);
+}
+
+.pf-title-row__meta {
+  margin-left: auto;
+  font-family: var(--ro-font-mono);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ro-muted);
+  white-space: nowrap;
+}
+
+
+// ── v0.52: Avatar picker ─────────────────────────────────────────────────────
+// Current avatar + actions row, then the twelve-sigil gallery. Choices are
+// round buttons; the active one wears the gold ring.
+
+.pf-avatar-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 10px 0 14px;
+}
+
+.pf-avatar-row__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.pf-avatar-set-label {
+  font-family: var(--ro-font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ro-gold-text);
+  margin: 16px 0 8px;
+}
+
+.pf-avatar-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(56px, 1fr));
+  gap: 10px;
+  max-width: 520px;
+}
+
+.pf-avatar-choice {
+  padding: 2px;
+  background: none;
+  border: 2px solid transparent;
+  border-radius: 50%;
+  cursor: pointer;
+  line-height: 0;
+  transition: border-color 0.15s ease, transform 0.15s ease;
+
+  img {
+    width: 100%;
+    height: auto;
+    border-radius: 50%;
+    display: block;
+  }
+
+  &:hover:not(:disabled) {
+    border-color: var(--ro-border-strong);
+    transform: translateY(-1px);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--ro-gold);
+    outline-offset: 2px;
+  }
+}
+
+.pf-avatar-choice--active {
+  border-color: var(--ro-gold);
+}

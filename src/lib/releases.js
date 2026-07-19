@@ -16,9 +16,56 @@
 
 // The version label shown as "current" — keep in sync with package.json and
 // the README version line.
-export const CURRENT_VERSION = 'v0.49';
+export const CURRENT_VERSION = 'v0.52';
 
 export const RELEASES = [{
+    version: 'v0.52',
+    date: '2026-07-18',
+    titleEn: 'A face for every reader',
+    titleEs: 'Un rostro para cada lector',
+    bodyEn: [
+      'Google profile photos now render reliably everywhere — a missing no-referrer policy was quietly blocking them.',
+      'New: pick your avatar. Keep your Google photo, fall back to initials, or choose from the new gallery — a motif for every Oracle genre in solid and outline variants across ten colors, plus a standard set of reader icons.',
+      'Your avatar (and your Reader Title) follows you across profiles, book clubs, discussions, and the friends feed.',
+      'The title ladder now climbs past 100: Sage of the Athenaeum at 250 books, Warden of the Grand Archive at 500, and The Living Library at 1,000.',
+    ],
+    bodyEs: [
+      'Las fotos de perfil de Google ahora se muestran bien en todas partes — una política no-referrer ausente las bloqueaba en silencio.',
+      'Nuevo: elegí tu avatar. Mantené tu foto de Google, volvé a las iniciales, o escogé de la nueva galería — un motivo por cada género del Oráculo en variantes sólida y de contorno en diez colores, más un set estándar de íconos lectores.',
+      'Tu avatar (y tu Título de Lector) te acompaña por perfiles, clubes de lectura, discusiones y el muro de amigos.',
+      'La escalera de títulos ahora sube más allá de 100: Sabio del Ateneo a los 250 libros, Custodio del Gran Archivo a los 500 y La Biblioteca Viviente a los 1.000.',
+    ],
+  }, {
+    version: 'v0.51',
+    date: '2026-07-18',
+    titleEn: 'Titles, granted by the Oracle alone',
+    titleEs: 'Títulos que solo otorga el Oráculo',
+    bodyEn: [
+      'Reader Titles arrive: six dark-academia epithets, from Initiate of the Order to Voice of the Oracle, earned purely by books read. No one can type one in — if you see a title, the reading behind it happened.',
+      'Choose which earned title to wear from your Profile. It appears beneath your name on your profile, beside your name in book club rosters and discussions, and signs your share cards.',
+      'Locked tiers show exactly how many books away they are. The ladder starts at your very first book and ends at your hundredth.',
+    ],
+    bodyEs: [
+      'Llegan los Títulos de Lector: seis epítetos de academia oscura, de Iniciado de la Orden a Voz del Oráculo, que se ganan solo leyendo. Nadie puede escribirse uno — si ves un título, la lectura detrás existió.',
+      'Elegí desde tu Perfil cuál de tus títulos ganados llevar. Aparece bajo tu nombre en tu perfil, junto a tu nombre en los clubes de lectura y sus discusiones, y firma tus tarjetas para compartir.',
+      'Los niveles bloqueados muestran exactamente a cuántos libros están. La escalera empieza con tu primer libro y termina con el número cien.',
+    ],
+  }, {
+    version: 'v0.50',
+    date: '2026-07-18',
+    titleEn: 'The Oracle reads you, fully',
+    titleEs: 'El Oráculo te lee, por completo',
+    bodyEn: [
+      'Your reading level and reading goal are now editable from your Profile, right beside your favorite genres and mood — no more values frozen at signup.',
+      'Every Oracle recommendation — Ask, Similar, category draws, the daily Spark, and reading plans — now weighs all four of your stated preferences: level, goal, genres, and mood.',
+      'The Oracle notices growth: when the books you rate highly read well above your stated level, it suggests a promotion on your dashboard. Your call — accept it or wave it off.',
+    ],
+    bodyEs: [
+      'Tu nivel de lectura y tu meta ahora se editan desde tu Perfil, junto a tus géneros favoritos y tu ánimo — se acabaron los valores congelados desde el registro.',
+      'Cada recomendación del Oráculo — Preguntar, Similares, sorteos por categoría, el Spark diario y los planes de lectura — ahora pondera tus cuatro preferencias declaradas: nivel, meta, géneros y ánimo.',
+      'El Oráculo nota tu crecimiento: cuando los libros que calificás alto superan tu nivel declarado, te sugiere un ascenso en el tablero. Vos decidís — lo aceptás o lo dejás pasar.',
+    ],
+  }, {
     version: 'v0.49',
     date: '2026-07-16',
     titleEn: 'The Vault, curator-fed',

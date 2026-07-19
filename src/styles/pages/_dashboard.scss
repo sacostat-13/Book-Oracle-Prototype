@@ -1525,3 +1525,49 @@
     opacity: .2;
   }
 }
+// ══════════════════════════════════════════════════════════════════════════════
+// Level growth nudge (v0.50) — the Oracle suggests a level-up when earned
+// complexity outgrows the stated level. Dismissible, never nags.
+// ══════════════════════════════════════════════════════════════════════════════
+.db-level-nudge {
+  display: flex;
+  align-items: center;
+  gap: var(--ro-space-4);
+  flex-wrap: wrap;
+  padding: var(--ro-space-4) var(--ro-space-5);
+  margin-bottom: var(--ro-space-5);
+  border: 1px solid var(--ro-border);
+  border-radius: var(--ro-radius-md);
+  background: var(--ro-surface);
+}
+
+.db-level-nudge__glyph {
+  font-size: 22px;
+  color: var(--ro-gold);
+  line-height: 1;
+}
+
+.db-level-nudge__body {
+  flex: 1;
+  min-width: 220px;
+}
+
+.db-level-nudge__title {
+  font-family: var(--ro-font-display);
+  font-size: 16px;
+  color: var(--ro-text);
+  margin-bottom: var(--ro-space-1);
+}
+
+.db-level-nudge__text {
+  font-family: var(--ro-font-body);
+  font-size: 13px;
+  color: var(--ro-text-2);
+  margin: 0;
+}
+
+.db-level-nudge__actions {
+  display: flex;
+  gap: var(--ro-space-2);
+  flex-wrap: wrap;
+}

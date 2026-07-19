@@ -4,7 +4,7 @@ A reading companion — wishlist, library, reading plans, book clubs, and an AI-
 for book discovery. Built with React + Vite + SCSS, backed by Supabase for auth
 and cross-device sync, and Netlify Functions for API proxying.
 
-> Current version: **v0.49** — see [Releases](#releases) below for changelog.
+> Current version: **v0.52** — see [Releases](#releases) below for changelog.
 > Upgrading from an earlier version? Check the matching `MIGRATION_*.md` / `UPDATE_*.md`.
 
 ---
@@ -449,6 +449,38 @@ its normal one-file-at-a-time watch flow. It's a dev-server cache hiccup, not
 a real bug — a production build (`npm run build`) compiles clean, and a
 dev-server restart (or hard browser reload) clears it.
 
+
+### v0.52 — Avatars (Google photo fix + preset sigils)
+
+**The bug.** Google avatars (`lh3.googleusercontent.com`, captured into `profiles.avatar_url` by the `handle_new_user` trigger) were rendered with plain `<img>` tags — Google 403s those requests when a `Referer` header rides along, so photos "randomly" failed. Fix: `referrerPolicy="no-referrer"` on every avatar img, plus an `onError` fallback to the initials disc for stale URLs (user changed their Google photo since signup).
+
+**Consolidation.** Five copy-pasted local Avatar implementations (CommentThread, BookClubDetail, SessionDetail, Dashboard `ClubAvatar`, Friends — the last with off-brand colored fallback discs) collapse into one shared `src/components/Avatar.jsx` with both fixes baked in; existing `.friend-avatar` styling unchanged. Dashboard's `FriendAvatar` keeps its own `db-ff-avatar` styling but gains the same fixes; Nav's two raw imgs gain `no-referrer`.
+
+**Preset gallery (Design System V9, "Genre Avatars" pattern).** 108 static SVGs in `public/avatars/`, generated from the Claude Design package's own data (icon paths from `Avatar.dc.html`, genre→motif and palette assignments from the DS file): 49 genre motifs × solid + outline variants (`g-<key>.svg` / `g-<key>-o.svg`, ten-color rotating palette) + a 10-icon Standard Set (`s-<key>.svg`). One deliberate deviation: outline variants whose palette fg is dark (the gold entries) stroke the glyph in the palette color instead — dark-on-`--bg-deep` was illegible. Choosing one writes its site-relative path into `profiles.avatar_url` (no storage bucket, no migration). The gallery is folder-driven: a Vite virtual module (`virtual:avatar-manifest` in `vite.config.js`) lists `public/avatars/*.svg` at build/dev time and `src/lib/avatars.js` derives set, variant and label from the filename convention (`g-<label-slug>[-o].svg` = Genre solid/outline, anything else = Standard; slug title-cased for the label) — drop a new SVG in the folder and it appears in the picker, no manifest to maintain. The dev server hot-invalidates on add/remove. Profile's `AvatarSection`: current avatar, "use your Google photo" (recoverable any time from `user.user_metadata.avatar_url`), "use initials", then the Standard and Genre grids (lazy-loaded imgs; `.pf-avatar-*` in `_profile-extensions.scss`). i18n: `profile.sectionAvatar/avatar*` (EN + ES).
+
+**Fix.** Nav read `state.profile?.avatar_url` (snake_case) but the client profile object is camelCase (`avatarUrl`) — the nav avatar had never rendered. Now it does, and updates live when a preset is picked.
+
+**Title ladder extension.** Three tiers above Voice of the Oracle: `sage` 250 (Sage of the Athenaeum), `warden` 500 (Warden of the Grand Archive), `library` 1000 (The Living Library). 250 bridges the 100→500 gap; derived-from-`library.length` earning means existing heavy readers land on the right rung retroactively, and previously-worn titles are untouched (keys unchanged, ladder append-only).
+
+### v0.51 — Reader Titles (the app-granted rank ladder)
+
+Gamification gets an identity layer: six dark-academia epithets earned purely by books read (`titles.js` ladder: Initiate 1 → Seeker 5 → Scribe 15 → Archivist 30 → Keeper 60 → Voice of the Oracle 100). Titles cannot be self-assigned — the picker only offers earned tiers, `sanitizeTitleKey()` means unknown/hand-edited keys never render, and there is no input path — which is precisely what makes wearing one meaningful.
+
+**Model.** The worn title is a tier key in `profile.preferences.displayTitle` (no schema migration; rides `savePreferences` and the existing preferences spread on load, guest localStorage included). Earned state is derived live from `library.length` — nothing stored, nothing to backfill, retroactively correct for existing readers.
+
+**Surfaces.** Own Profile account card (subtitle) + a `TitlesSection` picker (earned tiers selectable, wear/set-down toggle; locked tiers show their threshold). FriendProfile hero (the `preferences` column was already in `getProfileByUsername`'s select). Club rosters and session discussions resolve authors' titles client-side via `fetchTitlesByUserId()` — one batched `profiles` query keyed by `user_id`/`created_by`, since `get_club_detail`/`get_session_discussion` RPCs predate the feature; failures degrade to no titles, never a broken page. ShareCard gains a byline (name · title) above the brand footer on both plain and framed cards (DOM/downloaded PNGs; the server-rendered OG card in `share-card.mjs` is a future pass).
+
+**Styling.** `.reader-title` (+ `--inline`) in `_social.scss`; `.pf-titles` ladder rows in `_profile-extensions.scss` — `--ro-` tokens only. i18n: `titles.*` (6 epithets) + `profile.sectionTitles/titlesHint/title*` (EN + ES).
+
+### v0.50 — Personalization, closed loop (level & goal everywhere)
+
+Closes the gap between what onboarding collects and what the Oracle actually uses. Audit found `goal` was persisted but never referenced in any prompt, and `readingLevel` was missing from Ask/Similar/Spark; both values were also uneditable after onboarding.
+
+**Prompt plumbing.** `buildTasteProfile` now carries `readingLevel`, `goal`, and `complexitySampleCount`; `describeTasteProfile` emits stated level + a goal directive (`goalDirective()` in `matchHelpers.js` — one canonical wording per goal chip, shared by every surface). OracleAsk's duplicated direct genre/mood lines removed (the taste summary already carried them). Spark gains level + goal lines; PlanCreate gains mood on level plans and mood + goal on genre plans (level plans deliberately skip the stored goal chip — the plan request itself is the goal). Batch categorization stays personalization-free by design: it writes global catalog data.
+
+**Profile editors.** `ReaderPrefsSection` extends with single-select Reading level (5 chips, onboarding titles, subs as tooltips) and Goal (3 chips) editors; the old read-only level block and dead `LEVEL_NAMES`/`GOAL_NAMES` constants removed.
+
+**Level growth nudge.** `suggestLevelFromTaste()` compares earned complexity (avg of 4–5★ rated books, ≥5 samples via `LEVEL_NUDGE_MIN_SAMPLES`) against stated level and suggests exactly one step up. `<LevelNudge>` renders on the Dashboard between the quota bar and widgets; accept sets the level, dismiss stores `profile.levelNudgeDismissed` (persisted in `savePreferences`) so the same suggestion never re-fires. Styles in `_dashboard.scss` (`.db-level-nudge`, `--ro-` tokens only). i18n: `profile.levelEditHint/goalEditHint`, `dashboard.levelNudge*` (EN + ES).
 
 ### v0.49 — Vault Source Upgrade (curator-fed catalog)
 

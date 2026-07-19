@@ -1341,3 +1341,20 @@
     }
   }
 }
+
+// ── v0.51: Reader Title — the earned epithet, wherever a reader is named ─────
+// One class, three surfaces: own profile account card, friend profile header,
+// club member rows / discussion comments. Small, gold, unmistakably granted.
+
+.reader-title {
+  font-family: var(--ro-font-display);
+  font-size: 13px;
+  font-style: italic;
+  letter-spacing: 0.03em;
+  color: var(--ro-gold-text);
+}
+
+.reader-title--inline {
+  font-size: 11px;
+  margin-left: 6px;
+}

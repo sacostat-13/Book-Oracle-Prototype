@@ -23,6 +23,8 @@ import { GENRE_CARD_META } from '../lib/genreCards';
 import { CARD_GENRES } from '../lib/cardGenres';
 import { frameSlugFor } from '../lib/cardResolve';
 import { CARD_BOXES, DEFAULT_BOX } from '../lib/cardBoxes';
+import { useData } from '../lib/DataContext';
+import { sanitizeTitleKey } from '../lib/titles';
 
 export const SHARE_CARD_WIDTH = 540;
 export const SHARE_CARD_HEIGHT = 675;
@@ -150,7 +152,14 @@ function withFramed(moment, copy) {
 
 export default function ShareCard({ moment, cardRef }) {
   const { t, lang } = useI18n();
+  const { state } = useData();
   const copy = momentCopy(moment, t, lang);
+  // v0.51: the reader's earned title travels with the card — a signed byline
+  // only the app could have granted. Absent title, absent byline (unchanged card).
+  const wornTitle = sanitizeTitleKey(state?.profile?.displayTitle);
+  const byline = wornTitle
+    ? [state.profile.displayName, t(`titles.${wornTitle}`)].filter(Boolean).join(' · ')
+    : null;
   // When the headline already IS the book title, repeating a cover caption
   // underneath would be redundant — show the caption only otherwise.
   const showBookCaption = copy.title && !copy.headlineIsBook;
@@ -191,7 +200,12 @@ export default function ShareCard({ moment, cardRef }) {
               <img src={copy.artUrl} alt="" style={{ maxWidth: B.width - 14, maxHeight: artMaxH, objectFit: 'contain', display: 'block' }} />
             </div>
           </div>
-          <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 9, fontWeight: 600, letterSpacing: 1, textTransform: 'uppercase', color: 'rgba(201,168,76,0.72)' }}>The Books Oracle · thebooksoracle.com</div>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
+            {byline && (
+              <div style={{ fontFamily: "'Instrument Serif', serif", fontStyle: 'italic', fontSize: 12, color: '#D8B85E' }}>{byline}</div>
+            )}
+            <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 9, fontWeight: 600, letterSpacing: 1, textTransform: 'uppercase', color: 'rgba(201,168,76,0.72)' }}>The Books Oracle · thebooksoracle.com</div>
+          </div>
         </div>
       </div>
     );
@@ -227,6 +241,10 @@ export default function ShareCard({ moment, cardRef }) {
             <span className="share-card__book-title">{copy.title}</span>
             {copy.author && <span className="share-card__book-author"> — {copy.author}</span>}
           </div>
+        )}
+
+        {byline && (
+          <div className="share-card__byline reader-title">{byline}</div>
         )}
 
         <div className="share-card__footer">

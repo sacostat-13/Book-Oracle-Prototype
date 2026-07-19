@@ -8,28 +8,7 @@ import { useAuth } from '../lib/AuthContext';
 import { useRouter } from '../lib/RouterContext';
 import { useT } from '../lib/I18nContext';
 import { supabase } from '../lib/supabase';
-
-// ── Avatar component ──────────────────────────────────────────────────────────
-function Avatar({ url, name, size = 44 }) {
-  const initial = name ? name.charAt(0).toUpperCase() : '?';
-  const colors = ['#3d5a80', '#6b4226', '#3d6b45', '#6b3d5a', '#4d6b3d', '#5a3d6b'];
-  const bg = colors[(initial.charCodeAt(0) || 0) % colors.length];
-
-  if (url) {
-    return (
-      <img
-        src={url}
-        alt={name}
-        className="friend-avatar" style={{ '--fa-sz': `${size}px` }}
-      />
-    );
-  }
-  return (
-    <div className="friend-avatar--fallback" style={{ '--fa-sz': `${size}px`, background: bg, fontSize: Math.round(size * 0.38) }}>
-      {initial}
-    </div>
-  );
-}
+import Avatar from '../components/Avatar';
 
 // ── Friend request row ────────────────────────────────────────────────────────
 function RequestRow({ req, onAccept, onDecline }) {
@@ -44,7 +23,7 @@ function RequestRow({ req, onAccept, onDecline }) {
 
   return (
     <div className="friend-row friend-row--request">
-      <Avatar url={other?.avatar_url} name={other?.display_name || other?.username || '?'} size={44} />
+      <Avatar avatarUrl={other?.avatar_url} displayName={other?.display_name || other?.username || '?'} size={44} />
       <div className="friend-row__body">
         <div className="friend-row__name">
           {other?.display_name || other?.username || 'Unknown reader'}
@@ -83,7 +62,7 @@ function FriendRow({ friend, onRemove, onView }) {
 
   return (
     <div className="friend-row friend-row--request">
-      <Avatar url={other?.avatar_url} name={other?.display_name || other?.username || '?'} size={46} />
+      <Avatar avatarUrl={other?.avatar_url} displayName={other?.display_name || other?.username || '?'} size={46} />
       <div className="friend-row__body">
         <div className="friend-row__name-row">
           <span className="friend-row__name">
@@ -126,7 +105,7 @@ function PendingRow({ req, onCancel }) {
 
   return (
     <div className="friend-row friend-row__request">
-      <Avatar url={other?.avatar_url} name={other?.display_name || other?.username || '?'} size={44} />
+      <Avatar avatarUrl={other?.avatar_url} displayName={other?.display_name || other?.username || '?'} size={44} />
       <div className="friend-row__body">
         <div className="friend-row__name">
           {other?.display_name || other?.username || 'Unknown reader'}
@@ -166,7 +145,7 @@ function SearchResultRow({ profile, onSend, relationStatus }) {
 
   return (
     <div className="friends-suggest-card">
-      <Avatar url={profile.avatar_url} name={profile.display_name || profile.username} size={54} />
+      <Avatar avatarUrl={profile.avatar_url} displayName={profile.display_name || profile.username} size={54} />
       <div>
         <div className="friend-row__name">
           {profile.display_name || profile.username}

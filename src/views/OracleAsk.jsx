@@ -47,11 +47,12 @@ export default function OracleAsk({ onOpenBook }) {
       .map((b) => `"${b.t}"`)
       .join(', ');
 
+    // v0.50: the taste summary now carries favorite genres, mood, stated
+    // reading level AND goal — the old direct genre/mood lines duplicated it.
     const tasteSummary = describeTasteProfile(tasteProfile);
     const personalization = [
-      favGenres.length > 0 ? `Reader's favorite genres: ${favGenres.join(', ')}. Lean toward these when a good option exists, but don't force it.` : null,
-      mood.length > 0 ? `Reader says they're generally in the mood for: ${mood.join(', ')}.` : null,
       tasteSummary || null,
+      favGenres.length > 0 ? `Lean toward the reader's favorite genres when a good option exists, but don't force it.` : null,
     ].filter(Boolean).join(' ');
 
     const prompt = `${personalization ? personalization + '\n\n' : ''}A reader asks: "${trimmed}"

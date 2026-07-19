@@ -5,6 +5,53 @@ import react from '@vitejs/plugin-react';
 import {
   VitePWA
 } from 'vite-plugin-pwa';
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+// v0.52: virtual module listing public/avatars/*.svg, so the preset avatar
+// gallery is driven by the folder's contents — drop a new SVG in, it shows up
+// in the Profile picker; no manifest array to maintain (see src/lib/avatars.js
+// for the filename convention). Dev server invalidates on add/remove, so new
+// files appear without a restart; production bakes the list at build time
+// (adding files means a deploy anyway — they live in the repo).
+const AVATARS_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), 'public/avatars');
+const AVATAR_MANIFEST_ID = 'virtual:avatar-manifest';
+const RESOLVED_AVATAR_MANIFEST_ID = '\0' + AVATAR_MANIFEST_ID;
+
+function avatarManifest() {
+  const list = () => {
+    try {
+      return fs.readdirSync(AVATARS_DIR).filter((f) => f.endsWith('.svg')).sort();
+    } catch {
+      return [];
+    }
+  };
+  return {
+    name: 'avatar-manifest',
+    resolveId(id) {
+      if (id === AVATAR_MANIFEST_ID) return RESOLVED_AVATAR_MANIFEST_ID;
+    },
+    load(id) {
+      if (id === RESOLVED_AVATAR_MANIFEST_ID) {
+        return `export default ${JSON.stringify(list())};`;
+      }
+    },
+    configureServer(server) {
+      server.watcher.add(AVATARS_DIR);
+      const invalidate = (file) => {
+        if (!file.includes('avatars') || !file.endsWith('.svg')) return;
+        const mod = server.moduleGraph.getModuleById(RESOLVED_AVATAR_MANIFEST_ID);
+        if (mod) {
+          server.moduleGraph.invalidateModule(mod);
+          server.ws.send({ type: 'full-reload' });
+        }
+      };
+      server.watcher.on('add', invalidate);
+      server.watcher.on('unlink', invalidate);
+    },
+  };
+}
 
 export default defineConfig({
   // Watch all SCSS partials in subdirectories so HMR triggers on any style change
@@ -26,6 +73,7 @@ export default defineConfig({
 
   plugins: [
     react(),
+    avatarManifest(),
     VitePWA({
       // v0.45: switched from 'autoUpdate' to 'prompt'. autoUpdate force-reloaded
       // every open client the moment a new SW took control on each deploy. That

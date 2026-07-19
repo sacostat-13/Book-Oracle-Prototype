@@ -180,7 +180,11 @@
     "friendsFeedStarted": "started reading",
     "friendsFeedRefresh": "Refresh",
     "friendsFeedUpdated": "Updated {time}",
-    "aiQuotaPro": "{used} of {limit} calls used today"
+    "aiQuotaPro": "{used} of {limit} calls used today",
+    "levelNudgeTitle": "The Oracle senses growth",
+    "levelNudgeBody": "The books you've loved lately read well beyond “{current}.” Perhaps it is time to call yourself something more.",
+    "levelNudgeAccept": "Embrace “{next}”",
+    "levelNudgeDismiss": "Not yet"
   },
   "currentlyReading": {
     "breadcrumb": "Dashboard",
@@ -611,7 +615,24 @@
     "genresNotSet": "You haven't picked any favorite genres yet.",
     "moodNotSet": "You haven't set a current mood yet.",
     "genreMaxHint": "Up to {max} genres.",
-    "moodMaxHint": "Up to {max}."
+    "moodMaxHint": "Up to {max}.",
+    "levelEditHint": "Your level shapes how far the Oracle stretches its recommendations. Change it any time.",
+    "goalEditHint": "Your goal tells the Oracle whether to stretch you, surprise you, or simply delight you.",
+    "sectionTitles": "Reader title",
+    "titlesHint": "Titles are granted by the Oracle alone — earned by reading, never typed in. Wear one and it appears beside your name everywhere other readers see you.",
+    "titleWear": "Wear this title",
+    "titleRemove": "Set the title down",
+    "titleWearing": "Wearing",
+    "titleEarned": "Earned",
+    "titleLockedAt": "Unlocks at {count} books read",
+    "sectionAvatar": "Avatar",
+    "avatarHint": "Your face across the Oracle — profile, clubs, discussions. Keep your Google photo or choose a sigil from the gallery.",
+    "avatarUseGoogle": "Use your Google photo",
+    "avatarClear": "Use initials instead",
+    "avatarSaveFailed": "Could not save your avatar. Try again.",
+    "avatarStandardSet": "Standard set",
+    "avatarGenreSet": "Genre set",
+    "avatarOutline": "outline"
   },
   "onboarding": {
     "step1Eyebrow": "Step 1 of 5 · Reader profile",
@@ -1808,5 +1829,16 @@
     "refresh": "Refresh",
     "dismiss": "Dismiss",
     "updating": "Updating…"
+  },
+  "titles": {
+    "initiate": "Initiate of the Order",
+    "seeker": "Seeker of Stories",
+    "scribe": "Scribe of the Stacks",
+    "archivist": "Archivist of Echoes",
+    "keeper": "Keeper of the Vault",
+    "voice": "Voice of the Oracle",
+    "sage": "Sage of the Athenaeum",
+    "warden": "Warden of the Grand Archive",
+    "library": "The Living Library"
   }
 }

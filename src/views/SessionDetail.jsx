@@ -14,21 +14,9 @@ import ProgressUpdateModal from '../components/ProgressUpdateModal';
 import SessionDiscussion from '../components/SessionDiscussion';
 import CornerBrackets from '../components/CornerBrackets';
 import { useT } from '../lib/I18nContext';
+import Avatar from '../components/Avatar';
 
 // ── Shared sub-components ─────────────────────────────────────────────────────
-
-function Avatar({ displayName, avatarUrl, size = 28 }) {
-  const [imgFailed, setImgFailed] = useState(false);
-  const initials = (displayName || '?').split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase();
-  if (avatarUrl && !imgFailed) {
-    return <img src={avatarUrl} alt={displayName} onError={() => setImgFailed(true)} className="friend-avatar" style={{ '--fa-sz': `${size}px` }} />;
-  }
-  return (
-    <div className="friend-avatar--fallback" style={{ '--fa-sz': `${size}px`, fontSize: size * 0.35 }}>
-      {initials}
-    </div>
-  );
-}
 
 function MemberProgressRow({ member }) {
   const t = useT();

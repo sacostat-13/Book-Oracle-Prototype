@@ -180,7 +180,11 @@
     "friendsFeedStarted": "empezó a leer",
     "friendsFeedRefresh": "Actualizar",
     "friendsFeedUpdated": "Actualizado {time}",
-    "aiQuotaPro": "{used} de {limit} consultas usadas hoy"
+    "aiQuotaPro": "{used} de {limit} consultas usadas hoy",
+    "levelNudgeTitle": "El Oráculo percibe crecimiento",
+    "levelNudgeBody": "Los libros que has amado últimamente van mucho más allá de “{current}”. Quizá sea hora de llamarte de otra manera.",
+    "levelNudgeAccept": "Asumir “{next}”",
+    "levelNudgeDismiss": "Todavía no"
   },
   "currentlyReading": {
     "breadcrumb": "Inicio",
@@ -611,7 +615,24 @@
     "genresNotSet": "Todavía no elegiste géneros favoritos.",
     "moodNotSet": "Todavía no definiste un ánimo actual.",
     "genreMaxHint": "Hasta {max} géneros.",
-    "moodMaxHint": "Hasta {max}."
+    "moodMaxHint": "Hasta {max}.",
+    "levelEditHint": "Tu nivel define cuánto se atreve el Oráculo con sus recomendaciones. Cámbialo cuando quieras.",
+    "goalEditHint": "Tu meta le dice al Oráculo si debe retarte, sorprenderte o simplemente deleitarte.",
+    "sectionTitles": "Título de lector",
+    "titlesHint": "Los títulos los otorga solo el Oráculo — se ganan leyendo, nunca se escriben. Elegí uno y aparecerá junto a tu nombre donde otros lectores te vean.",
+    "titleWear": "Llevar este título",
+    "titleRemove": "Dejar el título",
+    "titleWearing": "En uso",
+    "titleEarned": "Ganado",
+    "titleLockedAt": "Se desbloquea a los {count} libros leídos",
+    "sectionAvatar": "Avatar",
+    "avatarHint": "Tu rostro en el Oráculo — perfil, clubes, discusiones. Mantené tu foto de Google o elegí un sigilo de la galería.",
+    "avatarUseGoogle": "Usar tu foto de Google",
+    "avatarClear": "Usar iniciales",
+    "avatarSaveFailed": "No se pudo guardar tu avatar. Probá de nuevo.",
+    "avatarStandardSet": "Set estándar",
+    "avatarGenreSet": "Set de géneros",
+    "avatarOutline": "contorno"
   },
   "onboarding": {
     "step1Eyebrow": "Paso 1 de 5 · Perfil lector",
@@ -1808,5 +1829,16 @@
     "refresh": "Actualizar",
     "dismiss": "Descartar",
     "updating": "Actualizando…"
+  },
+  "titles": {
+    "initiate": "Iniciado de la Orden",
+    "seeker": "Buscador de Historias",
+    "scribe": "Escriba de los Anaqueles",
+    "archivist": "Archivista de los Ecos",
+    "keeper": "Guardián de la Bóveda",
+    "voice": "Voz del Oráculo",
+    "sage": "Sabio del Ateneo",
+    "warden": "Custodio del Gran Archivo",
+    "library": "La Biblioteca Viviente"
   }
 }

@@ -25,6 +25,9 @@ const defaultState = {
     goodreadsImported: false,
     favoriteGenres: [], // v0.38: onboarding — up to 5 genre names
     currentMood: [],    // v0.38: onboarding — up to 3 mood/intent chip ids
+    // v0.51: the earned Reader Title the user chose to wear (tier key from
+    // titles.js), or null. App-granted only — the picker offers earned tiers.
+    displayTitle: null,
     displayName: null,
     username: null,
     avatarUrl: null,
@@ -662,6 +665,11 @@ async function savePreferences(userId, state) {
         // v0.38: onboarding personalization — feeds Oracle prompts + editable from Profile
         favoriteGenres: state.profile.favoriteGenres || [],
         currentMood: state.profile.currentMood || [],
+        // v0.50: highest level the reader has accepted or dismissed a growth
+        // nudge for — keeps the dashboard nudge from re-firing.
+        levelNudgeDismissed: state.profile.levelNudgeDismissed || 0,
+        // v0.51: chosen Reader Title (earned tier key, see titles.js)
+        displayTitle: state.profile.displayTitle || null,
         readNext: state.readNext,
         shelfSortMode: state.shelfSortMode,
         oracleMode: state.oracleMode,
@@ -1947,6 +1955,21 @@ export function DataProvider({ children }) {
     return { ok: true };
   }, [user]);
 
+  // v0.52: update avatar — writes to profiles.avatar_url. Accepts a preset
+  // sigil path (/avatars/<name>.svg), the reader's OAuth photo URL (to switch
+  // back), or null to clear down to the initials disc.
+  const updateAvatar = useCallback(async (avatarUrl) => {
+    if (!user) return { error: 'not_authed' };
+    const url = avatarUrl || null;
+    const { error } = await supabase
+      .from('profiles')
+      .update({ avatar_url: url, updated_at: new Date().toISOString() })
+      .eq('id', user.id);
+    if (error) return { error: error.message };
+    setState((s) => ({ ...s, profile: { ...s.profile, avatarUrl: url } }));
+    return { ok: true };
+  }, [user]);
+
   // v0.36: update privacy preferences
   const updatePrivacyPrefs = useCallback(async ({ isDiscoverable, emailNotifications }) => {
     if (!user) return;
@@ -2451,6 +2474,7 @@ export function DataProvider({ children }) {
     setReadingGoalCount,
     updateUsername,
     updateDisplayName,
+    updateAvatar,
     updatePrivacyPrefs,
     plans: state.plans || [],
     lists: state.lists || [],

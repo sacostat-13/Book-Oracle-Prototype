@@ -13,19 +13,8 @@
 import { useState } from 'react';
 import { useAuth } from '../lib/AuthContext';
 import { useT } from '../lib/I18nContext';
-
-function Avatar({ displayName, avatarUrl, size = 26 }) {
-  const [failed, setFailed] = useState(false);
-  const initials = (displayName || '?').split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase();
-  if (avatarUrl && !failed) {
-    return <img src={avatarUrl} alt={displayName} onError={() => setFailed(true)} className="friend-avatar" style={{ '--fa-sz': `${size}px` }} />;
-  }
-  return (
-    <div className="friend-avatar--fallback" style={{ '--fa-sz': `${size}px`, fontSize: size * 0.36 }}>
-      {initials}
-    </div>
-  );
-}
+import { titleLabel } from '../lib/titles';
+import Avatar from './Avatar';
 
 function relativeTime(dateStr, t) {
   const diff = Date.now() - new Date(dateStr).getTime();
@@ -103,7 +92,7 @@ function EditInput({ initialBody, onSave, onCancel }) {
   );
 }
 
-function SingleComment({ comment, onPost, onDelete, onEdit, isReply = false }) {
+function SingleComment({ comment, onPost, onDelete, onEdit, isReply = false, titlesByUserId = {} }) {
   const t = useT();
   const { user } = useAuth();
   const [replying, setReplying] = useState(false);
@@ -128,6 +117,12 @@ function SingleComment({ comment, onPost, onDelete, onEdit, isReply = false }) {
         <div className="comment-item__head">
           <span className="comment-item__name">
             {comment.display_name || 'Anonymous'}
+            {/* v0.51: earned Reader Title beside the name, when the author wears one */}
+            {titleLabel(titlesByUserId[comment.created_by], t) && (
+              <span className="reader-title reader-title--inline">
+                {titleLabel(titlesByUserId[comment.created_by], t)}
+              </span>
+            )}
           </span>
           <span className="comment-item__meta">
             {relativeTime(comment.created_at, t)}
@@ -181,6 +176,7 @@ function SingleComment({ comment, onPost, onDelete, onEdit, isReply = false }) {
                 onDelete={onDelete}
                 onEdit={onEdit}
                 isReply
+                titlesByUserId={titlesByUserId}
               />
             ))}
           </div>
@@ -197,7 +193,7 @@ function SingleComment({ comment, onPost, onDelete, onEdit, isReply = false }) {
   );
 }
 
-export default function CommentThread({ comments = [], onPost, onDelete, onEdit, placeholder, compact = false }) {
+export default function CommentThread({ comments = [], onPost, onDelete, onEdit, placeholder, compact = false, titlesByUserId = {} }) {
   const t = useT();
   const { user } = useAuth();
 
@@ -210,6 +206,7 @@ export default function CommentThread({ comments = [], onPost, onDelete, onEdit,
           onPost={(body, parentId) => onPost(body, parentId)}
           onDelete={onDelete}
           onEdit={onEdit}
+          titlesByUserId={titlesByUserId}
         />
       ))}
 

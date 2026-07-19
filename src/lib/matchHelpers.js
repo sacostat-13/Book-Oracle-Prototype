@@ -58,15 +58,37 @@ export function buildTasteProfile(library, genresByBookId, profile) {
 
   const favoriteGenres = profile?.favoriteGenres || [];
   const currentMood    = profile?.currentMood || [];
+  const readingLevel   = profile?.readingLevel || null; // v0.50: stated 1-5 level
+  const goal           = profile?.goal || null;         // v0.50: onboarding intent chip
 
   return {
     genreAffinity,     // { "Gothic": 4.7, "Body Horror": 3.1, ... } — avg rating per genre
     favoriteGenres,
     currentMood,
+    readingLevel,
+    goal,
     avgComplexity: complexityCount > 0 ? complexitySum / complexityCount : null,
     avgDepth:      depthCount > 0 ? depthSum / depthCount : null,
+    // v0.50: sample size behind avgComplexity — the level nudge needs to know
+    // the earned signal is grounded in enough books before trusting it.
+    complexitySampleCount: complexityCount,
     hasSignal: Object.keys(genreRatings).length > 0 || favoriteGenres.length > 0,
   };
+}
+
+// v0.50: the onboarding goal chip, translated into a prompt directive. One
+// place, one wording — every AI surface that mentions the goal uses this.
+export function goalDirective(goal) {
+  switch (goal) {
+    case 'level-up':
+      return `Reader's stated goal: level up their reading. Prefer picks that stretch them slightly beyond their comfort zone — a meaningful but achievable step up in complexity or depth.`;
+    case 'explore':
+      return `Reader's stated goal: explore new topics and genres. Favor well-chosen introductions to territory absent from their history over more of what they already know.`;
+    case 'random':
+      return `Reader's stated goal: just find something great to read. Optimize for pure fit and delight over stretch or novelty.`;
+    default:
+      return null;
+  }
 }
 
 // Human-readable summary injected into AI prompts — same wording everywhere
@@ -86,6 +108,13 @@ export function describeTasteProfile(tasteProfile) {
   if (tasteProfile.currentMood.length > 0) {
     parts.push(`Reader's stated current mood: ${tasteProfile.currentMood.join(', ')}.`);
   }
+  // v0.50: stated reading level + goal join the shared summary, so every
+  // surface that uses the taste profile inherits them automatically.
+  if (tasteProfile.readingLevel != null) {
+    parts.push(`Reader's stated reading level: ${tasteProfile.readingLevel}/5 (1=casual page-turners, 5=experimental prose).`);
+  }
+  const gd = goalDirective(tasteProfile.goal);
+  if (gd) parts.push(gd);
   if (tasteProfile.avgComplexity != null) {
     parts.push(`Average prose complexity of books they've rated 4-5★: ${tasteProfile.avgComplexity.toFixed(1)}/5.`);
   }
@@ -155,4 +184,24 @@ export function computeLocalMatch(book, tasteProfile, genresByBookId) {
   else return null;
 
   return Math.round(combined * 100);
+}
+
+// ---------- level growth nudge (v0.50) ----------
+
+// Compares the reader's EARNED complexity signal (avg prose complexity of
+// books they rated 4-5★) against their STATED reading level. When the earned
+// signal, grounded in enough books, sits a full level above the stated one,
+// we suggest a single-step promotion — never a silent overwrite, never a jump.
+// Returns the suggested level (2-5) or null.
+export const LEVEL_NUDGE_MIN_SAMPLES = 5;
+
+export function suggestLevelFromTaste(tasteProfile) {
+  if (!tasteProfile) return null;
+  const stated = tasteProfile.readingLevel;
+  if (stated == null || stated >= 5) return null;
+  if (tasteProfile.avgComplexity == null) return null;
+  if ((tasteProfile.complexitySampleCount || 0) < LEVEL_NUDGE_MIN_SAMPLES) return null;
+  const earned = Math.round(tasteProfile.avgComplexity);
+  if (earned <= stated) return null;
+  return stated + 1; // one step at a time, regardless of how far ahead earned is
 }

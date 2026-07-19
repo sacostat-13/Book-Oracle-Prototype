@@ -10,9 +10,11 @@ import { useAuth } from '../lib/AuthContext';
 import { useOracleQuota } from '../lib/OracleQuotaContext';
 import { callClaude, QuotaExceededError } from '../lib/claudeApi';
 import { bookKey, openBookTab } from '../lib/bookHelpers';
+import { buildTasteProfile, suggestLevelFromTaste, goalDirective } from '../lib/matchHelpers';
 import { getFriendsFeedEvents } from '../lib/useFriends';
 import { supabase } from '../lib/supabase';
 import CoachMark from '../components/CoachMark';
+import Avatar from '../components/Avatar';
 
 const FEED_PAGE_SIZE = 5;
 
@@ -180,9 +182,12 @@ function OracleSparkWidget({ wishlist, go, t, profile }) {
       // favorite genres bias the pick, current mood shapes the "reason" framing.
       const favGenres = profile?.favoriteGenres || [];
       const mood = profile?.currentMood || [];
+      // v0.50: stated reading level + goal join the Spark personalization.
       const personalization = [
         favGenres.length > 0 ? `Reader's favorite genres: ${favGenres.join(', ')}. Lean toward these when a good option exists, but don't force it.` : null,
         mood.length > 0 ? `Reader says they're currently in the mood for: ${mood.join(', ')}. Frame the pick and reason with this in mind.` : null,
+        profile?.readingLevel != null ? `Reader's stated reading level: ${profile.readingLevel}/5 (1=casual page-turners, 5=experimental prose).` : null,
+        goalDirective(profile?.goal),
       ].filter(Boolean).join(' ');
       const raw = await callClaude(
         `${personalization ? personalization + '\n\n' : ''}From this wishlist, pick ONE book that would most pleasantly surprise me right now. Return ONLY JSON: { title, author, reason (max 20 words, evocative) }.\n\n${titles}`,
@@ -548,14 +553,6 @@ function PlansWidget({ plans, go, t }) {
 }
 
 // ─── Book Clubs ────────────────────────────────────────────────────────────────
-function ClubAvatar({ displayName, avatarUrl, size = 26 }) {
-  const [imgFailed, setImgFailed] = useState(false);
-  const initials = (displayName || '?').split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase();
-  if (avatarUrl && !imgFailed) {
-    return <img src={avatarUrl} alt={displayName} onError={() => setImgFailed(true)} className="friend-avatar" style={{ '--fa-sz': `${size}px` }} />;
-  }
-  return <div className="friend-avatar--fallback" style={{ '--fa-sz': `${size}px` }}>{initials}</div>;
-}
 
 function ClubsWidget({ clubs, summary, go, t }) {
   if (!clubs?.length) return null;
@@ -598,7 +595,7 @@ function ClubsWidget({ clubs, summary, go, t }) {
                   <div className="db-club-avatars">
                     <div className="db-club-avatars__stack">
                       {s.member_avatars.slice(0, 3).map((m, i) => (
-                        <ClubAvatar key={i} displayName={m.display_name} avatarUrl={m.avatar_url} />
+                        <Avatar key={i} displayName={m.display_name} avatarUrl={m.avatar_url} />
                       ))}
                     </div>
                     {s.member_count > 3 && (
@@ -833,10 +830,13 @@ function AIQuotaBar({ go, t }) {
 
 // ─── Friends Feed ──────────────────────────────────────────────────────────────
 function FriendAvatar({ friend, size = 30 }) {
+  // v0.52: no-referrer + error fallback, same fixes as the shared Avatar
+  // (this one keeps its own db-ff-avatar styling so it stays local).
+  const [imgFailed, setImgFailed] = useState(false);
   const label = friend?.display_name || friend?.username || '?';
   const vars = { '--ff-sz': `${size}px`, fontSize: size * 0.42 };
-  if (friend?.avatar_url) {
-    return <img src={friend.avatar_url} alt={label} className="db-ff-avatar" style={vars} />;
+  if (friend?.avatar_url && !imgFailed) {
+    return <img src={friend.avatar_url} alt={label} referrerPolicy="no-referrer" onError={() => setImgFailed(true)} className="db-ff-avatar" style={vars} />;
   }
   return (
     <div className="db-ff-avatar db-ff-avatar--fallback" style={vars}>
@@ -1025,6 +1025,50 @@ function WidgetSettings({ layout, onClose, onChange, t }) {
 }
 
 // ─── Main Dashboard ───────────────────────────────────────────────────────────
+// ── Level growth nudge (v0.50) ────────────────────────────────────────────────
+// Compares the earned complexity signal (avg complexity of 4-5★ rated books,
+// min 5 samples) against the stated reading level. One step up at a time,
+// always opt-in, dismissible per suggested level so it never nags.
+function LevelNudge({ state, t }) {
+  const { setProfile } = useData();
+  const suggested = useMemo(() => {
+    const tp = buildTasteProfile(state.library, state.genresByBookId, state.profile);
+    return suggestLevelFromTaste(tp);
+  }, [state.library, state.genresByBookId, state.profile]);
+
+  if (!suggested) return null;
+  if ((state.profile.levelNudgeDismissed || 0) >= suggested) return null;
+
+  const currentName = t(`onboarding.levels.${state.profile.readingLevel}.title`);
+  const nextName = t(`onboarding.levels.${suggested}.title`);
+
+  return (
+    <div className="db-level-nudge">
+      <div className="db-level-nudge__glyph">☩</div>
+      <div className="db-level-nudge__body">
+        <div className="db-level-nudge__title">{t('dashboard.levelNudgeTitle')}</div>
+        <p className="db-level-nudge__text">
+          {t('dashboard.levelNudgeBody', { current: currentName, next: nextName })}
+        </p>
+      </div>
+      <div className="db-level-nudge__actions">
+        <button
+          className="btn-primary btn--sm"
+          onClick={() => setProfile({ readingLevel: suggested, levelNudgeDismissed: suggested })}
+        >
+          {t('dashboard.levelNudgeAccept', { next: nextName })}
+        </button>
+        <button
+          className="btn-tertiary btn--sm"
+          onClick={() => setProfile({ levelNudgeDismissed: suggested })}
+        >
+          {t('dashboard.levelNudgeDismiss')}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function Dashboard({ onOpenBook }) {
   const { state, setDashboardLayout, setReadingGoalCount, dismissCoachmark } = useData();
   const { go } = useRouter();
@@ -1125,7 +1169,9 @@ export default function Dashboard({ onOpenBook }) {
       {/* AI quota bar */}
       <AIQuotaBar go={go} t={t} />
 
-
+      {/* v0.50: level growth nudge — the Oracle notices when your rated
+          reading has outgrown your stated level, and asks before changing it. */}
+      <LevelNudge state={state} t={t} />
 
       {/* Widget grid */}
       <div className="db-widgets">

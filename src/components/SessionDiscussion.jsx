@@ -17,6 +17,7 @@ import { callClaude, QuotaExceededError } from '../lib/claudeApi';
 import CommentThread from './CommentThread';
 import { useT } from '../lib/I18nContext';
 import { useOracleQuota } from '../lib/OracleQuotaContext';
+import { fetchTitlesByUserId } from '../lib/titles';
 
 // ── Oracle question suggestion fetch ─────────────────────────────────────────
 
@@ -133,7 +134,7 @@ function AddQuestionForm({ onAdd, onCancel, nextPosition }) {
 
 // ── Question block ────────────────────────────────────────────────────────────
 
-function QuestionBlock({ question, isAdmin, onPostAnswer, onDelete, onEditComment, onDeleteComment }) {
+function QuestionBlock({ question, isAdmin, onPostAnswer, onDelete, onEditComment, onDeleteComment, titlesByUserId }) {
   const t = useT();
   const [collapsed, setCollapsed] = useState(false);
 
@@ -173,6 +174,7 @@ function QuestionBlock({ question, isAdmin, onPostAnswer, onDelete, onEditCommen
             onPost={(body) => onPostAnswer(body, question.id)}
             onDelete={onDeleteComment}
             onEdit={onEditComment}
+            titlesByUserId={titlesByUserId}
             {...{ placeholder: t('discussion.answerPlaceholder') }}
             compact
           />
@@ -189,6 +191,9 @@ export default function SessionDiscussion({ sessionId, clubId, isAdmin, book = {
   const t = useT();
   const { handleQuotaError, onCallSucceeded } = useOracleQuota();
   const [discussion, setDiscussion] = useState(null);
+  // v0.51: comment author id -> worn Reader Title key. Loaded in one batch
+  // after the discussion arrives; decoration only, so failures render nothing.
+  const [titlesByUserId, setTitlesByUserId] = useState({});
   const [loading, setLoading] = useState(true);
   const [showAddQuestion, setShowAddQuestion] = useState(false);
   const [oracleLoading, setOracleLoading] = useState(false);
@@ -202,6 +207,25 @@ export default function SessionDiscussion({ sessionId, clubId, isAdmin, book = {
   }, [sessionId]);
 
   useEffect(() => { loadDiscussion(); }, [loadDiscussion]);
+
+  // v0.51: gather every author id in the thread (comments, replies, question
+  // answers) and resolve their worn titles in a single profiles query.
+  useEffect(() => {
+    if (!discussion) return;
+    const ids = [];
+    const collect = (list) => {
+      for (const c of list || []) {
+        if (c.created_by) ids.push(c.created_by);
+        collect(c.replies);
+      }
+    };
+    collect(discussion.comments);
+    for (const q of discussion.questions || []) collect(q.answers);
+    if (ids.length === 0) return;
+    let cancelled = false;
+    fetchTitlesByUserId(ids).then((map) => { if (!cancelled) setTitlesByUserId(map); });
+    return () => { cancelled = true; };
+  }, [discussion]);
 
   async function handlePostComment(body, parentId = null) {
     const comment = await postComment({ sessionId, clubId, body, parentId });
@@ -333,6 +357,7 @@ export default function SessionDiscussion({ sessionId, clubId, isAdmin, book = {
               onDelete={handleDeleteQuestion}
               onEditComment={handleEditComment}
               onDeleteComment={handleDeleteComment}
+              titlesByUserId={titlesByUserId}
             />
           ))}
         </section>
@@ -359,6 +384,7 @@ export default function SessionDiscussion({ sessionId, clubId, isAdmin, book = {
           onDelete={handleDeleteComment}
           onEdit={handleEditComment}
           placeholder="Share a thought about this session… (Cmd+Enter to post)"
+          titlesByUserId={titlesByUserId}
         />
       </section>
     </div>

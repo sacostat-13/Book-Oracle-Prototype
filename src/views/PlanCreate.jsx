@@ -6,6 +6,7 @@ import { fetchSeriesBooks } from '../lib/enrichmentService';
 import { callClaude, QuotaExceededError, parseJSONResponse } from '../lib/claudeApi';
 import { useT, useI18n, langDirective } from '../lib/I18nContext';
 import { useOracleQuota } from '../lib/OracleQuotaContext';
+import { goalDirective } from '../lib/matchHelpers';
 
 const LEVEL_NAMES = ['', '', '', 'Devoted', 'Literary', 'Voracious'];
 const LEVEL_BLURB = {
@@ -180,6 +181,11 @@ export default function PlanCreate() {
       const catalogSource = vault && vault.length > 0 ? vault : ((await loadVault()) || []);
 
       const libraryContext = state.library.slice(-30).map((b) => `- ${b.t} by ${b.a}`).join('\n') || '(none)';
+      // v0.50: mood + goal color the plan without changing its skeleton.
+      const moodLine = (state.profile.currentMood || []).length > 0
+        ? `Reader's stated current mood: ${state.profile.currentMood.join(', ')}. Let it color the picks where it doesn't fight the plan's goal.\n`
+        : '';
+      const personalContext = `${goalDirective(state.profile.goal) ? goalDirective(state.profile.goal) + '\n' : ''}${moodLine}`;
       let prompt;
       if (type === 'level') {
         prompt = `A reader at level ${state.profile.readingLevel || 1}/5 wants to reach level ${target}/5 over ${timeline} months.
@@ -191,7 +197,7 @@ Reading levels are based on prose complexity:
 4 = challenging (Faulkner, Han Kang)
 5 = experimental (Donoso, Lispector)
 
-Books they've read recently:
+${moodLine}Books they've read recently:
 ${libraryContext}
 
 Available books from the curated catalog (title | author | genre | prose complexity 1-5):
@@ -237,7 +243,7 @@ Return ONLY valid JSON in this exact format:
 
         prompt = `A reader at level ${state.profile.readingLevel || 1}/5 wants to get deeply experienced in the genre: "${target}". Timeline: ${timeline} months.
 
-Books they've read recently:
+${personalContext}Books they've read recently:
 ${libraryContext}
 
 ${catalogNote}

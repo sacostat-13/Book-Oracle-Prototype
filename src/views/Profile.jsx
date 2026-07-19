@@ -1,4 +1,4 @@
-import { useRef, useMemo, useState, useEffect } from 'react';
+import { useRef, useMemo, useState, useEffect, Fragment } from 'react';
 import { useData } from '../lib/DataContext';
 import { useAuth } from '../lib/AuthContext';
 import { useRouter } from '../lib/RouterContext';
@@ -8,18 +8,12 @@ import { parseGoodreadsCSV } from '../lib/goodreadsImport';
 import { findBookByTitle, bookKey, openBookTab } from '../lib/bookHelpers';
 import { useFriends, checkUsernameAvailability, validateUsername } from '../lib/useFriends';
 import { supabase } from '../lib/supabase';
+import { TITLE_TIERS, isTierEarned, sanitizeTitleKey, titleLabel } from '../lib/titles';
+import { STANDARD_AVATARS, GENRE_AVATARS } from '../lib/avatars';
+import Avatar from '../components/Avatar';
 import CornerBrackets from '../components/CornerBrackets';
 import ShareModal from '../components/ShareModal';
 
-const LEVEL_NAMES = {
-  1: 'Casual companion', 2: 'Steady reader', 3: 'Devoted reader',
-  4: 'Literary appetite', 5: 'Voracious + experimental',
-};
-const GOAL_NAMES = {
-  'level-up': 'Level up my reading',
-  explore: 'Get into a new topic or genre',
-  random: 'Just give me something to read',
-};
 
 // ── Small stat card ──────────────────────────────────────────────────────────
 function StatCard({ value, label, sub }) {
@@ -358,6 +352,134 @@ function UsernameSection({ profile, user, updateUsername, t }) {
   );
 }
 
+// ── v0.52: Avatar picker — Google photo or a preset sigil ────────────────────
+// The reader's OAuth photo lives in user.user_metadata even after they switch
+// to a sigil, so "use your Google photo" can always bring it back. Presets are
+// site-relative SVG paths in profiles.avatar_url — no storage bucket involved.
+function AvatarSection({ state, user, updateAvatar, showToast, t }) {
+  const [saving, setSaving] = useState(false);
+  const current = state.profile.avatarUrl || null;
+  const oauthPhoto = user?.user_metadata?.avatar_url || null;
+  const usingOauth = !!current && current === oauthPhoto;
+
+  async function pick(url) {
+    if (saving || url === current) return;
+    setSaving(true);
+    const res = await updateAvatar(url);
+    setSaving(false);
+    if (res?.error) showToast(t('profile.avatarSaveFailed'));
+  }
+
+  return (
+    <div className="pf-section">
+      <h2 className="pf-section__title">
+        {t('profile.sectionAvatar')}
+      </h2>
+      <p className="pf-section__hint">
+        {t('profile.avatarHint')}
+      </p>
+      <div className="pf-avatar-row">
+        <Avatar displayName={state.profile.displayName || '?'} avatarUrl={current} size={64} />
+        <div className="pf-avatar-row__actions">
+          {oauthPhoto && !usingOauth && (
+            <button className="btn-tertiary btn--sm" disabled={saving} onClick={() => pick(oauthPhoto)}>
+              {t('profile.avatarUseGoogle')}
+            </button>
+          )}
+          {current && (
+            <button className="btn-text" disabled={saving} onClick={() => pick(null)}>
+              {t('profile.avatarClear')}
+            </button>
+          )}
+        </div>
+      </div>
+      <div className="pf-avatar-set-label">{t('profile.avatarStandardSet')}</div>
+      <div className="pf-avatar-grid">
+        {STANDARD_AVATARS.map((a) => (
+          <AvatarChoice key={a.key} url={a.file} label={a.label} current={current} saving={saving} pick={pick} />
+        ))}
+      </div>
+      <div className="pf-avatar-set-label">{t('profile.avatarGenreSet')}</div>
+      <div className="pf-avatar-grid">
+        {GENRE_AVATARS.map((a) => (
+          <Fragment key={a.key}>
+            {a.solid && <AvatarChoice url={a.solid} label={a.label} current={current} saving={saving} pick={pick} />}
+            {a.outline && <AvatarChoice url={a.outline} label={`${a.label} — ${t('profile.avatarOutline')}`} current={current} saving={saving} pick={pick} />}
+          </Fragment>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// One gallery cell. The design system pairs every genre motif in a solid and
+// an outline (ring) variant; standard-set picks are solid only.
+function AvatarChoice({ url, label, current, saving, pick }) {
+  const active = current === url;
+  return (
+    <button
+      className={`pf-avatar-choice${active ? ' pf-avatar-choice--active' : ''}`}
+      disabled={saving}
+      onClick={() => pick(url)}
+      title={label}
+      aria-label={label}
+    >
+      <img src={url} alt="" loading="lazy" />
+    </button>
+  );
+}
+
+// ── v0.51: Reader Titles — the app-granted rank ladder ───────────────────────
+// Titles cannot be typed in; they are earned by reading (thresholds in
+// titles.js) and the reader chooses which earned one to wear. The chosen key
+// rides preferences.displayTitle and renders wherever other readers see this
+// reader's name.
+function TitlesSection({ state, setProfile, t }) {
+  const booksRead = state.library.length;
+  const worn = sanitizeTitleKey(state.profile.displayTitle);
+
+  function wear(key) {
+    // Guard at the door: only earned tiers are selectable (the UI disables
+    // locked rows, but this keeps a stale click honest too).
+    if (key !== null && !isTierEarned(key, booksRead)) return;
+    setProfile({ displayTitle: key });
+  }
+
+  return (
+    <div className="pf-section">
+      <h2 className="pf-section__title">
+        {t('profile.sectionTitles')}
+      </h2>
+      <p className="pf-section__hint">
+        {t('profile.titlesHint')}
+      </p>
+      <div className="pf-titles">
+        {TITLE_TIERS.map((tier) => {
+          const earned = isTierEarned(tier.key, booksRead);
+          const active = worn === tier.key;
+          return (
+            <button
+              key={tier.key}
+              className={`pf-title-row${active ? ' pf-title-row--active' : ''}${earned ? '' : ' pf-title-row--locked'}`}
+              disabled={!earned}
+              onClick={() => wear(active ? null : tier.key)}
+              title={earned ? (active ? t('profile.titleRemove') : t('profile.titleWear')) : undefined}
+            >
+              <span className="pf-title-row__glyph">{earned ? (active ? '\u2726' : '\u2727') : '\u25C7'}</span>
+              <span className="pf-title-row__name">{t(`titles.${tier.key}`)}</span>
+              <span className="pf-title-row__meta">
+                {earned
+                  ? (active ? t('profile.titleWearing') : t('profile.titleEarned'))
+                  : t('profile.titleLockedAt', { count: tier.threshold })}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 // ── Display name section ──────────────────────────────────────────────────────
 function DisplayNameSection({ profile, updateDisplayName, t }) {
   const [editing, setEditing] = useState(false);
@@ -440,11 +562,18 @@ const MOODS = ['comfort', 'challenge', 'escapism', 'mind-bending', 'character-dr
 const GENRE_MAX = 5;
 const MOOD_MAX = 3;
 
+const GOALS = ['level-up', 'explore', 'random'];
+const LEVELS = [1, 2, 3, 4, 5];
+
 function ReaderPrefsSection({ state, setProfile, t }) {
   const [editingGenres, setEditingGenres] = useState(false);
   const [editingMood, setEditingMood] = useState(false);
+  const [editingLevel, setEditingLevel] = useState(false); // v0.50
+  const [editingGoal, setEditingGoal] = useState(false);   // v0.50
   const favoriteGenres = state.profile.favoriteGenres || [];
   const currentMood = state.profile.currentMood || [];
+  const readingLevel = state.profile.readingLevel || null;
+  const goal = state.profile.goal || null;
   const genreOptions = (state.genres || []).slice().sort((a, b) => a.name.localeCompare(b.name));
 
   function toggleGenre(name) {
@@ -510,6 +639,62 @@ function ReaderPrefsSection({ state, setProfile, t }) {
           </div>
           <p className="onb-hint">{t('profile.moodMaxHint', { max: MOOD_MAX })}</p>
           <button className="btn-secondary" onClick={() => setEditingMood(false)}>{t('common.done')}</button>
+        </>
+      )}
+
+      {/* v0.50: reading level, finally editable after onboarding */}
+      <h2 className="pf-section__title">{t('profile.labelReadingLevel')}</h2>
+      {!editingLevel ? (
+        <p className="pf-text pf-text--gap-lg">
+          {readingLevel != null
+            ? `${t(`onboarding.levels.${readingLevel}.title`)} (${readingLevel}/5)`
+            : t('profile.notSet')}
+          <br />
+          <button className="btn-secondary" onClick={() => setEditingLevel(true)}>{t('common.edit')}</button>
+        </p>
+      ) : (
+        <>
+          <div className="chip-grid">
+            {LEVELS.map((v) => (
+              <button
+                key={v}
+                className={`chip ${readingLevel === v ? 'selected' : ''}`}
+                title={t(`onboarding.levels.${v}.sub`)}
+                onClick={() => setProfile({ readingLevel: v })}
+              >
+                {t(`onboarding.levels.${v}.title`)}
+              </button>
+            ))}
+          </div>
+          <p className="onb-hint">{t('profile.levelEditHint')}</p>
+          <button className="btn-secondary" onClick={() => setEditingLevel(false)}>{t('common.done')}</button>
+        </>
+      )}
+
+      {/* v0.50: reading goal (intent), finally editable after onboarding */}
+      <h2 className="pf-section__title">{t('profile.labelGoal')}</h2>
+      {!editingGoal ? (
+        <p className="pf-text pf-text--gap-lg">
+          {goal ? t(`onboarding.goals.${goal}.title`) : t('profile.notSet')}
+          <br />
+          <button className="btn-secondary" onClick={() => setEditingGoal(true)}>{t('common.edit')}</button>
+        </p>
+      ) : (
+        <>
+          <div className="chip-grid">
+            {GOALS.map((g) => (
+              <button
+                key={g}
+                className={`chip ${goal === g ? 'selected' : ''}`}
+                title={t(`onboarding.goals.${g}.sub`)}
+                onClick={() => setProfile({ goal: g })}
+              >
+                {t(`onboarding.goals.${g}.title`)}
+              </button>
+            ))}
+          </div>
+          <p className="onb-hint">{t('profile.goalEditHint')}</p>
+          <button className="btn-secondary" onClick={() => setEditingGoal(false)}>{t('common.done')}</button>
         </>
       )}
     </div>
@@ -683,7 +868,7 @@ function ReadingChallenge({ library, readingGoalCount, setReadingGoalCount, t })
 }
 
 export default function Profile() {
-  const { state, resetAll, importGoodreads, showToast, setReadingGoalCount, updateUsername, updateDisplayName, updatePrivacyPrefs, setProfile, accomplishments, shareAccomplishment } = useData();
+  const { state, resetAll, importGoodreads, showToast, setReadingGoalCount, updateUsername, updateDisplayName, updateAvatar, updatePrivacyPrefs, setProfile, accomplishments, shareAccomplishment } = useData();
   const { user } = useAuth();
   const { go, route } = useRouter();
   const t = useT();
@@ -1195,6 +1380,12 @@ export default function Profile() {
             </h2>
             <p className="pf-text">
               {state.profile.displayName || user.email}
+              {titleLabel(state.profile.displayTitle, t) && (
+                <>
+                  <br />
+                  <span className="reader-title">{titleLabel(state.profile.displayTitle, t)}</span>
+                </>
+              )}
               <br />
               <span className="lv-hl">
                 {t('profile.accountSynced')}
@@ -1206,13 +1397,8 @@ export default function Profile() {
         <UsernameSection profile={state.profile} user={user} updateUsername={updateUsername} t={t} />
         <DisplayNameSection profile={state.profile} updateDisplayName={updateDisplayName} t={t} />
         <ReaderPrefsSection state={state} setProfile={setProfile} t={t} />
-
-        <h2 className="pf-section__title" style={user ? undefined : { marginTop: 0 }}>
-          {t('profile.labelReadingLevel')}
-        </h2>
-        <p className="pf-text">
-          {LEVEL_NAMES[state.profile.readingLevel] || t('profile.notSet')}
-        </p>
+        {user && <AvatarSection state={state} user={user} updateAvatar={updateAvatar} showToast={showToast} t={t} />}
+        <TitlesSection state={state} setProfile={setProfile} t={t} />
 
         <h2 className="pf-section__title">
           {t('profile.labelLibrary')}

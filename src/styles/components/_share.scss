@@ -235,3 +235,14 @@
 
 // When there's no cover, keep the footer pinned to the bottom.
 .share-card__frame > .share-card__footer { width: 100%; justify-content: center; }
+
+
+// v0.51: reader byline (name · earned title) above the brand footer.
+// Fixed parchment/gold — the share card renders on its own dark ground,
+// independent of app theme, like the rest of this file.
+.share-card__byline {
+  margin-top: 10px;
+  font-size: 13px;
+  color: #D8B85E;
+  text-align: center;
+}

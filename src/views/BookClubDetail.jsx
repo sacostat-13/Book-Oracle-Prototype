@@ -10,20 +10,8 @@ import BookCover from '../components/BookCover';
 import ClubPolls from '../components/ClubPolls';
 import ShareModal from '../components/ShareModal';
 import { clubShareUrl } from '../lib/shareService';
-
-function Avatar({ displayName, avatarUrl, size = 32 }) {
-  const [imgFailed, setImgFailed] = useState(false);
-  const initials = (displayName || '?').split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase();
-  const initialsEl = (
-    <div className="friend-avatar--fallback" style={{ '--fa-sz': `${size}px`, fontSize: size * 0.35 }}>
-      {initials}
-    </div>
-  );
-  if (avatarUrl && !imgFailed) {
-    return <img src={avatarUrl} alt={displayName} onError={() => setImgFailed(true)} className="friend-avatar" style={{ '--fa-sz': `${size}px` }} />;
-  }
-  return initialsEl;
-}
+import { fetchTitlesByUserId, titleLabel } from '../lib/titles';
+import Avatar from '../components/Avatar';
 
 function SessionCard({ session, onClick, t }) {
   const now = new Date();
@@ -63,6 +51,8 @@ export default function BookClubDetail() {
 
   const clubId = route.params?.clubId;
   const [detail, setDetail] = useState(null);
+  // v0.51: member user id -> worn Reader Title key (decoration only)
+  const [titlesByUserId, setTitlesByUserId] = useState({});
   const [loading, setLoading] = useState(true);
   const [linkCopied, setLinkCopied] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -80,6 +70,15 @@ export default function BookClubDetail() {
   }, [clubId]);
 
   useEffect(() => { loadDetail(); }, [loadDetail]);
+
+  // v0.51: resolve members' worn titles in one batch once the roster arrives
+  useEffect(() => {
+    const ids = (detail?.members || []).map((m) => m.user_id);
+    if (ids.length === 0) return;
+    let cancelled = false;
+    fetchTitlesByUserId(ids).then((map) => { if (!cancelled) setTitlesByUserId(map); });
+    return () => { cancelled = true; };
+  }, [detail]);
 
   function joinUrl(token) { return `${window.location.origin}/join/${token}`; }
 
@@ -234,6 +233,10 @@ export default function BookClubDetail() {
                 <Avatar displayName={m.display_name} avatarUrl={m.avatar_url} />
                 <div className="session-card__body">
                   <span className="club-member-row__display">{m.display_name || t('clubs.anonymousReader')}</span>
+                  {/* v0.51: earned Reader Title beside the member's name */}
+                  {titleLabel(titlesByUserId[m.user_id], t) && (
+                    <span className="reader-title reader-title--inline">{titleLabel(titlesByUserId[m.user_id], t)}</span>
+                  )}
                   {isSelf && <span className="lv-hl-muted">{t('clubs.you')}</span>}
                 </div>
                 <span className={`club-card__badge${m.role === 'admin' ? ' club-card__badge--active' : ''}`}>

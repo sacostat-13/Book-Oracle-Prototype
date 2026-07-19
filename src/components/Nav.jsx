@@ -88,7 +88,7 @@ function NotifItem({ n, t, onClose, go, markOneRead, onAnnouncement, handleAccep
       onClick={clickable ? handleClick : undefined}
     >
       {actor?.avatar_url
-        ? <img src={actor.avatar_url} alt="" className="notif-item__avatar" />
+        ? <img src={actor.avatar_url} alt="" referrerPolicy="no-referrer" className="notif-item__avatar" />
         : <div className="notif-item__avatar">{avatarContent}</div>
       }
       <div className="notif-item__body">
@@ -184,7 +184,9 @@ export default function Nav({ onPreviewBook, guestMode = false }) {
 
   // User display
   const userLabel = state.profile?.displayName || user?.email?.split('@')[0] || '';
-  const userAvatar = state.profile?.avatar_url;
+  // v0.52.1: was state.profile?.avatar_url — the client profile object uses
+  // camelCase (DataContext maps the column), so the nav avatar never rendered.
+  const userAvatar = state.profile?.avatarUrl;
   const userInitial = userLabel?.[0]?.toUpperCase() || '?';
   const toggleLangLabel = lang === 'en' ? t('nav.switchToSpanish') : t('nav.switchToEnglish');
 
@@ -366,7 +368,7 @@ export default function Nav({ onPreviewBook, guestMode = false }) {
             >
               <div className="nav-user__avatar">
                 {userAvatar
-                  ? <img src={userAvatar} alt={userLabel} />
+                  ? <img src={userAvatar} alt={userLabel} referrerPolicy="no-referrer" />
                   : userInitial
                 }
               </div>
