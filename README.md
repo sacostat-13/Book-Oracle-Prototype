@@ -4,7 +4,7 @@ A reading companion — wishlist, library, reading plans, book clubs, and an AI-
 for book discovery. Built with React + Vite + SCSS, backed by Supabase for auth
 and cross-device sync, and Netlify Functions for API proxying.
 
-> Current version: **v0.53** — see [Releases](#releases) below for changelog.
+> Current version: **v0.54** — see [Releases](#releases) below for changelog.
 > Upgrading from an earlier version? Check the matching `MIGRATION_*.md` / `UPDATE_*.md`.
 
 ---
@@ -449,6 +449,10 @@ its normal one-file-at-a-time watch flow. It's a dev-server cache hiccup, not
 a real bug — a production build (`npm run build`) compiles clean, and a
 dev-server restart (or hard browser reload) clears it.
 
+
+### v0.54 — The thread inside the app (Oracle waits + plan rail)
+
+The landing's gold-thread language crosses into the product, deliberately narrow: motion as punctuation at the two moments that earn it, never ambiance. **BookLoader** (the Oracle-wait surface used by Ask/Categories/Similar) keeps its page-flip and rotating genre quotes and gains a miniature thread SVG that draws itself on a CSS keyframe loop beneath the quote; on unmount — results landed — it fires a small `burst()` (12 sparks) at the thread's position, gated to waits > 1.5s and to the thread being on-screen. `burst` is imported from `components/landing/burst` (the `.lps-spark` style is duplicated into `_book-loader.scss` since the landing partial's copy also rides along; kept in sync by comment). **PlanView** gets `plan-months--thread`: a static gold rail (`::before`, gradient stroke) through the month cards with a `plan-thread-node` per book — read ✦ / currently-reading ☾ (first unread) / ahead ✧ — drawn once on mount (1.2s scaleY + staggered node fade via `--ti` custom-property delays), then completely still, so it reads as progress information rather than decoration. Both honor `prefers-reduced-motion` (final state rendered immediately, no spark). No Lenis, no ScrollTrigger, no pinning anywhere in-app.
 
 ### v0.53 — Story landing (the scroll is the reading)
 

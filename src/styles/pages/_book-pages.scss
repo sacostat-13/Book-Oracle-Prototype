@@ -1350,6 +1350,91 @@
   gap: var(--ro-space-4);
 }
 
+// ── The plan's thread (v0.54) ────────────────────────────────────────────────
+// The landing's Rite II imagery made real: a static gold rail runs through
+// the months, each book a star-node — read ✦, currently reading ☾, ahead ✧.
+// The rail draws once on mount (short, then still); nodes fade in staggered.
+// Reduced motion renders everything final immediately.
+.plan-months--thread {
+  position: relative;
+  padding-left: 44px;
+
+  &::before {
+    content: '';
+    position: absolute;
+    left: 16px;
+    top: 18px;
+    bottom: 18px;
+    width: 1px;
+    background: linear-gradient(
+      to bottom,
+      var(--ro-gold, #c9a24b),
+      rgba(201, 162, 75, 0.25)
+    );
+    opacity: 0.55;
+    transform-origin: 50% 0%;
+    animation: plan-thread-draw 1.2s ease-out both;
+  }
+
+  .plan-month-card { position: relative; }
+}
+
+.plan-thread-node {
+  position: absolute;
+  left: -41px;
+  top: 24px;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  line-height: 1;
+  background: var(--ro-bg);
+  border: 1px solid rgba(201, 162, 75, 0.55);
+  color: var(--ro-gold-text, #8a6a24);
+  animation: plan-node-in 0.5s ease-out both;
+  animation-delay: calc(0.5s + var(--ti, 0) * 0.18s);
+
+  &.is-read {
+    box-shadow: 0 0 10px rgba(201, 162, 75, 0.35);
+  }
+
+  &.is-reading {
+    border-color: var(--ro-gold, #c9a24b);
+    box-shadow: 0 0 14px rgba(201, 162, 75, 0.5);
+  }
+
+  &.is-ahead {
+    border-color: var(--ro-border-strong);
+    color: var(--ro-dim);
+    box-shadow: none;
+  }
+}
+
+@keyframes plan-thread-draw {
+  from { transform: scaleY(0); }
+  to { transform: scaleY(1); }
+}
+
+@keyframes plan-node-in {
+  from { opacity: 0; transform: scale(0.6); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .plan-months--thread::before,
+  .plan-thread-node {
+    animation: none;
+  }
+}
+
+@include tokens.ro-down(mobile) {
+  .plan-months--thread { padding-left: 34px; }
+  .plan-thread-node { left: -33px; width: 22px; height: 22px; font-size: 10px; }
+}
+
 .plan-month-card {
   background: var(--ro-surface);
   border: 1px solid var(--ro-border);

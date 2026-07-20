@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import burst from './landing/burst';
 
 // One quote per genre-shelf across all 49 Oracle genres. One is shown at a
 // time and they rotate every ROTATE_MS so longer waits (the Oracle, reading
@@ -274,6 +275,23 @@ export default function BookLoader({ text, fullHeight = false }) {
   const [idx, setIdx] = useState(0);
   const [visible, setVisible] = useState(true);
   const swapRef = useRef(null);
+  const threadRef = useRef(null);
+  const mountedAtRef = useRef(Date.now());
+
+  // The landing's gold thread, borrowed for the wait: it draws beneath the
+  // quote while the Oracle works, and when the loader leaves (results landed)
+  // a small spark marks the resolution. Skipped for very short waits and, via
+  // burst() itself, under prefers-reduced-motion.
+  useEffect(() => {
+    return () => {
+      if (Date.now() - mountedAtRef.current < 1500) return;
+      const el = threadRef.current;
+      if (!el) return;
+      const r = el.getBoundingClientRect();
+      if (!r.width || r.top < 0 || r.top > window.innerHeight) return;
+      burst(r.left + r.width / 2, r.top + r.height / 2, 12);
+    };
+  }, []);
 
   useEffect(() => {
     const rotate = setInterval(() => {
@@ -298,6 +316,9 @@ export default function BookLoader({ text, fullHeight = false }) {
         <div className="book-loader__page" />
       </div>
       {text && <div className="book-loader__status">{text}</div>}
+      <svg className="book-loader__thread" ref={threadRef} viewBox="0 0 220 12" aria-hidden="true">
+        <path className="book-loader__thread-path" d="M2,6 C40,1 70,11 110,6 C150,1 180,11 218,6" />
+      </svg>
       <figure className={`book-loader__quote${visible ? '' : ' is-fading'}`}>
         <blockquote className="book-loader__quote-text">“{quote.text}”</blockquote>
         <figcaption className="book-loader__quote-meta">

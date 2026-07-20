@@ -16,9 +16,24 @@
 
 // The version label shown as "current" — keep in sync with package.json and
 // the README version line.
-export const CURRENT_VERSION = 'v0.53';
+export const CURRENT_VERSION = 'v0.54';
 
 export const RELEASES = [{
+    version: 'v0.54',
+    date: '2026-07-20',
+    titleEn: 'The thread follows you inside',
+    titleEs: 'El hilo te sigue adentro',
+    bodyEn: [
+      'While the Oracle works, its gold thread now draws itself beneath the rotating quote — and when your suggestions land, a small spark marks the moment.',
+      'Reading plans wear the thread too: a quiet gold rail runs through your months, each book a star — read ✦, the one you’re on ☾, the ones ahead ✧.',
+      'Everything stays still once drawn. The app remains a study, not a stage — and with reduced motion enabled, nothing moves at all.',
+    ],
+    bodyEs: [
+      'Mientras el Oráculo trabaja, su hilo dorado ahora se dibuja bajo la cita que rota — y cuando llegan tus sugerencias, una pequeña chispa marca el momento.',
+      'Los planes de lectura también llevan el hilo: un riel dorado y sereno recorre tus meses, cada libro una estrella — leído ✦, el que llevas ☾, los que esperan ✧.',
+      'Todo queda quieto una vez dibujado. La app sigue siendo un estudio, no un escenario — y con movimiento reducido activado, nada se mueve en absoluto.',
+    ],
+  }, {
     version: 'v0.53',
     date: '2026-07-20',
     titleEn: 'The scroll is the reading',

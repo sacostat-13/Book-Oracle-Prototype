@@ -168,3 +168,55 @@
   @include tokens.ro-type(overline);
   color: var(--ro-muted);
 }
+
+// ── The Oracle's thread (v0.54) ──────────────────────────────────────────────
+// The landing page's gold thread, miniaturized for the wait: it draws itself
+// over and over beneath the rotating quote while the Oracle works. Static and
+// faint under reduced motion.
+.book-loader__thread {
+  width: 220px;
+  max-width: 60vw;
+  height: 12px;
+  margin-top: 4px;
+  overflow: visible;
+}
+
+.book-loader__thread-path {
+  fill: none;
+  stroke: var(--ro-gold, #c9a24b);
+  stroke-width: 1.2;
+  opacity: 0.55;
+  filter: drop-shadow(0 0 3px rgba(201, 162, 75, 0.5));
+  stroke-dasharray: 300;
+  stroke-dashoffset: 300;
+  animation: book-loader-thread 3.6s ease-in-out infinite;
+}
+
+@keyframes book-loader-thread {
+  0% { stroke-dashoffset: 300; opacity: 0.55; }
+  55% { stroke-dashoffset: 0; opacity: 0.55; }
+  82% { stroke-dashoffset: 0; opacity: 0.55; }
+  100% { stroke-dashoffset: 0; opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .book-loader__thread-path {
+    animation: none;
+    stroke-dashoffset: 0;
+    opacity: 0.25;
+    filter: none;
+  }
+}
+
+// Spark dots appended to <body> by burst() — global on purpose (the landing
+// declares the same class; keep in sync).
+.lps-spark {
+  position: fixed;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #c9a24b;
+  pointer-events: none;
+  z-index: 90;
+  box-shadow: 0 0 10px rgba(201, 162, 75, 0.8);
+}

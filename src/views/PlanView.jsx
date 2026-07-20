@@ -183,16 +183,36 @@ export default function PlanView() {
         )}
       </div>
 
-      <div className="plan-months">
-        {plan.books.map((b, i) => {
+      {/* v0.54: the landing's thread imagery arrives in the plan itself — a
+          static gold rail through the months, each book a star-node with its
+          state: read ✦, the live point ☾, ahead ✧. Drawn once on mount, then
+          still: informative, not ambient. */}
+      <div className="plan-months plan-months--thread">
+        {(() => {
+          const readFlags = plan.books.map((b) => {
+            const found = findBookByTitle(b.title || b.t, state.wishlist) ||
+              { t: b.title || b.t, a: b.author || b.a };
+            return state.library.some((l) => bookKey(l) === bookKey(found));
+          });
+          const currentIdx = readFlags.findIndex((r) => !r);
+          return plan.books.map((b, i) => {
           const found = findBookByTitle(b.title || b.t, state.wishlist) ||
             { t: b.title || b.t, a: b.author || b.a, d: b.description || '' };
           const pages = b.pp || found.pp || null;
           const k = bookKey(found);
-          const isRead = state.library.some((l) => bookKey(l) === k);
+          const isRead = readFlags[i];
           const isQueued = state.readNext.some((l) => bookKey(l) === k);
+          const nodeState = isRead ? 'read' : i === currentIdx ? 'reading' : 'ahead';
+          const nodeSigil = isRead ? '✦' : i === currentIdx ? '☾' : '✧';
           return (
             <div className="plan-month-card" key={i}>
+              <span
+                className={`plan-thread-node is-${nodeState}`}
+                style={{ '--ti': i }}
+                aria-hidden="true"
+              >
+                {nodeSigil}
+              </span>
               <div className="plan-month-card__label">Month {b.month || i + 1}</div>
               <div className="plan-month-card__content">
                 <div className="plan-month-card__title">{found.t}</div>
@@ -230,7 +250,8 @@ export default function PlanView() {
               </div>
             </div>
           );
-        })}
+          });
+        })()}
       </div>
 
       {/* v0.43: page-share modal */}
