@@ -4,7 +4,7 @@ A reading companion — wishlist, library, reading plans, book clubs, and an AI-
 for book discovery. Built with React + Vite + SCSS, backed by Supabase for auth
 and cross-device sync, and Netlify Functions for API proxying.
 
-> Current version: **v0.55** — see [Releases](#releases) below for changelog.
+> Current version: **v0.56** — see [Releases](#releases) below for changelog.
 > Upgrading from an earlier version? Check the matching `MIGRATION_*.md` / `UPDATE_*.md`.
 
 ---
@@ -449,6 +449,14 @@ its normal one-file-at-a-time watch flow. It's a dev-server cache hiccup, not
 a real bug — a production build (`npm run build`) compiles clean, and a
 dev-server restart (or hard browser reload) clears it.
 
+
+### v0.56 — Unlimited Oracle calls for curators
+
+`get_oracle_quota` and `consume_oracle_call` (`schema_v22_migration.sql`) now short-circuit for `profiles.is_curator = true` (`schema_v36_migration.sql`) — curators skip the free/Pro quota gate entirely, in both the read-only check and the actual increment-and-gate call, independent of `subscription_status`. Both functions already returned an `unlimited` boolean in their JSON shape (always `false` until now — a leftover from an earlier "Pro = unlimited" design that became "Pro = 5/day"); this is the first time it's ever set `true`. `netlify/functions/claude.js` needed no changes: it already skips the 402 when `quota.unlimited`, and already calls `consume_oracle_call` unconditionally on success — the RPC itself now decides whether that call enforces anything. Call counters still tick for curators (cost visibility), just never against a limit.
+
+**Client:** `OracleQuotaContext.jsx` was hardcoding `unlimited: false` regardless of what the RPC returned — fixed to read `data.unlimited`, and `calls_limit`/`calls_remaining` are now left `null` (not coerced to the free-tier default) when unlimited. `OracleQuotaBadge` shows "Unlimited" instead of a countdown; `OracleQuotaWall` (the exhausted-quota empty state) no-ops for unlimited accounts, though the server was already going to prevent it from firing.
+
+Rationale: curator accounts are the ones whose libraries feed the Vault catalog (`schema_v34_migration.sql`) — running Oracle Categorization across a ~900-book personal wishlist at 10 books/batch is ~90 calls, far past the 5/day Pro limit that's meant for normal usage.
 
 ### v0.55 — Books by women accomplishment
 

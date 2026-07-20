@@ -16,9 +16,22 @@
 
 // The version label shown as "current" — keep in sync with package.json and
 // the README version line.
-export const CURRENT_VERSION = 'v0.55';
+export const CURRENT_VERSION = 'v0.56';
 
 export const RELEASES = [{
+    version: 'v0.56',
+    date: '2026-07-20',
+    titleEn: 'Unlimited Oracle calls for curators',
+    titleEs: 'Llamadas ilimitadas al Oráculo para curadores',
+    bodyEn: [
+      'Curator accounts — the readers whose shelves feed the Vault catalog — now run every Oracle feature, including categorization, without the free/Pro call limits.',
+      'The quota badge shows "Unlimited" instead of a countdown when this applies to your account.',
+    ],
+    bodyEs: [
+      'Las cuentas de curador — quienes alimentan el catálogo del Vault con sus estanterías — ahora usan cualquier función del Oráculo, incluida la categorización, sin los límites de llamadas de las cuentas gratuitas o Pro.',
+      'La insignia de cuota muestra "Ilimitado" en lugar de una cuenta regresiva cuando esto aplica a tu cuenta.',
+    ],
+  }, {
     version: 'v0.55',
     date: '2026-07-20',
     titleEn: 'Books by women, counted',

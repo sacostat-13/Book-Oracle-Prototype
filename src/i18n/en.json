@@ -316,6 +316,7 @@
     "categorizeSuccessPlural": "☩ The Oracle has categorized {count} books.",
     "categorizeFailed": "☩ Categorized {success} books. {failed} could not be processed.",
     "quotaBadge": "{remaining} of {limit} left today",
+    "quotaUnlimited": "Unlimited",
     "quotaEmpty": "Daily limit reached",
     "quotaWallEyebrow": "Daily limit reached",
     "quotaWallTitle": "The Oracle is quiet for now",

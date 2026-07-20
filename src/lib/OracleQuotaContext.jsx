@@ -5,12 +5,13 @@
 // Quota shape:
 //   {
 //     subscription_status: 'free'|'active'|'past_due'|'cancelled',
-//     period:              'day'|'month',   // 'day' for Pro, 'month' for Free
+//     period:              'day'|'month'|'unlimited', // 'unlimited' for curators
 //     calls_used:          int,
-//     calls_limit:         int,             // 5 for both tiers, different period
-//     calls_remaining:     int,
+//     calls_limit:         int|null,       // 5 for both tiers, different period; null when unlimited
+//     calls_remaining:     int|null,       // null when unlimited
 //     reset_at:            Date|null,
-//     unlimited:           false,           // always false now — Pro is 5/day not unlimited
+//     unlimited:           bool,           // v0.56: true for curators (profiles.is_curator),
+//                                          // straight from get_oracle_quota — Pro itself is still 5/day.
 //   }
 
 import { createContext, useContext, useEffect, useState, useCallback } from 'react';
@@ -36,14 +37,19 @@ export function OracleQuotaProvider({ children }) {
       // can exceed the free limit mid-period, which makes the raw
       // (limit - used) go negative — every consumer treats remaining as a
       // displayable count, so it must never be below zero.
+      // v0.56: curators get unlimited: true from the RPC — calls_limit/
+      // calls_remaining come back null and must stay null (not coerced to
+      // FREE_LIMIT), so consumers can branch on `unlimited` instead of
+      // misreading null as "0 of 5 left".
+      const unlimited = !!data.unlimited;
       setQuota({
         subscription_status: data.subscription_status ?? 'free',
         period:              data.period ?? 'month',
         calls_used:          data.calls_used ?? 0,
-        calls_limit:         data.calls_limit ?? FREE_LIMIT,
-        calls_remaining:     Math.max(0, data.calls_remaining ?? FREE_LIMIT),
+        calls_limit:         unlimited ? null : (data.calls_limit ?? FREE_LIMIT),
+        calls_remaining:     unlimited ? null : Math.max(0, data.calls_remaining ?? FREE_LIMIT),
         reset_at:            data.reset_at ? new Date(data.reset_at) : null,
-        unlimited:           false,
+        unlimited,
       });
     } catch (e) {
       console.error('OracleQuotaContext refresh error:', e);
@@ -77,6 +83,11 @@ export function OracleQuotaProvider({ children }) {
   const onCallSucceeded = useCallback(() => {
     setQuota((prev) => {
       if (!prev) return prev;
+      // v0.56: unlimited (curator) quota has no remaining count to decrement —
+      // just tick calls_used for the (unenforced) cost-visibility number.
+      if (prev.unlimited) {
+        return { ...prev, calls_used: (prev.calls_used ?? 0) + 1 };
+      }
       return {
         ...prev,
         calls_used:      (prev.calls_used ?? 0) + 1,

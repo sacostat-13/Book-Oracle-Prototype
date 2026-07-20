@@ -12,6 +12,18 @@ export function OracleQuotaBadge({ style = {} }) {
   const t = useT();
   if (loading || !quota) return null;
 
+  // v0.56: curators (profiles.is_curator) run unmetered — show that plainly
+  // instead of "null of null left", which is what calls_remaining/calls_limit
+  // are for this quota shape.
+  if (quota.unlimited) {
+    return (
+      <span className="quota-badge" style={style}>
+        <span className="quota-dot" />
+        <span className="quota-count">{t('oracle.quotaUnlimited')}</span>
+      </span>
+    );
+  }
+
   const remaining = quota.calls_remaining ?? 0;
   const limit     = quota.calls_limit ?? 5;
   const isEmpty   = remaining === 0;
@@ -36,6 +48,10 @@ export function OracleQuotaWall() {
   const { quota } = useOracleQuota();
   const t = useT();
   const { go } = useRouter();
+
+  // Curators never actually hit this (the server never 402s them), but guard
+  // anyway rather than render a wall built for a limit that doesn't apply.
+  if (quota?.unlimited) return null;
 
   const isDay   = quota?.period === 'day';
   const limit   = quota?.calls_limit ?? 5;

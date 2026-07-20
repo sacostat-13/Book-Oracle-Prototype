@@ -316,6 +316,7 @@
     "categorizeSuccessPlural": "☩ El Oráculo categorizó {count} libros.",
     "categorizeFailed": "☩ Categorizó {success} libros. {failed} no se pudieron procesar.",
     "quotaBadge": "{remaining} de {limit} restantes hoy",
+    "quotaUnlimited": "Ilimitado",
     "quotaEmpty": "Límite diario alcanzado",
     "quotaWallEyebrow": "Límite diario alcanzado",
     "quotaWallTitle": "El Oráculo guarda silencio por ahora",
