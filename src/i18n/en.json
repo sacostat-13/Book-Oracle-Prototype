@@ -1644,184 +1644,133 @@
     }
   },
   "landing": {
-    "intro": {
-      "ariaLabel": "The Books Oracle — an oracle's reading",
-      "line1": "Anyone can show you the bestsellers.",
-      "q1": "But do they know what you truly long for?",
-      "q2": "Can they trace the thread through every book you've loved?",
-      "q3": "Do they help you read deeper — not just more?",
-      "q4": "Could they find the one no one thought to show you?",
-      "reads": "The Oracle reads you.",
-      "tagline": "Your next book, foretold.",
-      "reject1": "The One Everyone Is Reading",
-      "reject2": "This Year's Sensation",
-      "reject3": "Now a Major Motion Picture",
-      "reject4": "As Seen Absolutely Everywhere",
-      "ribbon": "Bestseller",
-      "pickTitle": "The volume meant for you",
-      "pickMatch": "93% match",
-      "skip": "Skip",
-      "continue": "Enter the library",
-      "logoAlt": "The Books Oracle"
-    },
     "nav": {
       "features": "Features",
       "pricing": "Pricing",
       "about": "About",
       "login": "Log in",
-      "signup": "Start reading free"
-    },
-    "hero": {
-      "eyebrow": "A reading companion for the dark academia at heart",
-      "headline": "An Oracle that knows what you'll love next.",
-      "subheadline": "Track what you've read, get recommendations that actually fit your taste, and read with people instead of alone.",
-      "ctaPrimary": "Start reading free",
-      "ctaSecondary": "See how it works",
-      "imageAlt": "The Books Oracle dashboard — reading goal, currently-reading list, and Oracle recommendations"
-    },
-    "problem": {
-      "eyebrow": "The problem",
-      "heading": "Reading shouldn't feel like a second job",
-      "point1": "Your next book is scattered across a wishlist, a Goodreads shelf, and a note on your phone you'll never reopen.",
-      "point2": "Algorithmic feeds are optimized for engagement, not for you — recommendations that chase trends instead of your taste.",
-      "point3": "Reading became solitary by default, not by choice — there's no easy way to read *with* people."
-    },
-    "features": {
-      "eyebrow": "What's inside",
-      "heading": "A tour, not a promise",
-      "subheading": "Everything below is already built and live in the app.",
-      "oracle": {
-        "number": "01",
-        "title": "The Oracle",
-        "subtitle": "Recommendations that get you",
-        "description": "Tell the Oracle your genres and mood and it reads your library like a librarian who knows you — match-scored picks, not a bestseller list.",
-        "slide1Title": "By genre",
-        "slide1Body": "Pick a genre and a source — your own wishlist, the Vault, or the Oracle itself — and get a new book in seconds.",
-        "slide2Title": "By other books",
-        "slide2Body": "Tell us the books you've loved, and the Oracle finds what belongs next to them on your shelf.",
-        "slide3Title": "Ask in plain language",
-        "slide3Body": "Describe a mood — a rainy, gothic afternoon — and the Oracle returns four picks drawn from your taste."
-      },
-      "readingLife": {
-        "number": "02",
-        "title": "Your Reading Life",
-        "subtitle": "Everything you're reading, in one place",
-        "description": "Wishlist, currently-reading with progress, and your full library — no more scattered notes and forgotten tabs.",
-        "slide1Title": "Your whole library",
-        "slide1Body": "Every book you've saved, cover to cover, in one browsable place.",
-        "slide2Title": "Your wishlist, at a glance",
-        "slide2Body": "Add books in a tap and browse your wishlist by category whenever the mood strikes.",
-        "slide3Title": "Custom categories",
-        "slide3Body": "Tag your books your way, and always find them grouped exactly how you think about them.",
-        "slide4Title": "Currently reading, tracked",
-        "slide4Body": "Log pages as you go and watch the progress bar fill — pick up exactly where you left off, every time."
-      },
-      "plans": {
-        "number": "03",
-        "title": "Reading Plans",
-        "subtitle": "Plan your reading, month by month",
-        "description": "Let the Oracle build a reading plan that levels up your reading, finishes a series, or gets you started on a new genre.",
-        "slide1Title": "Built around you",
-        "slide1Body": "Tell the Oracle what you're after and how much time you have — it drafts a plan made specifically for you.",
-        "slide2Title": "Watch it come together",
-        "slide2Body": "Track your progress at a glance and move books straight from your plan into your read-next queue."
-      },
-      "friends": {
-        "number": "04",
-        "title": "Friends & Activity",
-        "subtitle": "See what your people are reading",
-        "description": "Follow friends, watch their shelves fill, and turn “what should I read next” into a conversation instead of a guess.",
-        "slide1Title": "A living feed",
-        "slide1Body": "See what friends finish, start, and rate as it happens.",
-        "slide2Title": "Peek at their shelves",
-        "slide2Body": "Open a friend's profile to browse their recent reads.",
-        "slide3Title": "Curated lists",
-        "slide3Body": "Build a list with — or for — your friends, and share it publicly or keep it just for you."
-      },
-      "stats": {
-        "number": "05",
-        "title": "Stats & Goals",
-        "subtitle": "Watch your reading year take shape",
-        "description": "A yearly goal, your pace, and the genres you actually gravitate toward — gentle numbers that reward the habit instead of nagging you.",
-        "slide1Title": "Set a yearly goal",
-        "slide1Body": "Watch your progress build alongside the genres you keep coming back to.",
-        "slide2Title": "See your pace",
-        "slide2Body": "A month-by-month chart reveals the shape of your reading year.",
-        "slide3Title": "Keep the streak",
-        "slide3Body": "Small daily wins add up — and the streak keeps you honest."
-      },
-      "clubs": {
-        "number": "06",
-        "title": "Book Clubs",
-        "subtitle": "Read together, session by session",
-        "description": "Create a club or discover one, set a reading pace, and discuss each session without spoilers racing ahead of the group.",
-        "slide1Title": "Powered by the Oracle",
-        "slide1Body": "Let the Oracle draft a smart poll for your next pick, or discussion prompts for your next session.",
-        "slide2Title": "Inside a session",
-        "slide2Body": "See the current book, which chapters are in play, and who's along for the ride.",
-        "slide3Title": "Discover clubs",
-        "slide3Body": "Find groups by taste and pace, then join in a single tap.",
-        "slide4Title": "Spoiler-safe, always",
-        "slide4Body": "Discussion threads unlock session by session, so nobody races ahead of the group."
-      }
-    },
-    "howItWorks": {
-      "eyebrow": "How it works",
-      "heading": "Three steps to your next favorite book",
-      "step1Title": "Tell the Oracle your taste",
-      "step1Body": "Genres, moods, the books you already love.",
-      "step2Title": "Get picks, build your shelf",
-      "step2Body": "Personalized recommendations, straight into your library.",
-      "step3Title": "Read, track, discuss",
-      "step3Body": "Log progress, join a club, talk it over with friends."
-    },
-    "pricing": {
-      "eyebrow": "Pricing",
-      "heading": "Free means free",
-      "note": "No credit card to sign up — ever.",
-      "freeName": "Free",
-      "freePrice": "$0",
-      "proName": "Pro",
-      "proPrice": "$5.99/mo",
-      "row1": "Wishlist, library, reading plans",
-      "row2": "Book clubs",
-      "row3": "Oracle recommendations",
-      "row3Free": "Limited monthly calls",
-      "row3Pro": "5 calls per day",
-      "row4": "Reading stats & goals"
-    },
-    "founder": {
-      "eyebrow": "Built by readers",
-      "heading": "Built by readers, for readers",
-      "body": "The Oracle started as one person's attempt to stop losing track of what to read next. It grew into a full reading companion — built the way we always wished a reading app already worked."
-    },
-    "faq": {
-      "eyebrow": "Questions",
-      "heading": "Before you dive in",
-      "q1": "Is it free to use?",
-      "a1": "Yes — creating an account, building your library, and getting recommendations from the Oracle costs nothing. No credit card required.",
-      "q2": "Can I import my existing Goodreads library?",
-      "a2": "Yes. Bring your Goodreads export and the Oracle sorts it straight into your wishlist and library.",
-      "q3": "Is my reading data private?",
-      "a3": "Your library is private by default. You choose what to share with friends — nothing is public unless you make it so.",
-      "q4": "Can I use it in Spanish?",
-      "a4": "Sí — the Oracle speaks full Spanish, and you can switch languages anytime from the footer.",
-      "q5": "How does the Oracle make recommendations?",
-      "a5": "It reads your genres, moods, and the books you've rated, then match-scores your library instead of pushing whatever's trending.",
-      "q6": "Can I read with friends who don't have an account yet?",
-      "a6": "Yes — invite them to a book club or share a list with a link; they can view it before they sign up."
-    },
-    "finalCta": {
-      "heading": "Your next book is waiting.",
-      "sub": "Join free and let the Oracle get to know your shelf.",
-      "ctaPrimary": "Start reading free",
-      "ctaSecondary": "Log in"
-    },
-    "footer": {
-      "languageLabel": "Language"
+      "signup": "Start reading free",
+      "auth": "Register or log in"
     },
     "mobileNav": {
       "menuLabel": "Quick links"
+    },
+    "act1": {
+      "eyebrow": "A reading companion",
+      "opening": "Three hundred books on your list. Which one will you read tonight?",
+      "consideration": "The Oracle knows your shelf.",
+      "reveal": "From your own shelf, the Oracle found tonight's book.",
+      "cardName": "The Revelation",
+      "cardMeaning": "Your next book, found — with reasons.",
+      "scrollHint": "Scroll to consult the Oracle",
+      "beyond": "This is how the Oracle guides a reader.",
+      "decoyRibbon": "Bestseller",
+      "decoy1": "The One Everyone Is Reading",
+      "decoy2": "This Year's Sensation",
+      "decoy3": "Now a Major Motion Picture",
+      "decoy4": "As Seen Absolutely Everywhere"
+    },
+    "rite1": {
+      "index": "Rite I — The Suggestion",
+      "title": "The Oracle reads your shelf",
+      "body": "Ranked suggestions drawn from your own wishlist and library — your moods, your threads, your taste. Every suggestion tells you why.",
+      "mockTitle": "Read Next",
+      "mockStatus": "3 suggestions",
+      "pick1Title": "If We Were Villains",
+      "pick1Why": "Because The Secret History left a wound only theatre can close.",
+      "pick2Title": "Babel",
+      "pick2Why": "Your shelf leans academic; this one burns the academy down.",
+      "pick3Title": "The Shadow of the Wind",
+      "pick3Why": "A book about books, for a reader who plans by candlelight."
+    },
+    "rite2": {
+      "index": "Rite II — The Path",
+      "title": "One book is a night. A plan is a journey.",
+      "body": "Turn a stack into a path. The Oracle orders your plan, paces you, and keeps the thread drawn from the book you're reading to the one waiting next.",
+      "mockTitle": "Reading Plan",
+      "mockStatus": "4 books",
+      "caption": "2 of 4 · on pace",
+      "state": {
+        "read": "Read",
+        "reading": "Reading",
+        "ahead": "Ahead"
+      }
+    },
+    "companions": {
+      "eyebrow": "The Companions",
+      "title": "Eight quiet companions",
+      "sortingTitle": "Self-sorting shelves",
+      "sortingBody": "The Oracle names genres and series for every book you add. No hand-tagging.",
+      "clubsTitle": "Book Clubs",
+      "clubsBody": "Sessions, polls, and shared marginalia. Read alone, together.",
+      "seriesTitle": "Series & Shelves",
+      "seriesBody": "Series tracked automatically; wishlist, library, and currently-reading always in order.",
+      "vaultTitle": "The Vault",
+      "vaultBody": "A curated catalog of proven titles, open before you add a single book.",
+      "listsTitle": "Lists & Friends",
+      "listsBody": "Share lists, follow friends, see what your circle is reading.",
+      "bilingualTitle": "English & Español",
+      "bilingualBody": "Every page, every rite, every release note — in both languages.",
+      "shareTitle": "Share cards",
+      "shareBody": "Turn a finished book into a card worth posting — framed, sigiled, ready for social media.",
+      "categoriesTitle": "Your categories, your lists",
+      "categoriesBody": "Shape shelves your way: custom categories and curated lists you build and share."
+    },
+    "offering": {
+      "eyebrow": "The Offering",
+      "title": "Two ways to consult",
+      "sub": "Begin freely. When you want the Oracle's full attention, take the deeper rite.",
+      "perMonth": "/ month",
+      "seekerTag": "Free, forever",
+      "seekerName": "The Seeker",
+      "seekerPrice": "$0",
+      "seekerRow1": "Wishlist & library, unlimited books",
+      "seekerRow2": "Reading plans, book clubs & friends",
+      "seekerRow3": "5 Oracle suggestions per month, each with reasons",
+      "seekerRow4": "Browse the Vault's curated catalog",
+      "seekerRow5": "Full EN / ES experience",
+      "seekerCta": "Begin as a Seeker",
+      "adeptTag": "The full rite",
+      "adeptName": "The Adept",
+      "adeptPrice": "$5.99",
+      "adeptRow1": "Everything in the Seeker",
+      "adeptRow2": "Five Oracle suggestions a day, instead of five a month",
+      "adeptRow3": "Consult the Rites as often as you read",
+      "adeptRow4": "Early access to new rites",
+      "adeptCta": "Become an Adept"
+    },
+    "questions": {
+      "title": "Questions for the Oracle",
+      "q1": "What is The Books Oracle?",
+      "a1": "A reading companion. You keep your wishlist and library in it; the Oracle categorizes your books, tracks your series and plans, and finds — with reasons — the book you might read next. The choice is always yours. Think of it as a librarian with a taste for divination.",
+      "q2": "How does the Oracle categorize my books?",
+      "a2": "Behind the curtain, the Oracle is powered by AI. It reads your books' titles and authors, identifies genres from a curated taxonomy, links series, and writes short descriptions — in batches, so even a wishlist of hundreds is sorted in minutes.",
+      "q3": "Is my reading data private?",
+      "a3": "Your wishlist, library, and plans belong to you alone. Only what you explicitly share — lists, club activity — is visible to others, and only to the people you choose.",
+      "q4": "What is the Vault?",
+      "a4": "The Oracle's own curated catalog: around a thousand proven titles maintained by its keeper. New visitors can explore it before adding a single book of their own — a library that comes furnished.",
+      "q5": "Does it work in Spanish?",
+      "a5": "Completamente. Every page, feature, and release note exists in both English and Spanish. The Oracle is bilingual by birth, not by translation afterthought.",
+      "q6": "What do I get as an Adept?",
+      "a6": "Five Oracle suggestions every day instead of five per month — the same reasons behind each one — plus early access to new rites. The Seeker tier remains free forever."
+    },
+    "epilogue": {
+      "title": "Your card is still drawn.",
+      "cta": "Claim your reading",
+      "sub": "Free while in beta · EN / ES"
+    },
+    "rite3": {
+      "index": "Rite III — The Record",
+      "title": "The Oracle remembers every page",
+      "body": "Stats, streaks, and goals kept as you read; titles granted by the Oracle alone, earned book by book. The more it remembers of your reading, the sharper its suggestions become.",
+      "mockTitle": "The Record",
+      "mockStatus": "MMXXVI",
+      "statBooks": "Books read",
+      "statStreak": "Week streak",
+      "statGoal": "Yearly goal",
+      "titleWorn": "Archivist",
+      "titleNext": "13 books to Keeper",
+      "memory": "The Oracle remembers — every verdict, every reason, every book you loved."
     }
   },
   "pwa": {

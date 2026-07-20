@@ -11,7 +11,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from '../lib/RouterContext';
 import { useT } from '../lib/I18nContext';
 
-export default function LandingNav({ onOpenAuth }) {
+export default function LandingNav({ onOpenAuth, dark = false }) {
   const { route, go } = useRouter();
   const t = useT();
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -43,7 +43,7 @@ export default function LandingNav({ onOpenAuth }) {
     <nav className={`lp-nav${scrolled ? ' lp-nav--scrolled' : ''}`} role="navigation" aria-label="Main navigation">
       <div className="lp-nav__inner">
         <button className="lp-nav__brand" onClick={() => go('dashboard')} aria-label="The Books Oracle — Home">
-          <img src="/logo-light-mode.png" alt="" className="lp-nav__logo-img" />
+          <img src={dark ? '/logo-dark-mode.png' : '/logo-light-mode.png'} alt="" className="lp-nav__logo-img" />
           <span className="lp-nav__brand-text">The <span>Books</span> Oracle</span>
         </button>
 
@@ -54,10 +54,11 @@ export default function LandingNav({ onOpenAuth }) {
           <button className="lp-nav__link" onClick={() => { setMobileOpen(false); go('about'); }}>{t('landing.nav.about')}</button>
         </div>
 
+        {/* One auth entry point — login and signup share the same SignInGate
+            modal, so two buttons were two names for the same door. */}
         <div className="lp-nav__actions">
-          <button className="lp-nav__login" onClick={() => onOpenAuth?.('login')}>{t('landing.nav.login')}</button>
-          <button className="btn-accent btn--sm lp-nav__signup" onClick={() => onOpenAuth?.('signup')}>
-            {t('landing.nav.signup')}
+          <button className="btn-accent btn--sm lp-nav__signup" onClick={() => onOpenAuth?.('login')}>
+            {t('landing.nav.auth')}
           </button>
         </div>
 
@@ -80,11 +81,8 @@ export default function LandingNav({ onOpenAuth }) {
           ))}
           <button className="lp-nav__mobile-link" onClick={() => { setMobileOpen(false); go('about'); }}>{t('landing.nav.about')}</button>
           <div className="lp-nav__mobile-actions">
-            <button className="btn-secondary btn--block" onClick={() => { setMobileOpen(false); onOpenAuth?.('login'); }}>
-              {t('landing.nav.login')}
-            </button>
-            <button className="btn-accent btn--block" onClick={() => { setMobileOpen(false); onOpenAuth?.('signup'); }}>
-              {t('landing.nav.signup')}
+            <button className="btn-accent btn--block" onClick={() => { setMobileOpen(false); onOpenAuth?.('login'); }}>
+              {t('landing.nav.auth')}
             </button>
           </div>
         </div>

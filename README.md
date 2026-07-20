@@ -4,7 +4,7 @@ A reading companion — wishlist, library, reading plans, book clubs, and an AI-
 for book discovery. Built with React + Vite + SCSS, backed by Supabase for auth
 and cross-device sync, and Netlify Functions for API proxying.
 
-> Current version: **v0.52** — see [Releases](#releases) below for changelog.
+> Current version: **v0.53** — see [Releases](#releases) below for changelog.
 > Upgrading from an earlier version? Check the matching `MIGRATION_*.md` / `UPDATE_*.md`.
 
 ---
@@ -449,6 +449,18 @@ its normal one-file-at-a-time watch flow. It's a dev-server cache hiccup, not
 a real bug — a production build (`npm run build`) compiles clean, and a
 dev-server restart (or hard browser reload) clears it.
 
+
+### v0.53 — Story landing (the scroll is the reading)
+
+Full rebuild of the public landing page per `LANDING_STORY_SPEC.md`: one continuous story — a reader lost in their TBR is guided by the Oracle to their next book, along a path, to the moment they claim it. Replaces the section-by-section marketing page AND the session-gated intro: `OracleIntro.jsx` (30s overlay + skip) and `ConstellationThread.jsx` are deleted, absorbed into the page itself. There is no gate and no curtain — the scroll *is* the reading.
+
+**Stack.** `gsap` + `@gsap/react` (`useGSAP` scoped cleanup) + ScrollTrigger, `lenis` smooth scroll driven by the single `gsap.ticker` (`lagSmoothing(0)`). New components under `src/components/landing/`: `OracleCard` (one shared card language — 2:3, gold border, inner frame, sigil/serif name/mono meaning; variants `back|front|mini|tier|cta`), `useCardTilt` (pointer tilt + travelling glare on `gsap.quickTo` springs; self-disables on touch and reduced motion), `burst.js` (gold spark burst — used exactly twice by design: the Act I reveal and the Epilogue claim), `GoldThread` (ONE document-spanning SVG path; ignites at the chosen card, terminates into the Epilogue card, scrubbed via dashoffset, rebuilt from live anchor rects on every `ScrollTrigger.refresh`), `ActSpread` (pinned hero theater, ~300% depth / 220% mobile: five-card fan → consideration → flip → burst → zoom-through → beyond copy), `RiteSuggestion` (three mini-cards dealt face-down, flipped into ranked suggestions with reasons), `RitePath` (plan-as-constellation; the global thread routes through its four star-nodes), `RiteRecord` (Rite III — reading memory, stats, streak, goal bar, and the app-granted title ladder as the Oracle's remembered chronicle; numbers count up on enter), `Companions` (six tiles + faint connection lines between related tiles), `Offering` (two tarot tier cards; quotas/pricing use the LIVE values — Seeker 5 suggestions/month, Adept 5/day at $5.99 — not the v4 prototype's "unlimited" placeholder), `Questions` (accordion; first answer rewritten to the voice rule: the Oracle *finds and suggests*, the reader chooses), `Claim` (the card is the CTA `<button>`; plain text button below for a11y/mobile).
+
+**Views/chrome.** `Landing.jsx` is now composition + Lenis provider + thread-anchor wiring; nav anchor ids (`lp-features`, `lp-pricing`) and the `?anchor=`/`?auth=` deep links survive. `LandingNav` gains a `dark` prop (dark logo + ink chrome via re-declared `--ro-*` tokens in `_landing-story.scss`); legal pages keep parchment untouched. JSON-LD FAQ entities now read `landing.questions.*`.
+
+**i18n.** The whole `landing.*` subtree is rebuilt (both catalogs): `act1`, `rite1`, `rite2`, `companions`, `offering`, `questions`, `epilogue` (+ kept `nav`/`mobileNav`). Old `hero/problem/features/howItWorks/pricing/founder/faq/finalCta/intro` keys removed — they had no remaining consumers.
+
+**Cross-cutting.** Reduced motion ⇒ no pin, no scrub, no Lenis, chosen card face-up, thread fully drawn at 0.15 opacity, FAQ toggles instantly (`.is-static` + `prefers-reduced-motion` CSS). Mobile: 220% pin, five-card spread collapses to three under 640px, tilt disabled on touch. Transforms/opacity only in scrubbed timelines; no hotlinked images (everything CSS/SVG — the Wikimedia library photos are gone); all copy is real DOM text, h1→h2 follows the acts. Fonts: IBM Plex Mono added to the landing Google-Fonts link (Instrument Serif was already loaded).
 
 ### v0.52 — Avatars (Google photo fix + preset sigils)
 

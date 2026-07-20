@@ -16,9 +16,26 @@
 
 // The version label shown as "current" — keep in sync with package.json and
 // the README version line.
-export const CURRENT_VERSION = 'v0.52';
+export const CURRENT_VERSION = 'v0.53';
 
 export const RELEASES = [{
+    version: 'v0.53',
+    date: '2026-07-20',
+    titleEn: 'The scroll is the reading',
+    titleEs: 'El desplazamiento es la lectura',
+    bodyEn: [
+      'The landing page now tells one continuous story: five cards fanned across the dark, the Oracle considers your shelf, one card turns — and a gold thread guides you from that reveal, through the Rites, all the way to the card you claim at the end.',
+      'No more intro curtain: the 30-second overlay and its skip button are gone. The story plays as you scroll, and scrolling back replays it.',
+      'Three Rites now: Suggestions dealt as cards with their reasons, Reading Plans as a constellation the thread draws through, and The Record — your stats, streaks, and Oracle-granted titles, remembered.',
+      'Prefer reduced motion? The whole page renders complete and still — same story, no animation. And as always: every word in English y en español.',
+    ],
+    bodyEs: [
+      'La página de inicio ahora cuenta una sola historia continua: cinco cartas abiertas en la oscuridad, el Oráculo considera tu estantería, una carta se voltea — y un hilo dorado te guía desde esa revelación, por los Ritos, hasta la carta que reclamas al final.',
+      'Se acabó el telón de entrada: el intro de 30 segundos y su botón de saltar ya no existen. La historia avanza mientras te desplazas, y volver atrás la repite.',
+      'Ahora son tres Ritos: las sugerencias repartidas como cartas con sus razones, los Planes de Lectura como una constelación que el hilo atraviesa, y El Registro — tus estadísticas, rachas y títulos otorgados por el Oráculo, recordados.',
+      '¿Prefieres menos movimiento? La página entera se muestra completa y quieta — la misma historia, sin animación. Y como siempre: cada palabra in English y en español.',
+    ],
+  }, {
     version: 'v0.52',
     date: '2026-07-18',
     titleEn: 'A face for every reader',

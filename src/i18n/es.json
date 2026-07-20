@@ -1644,184 +1644,133 @@
     }
   },
   "landing": {
-    "intro": {
-      "ariaLabel": "The Books Oracle — la lectura del Oráculo",
-      "line1": "Cualquiera puede mostrarte los más vendidos.",
-      "q1": "¿Pero saben lo que realmente anhelas?",
-      "q2": "¿Pueden seguir el hilo de cada libro que has amado?",
-      "q3": "¿Te ayudan a leer más profundo, no solo más?",
-      "q4": "¿Encontrarían el que nadie pensó en mostrarte?",
-      "reads": "El Oráculo te lee.",
-      "tagline": "Tu próximo libro, presagiado.",
-      "reject1": "El que todos están leyendo",
-      "reject2": "La sensación del año",
-      "reject3": "Ahora una gran película",
-      "reject4": "Visto absolutamente en todas partes",
-      "ribbon": "Bestseller",
-      "pickTitle": "El volumen destinado a ti",
-      "pickMatch": "93% de afinidad",
-      "skip": "Saltar",
-      "continue": "Entrar a la biblioteca",
-      "logoAlt": "The Books Oracle"
-    },
     "nav": {
       "features": "Funciones",
       "pricing": "Precios",
       "about": "Acerca de",
       "login": "Iniciar sesión",
-      "signup": "Empezar gratis"
-    },
-    "hero": {
-      "eyebrow": "Un compañero de lectura para el alma dark academia",
-      "headline": "Un Oráculo que sabe qué te va a encantar después.",
-      "subheadline": "Lleva el registro de lo que has leído, recibe recomendaciones que sí encajan con tu gusto, y lee acompañado en vez de solo.",
-      "ctaPrimary": "Empezar gratis",
-      "ctaSecondary": "Ver cómo funciona",
-      "imageAlt": "El panel de The Books Oracle — meta de lectura, lecturas en curso y recomendaciones del Oráculo"
-    },
-    "problem": {
-      "eyebrow": "El problema",
-      "heading": "Leer no debería sentirse como un segundo trabajo",
-      "point1": "Tu próximo libro está repartido entre una lista de deseos, un estante de Goodreads y una nota en el celular que nunca vas a volver a abrir.",
-      "point2": "Los feeds algorítmicos están optimizados para mantenerte enganchado, no para conocerte — recomendaciones que persiguen tendencias, no tu gusto.",
-      "point3": "Leer se volvió solitario por defecto, no por elección — no hay una forma fácil de leer *con* otras personas."
-    },
-    "features": {
-      "eyebrow": "Qué incluye",
-      "heading": "Un recorrido, no una promesa",
-      "subheading": "Todo lo de abajo ya está construido y funcionando en la app.",
-      "oracle": {
-        "number": "01",
-        "title": "El Oráculo",
-        "subtitle": "Recomendaciones que te entienden",
-        "description": "Dile al Oráculo tus géneros y tu ánimo, y él lee tu biblioteca como un bibliotecario que te conoce — selecciones con puntaje de afinidad, no una lista de bestsellers.",
-        "slide1Title": "Por género",
-        "slide1Body": "Elige un género y una fuente — tu lista de deseos, la Bóveda, o el propio Oráculo — y recibe un libro nuevo en segundos.",
-        "slide2Title": "Por otros libros",
-        "slide2Body": "Cuéntanos qué libros has amado, y el Oráculo encuentra lo que pertenece junto a ellos en tu estante.",
-        "slide3Title": "Pregunta en lenguaje natural",
-        "slide3Body": "Describe un ánimo — una tarde lluviosa y gótica — y el Oráculo te devuelve cuatro selecciones basadas en tu gusto."
-      },
-      "readingLife": {
-        "number": "02",
-        "title": "Tu vida lectora",
-        "subtitle": "Todo lo que estás leyendo, en un solo lugar",
-        "description": "Lista de deseos, lecturas en curso con progreso, y tu biblioteca completa — se acabaron las notas dispersas y las pestañas olvidadas.",
-        "slide1Title": "Toda tu biblioteca",
-        "slide1Body": "Cada libro que has guardado, de portada a portada, en un solo lugar navegable.",
-        "slide2Title": "Tu lista de deseos, de un vistazo",
-        "slide2Body": "Agrega libros con un toque y navega tu lista de deseos por categorías cuando te dé el antojo.",
-        "slide3Title": "Categorías personalizadas",
-        "slide3Body": "Etiqueta tus libros a tu manera, y encuéntralos siempre agrupados como realmente los piensas.",
-        "slide4Title": "Lecturas en curso, con seguimiento",
-        "slide4Body": "Registra las páginas a medida que avanzas y mira crecer la barra de progreso — retoma exactamente donde quedaste, siempre."
-      },
-      "plans": {
-        "number": "03",
-        "title": "Planes de lectura",
-        "subtitle": "Planifica tu lectura, mes a mes",
-        "description": "Deja que el Oráculo arme un plan de lectura para subir de nivel, terminar una saga, o arrancar en un género nuevo.",
-        "slide1Title": "Hecho a tu medida",
-        "slide1Body": "Dile al Oráculo qué buscas y de cuánto tiempo dispones — él arma un plan diseñado específicamente para ti.",
-        "slide2Title": "Mira tu progreso tomar forma",
-        "slide2Body": "Revisa tu avance de un vistazo y mueve libros directo de tu plan a tu lista de próximas lecturas."
-      },
-      "friends": {
-        "number": "04",
-        "title": "Amigos y actividad",
-        "subtitle": "Mira qué está leyendo tu gente",
-        "description": "Sigue a tus amigos, mira sus estantes llenarse, y convierte el “qué leo después” en una conversación en vez de una adivinanza.",
-        "slide1Title": "Un feed vivo",
-        "slide1Body": "Mira qué terminan, empiezan y califican tus amigos en el momento en que sucede.",
-        "slide2Title": "Un vistazo a sus estantes",
-        "slide2Body": "Abre el perfil de un amigo para explorar sus lecturas recientes.",
-        "slide3Title": "Listas curadas",
-        "slide3Body": "Arma una lista con — o para — tus amigos, y compártela en público o guárdala solo para ti."
-      },
-      "stats": {
-        "number": "05",
-        "title": "Estadísticas y metas",
-        "subtitle": "Mira tu año lector tomar forma",
-        "description": "Una meta anual, tu ritmo, y los géneros a los que realmente vuelves — números amables que premian el hábito en vez de sermonearte.",
-        "slide1Title": "Fija una meta anual",
-        "slide1Body": "Mira tu progreso crecer junto a los géneros a los que sigues volviendo.",
-        "slide2Title": "Mira tu ritmo",
-        "slide2Body": "Un gráfico mes a mes revela la forma de tu año lector.",
-        "slide3Title": "Mantén la racha",
-        "slide3Body": "Pequeñas victorias diarias se acumulan — y la racha te mantiene honesto."
-      },
-      "clubs": {
-        "number": "06",
-        "title": "Clubes de lectura",
-        "subtitle": "Lean juntos, sesión por sesión",
-        "description": "Crea un club o descubre uno, define un ritmo de lectura, y discutan cada sesión sin que los spoilers se adelanten al grupo.",
-        "slide1Title": "Impulsado por el Oráculo",
-        "slide1Body": "Deja que el Oráculo arme una encuesta inteligente para tu próxima elección, o preguntas de discusión para tu próxima sesión.",
-        "slide2Title": "Dentro de una sesión",
-        "slide2Body": "Mira el libro actual, qué capítulos están en juego, y quién más va en el viaje.",
-        "slide3Title": "Descubre clubes",
-        "slide3Body": "Encuentra grupos por gusto y ritmo, y únete con un solo toque.",
-        "slide4Title": "Sin spoilers, siempre",
-        "slide4Body": "Los hilos de discusión se desbloquean sesión por sesión, para que nadie se adelante al grupo."
-      }
-    },
-    "howItWorks": {
-      "eyebrow": "Cómo funciona",
-      "heading": "Tres pasos hacia tu próximo libro favorito",
-      "step1Title": "Cuéntale al Oráculo tu gusto",
-      "step1Body": "Géneros, ánimos, los libros que ya amas.",
-      "step2Title": "Recibe selecciones, arma tu estante",
-      "step2Body": "Recomendaciones personalizadas, directo a tu biblioteca.",
-      "step3Title": "Lee, sigue tu progreso, discute",
-      "step3Body": "Registra tu avance, únete a un club, coméntalo con amigos."
-    },
-    "pricing": {
-      "eyebrow": "Precios",
-      "heading": "Gratis significa gratis",
-      "note": "Sin tarjeta de crédito para registrarte — nunca.",
-      "freeName": "Gratis",
-      "freePrice": "$0",
-      "proName": "Pro",
-      "proPrice": "$5.99/mes",
-      "row1": "Lista de deseos, biblioteca, planes de lectura",
-      "row2": "Clubes de lectura",
-      "row3": "Recomendaciones del Oráculo",
-      "row3Free": "Consultas mensuales limitadas",
-      "row3Pro": "5 consultas por día",
-      "row4": "Estadísticas y metas de lectura"
-    },
-    "founder": {
-      "eyebrow": "Hecho por lectores",
-      "heading": "Hecho por lectores, para lectores",
-      "body": "El Oráculo empezó como el intento de una persona por dejar de perder el rastro de qué leer después. Creció hasta convertirse en un compañero de lectura completo — construido como siempre quisimos que funcionara una app de lectura."
-    },
-    "faq": {
-      "eyebrow": "Preguntas",
-      "heading": "Antes de empezar",
-      "q1": "¿Es gratis?",
-      "a1": "Sí — crear una cuenta, armar tu biblioteca y recibir recomendaciones del Oráculo no cuesta nada. No se pide tarjeta de crédito.",
-      "q2": "¿Puedo importar mi biblioteca de Goodreads?",
-      "a2": "Sí. Trae tu exportación de Goodreads y el Oráculo la organiza directo en tu lista de deseos y tu biblioteca.",
-      "q3": "¿Mis datos de lectura son privados?",
-      "a3": "Tu biblioteca es privada por defecto. Tú eliges qué compartir con tus amigos — nada es público a menos que tú lo decidas.",
-      "q4": "¿Puedo usarlo en español?",
-      "a4": "Sí — el Oráculo habla español completo, y puedes cambiar de idioma cuando quieras desde el pie de página.",
-      "q5": "¿Cómo hace el Oráculo sus recomendaciones?",
-      "a5": "Lee tus géneros, tus ánimos y los libros que has calificado, y luego busca coincidencias en tu biblioteca en vez de empujarte lo que está de moda.",
-      "q6": "¿Puedo leer con amigos que todavía no tienen cuenta?",
-      "a6": "Sí — invítalos a un club de lectura o comparte una lista con un enlace; pueden verla antes de registrarse."
-    },
-    "finalCta": {
-      "heading": "Tu próximo libro te está esperando.",
-      "sub": "Únete gratis y deja que el Oráculo conozca tu estante.",
-      "ctaPrimary": "Empezar gratis",
-      "ctaSecondary": "Iniciar sesión"
-    },
-    "footer": {
-      "languageLabel": "Idioma"
+      "signup": "Empezar gratis",
+      "auth": "Regístrate o inicia sesión"
     },
     "mobileNav": {
       "menuLabel": "Enlaces rápidos"
+    },
+    "act1": {
+      "eyebrow": "Un compañero de lectura",
+      "opening": "Trescientos libros en tu lista. ¿Cuál eliges leer esta noche?",
+      "consideration": "El Oráculo conoce tu estantería.",
+      "reveal": "De tu propia estantería, el Oráculo encontró el libro de esta noche.",
+      "cardName": "La Revelación",
+      "cardMeaning": "Tu próximo libro, encontrado — con razones.",
+      "scrollHint": "Desliza para consultar al Oráculo",
+      "beyond": "Así guía el Oráculo a quien lee.",
+      "decoyRibbon": "Bestseller",
+      "decoy1": "El que todos están leyendo",
+      "decoy2": "La sensación del año",
+      "decoy3": "Ahora una gran película",
+      "decoy4": "Visto absolutamente en todas partes"
+    },
+    "rite1": {
+      "index": "Rito I — La Sugerencia",
+      "title": "El Oráculo lee tu estantería",
+      "body": "Sugerencias ordenadas a partir de tu propia lista y biblioteca: tus ánimos, tus hilos, tu gusto. Cada sugerencia te dice por qué.",
+      "mockTitle": "Próxima lectura",
+      "mockStatus": "3 sugerencias",
+      "pick1Title": "If We Were Villains",
+      "pick1Why": "Porque The Secret History dejó una herida que solo el teatro puede cerrar.",
+      "pick2Title": "Babel",
+      "pick2Why": "Tu estantería tiende a lo académico; este libro incendia la academia.",
+      "pick3Title": "La sombra del viento",
+      "pick3Why": "Un libro sobre libros, para quien planea sus lecturas a la luz de una vela."
+    },
+    "rite2": {
+      "index": "Rito II — El Camino",
+      "title": "Un libro es una noche. Un plan es un viaje.",
+      "body": "Convierte una pila en un camino. El Oráculo ordena tu plan, marca tu ritmo y mantiene el hilo tendido entre el libro que lees y el que espera.",
+      "mockTitle": "Plan de lectura",
+      "mockStatus": "4 libros",
+      "caption": "2 de 4 · a buen ritmo",
+      "state": {
+        "read": "Leído",
+        "reading": "Leyendo",
+        "ahead": "Por delante"
+      }
+    },
+    "companions": {
+      "eyebrow": "Los Compañeros",
+      "title": "Ocho compañeros silenciosos",
+      "sortingTitle": "Estanterías que se ordenan solas",
+      "sortingBody": "El Oráculo asigna géneros y series a cada libro que añades. Sin etiquetar a mano.",
+      "clubsTitle": "Clubes de lectura",
+      "clubsBody": "Sesiones, encuestas y notas compartidas. Leer en soledad, en compañía.",
+      "seriesTitle": "Series y estanterías",
+      "seriesBody": "Series al día automáticamente; lista, biblioteca y lectura actual siempre en orden.",
+      "vaultTitle": "La Bóveda",
+      "vaultBody": "Un catálogo curado de títulos probados, abierto antes de añadir un solo libro.",
+      "listsTitle": "Listas y amistades",
+      "listsBody": "Comparte listas, sigue a tus amistades, mira qué lee tu círculo.",
+      "bilingualTitle": "Inglés y español",
+      "bilingualBody": "Cada página, cada rito, cada nota de versión — en ambos idiomas.",
+      "shareTitle": "Tarjetas para compartir",
+      "shareBody": "Convierte un libro terminado en una tarjeta digna de publicar — enmarcada, con su sigilo, lista para redes.",
+      "categoriesTitle": "Tus categorías, tus listas",
+      "categoriesBody": "Ordena a tu manera: categorías propias y listas curadas que creas y compartes."
+    },
+    "offering": {
+      "eyebrow": "La Ofrenda",
+      "title": "Dos formas de consultar",
+      "sub": "Empieza gratis. Cuando quieras la atención plena del Oráculo, toma el rito profundo.",
+      "perMonth": "/ mes",
+      "seekerTag": "Gratis, para siempre",
+      "seekerName": "El Buscador",
+      "seekerPrice": "$0",
+      "seekerRow1": "Lista de deseos y biblioteca, libros sin límite",
+      "seekerRow2": "Planes de lectura, clubes y amistades",
+      "seekerRow3": "5 sugerencias del Oráculo al mes, cada una con razones",
+      "seekerRow4": "Explora el catálogo curado de la Bóveda",
+      "seekerRow5": "Experiencia completa EN / ES",
+      "seekerCta": "Empieza como Buscador",
+      "adeptTag": "El rito completo",
+      "adeptName": "El Adepto",
+      "adeptPrice": "$5.99",
+      "adeptRow1": "Todo lo del Buscador",
+      "adeptRow2": "Cinco sugerencias del Oráculo al día, en vez de cinco al mes",
+      "adeptRow3": "Consulta los Ritos tanto como leas",
+      "adeptRow4": "Acceso anticipado a nuevos ritos",
+      "adeptCta": "Conviértete en Adepto"
+    },
+    "questions": {
+      "title": "Preguntas para el Oráculo",
+      "q1": "¿Qué es The Books Oracle?",
+      "a1": "Un compañero de lectura. Guardas en él tu lista de deseos y tu biblioteca; el Oráculo categoriza tus libros, sigue tus series y planes, y encuentra — con razones — el libro que podrías leer después. La elección siempre es tuya. Piensa en un bibliotecario con gusto por la adivinación.",
+      "q2": "¿Cómo categoriza mis libros el Oráculo?",
+      "a2": "Tras el telón, el Oráculo funciona con IA. Lee los títulos y autores de tus libros, identifica géneros de una taxonomía curada, enlaza series y escribe descripciones breves — por lotes, así que incluso una lista de cientos queda ordenada en minutos.",
+      "q3": "¿Mis datos de lectura son privados?",
+      "a3": "Tu lista, tu biblioteca y tus planes te pertenecen solo a ti. Únicamente lo que compartes de forma explícita — listas, actividad de clubes — es visible para otros, y solo para quienes tú elijas.",
+      "q4": "¿Qué es la Bóveda?",
+      "a4": "El catálogo curado del propio Oráculo: alrededor de mil títulos probados que mantiene su guardián. Quien llega puede explorarlo antes de añadir un solo libro propio — una biblioteca que viene amueblada.",
+      "q5": "¿Funciona en español?",
+      "a5": "Completamente. Cada página, función y nota de versión existe en inglés y en español. El Oráculo es bilingüe de nacimiento, no por traducción tardía.",
+      "q6": "¿Qué obtengo como Adepto?",
+      "a6": "Cinco sugerencias del Oráculo cada día en vez de cinco al mes — con las mismas razones detrás de cada una — más acceso anticipado a nuevos ritos. El nivel Buscador sigue siendo gratis para siempre."
+    },
+    "epilogue": {
+      "title": "Tu carta sigue sobre la mesa.",
+      "cta": "Reclama tu lectura",
+      "sub": "Gratis durante la beta · EN / ES"
+    },
+    "rite3": {
+      "index": "Rito III — El Registro",
+      "title": "El Oráculo recuerda cada página",
+      "body": "Estadísticas, rachas y metas que se llevan solas mientras lees; títulos que solo otorga el Oráculo, ganados libro a libro. Cuanto más recuerda de tu lectura, más afinadas son sus sugerencias.",
+      "mockTitle": "El Registro",
+      "mockStatus": "MMXXVI",
+      "statBooks": "Libros leídos",
+      "statStreak": "Semanas de racha",
+      "statGoal": "Meta anual",
+      "titleWorn": "Archivista",
+      "titleNext": "13 libros para Custodio",
+      "memory": "El Oráculo recuerda — cada veredicto, cada razón, cada libro que amaste."
     }
   },
   "pwa": {
