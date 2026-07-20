@@ -40,6 +40,7 @@ const LEDGER_ORNAMENT = {
   nth_book: '✺',
   genre_count: '⚜',
   new_genre: '✧',
+  female_authors_count: '⚘',
 };
 // Group order = significance order, matching the share-moment PRIORITY ladder.
 const LEDGER_GROUPS = [
@@ -48,6 +49,9 @@ const LEDGER_GROUPS = [
   { id: 'plans', kinds: ['plan_completed'] },
   { id: 'years', kinds: ['nth_book'] },
   { id: 'genres', kinds: ['genre_count', 'new_genre'] },
+  // v0.55: books by women — cross-genre, kept as its own shelf group rather
+  // than folded into 'genres' since it deliberately isn't one.
+  { id: 'authors', kinds: ['female_authors_count'] },
 ];
 
 function ledgerPlaqueLabel(entry, t) {
@@ -59,6 +63,7 @@ function ledgerPlaqueLabel(entry, t) {
     case 'nth_book': return t('ledger.nthLabel', { n: m.n, year: m.year });
     case 'genre_count': return t('ledger.genreCountLabel', { n: m.n, genre: m.genre });
     case 'new_genre': return t('ledger.newGenreLabel', { genre: m.genre });
+    case 'female_authors_count': return t('ledger.femaleAuthorsLabel', { n: m.n });
     default: return '';
   }
 }

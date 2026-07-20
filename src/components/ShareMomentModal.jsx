@@ -32,6 +32,7 @@ function momentShareText(moment, t) {
     case 'nth_book': return t('share.text.nth', { n: moment.n, year: moment.year });
     case 'genre_count': return t('share.text.genreCount', { n: moment.n, genre: moment.genre });
     case 'new_genre': return t('share.text.newGenre', { genre: moment.genre });
+    case 'female_authors_count': return t('share.text.femaleAuthors', { n: moment.n });
     case 'session_created': return t('share.text.sessionCreated', { book: moment.bookTitle, club: moment.clubName });
     case 'session_done': return t('share.text.sessionDone', { book: moment.bookTitle, club: moment.clubName });
     case 'book_completed':

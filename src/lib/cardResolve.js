@@ -16,6 +16,12 @@ export const MOMENT_SLUGS = {
   goal_completed:   'moment-goal',
   plan_completed:   'moment-plan',
   book_completed:   'moment-book',
+  // v0.55: 'female_authors_count' intentionally has no entry yet — art/frame
+  // pending. Once /public/cards/moment-female-authors/{frame,art-trim}.png
+  // exist and are added to CARD_GENRES, add
+  //   female_authors_count: 'moment-female-authors',
+  // here and the plain card in ShareCard.jsx upgrades to framed automatically
+  // — no other logic change needed.
 };
 
 // The asset-folder slug for a moment, or null if it has no framed variant.

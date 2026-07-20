@@ -4,11 +4,19 @@
 // left null for every book added via Hardcover/OpenLibrary/Goodreads/manual entry —
 // which is most of the catalog. Needed for accurate Match % scoring and, longer
 // term, for Reading Plans if they ever expand beyond the curated Vault).
+// v0.55 — also assigns author_gender, for the "books by women" accomplishment
+// (shareMoments.js / accomplishments.js). Deliberately NOT part of the GENRE
+// RULES below — author gender is an attribute of the author, not a thematic
+// classification, so it never touches genres/book_genres. Same batch call,
+// no extra API cost. See schema_v35_migration.sql for the column + the
+// guardrail this enforces: never guess from a name, only from a real public
+// signal, or return 'unknown'.
 //
 // WHAT IT DOES
 // Runs on books with status in ['unreviewed', 'incomplete'] — one Claude call
-// per batch of 20 returns genres, series info, a description, complexity, and
-// depth for each book. All five are written back to Supabase in the same pass.
+// per batch of 20 returns genres, series info, a description, complexity,
+// depth, and author gender for each book. All six are written back to
+// Supabase in the same pass.
 //
 // 'discovered' books are intentionally excluded: they haven't been added to
 // anyone's collection, so spending tokens on them isn't warranted.
@@ -114,6 +122,7 @@ For each book you will return:
 3. DESCRIPTION — a rich 2-4 sentence description in the style of a literary review
 4. COMPLEXITY — prose complexity, 1-5
 5. DEPTH — thematic/genre depth, 1-5
+6. AUTHOR GENDER — the author's gender, ONLY when you're confident from a real public signal
 
 GENRE RULES:
 - The existing catalog above is the source of truth. Read every description before deciding — a genre that looks unrelated by name alone (e.g. "International Fiction") may be exactly the right fit once you read what it actually covers.
@@ -150,6 +159,20 @@ themes (high depth, lower complexity) and vice versa.
 Always return an integer 1-5 for both COMPLEXITY and DEPTH — never null and
 never omit them, even when unsure; give your best-informed estimate.
 
+AUTHOR GENDER RULES (strict — read carefully, this is not like COMPLEXITY/DEPTH):
+- Return one of: "female", "male", "nonbinary", "mixed", "unknown".
+- Only return "female", "male", or "nonbinary" when you have a real, reliable
+  public signal: the author's own stated pronouns/identity, an official bio,
+  publisher copy, or a well-known interview. Being confident the name "sounds"
+  female or male is NOT a reliable signal — names are not a reliable indicator
+  of gender, and guessing from one risks misgendering a real person. If you
+  are not certain from an actual biographical fact, return "unknown".
+- Use "mixed" for books with multiple credited authors/editors whose genders
+  are not all the same (anthologies, co-authored nonfiction).
+- Unlike COMPLEXITY/DEPTH, "unknown" is a normal, expected, frequent answer
+  here — do not strain to produce a definite value. A wrong guess is worse
+  than an honest "unknown".
+
 EXISTING GENRE CATALOG (name: description):
 ${catalogList || '(empty — you are seeding the catalog)'}
 
@@ -161,7 +184,8 @@ RESPONSE FORMAT (JSON array, one object per book, in input order):
     "series": { "name": "Series Name", "n": 1, "total": 3 },
     "description": "Rich literary description here.",
     "complexity": 1-5,
-    "depth": 1-5
+    "depth": 1-5,
+    "authorGender": "female" | "male" | "nonbinary" | "mixed" | "unknown"
   }
 ]
 Return ONLY valid JSON. No preamble, no explanation, no markdown fences.`;
@@ -197,7 +221,17 @@ function sanitizeLevel(n) {
   return v;
 }
 
-async function writeBookEnrichment(bookId, genreIds, seriesData, description, complexity, depth) {
+const VALID_AUTHOR_GENDERS = new Set(['female', 'male', 'nonbinary', 'mixed', 'unknown']);
+
+// Anything the Oracle didn't return, or returned outside the allowed set, is
+// treated as null (never checked) rather than 'unknown' (checked, no signal) —
+// a malformed/missing response shouldn't be indistinguishable from a
+// deliberate "no reliable signal" answer.
+function sanitizeAuthorGender(v) {
+  return VALID_AUTHOR_GENDERS.has(v) ? v : null;
+}
+
+async function writeBookEnrichment(bookId, genreIds, seriesData, description, complexity, depth, authorGender) {
   // 1. Genres
   for (const genreId of genreIds) {
     const {
@@ -210,7 +244,10 @@ async function writeBookEnrichment(bookId, genreIds, seriesData, description, co
     if (error) console.warn('link_book_genre failed', bookId, genreId, error);
   }
 
-  // 2. Description, complexity, depth — only write fields the Oracle actually produced
+  // 2. Description, complexity, depth, author gender — only write fields the
+  // Oracle actually produced. author_gender_checked_at is stamped whenever
+  // authorGender is present (including 'unknown') so "checked, inconclusive"
+  // stays distinguishable from "never checked" (NULL) going forward.
   const enrichPatch = {
     ...(description ? {
       description
@@ -220,6 +257,11 @@ async function writeBookEnrichment(bookId, genreIds, seriesData, description, co
     } : {}),
     ...(depth != null ? {
       depth
+    } : {}),
+    ...(authorGender ? {
+      author_gender: authorGender,
+      author_gender_source: 'oracle_inferred',
+      author_gender_checked_at: new Date().toISOString(),
     } : {}),
   };
 
@@ -375,6 +417,7 @@ export async function runOracleCategorization({
         const description = item.description || null;
         const complexity = sanitizeLevel(item.complexity);
         const depth = sanitizeLevel(item.depth);
+        const authorGender = sanitizeAuthorGender(item.authorGender);
 
         await writeBookEnrichment(
           book.bookId,
@@ -382,7 +425,8 @@ export async function runOracleCategorization({
           seriesData,
           description,
           complexity,
-          depth
+          depth,
+          authorGender
         );
 
         batchAssignments.push({
@@ -392,6 +436,7 @@ export async function runOracleCategorization({
           description,
           complexity,
           depth,
+          authorGender,
         });
 
         processed++;

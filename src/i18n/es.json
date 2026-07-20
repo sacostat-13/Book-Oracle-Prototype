@@ -790,14 +790,16 @@
       "series": "Sagas completadas",
       "plans": "Planes de lectura",
       "years": "Hitos",
-      "genres": "Géneros"
+      "genres": "Géneros",
+      "authors": "Autoras"
     },
     "goalLabel": "Objetivo {year} · {goal} libros",
     "seriesLabel": "{series} · {total} libros",
     "planLabel": "{plan}",
     "nthLabel": "Libro n.º {n} de {year}",
     "genreCountLabel": "{n} en {genre}",
-    "newGenreLabel": "Primero en {genre}"
+    "newGenreLabel": "Primero en {genre}",
+    "femaleAuthorsLabel": "{n} libros de autoras"
   },
   "coachmark": {
     "dismiss": "Cerrar",
@@ -1326,6 +1328,9 @@
       "genreCountSub": "Hay estantes que exigen devoción.",
       "newGenreEyebrow": "Territorio nuevo",
       "newGenreSub": "Un primer paso en un género sin leer.",
+      "femaleAuthorsEyebrow": "Voces de mujeres",
+      "femaleAuthorsHeadline": "{n} libros de autoras",
+      "femaleAuthorsSub": "Un estante que recuerda quién lo escribió.",
       "sessionCreatedEyebrow": "Club de lectura — leyendo ahora",
       "sessionCreatedSub": "Sumate a {club} y leé con nosotros.",
       "sessionDoneEyebrow": "Club de lectura — sesión terminada",
@@ -1340,6 +1345,7 @@
       "nth": "Ya van {n} libros leídos en {year}. Registrado con The Books Oracle.",
       "genreCount": "{n} libros de {genre} leídos. The Books Oracle lleva la cuenta.",
       "newGenre": "Primer paso en {genre}. The Books Oracle me llevó hasta ahí.",
+      "femaleAuthors": "{n} libros de autoras, leídos y contados. The Books Oracle lleva la cuenta.",
       "sessionCreated": "Nuestro club de lectura {club} está leyendo \"{book}\" — sumate en The Books Oracle.",
       "sessionDone": "Nuestro club de lectura {club} acaba de terminar \"{book}\" en The Books Oracle.",
       "list": "\"{title}\" — una lista de lectura de {count} libros en The Books Oracle.",

@@ -4,7 +4,7 @@ A reading companion — wishlist, library, reading plans, book clubs, and an AI-
 for book discovery. Built with React + Vite + SCSS, backed by Supabase for auth
 and cross-device sync, and Netlify Functions for API proxying.
 
-> Current version: **v0.54** — see [Releases](#releases) below for changelog.
+> Current version: **v0.55** — see [Releases](#releases) below for changelog.
 > Upgrading from an earlier version? Check the matching `MIGRATION_*.md` / `UPDATE_*.md`.
 
 ---
@@ -449,6 +449,16 @@ its normal one-file-at-a-time watch flow. It's a dev-server cache hiccup, not
 a real bug — a production build (`npm run build`) compiles clean, and a
 dev-server restart (or hard browser reload) clears it.
 
+
+### v0.55 — Books by women accomplishment
+
+Adds `author_gender` to `books` (`schema_v35_migration.sql`) — deliberately NOT a genre: it's an attribute of the author, not a thematic classification, so it lives as its own column rather than going through `genres`/`book_genres`. Values: `female | male | nonbinary | mixed | unknown`, plus `author_gender_source` (`oracle_inferred | verified | self_identified`) and `author_gender_checked_at` for provenance, mirroring the existing `status`/`verified_*` pattern.
+
+**Fed by the Oracle, not guessed from names.** `oracleCategorizationService.js`'s existing batch call (genres/series/description/complexity/depth) now also returns `authorGender` in the same pass — no extra API cost. The prompt is explicit: only return `female`/`male`/`nonbinary` from a real public signal (stated pronouns, official bio, a known interview) — a name "sounding" female or male is not a signal, and the Oracle is instructed to prefer `unknown` over a guess. `mixed` covers multi-author/anthology books whose credited authors aren't all one gender. Only NEW Oracle runs (`unreviewed`/`incomplete` books) get this — the existing catalog isn't retroactively re-enriched by this migration; that's a separate, deliberate decision given the API cost across ~900 books.
+
+**Accomplishment.** New milestone ladder `FEMALE_AUTHOR_MILESTONES = [5, 10, 25, 50, 100]` in `shareMoments.js`, counted across the whole library regardless of genre (`female` and `mixed` both count — a co-authored book isn't invisible for having one male co-author). Wired through the same live-earn (`fireCompletionMoment`) and retroactive backfill (`computeBackfillAccomplishments`) paths every other milestone type uses, under a new `female_authors_count` kind. New "Women writers" shelf on the Profile Ledger; new plain (unframed) share card — `cardResolve.js`'s `MOMENT_SLUGS` has no entry for it yet, so it renders like every other moment type did before its art shipped, and upgrades automatically once `/cards/moment-female-authors/` assets land and get one line added there.
+
+i18n: new `ledger.group.authors` / `ledger.femaleAuthorsLabel`, `share.card.femaleAuthors*`, `share.text.femaleAuthors` keys (EN + rioplatense ES).
 
 ### v0.54 — The thread inside the app (Oracle waits + plan rail)
 

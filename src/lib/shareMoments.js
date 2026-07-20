@@ -18,6 +18,18 @@ import { bookKey } from './bookHelpers';
 export const YEAR_MILESTONES = [5, 10, 25, 50, 75, 100, 150, 200];
 export const GENRE_MILESTONES = [5, 10, 25, 50];
 
+// v0.55: books by women, counted across the WHOLE library regardless of
+// genre — this is deliberately not a genre ladder. Author gender lives on
+// book.ag ('female'|'male'|'nonbinary'|'mixed'|undefined), set by the Oracle
+// via author_gender on the books row (never inferred from name — see
+// schema_v35_migration.sql). 'mixed' (co-authored, mixed-gender) counts
+// alongside 'female' so a co-authored book isn't invisible.
+export const FEMALE_AUTHOR_MILESTONES = [5, 10, 25, 50, 100];
+
+export function countsAsFemaleAuthored(book) {
+  return book.ag === 'female' || book.ag === 'mixed';
+}
+
 // Don't announce "first book in a new genre" until the library is big enough
 // for it to mean something — otherwise every early read triggers it.
 // Exported so the persistent-accomplishments backfill (accomplishments.js)
@@ -107,6 +119,14 @@ export function computeCompletionMoments({ book, library, genresByBookId, goal, 
     }
   }
 
+  // ── Books by women (all-time, cross-genre) ─────────────────────────────
+  if (countsAsFemaleAuthored(book)) {
+    const count = library.filter(countsAsFemaleAuthored).length;
+    if (FEMALE_AUTHOR_MILESTONES.includes(count)) {
+      moments.push({ type: 'female_authors_count', n: count, book });
+    }
+  }
+
   // ── Fallback: the book itself ──────────────────────────────────────────
   moments.push({ type: 'book_completed', book });
 
@@ -117,6 +137,7 @@ export function computeCompletionMoments({ book, library, genresByBookId, goal, 
     'nth_book',
     'genre_count',
     'new_genre',
+    'female_authors_count',
     'book_completed',
   ];
   moments.sort((a, b) => PRIORITY.indexOf(a.type) - PRIORITY.indexOf(b.type));

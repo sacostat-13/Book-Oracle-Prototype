@@ -16,9 +16,24 @@
 
 // The version label shown as "current" — keep in sync with package.json and
 // the README version line.
-export const CURRENT_VERSION = 'v0.54';
+export const CURRENT_VERSION = 'v0.55';
 
 export const RELEASES = [{
+    version: 'v0.55',
+    date: '2026-07-20',
+    titleEn: 'Books by women, counted',
+    titleEs: 'Libros de autoras, contados',
+    bodyEn: [
+      'The Oracle now also notes which books are written by women — drawn from public author information, never guessed from a name.',
+      'Your Ledger gains a new shelf: milestones for books by women, sitting alongside your genres, series, and goals.',
+      'The share card for this milestone uses the same plain card as every new milestone type at launch — its own illustrated frame is on the way.',
+    ],
+    bodyEs: [
+      'El Oráculo ahora también anota qué libros están escritos por mujeres — a partir de información pública sobre la autora, nunca adivinado por el nombre.',
+      'Tu Registro suma un estante nuevo: hitos de libros de autoras, junto a tus géneros, sagas y objetivos.',
+      'La tarjeta para compartir este hito usa por ahora la misma tarjeta simple que todo hito nuevo al lanzarse — su propio marco ilustrado está en camino.',
+    ],
+  }, {
     version: 'v0.54',
     date: '2026-07-20',
     titleEn: 'The thread follows you inside',

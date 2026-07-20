@@ -199,6 +199,11 @@ function bookRowToClient(b, extra = {}) {
     t: b.title,
     a: b.author,
     g: b.genre || undefined,
+    // v0.55: author gender for the "books by women" accomplishment. NOT a
+    // genre — deliberately a separate column/field so it never touches the
+    // genres/genresByBookId taxonomy. 'unknown' (checked, no signal) is kept
+    // undefined here same as other unset enrichment fields.
+    ag: (b.author_gender && b.author_gender !== 'unknown') ? b.author_gender : undefined,
     c: b.complexity || undefined,
     p: b.depth || undefined,
     d: b.description || undefined,

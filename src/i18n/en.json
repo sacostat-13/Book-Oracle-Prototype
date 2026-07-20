@@ -790,14 +790,16 @@
       "series": "Series completed",
       "plans": "Reading plans",
       "years": "Milestones",
-      "genres": "Genres"
+      "genres": "Genres",
+      "authors": "Women writers"
     },
     "goalLabel": "{year} reading goal · {goal} books",
     "seriesLabel": "{series} · {total} books",
     "planLabel": "{plan}",
     "nthLabel": "{n}th book of {year}",
     "genreCountLabel": "{n} in {genre}",
-    "newGenreLabel": "First in {genre}"
+    "newGenreLabel": "First in {genre}",
+    "femaleAuthorsLabel": "{n} books by women"
   },
   "coachmark": {
     "dismiss": "Dismiss",
@@ -1326,6 +1328,9 @@
       "genreCountSub": "Some shelves demand devotion.",
       "newGenreEyebrow": "New territory",
       "newGenreSub": "A first step into an unread genre.",
+      "femaleAuthorsEyebrow": "Women's voices",
+      "femaleAuthorsHeadline": "{n} books by women",
+      "femaleAuthorsSub": "A shelf that remembers who wrote it.",
       "sessionCreatedEyebrow": "Book club — now reading",
       "sessionCreatedSub": "Join {club} and read along.",
       "sessionDoneEyebrow": "Book club — session finished",
@@ -1340,6 +1345,7 @@
       "nth": "That's {n} books read in {year}. Tracked with The Books Oracle.",
       "genreCount": "{n} {genre} books read. The Books Oracle keeps count.",
       "newGenre": "First step into {genre}. The Books Oracle led me there.",
+      "femaleAuthors": "{n} books by women, read and counted. The Books Oracle keeps count.",
       "sessionCreated": "Our book club {club} is reading \"{book}\" — join us on The Books Oracle.",
       "sessionDone": "Our book club {club} just finished \"{book}\" together on The Books Oracle.",
       "list": "\"{title}\" — a reading list of {count} books on The Books Oracle.",

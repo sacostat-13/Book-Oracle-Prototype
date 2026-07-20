@@ -21,6 +21,8 @@ import {
   GENRE_MILESTONES,
   NEW_GENRE_MIN_LIBRARY,
   genreNamesFor,
+  FEMALE_AUTHOR_MILESTONES,
+  countsAsFemaleAuthored,
 } from './shareMoments';
 
 // Only these moment types become persistent accomplishments. The plain
@@ -32,6 +34,7 @@ export const EARNABLE_TYPES = new Set([
   'series_completed',
   'plan_completed',
   'goal_completed',
+  'female_authors_count',
 ]);
 
 // A trimmed book snapshot, enough for ShareCard to render the plaque later
@@ -57,6 +60,7 @@ export function keyForMoment(m) {
     case 'nth_book':         return `nth_book:${m.year}:${m.n}`;
     case 'genre_count':      return `genre_count:${m.genre}:${m.n}`;
     case 'new_genre':        return `new_genre:${m.genre}`;
+    case 'female_authors_count': return `female_authors_count:${m.n}`;
     default:                 return null; // book_completed etc. never persist
   }
 }
@@ -107,6 +111,7 @@ export function computeBackfillAccomplishments({ library = [], genresByBookId = 
   const perYearCount = {}; // year → books read that calendar year, so far
   const genreCount = {};   // genre → all-time count, so far
   let libSoFar = 0;
+  let femaleAuthorCount = 0; // all-time count of books by women, so far
 
   for (const book of ordered) {
     libSoFar += 1;
@@ -131,6 +136,20 @@ export function computeBackfillAccomplishments({ library = [], genresByBookId = 
         out.push({ key: `genre_count:${genre}:${c}`, kind: 'genre_count', bookId: book.bookId || null, meta: { n: c, genre, book: snap }, earnedAt });
       } else if (c === 1 && libSoFar >= NEW_GENRE_MIN_LIBRARY) {
         out.push({ key: `new_genre:${genre}`, kind: 'new_genre', bookId: book.bookId || null, meta: { genre, book: snap }, earnedAt });
+      }
+    }
+
+    // ── Books by women (all-time, cross-genre) ───────────────────────────
+    if (countsAsFemaleAuthored(book)) {
+      femaleAuthorCount += 1;
+      if (FEMALE_AUTHOR_MILESTONES.includes(femaleAuthorCount)) {
+        out.push({
+          key: `female_authors_count:${femaleAuthorCount}`,
+          kind: 'female_authors_count',
+          bookId: book.bookId || null,
+          meta: { n: femaleAuthorCount, book: snap },
+          earnedAt,
+        });
       }
     }
   }

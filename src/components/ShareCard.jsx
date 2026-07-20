@@ -90,6 +90,18 @@ function baseCopy(moment, t, lang) {
         ...bookLine,
       };
     }
+    // v0.55: books by women — cross-genre, so no GENRE_CARD_META lookup.
+    // Art/frame pending (no entry in cardResolve's MOMENT_SLUGS yet), so this
+    // always renders as the plain unframed card until art lands — same
+    // decoupling the app already uses for every other moment type.
+    case 'female_authors_count':
+      return {
+        eyebrow: t('share.card.femaleAuthorsEyebrow'),
+        headline: t('share.card.femaleAuthorsHeadline', { n: moment.n }),
+        sub: t('share.card.femaleAuthorsSub'),
+        ornament: '⚘',
+        ...bookLine,
+      };
     case 'session_created':
       return {
         eyebrow: t('share.card.sessionCreatedEyebrow'),
