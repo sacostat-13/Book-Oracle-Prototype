@@ -34,7 +34,19 @@ import {
   QuotaExceededError
 } from './claudeApi';
 
-const BATCH_SIZE = 10;
+// v0.57: lowered 10 → 5. Each batch is ONE synchronous Anthropic call inside
+// the claude.js Netlify function, which has a hard 30s ceiling. The call's
+// latency scales with how many output tokens the model generates, and each
+// book now needs six fields (genres, series, description, complexity, depth,
+// author_gender — the last added in v0.55). At 10 books the generation time
+// sat right on the 30s edge and adding the sixth field tipped verbose batches
+// over into "Task timed out after 30.00 seconds". Halving the batch ~halves
+// the output per call — a comfortable margin under 30s — at the cost of twice
+// as many calls (fine: curators are unmetered as of v0.56, and this button is
+// primarily a curator/catalog tool). If this ever needs to go back up, the
+// real fix is moving the proxy to a Netlify background function (15-min limit)
+// rather than raising the batch under the 30s sync cap.
+const BATCH_SIZE = 5;
 
 const UNVERIFIED_STATUSES = ['unreviewed', 'incomplete'];
 
@@ -346,13 +358,13 @@ export async function runOracleCategorization({
       } = buildPrompt(batch, existingGenres);
       let raw;
       try {
-        // BATCH_SIZE (10) books × 5 fields each (genres, series, description,
-        // complexity, depth) can run past the Netlify function's 2000-token
-        // default, especially with verbose descriptions — the default was
-        // already tight before complexity/depth were added, and adding them
-        // pushed some batches over, truncating the JSON mid-response (seen as
-        // "Batch N returned an unexpected response" once parsing failed).
-        // Matches oracleBatch.mjs's existing max_tokens: 4000 for the same call shape.
+        // BATCH_SIZE books × 6 fields each (genres, series, description,
+        // complexity, depth, author_gender) can run past the Netlify function's
+        // 2000-token default, especially with verbose descriptions, truncating
+        // the JSON mid-response (seen as "Batch N returned an unexpected
+        // response" once parsing failed). 4000 is a cap, not a target — the
+        // model stops when the JSON is done, so this doesn't slow small batches;
+        // it just prevents truncation on a full one. Matches oracleBatch.mjs.
         raw = await callClaude(userPrompt, systemPrompt, {
           maxTokens: 4000
         });

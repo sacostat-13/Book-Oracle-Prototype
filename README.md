@@ -4,7 +4,7 @@ A reading companion — wishlist, library, reading plans, book clubs, and an AI-
 for book discovery. Built with React + Vite + SCSS, backed by Supabase for auth
 and cross-device sync, and Netlify Functions for API proxying.
 
-> Current version: **v0.56** — see [Releases](#releases) below for changelog.
+> Current version: **v0.55.1** — see [Releases](#releases) below for changelog.
 > Upgrading from an earlier version? Check the matching `MIGRATION_*.md` / `UPDATE_*.md`.
 
 ---
@@ -450,7 +450,7 @@ a real bug — a production build (`npm run build`) compiles clean, and a
 dev-server restart (or hard browser reload) clears it.
 
 
-### v0.56 — Unlimited Oracle calls for curators
+### v0.55.1 — Unlimited Oracle calls for curators
 
 `get_oracle_quota` and `consume_oracle_call` (`schema_v22_migration.sql`) now short-circuit for `profiles.is_curator = true` (`schema_v36_migration.sql`) — curators skip the free/Pro quota gate entirely, in both the read-only check and the actual increment-and-gate call, independent of `subscription_status`. Both functions already returned an `unlimited` boolean in their JSON shape (always `false` until now — a leftover from an earlier "Pro = unlimited" design that became "Pro = 5/day"); this is the first time it's ever set `true`. `netlify/functions/claude.js` needed no changes: it already skips the 402 when `quota.unlimited`, and already calls `consume_oracle_call` unconditionally on success — the RPC itself now decides whether that call enforces anything. Call counters still tick for curators (cost visibility), just never against a limit.
 

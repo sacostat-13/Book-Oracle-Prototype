@@ -16,10 +16,10 @@
 
 // The version label shown as "current" — keep in sync with package.json and
 // the README version line.
-export const CURRENT_VERSION = 'v0.56';
+export const CURRENT_VERSION = 'v0.55.1';
 
 export const RELEASES = [{
-    version: 'v0.56',
+    version: 'v0.55.1',
     date: '2026-07-20',
     titleEn: 'Unlimited Oracle calls for curators',
     titleEs: 'Llamadas ilimitadas al Oráculo para curadores',
