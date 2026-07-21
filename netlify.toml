@@ -24,6 +24,16 @@
     Permissions-Policy = "camera=(), microphone=(), geolocation=()"
     Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://assets.lemonsqueezy.com https://app.lemonsqueezy.com; style-src 'self' 'unsafe-inline' https://assets.lemonsqueezy.com https://fonts.googleapis.com; img-src 'self' data: blob: https: http:; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.anthropic.com https://*.lemonsqueezy.com https://thebooksoracle.lemonsqueezy.com https://api.lemonsqueezy.com https://openlibrary.org https://covers.openlibrary.org https://www.googleapis.com https://fonts.googleapis.com https://fonts.gstatic.com; frame-src https://*.lemonsqueezy.com https://thebooksoracle.lemonsqueezy.com; font-src 'self' https://fonts.gstatic.com data:; worker-src 'self' blob:;"
 
+# v0.56: the version file must never be cached by anything. The client fetch
+# already sends cache: 'no-store', which covers the browser cache, but that
+# says nothing to intermediary proxies (corporate, ISP, mobile carrier) between
+# the client and the edge. A stale copy here silently disables the critical
+# update path, so state it in the header too.
+[[headers]]
+  for = "/app-version.json"
+  [headers.values]
+    Cache-Control = "no-store, no-cache, must-revalidate, max-age=0"
+
 # v0.39: dynamic sitemap — must come before the SPA catch-all below so
 # /sitemap.xml resolves to the function's XML instead of index.html.
 [[redirects]]
