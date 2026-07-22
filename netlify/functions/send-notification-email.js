@@ -1,4 +1,4 @@
-// netlify/functions/send-notification-email.js — v0.37.1
+// netlify/functions/send-notification-email.js — v0.37.2
 // Triggered by a Supabase Database Webhook on INSERT to public.notifications.
 //
 // Setup (one-time):
@@ -13,22 +13,19 @@
 // Required env vars: RESEND_API_KEY, WEBHOOK_SECRET, SUPABASE_URL,
 //                    SUPABASE_SERVICE_ROLE_KEY, URL
 //
-// v0.37.1 fix: Netlify's Node 20 function runtime doesn't expose a native
-// WebSocket global the way @supabase/realtime-js expects, so createClient()
-// was throwing at call time ("Node.js 20 detected without native WebSocket
-// support") before the function ever reached the Resend send logic. This
-// function has no need for Realtime at all — it's a one-shot server-side
-// lookup — so we explicitly pass the `ws` package in as the transport and
-// disable session persistence/auto-refresh (irrelevant for a service-role
-// server context anyway).
+// v0.37.2 fix: converted to ESM. The project's root package.json has
+// "type": "module", so Lambda treated this .js file as an ES module and
+// `exports.handler` threw a ReferenceError at init — the function crashed
+// before any request logic ran.
 //
-// Requires the `ws` package to be installed:
-//   npm install ws --save
+// Also removed the `ws` transport workaround from v0.37.1. This function
+// only makes REST calls (auth admin + two table selects) and never opens a
+// realtime channel, so realtime-js never constructs a WebSocket. The `ws`
+// dependency was unnecessary and can be uninstalled.
 
-const {
+import {
   createClient
-} = require('@supabase/supabase-js');
-const ws = require('ws');
+} from '@supabase/supabase-js';
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -43,7 +40,7 @@ function respond(statusCode, body) {
       ...CORS,
       'Content-Type': 'application/json'
     },
-    body: JSON.stringify(body)
+    body: JSON.stringify(body),
   };
 }
 
@@ -72,75 +69,93 @@ function buildEmail({
   data,
   appUrl
 }) {
-  const actorLabel = actor ?.display_name || (actor ?.username ? `@${actor.username}` : 'Someone');
-  const clubLink = data ?.club_id ? `${appUrl}/#book-club-detail?clubId=${data.club_id}` : appUrl;
-  const sessionLink = data ?.session_id ? `${appUrl}/#session-detail?sessionId=${data.session_id}` : clubLink;
+  const actorLabel =
+    actor ? .display_name || (actor ? .username ? `@${actor.username}` : 'Someone');
+  const clubLink = data ? .club_id ?
+    `${appUrl}/#book-club-detail?clubId=${data.club_id}` :
+    appUrl;
+  const sessionLink = data ? .session_id ?
+    `${appUrl}/#session-detail?sessionId=${data.session_id}` :
+    clubLink;
 
   switch (type) {
     case 'friend_request':
       return {
         subject: `${actorLabel} wants to be your reading friend`,
           body: `<strong>${actorLabel}</strong> sent you a friend request on The Books Oracle.`,
-          ctaUrl: appUrl, ctaLabel: 'View request →',
+          ctaUrl: appUrl,
+          ctaLabel: 'View request →',
       };
     case 'friend_accepted':
       return {
         subject: `${actorLabel} accepted your friend request`,
           body: `You and <strong>${actorLabel}</strong> are now reading friends.`,
-          ctaUrl: appUrl, ctaLabel: 'Open app →',
+          ctaUrl: appUrl,
+          ctaLabel: 'Open app →',
       };
     case 'club_invite':
       return {
         subject: `You've been added to ${data?.club_name || 'a book club'}`,
           body: `<strong>${actorLabel}</strong> added you to <strong>${data?.club_name || 'a book club'}</strong>.`,
-          ctaUrl: clubLink, ctaLabel: 'View club →',
+          ctaUrl: clubLink,
+          ctaLabel: 'View club →',
       };
     case 'poll_started':
       return {
         subject: `New poll in ${data?.club_name || 'your book club'}`,
           body: `A new poll has started in <strong>${data?.club_name || 'your club'}</strong>: <em>${data?.question || ''}</em>`,
-          ctaUrl: clubLink, ctaLabel: 'Vote now →',
+          ctaUrl: clubLink,
+          ctaLabel: 'Vote now →',
       };
     case 'poll_finalized':
       return {
         subject: `Poll closed in ${data?.club_name || 'your book club'}`,
           body: `The poll in <strong>${data?.club_name || 'your club'}</strong> is closed. The group will read: <strong>${data?.winner || 'the chosen book'}</strong>.`,
-          ctaUrl: clubLink, ctaLabel: 'View result →',
+          ctaUrl: clubLink,
+          ctaLabel: 'View result →',
       };
     case 'discussion_question':
       return {
         subject: `New discussion question in ${data?.club_name || 'your book club'}`,
           body: `<strong>${actorLabel}</strong> posted a new question in <strong>${data?.club_name || 'your club'}</strong>: <em>${data?.question || ''}</em>`,
-          ctaUrl: sessionLink, ctaLabel: 'Join discussion →',
+          ctaUrl: sessionLink,
+          ctaLabel: 'Join discussion →',
       };
     case 'discussion_reply':
       return {
         subject: `${actorLabel} replied to your comment`,
           body: `<strong>${actorLabel}</strong> replied to your comment in <strong>${data?.club_name || 'your club'}</strong>: <em>${(data?.preview || '').slice(0, 100)}</em>`,
-          ctaUrl: sessionLink, ctaLabel: 'View reply →',
+          ctaUrl: sessionLink,
+          ctaLabel: 'View reply →',
       };
-    case 'announcement':
-      const raw = data ?.body || data ?.preview || 'There is a new announcement from the The Books Oracle team.';
+    case 'announcement': {
+      const raw =
+        data ? .body ||
+        data ? .preview ||
+        'There is a new announcement from the The Books Oracle team.';
       const htmlBody = String(raw)
         .replace(/\\n/g, '\n') // unescape literal "\n" if stored that way
         .replace(/\n/g, '<br>'); // real newlines → <br> for the email HTML
       return {
-        subject: data ?.title || 'Announcement from The Books Oracle',
+        subject: data ? .title || 'Announcement from The Books Oracle',
         body: htmlBody,
         ctaUrl: appUrl,
         ctaLabel: 'Open app →',
       };
+    }
     default:
       return null;
   }
 }
 
-exports.handler = async (event) => {
-  if (event.httpMethod === 'OPTIONS') return {
-    statusCode: 204,
-    headers: CORS,
-    body: ''
-  };
+export const handler = async (event) => {
+  if (event.httpMethod === 'OPTIONS') {
+    return {
+      statusCode: 204,
+      headers: CORS,
+      body: ''
+    };
+  }
 
   const secret = event.headers['x-webhook-secret'];
   if (!process.env.WEBHOOK_SECRET || secret !== process.env.WEBHOOK_SECRET) {
@@ -159,7 +174,7 @@ exports.handler = async (event) => {
     });
   }
 
-  const notification = payload ?.record;
+  const notification = payload ? .record;
   if (!notification) return respond(400, {
     error: 'No notification record'
   });
@@ -176,17 +191,16 @@ exports.handler = async (event) => {
         persistSession: false,
         autoRefreshToken: false
       },
-      realtime: {
-        transport: ws
-      },
     }
   );
 
   // Look up recipient
   const {
     data: recipientAuth
-  } = await supabaseClient.auth.admin.getUserById(notification.user_id);
-  const recipientEmail = recipientAuth ?.user ?.email;
+  } = await supabaseClient.auth.admin.getUserById(
+    notification.user_id
+  );
+  const recipientEmail = recipientAuth ? .user ? .email;
   if (!recipientEmail) return respond(200, {
     skipped: 'no_email'
   });
@@ -200,16 +214,18 @@ exports.handler = async (event) => {
     .eq('id', notification.user_id)
     .maybeSingle();
 
-  const prefs = profile ?.notification_preferences || {};
+  const prefs = profile ? .notification_preferences || {};
   // Email master toggle (new JSONB prefs or legacy boolean)
-  const emailOn = prefs.email !== false && profile ?.email_notifications !== false;
+  const emailOn = prefs.email !== false && profile ? .email_notifications !== false;
   if (!emailOn) return respond(200, {
     skipped: 'email_off'
   });
   // Category toggle
-  if (prefs[category] === false) return respond(200, {
-    skipped: `category_${category}_off`
-  });
+  if (prefs[category] === false) {
+    return respond(200, {
+      skipped: `category_${category}_off`
+    });
+  }
 
   // Look up actor
   const {
@@ -225,14 +241,19 @@ exports.handler = async (event) => {
     type: notification.type,
     actor,
     data: notification.data || {},
-    appUrl
+    appUrl,
   });
   if (!email) return respond(200, {
     skipped: 'no_template'
   });
 
   if (!process.env.RESEND_API_KEY) {
-    console.log('send-notification-email: dev mode, would send:', email.subject, 'to', recipientEmail);
+    console.log(
+      'send-notification-email: dev mode, would send:',
+      email.subject,
+      'to',
+      recipientEmail
+    );
     return respond(200, {
       dev_mode: true
     });
@@ -241,8 +262,8 @@ exports.handler = async (event) => {
   const emailRes = await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: {
-      'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
-      'Content-Type': 'application/json'
+      Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
+      'Content-Type': 'application/json',
     },
     body: JSON.stringify({
       from: 'The Books Oracle <noreply@thebooksoracle.com>',
