@@ -43,7 +43,7 @@ export default function Offering({ onOpenAuth, anchorRef }) {
         scrollTrigger: { trigger: root.querySelector('.lps-tiers'), start: 'top 80%' },
       });
       gsap.to(root.querySelector('.oc--tier.is-adept'), {
-        boxShadow: '0 20px 80px rgba(201,162,75,0.18)',
+        boxShadow: '0 20px 80px rgba(var(--lps-gold-rgb), 0.18)',
         duration: 2.4,
         repeat: -1,
         yoyo: true,

@@ -41,6 +41,12 @@ export function OracleQuotaProvider({ children }) {
       // calls_remaining come back null and must stay null (not coerced to
       // FREE_LIMIT), so consumers can branch on `unlimited` instead of
       // misreading null as "0 of 5 left".
+      // v0.58: is_curator rides along so the UI can say "categorization is
+      // unmetered" without a second query. It is NOT the same as `unlimited`:
+      // since schema_v37 the curator exemption is scoped to categorization
+      // only, so a curator's Spark/Ask/Similar/Plan calls are metered like
+      // anyone else's and this RPC (called with no feature) reports their
+      // ordinary quota.
       const unlimited = !!data.unlimited;
       setQuota({
         subscription_status: data.subscription_status ?? 'free',
@@ -50,6 +56,7 @@ export function OracleQuotaProvider({ children }) {
         calls_remaining:     unlimited ? null : Math.max(0, data.calls_remaining ?? FREE_LIMIT),
         reset_at:            data.reset_at ? new Date(data.reset_at) : null,
         unlimited,
+        is_curator:          !!data.is_curator,
       });
     } catch (e) {
       console.error('OracleQuotaContext refresh error:', e);

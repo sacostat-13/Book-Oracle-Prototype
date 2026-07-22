@@ -189,6 +189,144 @@
   @include tokens.ro-down(desktop) { display: none; }
 }
 
+// ═══ Language + appearance toggles ════════════════════════════════════════════
+// Written entirely against --ro-* tokens, never literals, because this control
+// renders on three different surfaces: the ink landing story, the parchment
+// legal pages, and — mid-scroll — whichever of those the visitor just switched
+// to. .lps-root re-declares the --ro-* tokens to ink, so the same rules give a
+// gold-on-ink pill there and a gold-on-parchment pill here for free.
+.lp-toggles {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+// The shared pill chrome — a hairline gold outline over a barely-there tint,
+// matching the card edges in the story rather than a solid button.
+%lp-toggle-shell {
+  border: 1px solid var(--ro-border);
+  background: color-mix(in srgb, var(--ro-gold) 5%, transparent);
+  border-radius: 999px;
+  transition: border-color .2s ease, background-color .2s ease, color .2s ease;
+
+  &:hover {
+    border-color: var(--ro-border-strong);
+    background: color-mix(in srgb, var(--ro-gold) 10%, transparent);
+  }
+}
+
+.lp-toggles__seg {
+  @extend %lp-toggle-shell;
+  display: flex;
+  align-items: center;
+  padding: 2px;
+}
+
+.lp-toggles__segbtn {
+  appearance: none;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  padding: 4px 9px;
+  border-radius: 999px;
+  font-family: var(--ro-font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .12em;
+  line-height: 1;
+  color: var(--ro-muted);
+  transition: color .2s ease, background-color .2s ease;
+
+  &:hover { color: var(--ro-gold-text); }
+
+  // Active reads as filled gold with ink type — the same treatment the story
+  // gives a chosen card, so "selected" means one thing across the page.
+  &.is-active {
+    background: var(--ro-gold);
+    color: var(--ro-gold-on);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--ro-gold);
+    outline-offset: 2px;
+  }
+}
+
+.lp-toggles__segdiv {
+  width: 1px;
+  align-self: stretch;
+  margin: 3px 0;
+  background: var(--ro-border);
+}
+
+.lp-toggles__theme {
+  @extend %lp-toggle-shell;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+  width: 30px;
+  height: 26px;
+  padding: 0;
+  color: var(--ro-gold-text);
+
+  &:focus-visible {
+    outline: 2px solid var(--ro-gold);
+    outline-offset: 2px;
+  }
+}
+
+// The icon rotates a quarter turn on swap. Cheap, and it reads as the sky
+// turning over rather than the button blinking.
+.lp-toggles__icon {
+  display: inline-flex;
+  animation: lp-toggle-turn .45s ease;
+}
+
+@keyframes lp-toggle-turn {
+  from { transform: rotate(-90deg); opacity: 0; }
+  to   { transform: none; opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lp-toggles__icon { animation: none; }
+}
+
+// Mobile: the toggles stay in the bar, not the hamburger sheet (see the note
+// in LandingNav). They take over the `margin-left: auto` the hamburger used
+// to hold, so the pair and the hamburger sit together at the right edge.
+.lp-nav__bar-toggles {
+  display: none;
+
+  @include tokens.ro-down(desktop) {
+    display: block;
+    margin-left: auto;
+  }
+}
+
+@include tokens.ro-down(desktop) {
+  .lp-nav__hamburger { margin-left: 4px; }
+}
+
+.lp-toggles--sheet {
+  width: 100%;
+  justify-content: space-between;
+
+  .lp-toggles__theme {
+    width: auto;
+    height: auto;
+    padding: 8px 14px;
+  }
+}
+
+.lp-toggles__themetext {
+  font-family: var(--ro-font-body);
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--ro-text-2);
+}
+
 .lp-nav__login {
   background: none;
   border: 0;

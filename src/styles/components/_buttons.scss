@@ -140,7 +140,12 @@
   box-shadow: inset 0 0 0 4px var(--ro-accent),
     inset 0 0 0 5px var(--ro-accent-line);
 
-  margin: var(--ro-space-4) 0px;
+  // No vertical margin here on purpose. A control does not own the space
+  // around it — its container's rhythm does. .btn-oracle used to carry
+  // `margin: var(--ro-space-4) 0`, which collapsed through its wrapper in
+  // some places and added to it in others, so the same button sat at a
+  // different height depending on what happened to be next to it. That is
+  // the inconsistency; the rule below is the fix.
 
   .oracle-btn-count {
     font-weight: 600;
@@ -150,7 +155,7 @@
 // ── Oracle categorization progress (previously had zero CSS behind it —
 // rendered as plain unstyled text, no spacing, no visible bar) ────────────────
 .oracle-categorization-button {
-  margin: var(--ro-space-4) 0px;
+  margin: var(--ro-space-4) 0;
 }
 
 .oracle-progress {

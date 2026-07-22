@@ -301,15 +301,29 @@
 // v0.43.1 spacing pass: sections were floating in too much air (space-6 top
 // padding + another space-6 on the first title inside = ~2 full rows of gap).
 // Tightened to space-4 while keeping the hairline separators.
+//
+// v0.58: the rhythm moved from the children to the section. Previously each
+// element set its own margins (title had top AND bottom, hint had bottom,
+// buttons carried their own) and the gap you got depended on which
+// combination happened to render — a section ending in a button sat at a
+// different height from one ending in a paragraph, which is what made button
+// spacing look arbitrary from screen to screen. Now the section owns one
+// vertical step and every child inherits it, whatever it is.
 .pf-section {
   border-top: 1px solid var(--ro-border);
-  padding-top: var(--ro-space-4);
-  padding-bottom: var(--ro-space-2);
+  padding-top: var(--ro-space-6);
+  padding-bottom: var(--ro-space-6);
+
+  // The owl: every child is spaced from the one above it, never from itself.
+  > * + * { margin-top: var(--ro-space-4); }
+
+  // A title and its hint are one unit — a label and its caption, not two
+  // blocks — so they sit at the tighter step.
+  > .pf-section__title + .pf-section__hint { margin-top: var(--ro-space-2); }
 
   &:first-child {
     border-top: 0;
     padding-top: 0;
-    margin-top: 0;
   }
 }
 
@@ -318,15 +332,8 @@
   font-style: italic;
   font-size: 21px;
   color: var(--ro-text);
-  margin-bottom: var(--ro-space-2);
-  margin-top: var(--ro-space-4);
-
-  // Directly after a section separator (or the tab row), the title is the
-  // first thing in its block — no extra top margin on top of the padding.
-  .pf-section > &:first-child,
-  &:first-child {
-    margin-top: 0;
-  }
+  // Margins deliberately zeroed — .pf-section supplies the rhythm above.
+  margin: 0;
 }
 
 // ── v0.43.1: settings tabs (Account · Privacy · Subscription · Notifications) ─
@@ -386,7 +393,8 @@
   font-size: 13px;
   line-height: 1.5;
   color: var(--ro-muted);
-  margin-bottom: var(--ro-space-4);
+  // Margins zeroed — .pf-section supplies the rhythm.
+  margin: 0;
 }
 
 // ── v0.45: The Ledger — retroactive accomplishments shelf ───────────────────

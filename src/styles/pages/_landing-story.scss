@@ -5,51 +5,104 @@
 // by the Oracle from a fanned spread of cards, along the gold thread, to the
 // claim. Everything lives under .lps-root.
 //
-// The page is INK ONLY (the marketing surface's dark-academia night), so the
-// --ro-* tokens are re-declared here — LandingNav/LandingFooter are shared
-// with the parchment legal pages and pick up the dark palette automatically
-// through the tokens.
-.lps-root {
-  // v4 palette
-  --lps-ink: #0d0b08;
-  --lps-ink-2: #14110c;
-  --lps-parchment: #e9dfca;
-  --lps-gold: #c9a24b;
+// The page ships in two palettes — ink (default, the dark-academia night) and
+// parchment — chosen by the visitor via the toggle in LandingNav and stored by
+// ThemeContext under `oracle.theme`. Everything downstream of this block is
+// written against --lps-* tokens ONLY; there are no literal colours below,
+// which is what makes the parchment override at the bottom a ~30-line diff
+// instead of a rewrite. If you add a colour to this file, add a token for it.
+//
+// The four --lps-*-rgb tokens are bare channel triplets, not colours, so that
+// the ~30 places that need a translucent ink/gold/shadow can say
+// `rgba(var(--lps-gold-rgb), 0.22)` and still follow the palette. Note that
+// --lps-parchment-rgb is semantically "the high-contrast display colour": it
+// is the pale parchment on ink, and the dark ink on parchment. It inverts.
+// The palette is declared on :root, NOT on .lps-root — burst.js appends its
+// spark dots to <body>, outside the page wrapper, so tokens scoped to the
+// wrapper would resolve to nothing and the sparks would render invisible.
+//
+// ⚠ Every derived token below MUST be re-emitted in each palette block, which
+// is why they live in a mixin rather than being written once on :root and
+// left to inherit. `var()` in a custom property is substituted at the element
+// where the property is DECLARED, not where it is used: if `--lps-ink` is
+// declared only on :root, it resolves against html's `--lps-ink-rgb` and
+// inherits downward as a frozen `rgb(13, 11, 8)`. Re-declaring the channel on
+// `body.theme-parchment` then changes nothing for it. (This bit us once: the
+// nav flipped to parchment because it reads `rgba(var(--lps-ink-rgb), .85)`
+// directly, while every card, title and thread stayed on ink.)
+//
+// Rule of thumb for this file: channels are the only thing a palette block may
+// define on its own. Anything derived from a channel goes in the mixin.
+@mixin lps-derive($text, $text-2, $ghost, $border, $tint, $tint-hover) {
+  --lps-ink: rgb(var(--lps-ink-rgb));
+  --lps-ink-2: rgb(var(--lps-ink-2-rgb));
+  --lps-ink-3: rgb(var(--lps-ink-3-rgb));
+  --lps-parchment: rgb(var(--lps-parchment-rgb));
+  --lps-gold: rgb(var(--lps-gold-rgb));
+  --lps-text: rgba(var(--lps-parchment-rgb), #{$text});
+  --lps-text-2: rgba(var(--lps-parchment-rgb), #{$text-2});
+  --lps-ghost: rgba(var(--lps-parchment-rgb), #{$ghost});
+  --lps-border: rgba(var(--lps-gold-rgb), #{$border});
+  --lps-tint: rgba(var(--lps-gold-rgb), #{$tint});
+  --lps-tint-hover: rgba(var(--lps-gold-rgb), #{$tint-hover});
+}
+
+:root {
+  // ── Channels (see note above) ───────────────────────────────────────────
+  --lps-ink-rgb: 13, 11, 8;
+  --lps-ink-2-rgb: 20, 17, 12;
+  --lps-ink-3-rgb: 27, 23, 16;
+  --lps-gold-rgb: 201, 162, 75;
+  // Glows are light, not pigment, so they keep the bright gold in BOTH
+  // palettes — never overridden below. Swapping them to parchment's dark
+  // text-gold would turn every halo into a smudge behind the type.
+  --lps-glow-rgb: 201, 162, 75;
+  --lps-parchment-rgb: 233, 223, 202;
+  --lps-shadow-rgb: 0, 0, 0;
+
+  // ── v4 palette ──────────────────────────────────────────────────────────
+  @include lps-derive(0.92, 0.62, 0.28, 0.22, 0.05, 0.10);
+
   --lps-gold-dim: #8a6f33;
-  --lps-text: rgba(233, 223, 202, 0.92);
-  --lps-text-2: rgba(233, 223, 202, 0.62);
-  --lps-ghost: rgba(233, 223, 202, 0.28);
-  --lps-border: rgba(201, 162, 75, 0.22);
-  --lps-tint: rgba(201, 162, 75, 0.05);
-  --lps-tint-hover: rgba(201, 162, 75, 0.10);
+  --lps-gold-hi: #d4af5c;
   --lps-serif: 'Instrument Serif', var(--ro-font-display), serif;
   --lps-mono: 'IBM Plex Mono', var(--ro-font-mono), monospace;
+}
 
-  // Re-skin the shared --ro-* tokens to ink so nav/footer/buttons follow.
+.lps-root {
+  // Re-skin the shared --ro-* tokens so nav/footer/buttons follow. These are
+  // the same components the parchment legal pages use, so they need the
+  // page's palette handed to them rather than the body class's.
   --ro-bg: var(--lps-ink);
   --ro-bg-deep: var(--lps-ink-2);
   --ro-surface: var(--lps-ink-2);
-  --ro-surface-2: #1b1710;
+  --ro-surface-2: var(--lps-ink-3);
   --ro-surface-3: var(--lps-ink-2);
-  --ro-field: #1b1710;
+  --ro-field: var(--lps-ink-3);
   --ro-border: var(--lps-border);
-  --ro-border-strong: rgba(201, 162, 75, 0.4);
+  --ro-border-strong: rgba(var(--lps-gold-rgb), 0.4);
   --ro-gold: var(--lps-gold);
   --ro-gold-text: var(--lps-gold);
   --ro-gold-on: var(--lps-ink);
   --ro-accent: var(--lps-gold);
   --ro-accent-on: var(--lps-ink);
-  --ro-accent-line: rgba(13, 11, 8, 0.7);
+  --ro-accent-line: rgba(var(--lps-ink-rgb), 0.7);
   --ro-text: var(--lps-text);
   --ro-text-2: var(--lps-text-2);
-  --ro-muted: rgba(233, 223, 202, 0.5);
+  --ro-muted: rgba(var(--lps-parchment-rgb), 0.5);
   --ro-dim: var(--lps-ghost);
-  --ro-shadow: 0 16px 36px rgba(0, 0, 0, 0.55);
+  --ro-shadow: 0 16px 36px rgba(var(--lps-shadow-rgb), 0.55);
 
   background: var(--lps-ink);
   color: var(--lps-text);
   font-family: var(--lps-mono);
   overflow-x: clip;
+
+  // Palette changes mid-scroll, so animate the page-level colours rather than
+  // hard-cutting under the visitor. Only bg/colour — animating the glows and
+  // card faces would cost paint on a page that is already running a pinned
+  // GSAP timeline.
+  transition: background-color .45s ease, color .45s ease;
 
   // The theater fills the first viewport; the fixed nav floats over it.
   padding-top: 0;
@@ -58,19 +111,59 @@
 
   // Nav: transparent gradient over the stage instead of parchment glass.
   .lp-nav {
-    background: linear-gradient(to bottom, rgba(13, 11, 8, 0.85), transparent);
+    background: linear-gradient(to bottom, rgba(var(--lps-ink-rgb), 0.85), transparent);
     backdrop-filter: none;
 
     &--scrolled {
-      background: rgba(13, 11, 8, 0.88);
+      background: rgba(var(--lps-ink-rgb), 0.88);
       backdrop-filter: blur(10px);
       border-bottom-color: var(--lps-border);
-      box-shadow: 0 4px 18px rgba(0, 0, 0, 0.35);
+      box-shadow: 0 4px 18px rgba(var(--lps-shadow-rgb), 0.35);
     }
   }
 
   .lp-nav__mobile { background: var(--lps-ink-2); }
-  .lp-sticky-cta { background: rgba(13, 11, 8, 0.92); }
+  .lp-sticky-cta { background: rgba(var(--lps-ink-rgb), 0.92); }
+}
+
+// ── Parchment palette ─────────────────────────────────────────────────────
+// ThemeContext writes `theme-dark` | `theme-parchment` onto <body>, so the
+// whole light mode is a channel swap. Values are lifted from the parchment
+// block in _landing.scss so the story and the legal pages agree.
+//
+// Two deliberate departures from a naive inversion:
+//   • --lps-gold-rgb goes to a dark gold, not the bright one — the bright gold
+//     is 2.1:1 on parchment and the eyebrows and index numerals are set in it.
+//     Note this is a step darker than _landing.scss's --ro-gold-text (#8A6A24),
+//     which measures 4.13:1 against this page bg and misses AA; #7E611F clears
+//     it at 4.76:1. The bright gold survives as --lps-gold-hi for fills, where
+//     contrast doesn't apply. --lps-ghost stays decorative (2.2:1) in both
+//     palettes — it must never carry text that has to be read.
+//   • --lps-shadow-rgb is a warm sepia rather than black. The story leans on
+//     wide, soft shadows (60–90px blur); pure black on parchment reads as
+//     grime, warm brown reads as candlelight.
+body.theme-parchment {
+  --lps-ink-rgb: 242, 232, 207;      // #F2E8CF — page
+  --lps-ink-2-rgb: 251, 246, 233;    // #FBF6E9 — raised surface
+  --lps-ink-3-rgb: 232, 220, 192;    // #E8DCC0 — recessed / field
+  --lps-gold-rgb: 126, 97, 31;       // #7E611F — text-safe gold, 4.76:1 on page
+  --lps-parchment-rgb: 42, 32, 20;   // #2A2014 — inverted: ink on parchment
+  --lps-shadow-rgb: 90, 70, 30;
+
+  // Re-derive against the channels above — see the mixin's note. Parchment
+  // carries less alpha than ink does before text turns grey, so the secondary
+  // and ghost steps are pulled up rather than reused at ink's values.
+  @include lps-derive(0.94, 0.72, 0.38, 0.28, 0.06, 0.12);
+
+  --lps-gold-dim: #a98c3f;
+  --lps-gold-hi: #bfa04a;
+}
+
+// The --ro-* overrides stay scoped to the page wrapper. Putting them on
+// `body.theme-parchment` would out-specify `.theme-parchment` in themes.css
+// and repaint the whole signed-in app, not just this page.
+body.theme-parchment .lps-root {
+  --ro-muted: rgba(var(--lps-parchment-rgb), 0.60);
 }
 
 // ── Shared story bits ─────────────────────────────────────────────────────────
@@ -121,10 +214,10 @@
   width: 5px;
   height: 5px;
   border-radius: 50%;
-  background: #c9a24b;
+  background: var(--lps-gold);
   pointer-events: none;
   z-index: 90;
-  box-shadow: 0 0 10px rgba(201, 162, 75, 0.8);
+  box-shadow: 0 0 10px rgba(var(--lps-glow-rgb), 0.8);
 }
 
 // ── The gold thread ───────────────────────────────────────────────────────────
@@ -143,10 +236,10 @@
 
   &__path {
     fill: none;
-    stroke: var(--lps-gold, #c9a24b);
+    stroke: var(--lps-gold);
     stroke-width: 1.2;
     opacity: 0.45;
-    filter: drop-shadow(0 0 4px rgba(201, 162, 75, 0.5));
+    filter: drop-shadow(0 0 4px rgba(var(--lps-glow-rgb), 0.5));
   }
 
   &.is-static &__path { opacity: 0.15; filter: none; }
@@ -261,8 +354,8 @@
   position: absolute;
   inset: -3px;
   border-radius: 14px;
-  border: 1px solid rgba(201, 162, 75, 0.9);
-  box-shadow: 0 0 26px rgba(201, 162, 75, 0.5), inset 0 0 18px rgba(201, 162, 75, 0.25);
+  border: 1px solid rgba(var(--lps-gold-rgb), 0.9);
+  box-shadow: 0 0 26px rgba(var(--lps-glow-rgb), 0.5), inset 0 0 18px rgba(var(--lps-glow-rgb), 0.25);
   opacity: 0;
   pointer-events: none;
   will-change: opacity;
@@ -323,11 +416,11 @@
   aspect-ratio: 2 / 3;
   padding: 1.4rem;
   border-radius: 12px;
-  border: 1px solid rgba(201, 162, 75, 0.45);
+  border: 1px solid rgba(var(--lps-gold-rgb), 0.45);
   background:
-    radial-gradient(ellipse at 50% 0%, rgba(201, 162, 75, 0.16), transparent 60%),
-    var(--lps-ink-2, #14110c);
-  box-shadow: 0 30px 90px rgba(0, 0, 0, 0.65);
+    radial-gradient(ellipse at 50% 0%, rgba(var(--lps-gold-rgb), 0.16), transparent 60%),
+    var(--lps-ink-2);
+  box-shadow: 0 30px 90px rgba(var(--lps-shadow-rgb), 0.65);
   overflow: hidden;
   color: var(--lps-text);
   font-family: var(--lps-mono);
@@ -337,7 +430,7 @@
     content: '';
     position: absolute;
     inset: 9px;
-    border: 1px solid rgba(201, 162, 75, 0.22);
+    border: 1px solid rgba(var(--lps-gold-rgb), 0.22);
     border-radius: 8px;
     pointer-events: none;
   }
@@ -346,16 +439,16 @@
 .oc--back {
   gap: 1.2rem;
   background:
-    repeating-linear-gradient(45deg, rgba(201, 162, 75, 0.06) 0 2px, transparent 2px 14px),
-    radial-gradient(ellipse at 50% 50%, rgba(201, 162, 75, 0.14), transparent 65%),
-    var(--lps-ink-2, #14110c);
+    repeating-linear-gradient(45deg, rgba(var(--lps-gold-rgb), 0.06) 0 2px, transparent 2px 14px),
+    radial-gradient(ellipse at 50% 50%, rgba(var(--lps-gold-rgb), 0.14), transparent 65%),
+    var(--lps-ink-2);
 }
 
 .oc__rune {
   font-family: var(--lps-serif);
   font-size: 3.2rem;
   color: var(--lps-gold);
-  text-shadow: 0 0 24px rgba(201, 162, 75, 0.5);
+  text-shadow: 0 0 24px rgba(var(--lps-glow-rgb), 0.5);
 }
 
 .oc__backword {
@@ -370,7 +463,7 @@
   font-family: var(--lps-serif);
   font-size: 2.6rem;
   color: var(--lps-gold);
-  text-shadow: 0 0 20px rgba(201, 162, 75, 0.55);
+  text-shadow: 0 0 20px rgba(var(--lps-glow-rgb), 0.55);
 
   &--rank { font-size: 1.7rem; }
 }
@@ -417,13 +510,13 @@
   letter-spacing: 0.3em;
   text-transform: uppercase;
   color: var(--lps-gold-dim);
-  border: 1px solid rgba(201, 162, 75, 0.3);
+  border: 1px solid rgba(var(--lps-gold-rgb), 0.3);
   border-radius: 999px;
   padding: 0.28rem 0.7rem;
 }
 
 .oc--decoy {
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.55);
+  box-shadow: 0 20px 60px rgba(var(--lps-shadow-rgb), 0.55);
 
   .oc__name--decoy {
     font-size: 1.05rem;
@@ -435,7 +528,7 @@
 .oc__glare {
   position: absolute;
   inset: -40%;
-  background: radial-gradient(circle at 50% 50%, rgba(233, 223, 202, 0.16), transparent 45%);
+  background: radial-gradient(circle at 50% 50%, rgba(var(--lps-parchment-rgb), 0.16), transparent 45%);
   opacity: 0;
   pointer-events: none;
   will-change: transform, opacity;
@@ -451,7 +544,7 @@
 .oc--faceback { transform: rotateY(180deg); }
 
 // Dealt minis (Rite I mock)
-.oc--mini { gap: 0.7rem; padding: 0.9rem 0.7rem; box-shadow: 0 14px 40px rgba(0, 0, 0, 0.5); }
+.oc--mini { gap: 0.7rem; padding: 0.9rem 0.7rem; box-shadow: 0 14px 40px rgba(var(--lps-shadow-rgb), 0.5); }
 .oc--dealface {
   position: absolute;
   inset: 0;
@@ -482,11 +575,11 @@
   }
 
   &.is-adept {
-    border-color: rgba(201, 162, 75, 0.55);
+    border-color: rgba(var(--lps-gold-rgb), 0.55);
     background:
-      radial-gradient(ellipse at 50% 0%, rgba(201, 162, 75, 0.10), transparent 55%),
+      radial-gradient(ellipse at 50% 0%, rgba(var(--lps-gold-rgb), 0.10), transparent 55%),
       var(--lps-ink-2);
-    box-shadow: 0 20px 60px rgba(201, 162, 75, 0.08);
+    box-shadow: 0 20px 60px rgba(var(--lps-gold-rgb), 0.08);
 
     &:hover { transform: translateY(-6px) rotate(0.4deg); }
   }
@@ -560,7 +653,7 @@
     color: var(--lps-ink);
     border: none;
 
-    &:hover { background: #d4af5c; }
+    &:hover { background: var(--lps-gold-hi); }
   }
 }
 
@@ -616,7 +709,7 @@
   border-radius: 12px;
   background: var(--lps-ink-2);
   padding: 1.4rem;
-  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 24px 70px rgba(var(--lps-shadow-rgb), 0.5);
 }
 
 .lps-mock__head {
@@ -683,8 +776,8 @@
   font-size: 1rem;
   color: var(--lps-gold);
   background: var(--lps-ink);
-  border: 1px solid rgba(201, 162, 75, 0.55);
-  box-shadow: 0 0 16px rgba(201, 162, 75, 0.35);
+  border: 1px solid rgba(var(--lps-gold-rgb), 0.55);
+  box-shadow: 0 0 16px rgba(var(--lps-glow-rgb), 0.35);
 }
 
 .lps-plan-node.is-ahead .lps-plan-node__star {
@@ -760,7 +853,7 @@
 .lps-record__bar {
   height: 3px;
   border-radius: 999px;
-  background: rgba(201, 162, 75, 0.15);
+  background: rgba(var(--lps-gold-rgb), 0.15);
   margin: 0.2rem 0.2rem 1.3rem;
   overflow: hidden;
 }
@@ -770,7 +863,7 @@
   height: 100%;
   border-radius: 999px;
   background: linear-gradient(to right, var(--lps-gold-dim), var(--lps-gold));
-  box-shadow: 0 0 8px rgba(201, 162, 75, 0.6);
+  box-shadow: 0 0 8px rgba(var(--lps-glow-rgb), 0.6);
   will-change: transform;
 }
 
@@ -779,7 +872,7 @@
   align-items: baseline;
   gap: 0.7rem;
   padding: 0.9rem 0.2rem;
-  border-top: 1px solid rgba(201, 162, 75, 0.1);
+  border-top: 1px solid rgba(var(--lps-gold-rgb), 0.1);
 }
 
 .lps-record__sigil { color: var(--lps-gold); font-size: 0.8rem; }
@@ -828,22 +921,8 @@
   text-align: left;
 }
 
-.lps-tile-lines {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
-  overflow: visible;
-  z-index: 0;
-
-  &__path {
-    fill: none;
-    stroke: var(--lps-gold, #c9a24b);
-    stroke-width: 1;
-    opacity: 0;
-  }
-}
+// .lps-tile-lines (gold curves drawn between related tiles) removed — see the
+// note in Companions.jsx. The GoldThread is the page's only gold line.
 
 .lps-tile {
   position: relative;
@@ -857,7 +936,7 @@
 
   &:hover {
     background: var(--lps-tint-hover);
-    border-color: rgba(201, 162, 75, 0.4);
+    border-color: rgba(var(--lps-gold-rgb), 0.4);
     transform: translateY(-6px);
   }
 
@@ -987,7 +1066,7 @@
   cursor: pointer;
   transition: background 0.25s, transform 0.15s;
 
-  &:hover { background: #d4af5c; }
+  &:hover { background: var(--lps-gold-hi); }
   &:active { transform: scale(0.96); }
 }
 

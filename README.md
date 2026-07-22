@@ -4,7 +4,7 @@ A reading companion — wishlist, library, reading plans, book clubs, and an AI-
 for book discovery. Built with React + Vite + SCSS, backed by Supabase for auth
 and cross-device sync, and Netlify Functions for API proxying.
 
-> Current version: **v0.55.1** — see [Releases](#releases) below for changelog.
+> Current version: **v0.55.2** — see [Releases](#releases) below for changelog.
 > Upgrading from an earlier version? Check the matching `MIGRATION_*.md` / `UPDATE_*.md`.
 
 ---
@@ -331,6 +331,98 @@ and forward requests. Locally you need `netlify dev` to make them work.
 ---
 
 ## Releases
+
+# Update Notes — v0.55.1 → v0.55.2: Landing toggles, parchment story, quota corrections
+
+Ships the visitor-facing light/dark and EN/ES controls on the landing story,
+narrows the curator Oracle exemption to catalog work only, and fixes two
+display bugs that made an unmetered account look walled.
+
+Marked **critical** in `public/app-version.json`: v0.55.1 shipped a quota
+badge that reads "5 of 5" on curator accounts and a categorization run that
+can exhaust a new user's monthly budget on its first pass. Stale clients need
+the new bundle, not a dismissible toast.
+
+## What's new
+
+1. **Language + appearance toggles on the landing page** — an EN/ES segmented
+   control and a sun/moon button, at the top of the story before the scroll
+   begins. Thin wrappers over the existing `I18nContext` / `ThemeContext`, so
+   a choice made while logged out carries into the app on sign-up. On mobile
+   they stay in the nav bar rather than the hamburger sheet.
+2. **The landing story has a parchment palette** — `_landing-story.scss` was
+   ink-only with ~100 hardcoded colour literals. It is now written entirely
+   against `--lps-*` tokens, and light mode is a channel swap on
+   `body.theme-parchment`.
+3. **Curator exemption is per-feature** — `is_curator` + categorization is
+   unmetered; a curator's Spark/Ask/Similar/Plan calls are metered normally.
+   v0.55.1's blanket exemption was wider than intended.
+4. **Categorization meters per run, not per batch** — `BATCH_SIZE = 5` meant
+   one charged call per 5 books: 25 books/month on Free, 25/day on Pro. A run
+   now costs one call via an idempotency ledger.
+5. **Removals** — the `.lps-tile-lines` gold curves across the companions grid
+   (the page already has one gold line with a job), and the About link from
+   `LandingNav`, which dropped signed-out visitors into the authenticated app
+   shell because `about` isn't in `App.jsx`'s `legalViews` map.
+6. **Spacing** — `.btn-oracle` no longer carries its own vertical margin, and
+   `.pf-section` owns one vertical rhythm via an owl selector instead of every
+   child setting its own margins.
+
+## Database changes
+
+`supabase/schema_v37_migration.sql` — **apply before deploying.** It drops and
+recreates both quota RPCs, so a half-applied migration leaves the Oracle
+uncallable. Run it in a transaction on a branch first.
+
+- Renames `oracle_calls_reset_at` → `oracle_calls_month_start` and
+  `oracle_calls_day_reset_at` → `oracle_calls_day_start`, with
+  `COMMENT ON COLUMN` on both. Neither column ever held a reset time — every
+  write since v22 set them to the period *start*, which is why a Pro account
+  showed `2026-07-01` on July 22nd and looked like it was on a monthly cycle.
+- Adds `profiles.oracle_calls_exempt_total` — exempt calls are counted for
+  cost visibility but must not touch the metered counters, or exempt catalog
+  work would spend the budget it is exempt from.
+- Adds `oracle_call_runs (user_id, run_id, charged_at)`, RLS on with zero
+  policies — reached only by the `SECURITY DEFINER` RPCs.
+- `consume_oracle_call(uuid, uuid, text)` and `get_oracle_quota(uuid, uuid,
+  text)` — both gain `p_run_id` and `p_feature`. `get_oracle_quota` also
+  returns `is_curator` so the UI can label the exemption without a second
+  query.
+- One-time correction: moves curators' existing `oracle_calls_today` into
+  `oracle_calls_exempt_total` and zeroes the metered counters, so nobody opens
+  the app already walled by calls that were exempt when they were made.
+
+## Code changes
+
+- `src/components/LandingToggles.jsx` (new) — the EN/ES + sun/moon pair
+- `src/components/LandingNav.jsx` — renders the toggles; About link removed
+- `src/views/Landing.jsx` — `dark` prop follows the theme instead of being
+  hardcoded true
+- `src/components/landing/Companions.jsx` — tile-line SVG and its timeline
+  removed; tile rise kept
+- `src/styles/pages/_landing-story.scss` — full tokenization + parchment
+  block. Note the `lps-derive` mixin: `var()` inside a custom property is
+  substituted at the element where it is *declared*, so the derived tokens
+  must be re-emitted in every palette block, not written once on `:root`
+- `src/styles/pages/_landing.scss` — `.lp-toggles*` styling, `--ro-*` only
+- `src/styles/components/_buttons.scss`, `pages/_profile-extensions.scss` —
+  spacing pass
+- `netlify/functions/claude.js` — validates `runId` as a uuid, allowlists
+  `feature`, threads both into the RPCs
+- `src/lib/oracleCategorizationService.js` — mints one run id per run; the
+  outer `catch` no longer swallows `QuotaExceededError` (it was rethrown by
+  the inner catch with a `// propagate to button` comment and then eaten,
+  so a run past the wall ground through every remaining batch)
+- `src/lib/OracleQuotaContext.jsx` — carries `is_curator`
+- `src/views/Dashboard.jsx`, `Profile.jsx` — branch on `unlimited` *before*
+  clamping. `calls_limit ?? 5` turned a null limit into 5 and
+  `Math.min(calls_used, limit)` turned 32 used into 5, so an unmetered account
+  read "5 of 5" and its bar sat at 100%
+- `src/i18n/en.json`, `es.json` — `landing.nav.*` toggle labels,
+  `dashboard.aiQuotaUnlimited`, `dashboard.aiQuotaCuratorNote`
+- `supabase/quota_diagnostic.sql` (new) — read-only triage for quota reports
+
+---
 
 # Update Notes — v0.40.1 → v0.41.0: Public Landing Page
 

@@ -124,6 +124,8 @@
     "aiQuotaTypeMonthly": "mensuales",
     "aiQuotaUpgrade": "Mejorar a Pro →",
     "aiQuotaIncludes": "Oráculo, planes de lectura, categorización y más",
+    "aiQuotaUnlimited": "Ilimitado",
+    "aiQuotaCuratorNote": "La categorización del catálogo no consume llamadas",
     "widgetSettingsTitle": "Personalizar panel",
     "widgetSettingsSub": "Elegí qué aparece en tu panel y en qué orden",
     "widgetDone": "Listo",
@@ -1657,7 +1659,15 @@
       "about": "Acerca de",
       "login": "Iniciar sesión",
       "signup": "Empezar gratis",
-      "auth": "Regístrate o inicia sesión"
+      "auth": "Regístrate o inicia sesión",
+      "langLabel": "Idioma",
+      "langEn": "EN",
+      "langEs": "ES",
+      "toEnglish": "Switch to English",
+      "toSpanish": "Cambiar a español",
+      "themeLabel": "Apariencia",
+      "toParchment": "Cambiar a modo claro",
+      "toInk": "Cambiar a modo oscuro"
     },
     "mobileNav": {
       "menuLabel": "Enlaces rápidos"

@@ -10,6 +10,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from '../lib/RouterContext';
 import { useT } from '../lib/I18nContext';
+import LandingToggles from './LandingToggles';
 
 export default function LandingNav({ onOpenAuth, dark = false }) {
   const { route, go } = useRouter();
@@ -47,19 +48,32 @@ export default function LandingNav({ onOpenAuth, dark = false }) {
           <span className="lp-nav__brand-text">The <span>Books</span> Oracle</span>
         </button>
 
+        {/* No About link: `about` isn't in App.jsx's legalViews map, so a
+            signed-out visitor who clicks it is dropped into the authenticated
+            app shell instead of the marketing chrome. Re-add only once /about
+            renders under LandingNav for logged-out visitors the way
+            Privacy/Terms do. */}
         <div className="lp-nav__links">
           {sections.map((s) => (
             <button key={s.id} className="lp-nav__link" onClick={() => goSection(s.id)}>{s.label}</button>
           ))}
-          <button className="lp-nav__link" onClick={() => { setMobileOpen(false); go('about'); }}>{t('landing.nav.about')}</button>
         </div>
 
         {/* One auth entry point — login and signup share the same SignInGate
             modal, so two buttons were two names for the same door. */}
         <div className="lp-nav__actions">
+          <LandingToggles variant="nav" />
           <button className="btn-accent btn--sm lp-nav__signup" onClick={() => onOpenAuth?.('login')}>
             {t('landing.nav.auth')}
           </button>
+        </div>
+
+        {/* On mobile the toggles stay in the bar rather than moving into the
+            hamburger sheet — the whole point is that a visitor can set language
+            and palette before the story starts, and a control behind a menu
+            isn't a control they'll find in the first three seconds. */}
+        <div className="lp-nav__bar-toggles">
+          <LandingToggles variant="bar" />
         </div>
 
         <button
@@ -79,7 +93,6 @@ export default function LandingNav({ onOpenAuth, dark = false }) {
           {sections.map((s) => (
             <button key={s.id} className="lp-nav__mobile-link" onClick={() => goSection(s.id)}>{s.label}</button>
           ))}
-          <button className="lp-nav__mobile-link" onClick={() => { setMobileOpen(false); go('about'); }}>{t('landing.nav.about')}</button>
           <div className="lp-nav__mobile-actions">
             <button className="btn-accent btn--block" onClick={() => { setMobileOpen(false); onOpenAuth?.('login'); }}>
               {t('landing.nav.auth')}

@@ -124,6 +124,8 @@
     "aiQuotaResetsOn": "Resets {date}",
     "aiQuotaUpgrade": "Upgrade to Pro →",
     "aiQuotaIncludes": "Oracle draws, reading plans, categorization & more",
+    "aiQuotaUnlimited": "Unlimited",
+    "aiQuotaCuratorNote": "Catalog categorization is unmetered",
     "widgetSettingsTitle": "Customize dashboard",
     "widgetSettingsSub": "Choose and order what appears on your dashboard",
     "widgetDone": "Done",
@@ -1657,7 +1659,15 @@
       "about": "About",
       "login": "Log in",
       "signup": "Start reading free",
-      "auth": "Register or log in"
+      "auth": "Register or log in",
+      "langLabel": "Language",
+      "langEn": "EN",
+      "langEs": "ES",
+      "toEnglish": "Switch to English",
+      "toSpanish": "Cambiar a español",
+      "themeLabel": "Appearance",
+      "toParchment": "Switch to light mode",
+      "toInk": "Switch to dark mode"
     },
     "mobileNav": {
       "menuLabel": "Quick links"

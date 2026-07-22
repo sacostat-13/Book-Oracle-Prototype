@@ -1486,7 +1486,15 @@ export default function Profile() {
 
             {/* Quota bar — reuses the dashboard's AI-quota bar (.db-ai__track/__fill),
                 the same visual pattern, instead of a duplicate .pf-quota* set */}
-            {quota && (
+            {quota && quota.unlimited && (
+              <div className="db-ai__note">{t('dashboard.aiQuotaUnlimited')}</div>
+            )}
+
+            {/* v0.58: only draw a bar when there is a limit to draw it against.
+                `calls_limit ?? 5` previously turned an unlimited quota's null
+                into 5 and pegged the bar at 100%, which read as "you are out
+                of calls" on an account that could not run out. */}
+            {quota && !quota.unlimited && (
               <div>
                 <div className="db-ai__track">
                   <div
@@ -1494,6 +1502,9 @@ export default function Profile() {
                     style={{ '--ai-pct': `${Math.min(100, Math.round(((quota.calls_used ?? 0) / (quota.calls_limit ?? 5)) * 100))}%` }}
                   />
                 </div>
+                {quota.is_curator && (
+                  <div className="db-ai__note">{t('dashboard.aiQuotaCuratorNote')}</div>
+                )}
                 {quota.reset_at && (
                   <div className="db-ai__note">
                     {t('subscription.resetsOn', { date: new Date(quota.reset_at).toLocaleDateString(undefined, { month: 'long', day: 'numeric' }) })}

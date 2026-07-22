@@ -104,6 +104,14 @@ export async function handler(event) {
   );
 
   // ── 2. Auth + quota (fail closed) ────────────────────────────────────────────
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  const runId = typeof body.runId === 'string' && UUID_RE.test(body.runId) ? body.runId : null;
+
+  // Allowlisted, not passed through. `feature` decides whether the curator
+  // exemption applies, so an arbitrary client string must never reach the RPC.
+  const EXEMPTIBLE_FEATURES = ['categorization'];
+  const feature = EXEMPTIBLE_FEATURES.includes(body.feature) ? body.feature : null;
+
   let userId = null;
   let quotaEnforced = false;
 
@@ -123,7 +131,12 @@ export async function handler(event) {
     userId = user.userId;
 
     // READ quota first — does not consume a slot yet.
-    const quota = await supabaseRpc('get_oracle_quota', { p_user_id: userId });
+    // p_run_id lets a multi-batch operation (Oracle categorization) pay once
+    // for the whole run: the first batch is charged, the rest come back with
+    // run_charged = true and pass the gate below even on a spent quota.
+    // Validated as a uuid so a client can't smuggle arbitrary text into the
+    // ledger's primary key.
+    const quota = await supabaseRpc('get_oracle_quota', { p_user_id: userId, p_run_id: runId, p_feature: feature });
 
     // Fail closed: no quota row / RPC error / explicit error status → deny.
     if (!quota || quota.status === 'error') {
@@ -132,7 +145,7 @@ export async function handler(event) {
     }
 
     quotaEnforced = true;
-    if (!quota.unlimited && quota.calls_remaining <= 0) {
+    if (!quota.unlimited && !quota.run_charged && quota.calls_remaining <= 0) {
       const resetDate = quota.reset_at
         ? new Date(quota.reset_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric' })
         : null;
@@ -177,7 +190,7 @@ export async function handler(event) {
   // ── 4. Consume quota ONLY on Anthropic success ───────────────────────────────
   // Must be awaited — fire-and-forget is killed when the Lambda returns.
   if (quotaEnforced && userId && upstreamStatus >= 200 && upstreamStatus < 300) {
-    await supabaseRpc('consume_oracle_call', { p_user_id: userId });
+    await supabaseRpc('consume_oracle_call', { p_user_id: userId, p_run_id: runId, p_feature: feature });
   }
 
   return {

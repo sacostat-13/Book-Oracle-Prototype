@@ -16,9 +16,26 @@
 
 // The version label shown as "current" — keep in sync with package.json and
 // the README version line.
-export const CURRENT_VERSION = 'v0.55.1';
+export const CURRENT_VERSION = 'v0.55.2';
 
 export const RELEASES = [{
+    version: 'v0.55.2',
+    date: '2026-07-22',
+    titleEn: 'Choose your light, and your language',
+    titleEs: 'Elige tu luz y tu idioma',
+    bodyEn: [
+      'The landing page opens with two controls: English/Español, and sun or moon. Pick before the story starts — the whole scroll now has a parchment daylight version, and whatever you choose follows you into the app when you sign up.',
+      'Curator accounts: categorizing the catalog no longer spends Oracle calls, and your quota badge shows the truth again instead of a permanent "5 of 5". Everything else — Spark, Ask, Similar, Plans — is metered like any other account.',
+      'Letting the Oracle categorize a shelf now costs one Oracle call for the whole run, not one for every few books. If your quota does run out mid-run, it stops and tells you instead of grinding on.',
+      'Tidier spacing around buttons and settings sections, and the stray gold lines crossing the companions grid are gone.',
+    ],
+    bodyEs: [
+      'La página de inicio abre con dos controles: English/Español, y sol o luna. Elige antes de que empiece la historia — todo el recorrido tiene ahora una versión clara en pergamino, y lo que elijas te acompaña a la app cuando te registres.',
+      'Cuentas de curador: categorizar el catálogo ya no consume llamadas al Oráculo, y tu insignia de cuota vuelve a decir la verdad en lugar de un "5 de 5" permanente. Todo lo demás — Chispa, Preguntar, Similares, Planes — se mide como en cualquier otra cuenta.',
+      'Dejar que el Oráculo categorice una estantería ahora cuesta una sola llamada por tanda completa, no una por cada pocos libros. Y si la cuota se agota a mitad de camino, se detiene y te avisa en vez de seguir insistiendo.',
+      'Espaciado más prolijo alrededor de botones y secciones de ajustes, y las líneas doradas sueltas que cruzaban la cuadrícula de compañeros ya no están.',
+    ],
+  }, {
     version: 'v0.55.1',
     date: '2026-07-20',
     titleEn: 'Unlimited Oracle calls for curators',

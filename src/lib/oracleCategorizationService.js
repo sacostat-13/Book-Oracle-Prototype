@@ -348,6 +348,12 @@ export async function runOracleCategorization({
     batches.push(books.slice(i, i + BATCH_SIZE));
   }
 
+  // One id for the whole run. schema_v37 charges the first batch that presents
+  // it and lets the rest through free, so a 300-book shelf costs one Oracle
+  // call instead of sixty. The server owns that decision — this is an
+  // idempotency key, not a "please don't charge me" flag.
+  const runId = crypto.randomUUID();
+
   for (let batchIdx = 0; batchIdx < batches.length; batchIdx++) {
     const batch = batches[batchIdx];
 
@@ -366,7 +372,9 @@ export async function runOracleCategorization({
         // model stops when the JSON is done, so this doesn't slow small batches;
         // it just prevents truncation on a full one. Matches oracleBatch.mjs.
         raw = await callClaude(userPrompt, systemPrompt, {
-          maxTokens: 4000
+          maxTokens: 4000,
+          runId,
+          feature: 'categorization'
         });
       } catch (err) {
         if (err instanceof QuotaExceededError) throw err; // propagate to button
@@ -461,6 +469,15 @@ export async function runOracleCategorization({
       });
 
     } catch (err) {
+      // Quota exhaustion is not a per-batch failure — it is the end of the
+      // run. The inner catch rethrows QuotaExceededError intending to
+      // "propagate to button", but this outer catch used to swallow it and
+      // continue, so a run over a large shelf would grind through every
+      // remaining batch against a spent quota, each one bouncing off the
+      // 429 in netlify/functions/claude.js and reporting itself to the user
+      // as "Batch N failed". Stop here and let the button show the quota wall.
+      if (err instanceof QuotaExceededError) throw err;
+
       console.error(`Batch ${batchIdx + 1} failed:`, err);
       failed += batch.length;
       processed += batch.length;

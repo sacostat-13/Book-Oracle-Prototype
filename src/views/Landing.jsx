@@ -17,6 +17,7 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import Lenis from 'lenis';
 import { useRouter } from '../lib/RouterContext';
 import { useI18n, useT } from '../lib/I18nContext';
+import { useTheme } from '../lib/ThemeContext';
 import { useDocumentMeta } from '../lib/useDocumentMeta';
 import LandingNav from '../components/LandingNav';
 import LandingFooter from '../components/LandingFooter';
@@ -37,6 +38,7 @@ gsap.registerPlugin(ScrollTrigger);
 export default function Landing() {
   const { route } = useRouter();
   const { lang } = useI18n();
+  const { theme } = useTheme();
   const t = useT();
   const [authMode, setAuthMode] = useState(null); // null | 'login' | 'signup'
 
@@ -143,7 +145,9 @@ export default function Landing() {
   return (
     <div className="lps-root">
       <GoldThread anchors={threadAnchors} />
-      <LandingNav onOpenAuth={setAuthMode} dark />
+      {/* The logo mark follows the palette the visitor picked, not the page —
+          `dark` used to be hardcoded true because the story was ink-only. */}
+      <LandingNav onOpenAuth={setAuthMode} dark={theme === 'dark'} />
 
       {/* Act I — The Spread (pinned theater) */}
       <ActSpread />
