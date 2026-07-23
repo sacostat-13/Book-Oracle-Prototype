@@ -13,19 +13,26 @@
 // Required env vars: RESEND_API_KEY, WEBHOOK_SECRET, SUPABASE_URL,
 //                    SUPABASE_SERVICE_ROLE_KEY, URL
 //
-// v0.37.2 fix: converted to ESM. The project's root package.json has
+// v0.37.3 fix: converted to ESM. The project's root package.json has
 // "type": "module", so Lambda treated this .js file as an ES module and
 // `exports.handler` threw a ReferenceError at init — the function crashed
 // before any request logic ran.
 //
-// Also removed the `ws` transport workaround from v0.37.1. This function
-// only makes REST calls (auth admin + two table selects) and never opens a
-// realtime channel, so realtime-js never constructs a WebSocket. The `ws`
-// dependency was unnecessary and can be uninstalled.
+// The `ws` transport from v0.37.1 is REQUIRED and has been restored (as an
+// ESM import). SupabaseClient's constructor calls _initRealtimeClient()
+// unconditionally, even though this function only makes REST calls, and on
+// Netlify's Node 20 runtime there is no native WebSocket — so createClient()
+// throws at construction time without an explicit transport. Passing `ws`
+// satisfies the RealtimeClient constructor; no channel is ever opened.
+//
+// Requires the `ws` package: npm install ws --save
+// (Alternative: run functions on Node 22, which has native WebSocket, and
+//  drop both the `ws` dep and the realtime.transport option.)
 
 import {
   createClient
 } from '@supabase/supabase-js';
+import ws from 'ws';
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -190,6 +197,9 @@ export const handler = async (event) => {
       auth: {
         persistSession: false,
         autoRefreshToken: false
+      },
+      realtime: {
+        transport: ws
       },
     }
   );
