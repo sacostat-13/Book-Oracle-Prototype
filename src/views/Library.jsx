@@ -1,7 +1,7 @@
 import { useState, useMemo, useCallback } from 'react';
 import { useData } from '../lib/DataContext';
 import { useRouter } from '../lib/RouterContext';
-import { bookKey } from '../lib/bookHelpers';
+import { bookKey, getPrimaryGenre } from '../lib/bookHelpers';
 import BulkImport from '../components/BulkImport';
 import OracleCategorizationButton from '../components/OracleCategorizationButton';
 import RatingModal from '../components/RatingModal';
@@ -21,6 +21,11 @@ import EmptyState from '../components/EmptyState';
 //   view modes share the same paged slice — the cover grid simply receives fewer
 //   grouped items until the user scrolls further.
 
+// v0.55.3: paginate by whole genre sections rather than a flat book slice, so
+// each genre shelf renders all its titles (and a correct count) the moment it
+// appears. Load this many genre sections per page.
+const GENRE_PAGE_SIZE = 6;
+
 export default function Library({ onOpenBook }) {
   const { state, removeFromLibrary, updateReadBook, getCategoriesForBook } = useData();
   const { go } = useRouter();
@@ -38,11 +43,7 @@ export default function Library({ onOpenBook }) {
   const { genresByBookId } = state;
   const lib = state.library;
 
-  function getPrimaryGenre(b) {
-    const genres = genresByBookId[b.bookId];
-    if (genres && genres.length > 0) return genres[0].name;
-    return b.g || 'Imported';
-  }
+  const primaryGenreOf = (b) => getPrimaryGenre(b, genresByBookId[b.bookId], 'Imported');
 
   // --- Genre dropdown options ---
   const genreOptions = useMemo(() => {
@@ -106,20 +107,31 @@ export default function Library({ onOpenBook }) {
   // so the user doesn't see a half-loaded page from a prior filter state.
   const resetKey = `${genreFilter}|${categoryFilter}|${search}`;
 
-  const { visible: pagedItems, hasMore, loadMore } = usePagedList(filtered, resetKey);
-
-  // Grouping is performed on the *paged* slice — groups grow as more pages load.
+  // Group the FULL filtered set first, so every genre section carries all its
+  // titles and an accurate count — independent of how far the user has scrolled.
   const grouped = useMemo(() => {
     const g = {};
-    for (const b of pagedItems) {
-      const genre = getPrimaryGenre(b);
+    for (const b of filtered) {
+      const genre = primaryGenreOf(b);
       if (!g[genre]) g[genre] = [];
       g[genre].push(b);
     }
     return g;
-  }, [pagedItems, genresByBookId]);
+  }, [filtered, genresByBookId]);
 
-  const genreKeys = useMemo(() => Object.keys(grouped).sort(), [grouped]);
+  const allGenreKeys = useMemo(() => Object.keys(grouped).sort(), [grouped]);
+
+  // Paginate over whole genre sections. Each loaded section is complete, so a
+  // shelf never shows a partial "· 3" that later becomes "· 48".
+  const { visible: genreKeys, hasMore, loadMore } = usePagedList(
+    allGenreKeys, resetKey, { pageSize: GENRE_PAGE_SIZE }
+  );
+
+  // Books rendered so far (sum across visible genre sections) — for the hint.
+  const shownCount = useMemo(
+    () => genreKeys.reduce((n, g) => n + grouped[g].length, 0),
+    [genreKeys, grouped]
+  );
 
   // Stable loadMore reference for the sentinel
   const handleLoadMore = useCallback(() => loadMore(), [loadMore]);
@@ -142,12 +154,14 @@ export default function Library({ onOpenBook }) {
         <div className="page-head__eyebrow"><span>Dashboard</span> · Library</div>
         <h1 className="page-head__title">{tNode('library.pageTitle')}</h1>
         <p className="page-head__lead">
-          {lib.length} books across {genreKeys.length} genre{genreKeys.length !== 1 ? 's' : ''}.
+          {lib.length} books across {allGenreKeys.length} genre{allGenreKeys.length !== 1 ? 's' : ''}.
         </p>
       </div>
 
       {lib.length > 0 && (
-        <div className="lv-toolbar">
+        <div className="lv-toolbar lv-toolbar--split">
+          <div className="lv-toolbar__group lv-toolbar__group--filter">
+          <span className="lv-toolbar__label">{t('common.filterLabel')}</span>
           <div className="lv-toolbar__filters">
             <div className="lv-search">
               <svg className="lv-search__icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
@@ -177,6 +191,7 @@ export default function Library({ onOpenBook }) {
                 ))}
               </select>
             )}
+          </div>
           </div>
           <div className="lv-chips">
             <button
@@ -261,7 +276,7 @@ export default function Library({ onOpenBook }) {
           <ScrollSentinel onVisible={handleLoadMore} enabled={hasMore} />
           {hasMore && (
             <p className="lv-load-hint">
-              Showing {pagedItems.length} of {filtered.length} books — scroll to load more
+              Showing {shownCount} of {filtered.length} books — scroll to load more
             </p>
           )}
         </>
@@ -349,7 +364,7 @@ export default function Library({ onOpenBook }) {
           <ScrollSentinel onVisible={handleLoadMore} enabled={hasMore} />
           {hasMore && (
             <p className="lv-load-hint">
-              Showing {pagedItems.length} of {filtered.length} books — scroll to load more
+              Showing {shownCount} of {filtered.length} books — scroll to load more
             </p>
           )}
         </>

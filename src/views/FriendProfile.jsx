@@ -151,55 +151,60 @@ function FriendLibrary({ library, go, t }) {
 
   return (
     <>
-      {/* Toolbar — matches Library/Wishlist layout */}
-      <div className="lv-toolbar">
-        <div className="lv-toolbar__filters">
-          {/* Search */}
-          <div className="lv-search">
-            <svg className="lv-search__icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-              <circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" />
-            </svg>
-            <input
-              type="text"
-              className="lv-search__input"
-              placeholder={t('friends.librarySearch')}
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
+      {/* Toolbar — filters and ordering are visually separated so it's clear
+          which controls narrow the list vs. which reorder it. On mobile the
+          two groups stack in a column (see .lv-toolbar--split styles). */}
+      <div className="lv-toolbar lv-toolbar--split">
+        {/* Filter group: search + genre + year */}
+        <div className="lv-toolbar__group lv-toolbar__group--filter">
+          <span className="lv-toolbar__label">{t('common.filterLabel')}</span>
+          <div className="lv-toolbar__filters">
+            {/* Search */}
+            <div className="lv-search">
+              <svg className="lv-search__icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+                <circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" />
+              </svg>
+              <input
+                type="text"
+                className="lv-search__input"
+                placeholder={t('friends.librarySearch')}
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+            </div>
+
+            {/* Genre filter */}
+            {genreOptions.length > 0 && (
+              <select className="select" value={genreFilter} onChange={(e) => setGenreFilter(e.target.value)}>
+                <option value="all">{t('friends.libraryAllGenres')}</option>
+                {genreOptions.map((o) => (
+                  <option key={o.normalized_name} value={o.normalized_name}>☩ {o.name}</option>
+                ))}
+              </select>
+            )}
+
+            {/* Year filter */}
+            {yearOptions.length > 1 && (
+              <select className="select" value={yearFilter} onChange={(e) => setYearFilter(e.target.value)}>
+                <option value="all">{t('friends.libraryAllYears')}</option>
+                {yearOptions.map((y) => (
+                  <option key={y} value={y}>{y}</option>
+                ))}
+              </select>
+            )}
           </div>
-
-          {/* Genre filter */}
-          {genreOptions.length > 0 && (
-            <select className="select" value={genreFilter} onChange={(e) => setGenreFilter(e.target.value)}>
-              <option value="all">{t('friends.libraryAllGenres')}</option>
-              {genreOptions.map((o) => (
-                <option key={o.normalized_name} value={o.normalized_name}>☩ {o.name}</option>
-              ))}
-            </select>
-          )}
-
-          {/* Year filter */}
-          {yearOptions.length > 1 && (
-            <select className="select" value={yearFilter} onChange={(e) => setYearFilter(e.target.value)}>
-              <option value="all">{t('friends.libraryAllYears')}</option>
-              {yearOptions.map((y) => (
-                <option key={y} value={y}>{y}</option>
-              ))}
-            </select>
-          )}
         </div>
 
-        {/* Sort + count — right side */}
-        <div className="fp-hero__actions">
+        {/* Order group: sort only (book count removed — it's redundant with the
+            hero stats above, which already show total + books this year) */}
+        <div className="lv-toolbar__group lv-toolbar__group--order">
+          <span className="lv-toolbar__label">{t('common.orderLabel')}</span>
           <select className="select" value={sort} onChange={(e) => setSort(e.target.value)}>
             <option value="recent">{t('friends.librarySortRecent')}</option>
             <option value="rating">{t('friends.librarySortRating')}</option>
             <option value="title">{t('friends.librarySortTitle')}</option>
             <option value="author">{t('friends.librarySortAuthor')}</option>
           </select>
-          <span className="pf-overline">
-            {t('friends.libraryCount', { count: filtered.length })}
-          </span>
         </div>
       </div>
 

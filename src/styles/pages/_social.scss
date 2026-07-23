@@ -662,6 +662,11 @@
   align-items: center;
   gap: 22px;
   flex-wrap: wrap;
+
+  @media (max-width: 767px) {
+    display: block;
+
+  }
 }
 
 .fp-hero__info {

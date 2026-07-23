@@ -1196,6 +1196,8 @@
     "next": "Next",
     "save": "Save",
     "done": "Done",
+    "filterLabel": "Filter",
+    "orderLabel": "Order",
     "by": "by",
     "and": "and",
     "or": "or",

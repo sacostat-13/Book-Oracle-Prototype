@@ -1196,6 +1196,8 @@
     "next": "Siguiente",
     "save": "Guardar",
     "done": "Listo",
+    "filterLabel": "Filtrar",
+    "orderLabel": "Ordenar",
     "by": "de",
     "and": "y",
     "or": "o",

@@ -1,7 +1,7 @@
 import { useState, useMemo, useCallback } from 'react';
 import { useData } from '../lib/DataContext';
 import { useRouter } from '../lib/RouterContext';
-import { GENRES, bookKey } from '../lib/bookHelpers';
+import { GENRES, bookKey, getPrimaryGenre } from '../lib/bookHelpers';
 import BulkImport from '../components/BulkImport';
 import OracleCategorizationButton from '../components/OracleCategorizationButton';
 import LibraryCoverGrid from '../components/LibraryCoverGrid';
@@ -15,6 +15,10 @@ import EmptyState from '../components/EmptyState';
 // v0.15 phase 2.5: two-dropdown filter (genres + categories).
 // v0.16 DS pass: migrated to .lv-* / .btn-* / .select tokens.
 // v0.16 perf: chunked rendering via usePagedList + ScrollSentinel.
+
+// v0.55.3: paginate by whole genre sections (see Library.jsx) so each genre
+// shelf shows all its titles and a correct count immediately.
+const GENRE_PAGE_SIZE = 6;
 
 export default function Wishlist({ onOpenBook }) {
   const {
@@ -45,11 +49,7 @@ export default function Wishlist({ onOpenBook }) {
   const wl = state.wishlist;
   const { genresByBookId } = state;
 
-  function getPrimaryGenre(b) {
-    const genres = genresByBookId[b.bookId];
-    if (genres && genres.length > 0) return genres[0].name;
-    return b.g || 'Uncategorized';
-  }
+  const primaryGenreOf = (b) => getPrimaryGenre(b, genresByBookId[b.bookId], 'Uncategorized');
 
   // --- Genre dropdown options ---
   const genreOptions = useMemo(() => {
@@ -118,20 +118,29 @@ export default function Wishlist({ onOpenBook }) {
   // Stable reset key — changes whenever the user adjusts any filter.
   const resetKey = `${genreFilter}|${categoryFilter}|${search}`;
 
-  const { visible: pagedItems, hasMore, loadMore } = usePagedList(filtered, resetKey);
-
-  // Grouping happens on the paged slice — genres grow as more pages load.
+  // Group the FULL filtered set first, so every genre section carries all its
+  // titles and an accurate count — independent of scroll position.
   const grouped = useMemo(() => {
     const g = {};
-    for (const b of pagedItems) {
-      const genre = getPrimaryGenre(b);
+    for (const b of filtered) {
+      const genre = primaryGenreOf(b);
       if (!g[genre]) g[genre] = [];
       g[genre].push(b);
     }
     return g;
-  }, [pagedItems, genresByBookId]);
+  }, [filtered, genresByBookId]);
 
-  const genreKeys = useMemo(() => Object.keys(grouped).sort(), [grouped]);
+  const allGenreKeys = useMemo(() => Object.keys(grouped).sort(), [grouped]);
+
+  // Paginate over whole genre sections — each loaded section is complete.
+  const { visible: genreKeys, hasMore, loadMore } = usePagedList(
+    allGenreKeys, resetKey, { pageSize: GENRE_PAGE_SIZE }
+  );
+
+  const shownCount = useMemo(
+    () => genreKeys.reduce((n, g) => n + grouped[g].length, 0),
+    [genreKeys, grouped]
+  );
 
   const handleLoadMore = useCallback(() => loadMore(), [loadMore]);
 
@@ -144,7 +153,9 @@ export default function Wishlist({ onOpenBook }) {
         <p className="page-head__lead">{wl.length} {t('wishlist.subtitle')}</p>
       </div>
 
-      <div className="lv-toolbar">
+      <div className="lv-toolbar lv-toolbar--split">
+        <div className="lv-toolbar__group lv-toolbar__group--filter">
+        <span className="lv-toolbar__label">{t('common.filterLabel')}</span>
         <div className="lv-toolbar__filters">
           <div className="lv-search">
             <svg className="lv-search__icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
@@ -174,6 +185,7 @@ export default function Wishlist({ onOpenBook }) {
               ))}
             </select>
           )}
+        </div>
         </div>
         <div className="lv-chips">
           <div className="lv-view-toggle">
@@ -264,7 +276,7 @@ export default function Wishlist({ onOpenBook }) {
           <ScrollSentinel onVisible={handleLoadMore} enabled={hasMore} />
           {hasMore && (
             <p className="lv-load-hint">
-              Showing {pagedItems.length} of {filtered.length} books — scroll to load more
+              Showing {shownCount} of {filtered.length} books — scroll to load more
             </p>
           )}
         </>
@@ -341,7 +353,7 @@ export default function Wishlist({ onOpenBook }) {
           <ScrollSentinel onVisible={handleLoadMore} enabled={hasMore} />
           {hasMore && (
             <p className="lv-load-hint">
-              Showing {pagedItems.length} of {filtered.length} books — scroll to load more
+              Showing {shownCount} of {filtered.length} books — scroll to load more
             </p>
           )}
         </>

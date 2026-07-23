@@ -16,9 +16,24 @@
 
 // The version label shown as "current" — keep in sync with package.json and
 // the README version line.
-export const CURRENT_VERSION = 'v0.55.2';
+export const CURRENT_VERSION = 'v0.55.3';
 
 export const RELEASES = [{
+    version: 'v0.55.3',
+    date: '2026-07-23',
+    titleEn: 'Genre shelves, counted right',
+    titleEs: 'Estantes por género, bien contados',
+    bodyEn: [
+      'Genre shelves in your Library and Wishlist now show every title and a true count the moment they appear — no more a shelf reading "3" that jumps to "48" once you scroll to the end.',
+      'Each book now files under its most specific genre, so niche shelves like "Body Horror & Transgressive" actually fill up instead of disappearing into a broad "Horror".',
+      'On a friend’s profile, the toolbar now separates filtering from ordering, drops a redundant book count, and stacks cleanly on mobile.',
+    ],
+    bodyEs: [
+      'Los estantes por género en tu Biblioteca y tu Lista de deseos ahora muestran todos los títulos y un conteo real apenas aparecen — se acabó el estante que decía "3" y saltaba a "48" al llegar al final.',
+      'Cada libro se ubica ahora en su género más específico, así los estantes de nicho como "Body Horror & Transgressive" se llenan de verdad en lugar de perderse en un "Horror" genérico.',
+      'En el perfil de una amistad, la barra ahora separa filtrar de ordenar, quita un conteo de libros redundante y se apila prolijamente en el celular.',
+    ],
+  }, {
     version: 'v0.55.2',
     date: '2026-07-22',
     titleEn: 'Choose your light, and your language',

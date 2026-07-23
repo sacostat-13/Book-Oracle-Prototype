@@ -4,7 +4,7 @@ A reading companion — wishlist, library, reading plans, book clubs, and an AI-
 for book discovery. Built with React + Vite + SCSS, backed by Supabase for auth
 and cross-device sync, and Netlify Functions for API proxying.
 
-> Current version: **v0.55.2** — see [Releases](#releases) below for changelog.
+> Current version: **v0.55.3** — see [Releases](#releases) below for changelog.
 > Upgrading from an earlier version? Check the matching `MIGRATION_*.md` / `UPDATE_*.md`.
 
 ---
@@ -331,6 +331,59 @@ and forward requests. Locally you need `netlify dev` to make them work.
 ---
 
 ## Releases
+
+# Update Notes — v0.55.2 → v0.55.3: Genre shelves counted right, split filter/order toolbar
+
+Fixes the genre-count artifact on Library and Wishlist, changes how a book's
+browse shelf is chosen, and reworks the list toolbars so filtering and ordering
+read as distinct controls.
+
+Not marked critical in `public/app-version.json`: this is a client-only
+rendering + styling change with no schema or RPC impact, so stale clients get
+the standard dismissible update prompt rather than a forced reload.
+
+## What's new
+
+1. **Genre shelves show their full count immediately** — Library and Wishlist
+   previously paged the *flat* filtered list and grouped only the loaded slice,
+   so a shelf header read "· 3" until you scrolled to the very end and it became
+   "· 48". Both views now group the full filtered set first and paginate over
+   *whole genre sections*, so every shelf renders all its titles and a correct
+   count the moment it appears. Still lazy — sections load
+   `GENRE_PAGE_SIZE = 6` at a time, so long wishlists (1000+) stay responsive.
+2. **A book's browse shelf is now its most specific genre** — the grouped view
+   used `genres[0]`, which (given `rollupGenres` sorts by global usage desc)
+   filed every book under its broadest genre; niche shelves stayed empty. A new
+   shared `getPrimaryGenre` helper picks the *least-common* genre instead, so
+   shelves like "Body Horror & Transgressive" populate. Each book still shows in
+   exactly one shelf when browsing and under any of its genres when filtering.
+3. **Split filter/order toolbars** — the Friend profile toolbar now separates a
+   labeled "Filter" group (search + genre + year) from an "Order" group (sort),
+   and the redundant book count beside the sort dropdown is gone (the hero stats
+   already show total + books this year). Library and Wishlist gain the same
+   "Filter" label for consistency. The toolbar stacks into a column on mobile
+   via the new `.lv-toolbar--split` styles.
+
+## Database changes
+
+None. No migration required.
+
+## Code changes
+
+- `src/lib/bookHelpers.js` — new `getPrimaryGenre(book, genres, fallback)`
+  helper implementing the least-common-genre rule
+- `src/views/Library.jsx`, `src/views/Wishlist.jsx` — group the full `filtered`
+  set, paginate `allGenreKeys` via `usePagedList` at `GENRE_PAGE_SIZE`, derive
+  `shownCount` for the load hint; genre count in the page head now reflects the
+  true total. Removed the per-view local `getPrimaryGenre`.
+- `src/views/FriendProfile.jsx` — toolbar split into filter/order groups; book
+  count removed
+- `src/styles/pages/_book-pages.scss` — `.lv-toolbar--split`,
+  `.lv-toolbar__group`, `.lv-toolbar__label`; mobile column layout
+- `src/i18n/en.json`, `es.json` — `common.filterLabel`, `common.orderLabel`
+- `public/app-version.json` — bumped to 0.55.3, `critical: false`
+
+---
 
 # Update Notes — v0.55.1 → v0.55.2: Landing toggles, parchment story, quota corrections
 

@@ -431,6 +431,53 @@
   }
 }
 
+// v0.55.3: split toolbar — a labeled "Filter" group and (on friend profiles) an
+// "Order" group, so it's visually obvious which controls narrow the list vs.
+// reorder it. On desktop the groups sit on one row (filters flex-grow, order
+// hugs the right); on mobile they stack in a column, each on its own line.
+.lv-toolbar--split {
+  align-items: flex-end;
+  gap: 18px;
+
+  @include tokens.ro-down(tablet) {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+
+.lv-toolbar__group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+
+  &--filter {
+    flex: 1 1 auto;
+  }
+
+  &--order {
+    flex: 0 0 auto;
+
+    .select {
+      min-width: 190px;
+    }
+
+    @include tokens.ro-down(tablet) {
+      .select {
+        width: 100%;
+      }
+    }
+  }
+}
+
+// Small mono overline that names each toolbar group ("Filter" / "Order").
+.lv-toolbar__label {
+  @include tokens.ro-type(overline);
+  font-size: 10px;
+  letter-spacing: .16em;
+  color: var(--ro-muted);
+}
+
 // Segmented List/Covers toggle (matches DS Action Bar reference)
 .lv-view-toggle {
   display: flex;
