@@ -84,20 +84,21 @@ function buildEmail({
   const sessionLink = data ?.session_id ?
     `${appUrl}/#session-detail?sessionId=${data.session_id}` :
     clubLink;
+  const friendsLink = `${appUrl}/friends`;
 
   switch (type) {
     case 'friend_request':
       return {
         subject: `${actorLabel} wants to be your reading friend`,
           body: `<strong>${actorLabel}</strong> sent you a friend request on The Books Oracle.`,
-          ctaUrl: appUrl,
+          ctaUrl: friendsLink,
           ctaLabel: 'View request →',
       };
     case 'friend_accepted':
       return {
         subject: `${actorLabel} accepted your friend request`,
           body: `You and <strong>${actorLabel}</strong> are now reading friends.`,
-          ctaUrl: appUrl,
+          ctaUrl: friendsLink,
           ctaLabel: 'Open app →',
       };
     case 'club_invite':
