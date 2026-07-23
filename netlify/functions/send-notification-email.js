@@ -258,6 +258,9 @@ export const handler = async (event) => {
     skipped: 'no_template'
   });
 
+  // Plain-text preheader (inbox preview snippet) derived from the HTML body.
+  const preheader = String(email.body).replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim().slice(0, 140);
+
   if (!process.env.RESEND_API_KEY) {
     console.log(
       'send-notification-email: dev mode, would send:',
@@ -282,25 +285,76 @@ export const handler = async (event) => {
       subject: email.subject,
       html: `
         <!DOCTYPE html>
-        <html>
-        <body style="background:#f5edd8;margin:0;padding:32px 16px;font-family:Georgia,serif">
-          <div style="max-width:480px;margin:0 auto;background:#ede3c8;border:1px solid rgba(42,29,14,0.14);border-radius:4px;padding:32px">
-            <div style="font-family:'Courier New',monospace;font-size:11px;letter-spacing:0.25em;text-transform:uppercase;color:#9a7a2e;margin-bottom:24px">
-              The Books Oracle
-            </div>
-            <p style="font-family:Georgia,serif;font-size:16px;color:#2a1d0e;line-height:1.6;margin:0 0 20px">
-              ${email.body}
-            </p>
-            <p style="margin:0">
-              <a href="${email.ctaUrl}" style="font-family:Georgia,serif;font-size:15px;color:#9a7a2e;text-decoration:underline">
-                ${email.ctaLabel}
-              </a>
-            </p>
-            <div style="margin-top:32px;padding-top:16px;border-top:1px solid rgba(42,29,14,0.14);font-family:'Courier New',monospace;font-size:11px;color:#8c7060;letter-spacing:0.05em">
-              Manage your notification preferences in your
-              <a href="${appUrl}/#profile" style="color:#9a7a2e">profile settings</a>.
-            </div>
-          </div>
+        <html lang="en" xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1">
+          <meta http-equiv="X-UA-Compatible" content="IE=edge">
+          <meta name="color-scheme" content="light dark">
+          <meta name="supported-color-schemes" content="light dark">
+          <title>${email.subject}</title>
+          <!--[if mso]><style>* { font-family: Arial, sans-serif !important; }</style><![endif]-->
+          <style>
+            body, table, td, a { -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }
+            table, td { mso-table-lspace: 0pt; mso-table-rspace: 0pt; }
+            img { -ms-interpolation-mode: bicubic; border: 0; line-height: 100%; outline: none; text-decoration: none; }
+            body { margin: 0; padding: 0; width: 100% !important; height: 100% !important; }
+            a { color: #9a7a2e; }
+            @media only screen and (max-width: 600px) {
+              .bo-card { padding: 28px 22px !important; }
+              .bo-btn { width: 100% !important; }
+            }
+            @media (prefers-color-scheme: dark) {
+              .bo-body { background: #16130f !important; }
+              .bo-card { background: #201b15 !important; border-color: #342c20 !important; }
+              .bo-text { color: #ede4d2 !important; }
+              .bo-muted { color: #a99d89 !important; }
+              .bo-wordmark { color: #cba33f !important; }
+            }
+          </style>
+        </head>
+        <body class="bo-body" style="margin:0;padding:0;background:#f4f1ea;">
+          <div style="display:none;max-height:0;overflow:hidden;opacity:0;mso-hide:all;font-size:1px;line-height:1px;color:#f4f1ea;">${preheader}&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;</div>
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="bo-body" style="background:#f4f1ea;">
+            <tr>
+              <td align="center" style="padding:40px 16px;">
+                <table role="presentation" width="480" cellpadding="0" cellspacing="0" border="0" style="width:480px;max-width:480px;">
+                  <tr>
+                    <td class="bo-card" style="background:#ffffff;border:1px solid #ebe6da;border-radius:12px;padding:40px 40px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+                      <p class="bo-wordmark" style="margin:0 0 28px;font-family:'IBM Plex Mono',ui-monospace,'Courier New',monospace;font-size:11px;letter-spacing:0.28em;text-transform:uppercase;color:#9a7a2e;">The Books Oracle</p>
+                      <p class="bo-text" style="margin:0 0 28px;font-family:Georgia,'Times New Roman',serif;font-size:18px;line-height:1.55;color:#2a2620;">${email.body}</p>
+                      <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+                        <tr>
+                          <td class="bo-btn" align="center" bgcolor="#9a7a2e" style="border-radius:8px;">
+                            <!--[if mso]>
+                            <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="${email.ctaUrl}" style="height:46px;v-text-anchor:middle;width:220px;" arcsize="17%" strokecolor="#9a7a2e" fillcolor="#9a7a2e">
+                              <w:anchorlock/>
+                              <center style="color:#fdfaf2;font-family:Arial,sans-serif;font-size:15px;font-weight:bold;">${email.ctaLabel}</center>
+                            </v:roundrect>
+                            <![endif]-->
+                            <!--[if !mso]><!-- -->
+                            <a href="${email.ctaUrl}" style="display:inline-block;padding:14px 32px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:15px;font-weight:600;letter-spacing:0.02em;color:#fdfaf2;text-decoration:none;border-radius:8px;background:#9a7a2e;">${email.ctaLabel}</a>
+                            <!--<![endif]-->
+                          </td>
+                        </tr>
+                      </table>
+                      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:36px;">
+                        <tr><td style="border-top:1px solid #ebe6da;font-size:0;line-height:0;">&nbsp;</td></tr>
+                      </table>
+                      <p class="bo-muted" style="margin:18px 0 0;font-family:'IBM Plex Mono',ui-monospace,'Courier New',monospace;font-size:11px;line-height:1.6;letter-spacing:0.03em;color:#8c8474;">
+                        Manage your notification preferences in your <a href="${appUrl}/profile" style="color:#9a7a2e;text-decoration:underline;">profile settings</a>.
+                      </p>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td align="center" style="padding:20px 8px 0;font-family:'IBM Plex Mono',ui-monospace,'Courier New',monospace;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:#b3ab9a;">
+                      The Books Oracle
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+          </table>
         </body>
         </html>
       `,
