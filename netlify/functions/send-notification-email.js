@@ -70,11 +70,11 @@ function buildEmail({
   appUrl
 }) {
   const actorLabel =
-    actor ? .display_name || (actor ? .username ? `@${actor.username}` : 'Someone');
-  const clubLink = data ? .club_id ?
+    actor ?.display_name || (actor ?.username ? `@${actor.username}` : 'Someone');
+  const clubLink = data ?.club_id ?
     `${appUrl}/#book-club-detail?clubId=${data.club_id}` :
     appUrl;
-  const sessionLink = data ? .session_id ?
+  const sessionLink = data ?.session_id ?
     `${appUrl}/#session-detail?sessionId=${data.session_id}` :
     clubLink;
 
@@ -130,14 +130,14 @@ function buildEmail({
       };
     case 'announcement': {
       const raw =
-        data ? .body ||
-        data ? .preview ||
+        data ?.body ||
+        data ?.preview ||
         'There is a new announcement from the The Books Oracle team.';
       const htmlBody = String(raw)
         .replace(/\\n/g, '\n') // unescape literal "\n" if stored that way
         .replace(/\n/g, '<br>'); // real newlines → <br> for the email HTML
       return {
-        subject: data ? .title || 'Announcement from The Books Oracle',
+        subject: data ?.title || 'Announcement from The Books Oracle',
         body: htmlBody,
         ctaUrl: appUrl,
         ctaLabel: 'Open app →',
@@ -174,7 +174,7 @@ export const handler = async (event) => {
     });
   }
 
-  const notification = payload ? .record;
+  const notification = payload ?.record;
   if (!notification) return respond(400, {
     error: 'No notification record'
   });
@@ -200,7 +200,7 @@ export const handler = async (event) => {
   } = await supabaseClient.auth.admin.getUserById(
     notification.user_id
   );
-  const recipientEmail = recipientAuth ? .user ? .email;
+  const recipientEmail = recipientAuth ?.user ?.email;
   if (!recipientEmail) return respond(200, {
     skipped: 'no_email'
   });
@@ -214,9 +214,9 @@ export const handler = async (event) => {
     .eq('id', notification.user_id)
     .maybeSingle();
 
-  const prefs = profile ? .notification_preferences || {};
+  const prefs = profile ?.notification_preferences || {};
   // Email master toggle (new JSONB prefs or legacy boolean)
-  const emailOn = prefs.email !== false && profile ? .email_notifications !== false;
+  const emailOn = prefs.email !== false && profile ?.email_notifications !== false;
   if (!emailOn) return respond(200, {
     skipped: 'email_off'
   });
