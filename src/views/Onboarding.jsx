@@ -1,10 +1,12 @@
 import { useState, useRef } from 'react';
 import { useData } from '../lib/DataContext';
+import { useAuth } from '../lib/AuthContext';
 import { useRouter } from '../lib/RouterContext';
 import { useT, useTNode } from '../lib/I18nContext';
 import { parseGoodreadsCSV } from '../lib/goodreadsImport';
 import CornerBrackets from '../components/CornerBrackets';
 import { findBookByTitle } from '../lib/bookHelpers';
+import { validateUsername, checkUsernameAvailability } from '../lib/useFriends';
 
 // v0.38: fixed set of mood/intent chips for the "what are you looking for right now" step.
 // Multi-select, up to MOOD_MAX. IDs are stable — used as keys in profile.currentMood and in i18n lookups.
@@ -13,11 +15,18 @@ const MOOD_MAX = 3;
 const GENRE_MAX = 5;
 
 export default function Onboarding() {
-  const { state, setProfile, setOnboarded, importGoodreads, showToast } = useData();
+  const { state, setProfile, setOnboarded, importGoodreads, showToast, updateUsername, updateDisplayName } = useData();
+  const { user } = useAuth();
   const { go } = useRouter();
   const t = useT();
   const tNode = useTNode();
   const [step, setStep] = useState(1);
+  // v0.55.4: identity step — collected first so this setting is never lost.
+  const [displayName, setDisplayName] = useState(state.profile?.displayName || '');
+  const [username, setUsername] = useState(state.profile?.username || '');
+  // Prefilled (returning/replay) usernames are already the reader's own — treat as available.
+  const [usernameStatus, setUsernameStatus] = useState(state.profile?.username ? 'available' : null); // 'available'|'taken'|'invalid'|'checking'|null
+  const usernameDebounce = useRef(null);
   const [readingLevel, setReadingLevel] = useState(null);
   const [favoriteGenres, setFavoriteGenres] = useState([]);
   const [currentMood, setCurrentMood] = useState([]);
@@ -26,7 +35,25 @@ export default function Onboarding() {
   const [dragOver, setDragOver] = useState(false);
   const fileRef = useRef(null);
 
-  const TOTAL_STEPS = 5;
+  const TOTAL_STEPS = 6;
+
+  // v0.55.4: live username validation + availability, mirroring the Profile check.
+  function onUsernameChange(val) {
+    setUsername(val);
+    setUsernameStatus(null);
+    clearTimeout(usernameDebounce.current);
+    const lower = val.toLowerCase().trim();
+    if (!lower) return;
+    if (validateUsername(lower) !== 'ok') { setUsernameStatus('invalid'); return; }
+    if (lower === state.profile?.username) { setUsernameStatus('available'); return; }
+    setUsernameStatus('checking');
+    usernameDebounce.current = setTimeout(async () => {
+      const result = await checkUsernameAvailability(lower, user?.id);
+      setUsernameStatus(result);
+    }, 400);
+  }
+
+  const identityValid = displayName.trim().length > 0 && usernameStatus === 'available';
 
   const LEVELS = [1, 2, 3, 4, 5].map((v) => ({
     v,
@@ -80,8 +107,16 @@ export default function Onboarding() {
   }
 
   async function finish() {
+    // v0.55.4: persist identity first so display name + username survive even if
+    // the reader never opens their Profile. Written straight to the profiles row.
+    const trimmedName = displayName.trim();
+    const trimmedUser = username.toLowerCase().trim();
+    if (trimmedName) await updateDisplayName(trimmedName);
+    if (trimmedUser && trimmedUser !== state.profile?.username) await updateUsername(trimmedUser);
     setProfile({ readingLevel, goal, favoriteGenres, currentMood, goodreadsImported: goodreadsBooks.length > 0 });
     setOnboarded(true);
+    // v0.55.4: clear the DEV replay flag so the flow exits to the dashboard.
+    try { window.sessionStorage.removeItem('bo_dev_replay_onboarding'); } catch { /* no-op */ }
     if (goodreadsBooks.length > 0) {
       const enriched = goodreadsBooks.map((gb) => {
         const match = findBookByTitle(gb.t);
@@ -104,6 +139,63 @@ export default function Onboarding() {
 
         {step === 1 && (
           <>
+            <div className="onb-eyebrow">{t('onboarding.stepNameEyebrow')}</div>
+            <h1 className="onb-title">{t('onboarding.stepNameTitle')}</h1>
+            <p className="onb-desc">{t('onboarding.stepNameDesc')}</p>
+
+            <div className="onb-field">
+              <label className="onb-field__label" htmlFor="onb-display-name">{t('onboarding.labelName')}</label>
+              <input
+                id="onb-display-name"
+                type="text"
+                maxLength={50}
+                className="input"
+                placeholder={t('onboarding.namePlaceholder')}
+                value={displayName}
+                onChange={(e) => setDisplayName(e.target.value)}
+                autoFocus
+              />
+            </div>
+
+            <div className="onb-field">
+              <label className="onb-field__label" htmlFor="onb-username">{t('onboarding.labelUsername')}</label>
+              <div className="pf-edit-row">
+                <span className="pf-edit-prefix">@</span>
+                <input
+                  id="onb-username"
+                  type="text"
+                  maxLength={24}
+                  className="input"
+                  placeholder="yourname"
+                  value={username}
+                  onChange={(e) => onUsernameChange(e.target.value)}
+                />
+              </div>
+              {usernameStatus && usernameStatus !== 'checking' && (
+                <div className={`status${usernameStatus === 'available' ? ' status--success' : (usernameStatus === 'taken' || usernameStatus === 'invalid') ? ' status--error' : ''}`}>
+                  {usernameStatus === 'available' ? t('profile.usernameAvailable')
+                    : usernameStatus === 'taken' ? t('profile.usernameTaken')
+                    : usernameStatus === 'invalid' ? t('profile.usernameInvalid')
+                    : t('onboarding.usernameError')}
+                </div>
+              )}
+              {usernameStatus === 'checking' && (
+                <div className="status">{t('onboarding.usernameChecking')}</div>
+              )}
+              <p className="onb-hint">{t('onboarding.usernameHint')}</p>
+            </div>
+
+            <div className="onb-actions">
+              <div></div>
+              <button className="btn-primary" disabled={!identityValid} onClick={() => setStep(2)}>
+                {t('onboarding.continue')}
+              </button>
+            </div>
+          </>
+        )}
+
+        {step === 2 && (
+          <>
             <div className="onb-eyebrow">{t('onboarding.step1Eyebrow')}</div>
             <h1 className="onb-title">{t('onboarding.step1Title')}</h1>
             <p className="onb-desc">{t('onboarding.step1Desc')}</p>
@@ -120,15 +212,15 @@ export default function Onboarding() {
               ))}
             </div>
             <div className="onb-actions">
-              <div></div>
-              <button className="btn-primary" disabled={readingLevel == null} onClick={() => setStep(2)}>
+              <button className="btn-secondary" onClick={() => setStep(1)}>{t('onboarding.back')}</button>
+              <button className="btn-primary" disabled={readingLevel == null} onClick={() => setStep(3)}>
                 {t('onboarding.continue')}
               </button>
             </div>
           </>
         )}
 
-        {step === 2 && (
+        {step === 3 && (
           <>
             <div className="onb-eyebrow">{t('onboarding.step2Eyebrow')}</div>
             <h1 className="onb-title">{t('onboarding.step2Title')}</h1>
@@ -147,13 +239,13 @@ export default function Onboarding() {
             </div>
             <p className="onb-hint">{t('onboarding.genreCount', { count: favoriteGenres.length, max: GENRE_MAX })}</p>
             <div className="onb-actions">
-              <button className="btn-secondary" onClick={() => setStep(1)}>{t('onboarding.back')}</button>
-              <button className="btn-primary" onClick={() => setStep(3)}>{t('onboarding.continue')}</button>
+              <button className="btn-secondary" onClick={() => setStep(2)}>{t('onboarding.back')}</button>
+              <button className="btn-primary" onClick={() => setStep(4)}>{t('onboarding.continue')}</button>
             </div>
           </>
         )}
 
-        {step === 3 && (
+        {step === 4 && (
           <>
             <div className="onb-eyebrow">{t('onboarding.step3Eyebrow')}</div>
             <h1 className="onb-title">{t('onboarding.step3Title')}</h1>
@@ -172,13 +264,13 @@ export default function Onboarding() {
               ))}
             </div>
             <div className="onb-actions">
-              <button className="btn-secondary" onClick={() => setStep(2)}>{t('onboarding.back')}</button>
-              <button className="btn-primary" onClick={() => setStep(4)}>{t('onboarding.continue')}</button>
+              <button className="btn-secondary" onClick={() => setStep(3)}>{t('onboarding.back')}</button>
+              <button className="btn-primary" onClick={() => setStep(5)}>{t('onboarding.continue')}</button>
             </div>
           </>
         )}
 
-        {step === 4 && (
+        {step === 5 && (
           <>
             <div className="onb-eyebrow">{t('onboarding.step4Eyebrow')}</div>
             <h1 className="onb-title">{t('onboarding.step4Title')}</h1>
@@ -216,18 +308,18 @@ export default function Onboarding() {
             <div className="upload-help">
               <strong>{t('onboarding.uploadHowTo')}</strong> {t('library.goodreadsHelp')}<br />
               {tNode('onboarding.uploadNoFile', {
-                link: <a href="#" onClick={(e) => { e.preventDefault(); setStep(5); }}>{t('onboarding.skipStep')}</a>
+                link: <a href="#" onClick={(e) => { e.preventDefault(); setStep(6); }}>{t('onboarding.skipStep')}</a>
               })}
             </div>
 
             <div className="onb-actions">
-              <button className="btn-secondary" onClick={() => setStep(3)}>{t('onboarding.back')}</button>
-              <button className="btn-primary" onClick={() => setStep(5)}>{t('onboarding.continue')}</button>
+              <button className="btn-secondary" onClick={() => setStep(4)}>{t('onboarding.back')}</button>
+              <button className="btn-primary" onClick={() => setStep(6)}>{t('onboarding.continue')}</button>
             </div>
           </>
         )}
 
-        {step === 5 && (
+        {step === 6 && (
           <>
             <div className="onb-eyebrow">{t('onboarding.step5Eyebrow')}</div>
             <h1 className="onb-title">{t('onboarding.step5Title')}</h1>
@@ -245,7 +337,7 @@ export default function Onboarding() {
               ))}
             </div>
             <div className="onb-actions">
-              <button className="btn-secondary" onClick={() => setStep(4)}>{t('onboarding.back')}</button>
+              <button className="btn-secondary" onClick={() => setStep(5)}>{t('onboarding.back')}</button>
               <button className="btn-primary" disabled={goal == null} onClick={finish}>
                 {t('onboarding.enterLibrary')}
               </button>

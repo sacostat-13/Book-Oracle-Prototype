@@ -4,7 +4,7 @@ A reading companion — wishlist, library, reading plans, book clubs, and an AI-
 for book discovery. Built with React + Vite + SCSS, backed by Supabase for auth
 and cross-device sync, and Netlify Functions for API proxying.
 
-> Current version: **v0.55.3** — see [Releases](#releases) below for changelog.
+> Current version: **v0.55.4** — see [Releases](#releases) below for changelog.
 > Upgrading from an earlier version? Check the matching `MIGRATION_*.md` / `UPDATE_*.md`.
 
 ---
@@ -331,6 +331,35 @@ and forward requests. Locally you need `netlify dev` to make them work.
 ---
 
 ## Releases
+
+# Update Notes — v0.55.3 → v0.55.4: Identity as the first onboarding step
+
+Moves display-name + username capture to the front of onboarding so the setting
+can't be missed, and adds a local-only way to replay the flow while testing.
+
+**Onboarding is now six steps.** A new first step (`views/Onboarding.jsx`, `step === 1`)
+asks for the reader's display name and `@username` before reading level. Both are
+required to continue: `identityValid` gates the Continue button on a non-empty
+display name plus `usernameStatus === 'available'`. The username field reuses the
+Profile-page validators (`validateUsername` / `checkUsernameAvailability` from
+`lib/useFriends`) with the same 400ms debounce and available/taken/invalid states.
+On `finish()`, the values are written straight to the `profiles` row via the
+existing `updateDisplayName` / `updateUsername` — no new schema. The five prior
+steps shifted to 2–6 (`TOTAL_STEPS = 6`); the step-eyebrow labels now read "of 6"
+in both `i18n/en.json` and `i18n/es.json`, and a new `onboarding.stepName*` /
+`labelName` / `labelUsername` / `usernameHint` / `usernameChecking` /
+`usernameError` string set was added to both locales.
+
+**Local-only onboarding replay.** Visiting the app with `?onboarding=reset` in a
+DEV build (`import.meta.env.DEV`) raises a `sessionStorage` flag
+(`bo_dev_replay_onboarding`) and strips the param from the URL. The App render
+gate shows onboarding whenever `!state.onboarded || devReplayOnboarding`, reading
+the flag directly rather than from React state — an earlier attempt that called
+`setOnboarded(false)` was overwritten by DataContext reloading `onboarded` from
+the DB, which bounced straight back to the dashboard. `finish()` clears the flag
+so the flow exits normally. It is a no-op in production regardless of the query
+string, and never touches the database, so the flow can be tested without a new
+account. To use: run locally and open `/?onboarding=reset`.
 
 # Update Notes — v0.55.2 → v0.55.3: Genre shelves counted right, split filter/order toolbar
 

@@ -60,6 +60,11 @@ export default function App() {
   const { user, loading: authLoading } = useAuth();
   const t = useT();
 
+  // v0.55.4: bump to re-read the DEV onboarding-replay session flag (see effect below).
+  const [, forceRerender] = useState(0);
+  const devReplayOnboarding = import.meta.env.DEV
+    && (() => { try { return window.sessionStorage.getItem('bo_dev_replay_onboarding') === '1'; } catch { return false; } })();
+
   // v0.39: default <title>/description per static route. book-page and
   // series-page are deliberately excluded — those own their own title/meta
   // once their data resolves (BookPage.jsx / SeriesPage.jsx), and setting a
@@ -112,6 +117,27 @@ export default function App() {
     }
     link.setAttribute('href', canonicalUrl);
   }, [route.name, route.params]);
+
+  // v0.55.4: local-only onboarding replay. Visiting the app with ?onboarding=reset
+  // in a DEV build raises a session flag that forces the onboarding flow to show,
+  // without touching the DB, so it can be tested without creating a new account.
+  // The flag is read directly by the render gate below (not stored in React
+  // state) so it survives DataContext reloading `onboarded` from the DB — which
+  // would otherwise immediately bounce back to the dashboard. Onboarding clears
+  // the flag on finish. The param is stripped from the URL so a refresh is
+  // normal. No-op in production builds regardless of the query string.
+  useEffect(() => {
+    if (!import.meta.env.DEV) return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('onboarding') === 'reset') {
+      try { window.sessionStorage.setItem('bo_dev_replay_onboarding', '1'); } catch { /* private mode */ }
+      params.delete('onboarding');
+      const qs = params.toString();
+      const newUrl = window.location.pathname + (qs ? `?${qs}` : '') + window.location.hash;
+      window.history.replaceState({}, '', newUrl);
+      forceRerender((n) => n + 1); // pick up the flag now that the param is gone
+    }
+  }, []);
 
   // previewBook holds a book from search results that isn't in the collection yet.
   // BookPage reads this ref when route.params.preview === 'true'.
@@ -254,7 +280,7 @@ export default function App() {
   }
 
   // Onboarding
-  if (!state.onboarded) {
+  if (!state.onboarded || devReplayOnboarding) {
     return (
       <div className="app">
         <Onboarding />

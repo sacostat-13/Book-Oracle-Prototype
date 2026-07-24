@@ -120,11 +120,10 @@
     "aiQuotaFree": "{used} of {limit} {type} calls used",
     "aiQuotaTypeDaily": "daily",
     "aiQuotaTypeMonthly": "monthly",
-    "aiQuotaUnlimited": "Pro plan",
+    "aiQuotaUnlimited": "Unlimited",
     "aiQuotaResetsOn": "Resets {date}",
     "aiQuotaUpgrade": "Upgrade to Pro →",
     "aiQuotaIncludes": "Oracle draws, reading plans, categorization & more",
-    "aiQuotaUnlimited": "Unlimited",
     "aiQuotaCuratorNote": "Catalog categorization is unmetered",
     "widgetSettingsTitle": "Customize dashboard",
     "widgetSettingsSub": "Choose and order what appears on your dashboard",
@@ -638,13 +637,13 @@
     "avatarOutline": "outline"
   },
   "onboarding": {
-    "step1Eyebrow": "Step 1 of 5 · Reader profile",
+    "step1Eyebrow": "Step 2 of 6 · Reader profile",
     "step1Title": "What kind of reader are you, right now?",
     "step1Desc": "No judgment, no pressure. This just helps us calibrate suggestions and reading plans to where you actually are.",
-    "step2Eyebrow": "Step 2 of 5 · Favorite genres",
+    "step2Eyebrow": "Step 3 of 6 · Favorite genres",
     "step2Title": "What do you gravitate toward?",
     "step2Desc": "Pick up to 5 genres you love. This tunes what the Oracle reaches for first — you can change these anytime in your profile.",
-    "step3Eyebrow": "Step 3 of 5 · Right now",
+    "step3Eyebrow": "Step 4 of 6 · Right now",
     "step3Title": "What are you looking for at the moment?",
     "step3Desc": "Pick up to 3. This is the mood we'll lean into for suggestions this week — it's easy to update later.",
     "continue": "Continue ❦",
@@ -696,10 +695,10 @@
       }
     },
     "genreCount": "{count} of {max} selected",
-    "step4Eyebrow": "Step 4 of 5 · Your shelves",
+    "step4Eyebrow": "Step 5 of 6 · Your shelves",
     "step4Title": "Bring your reading history with you.",
     "step4Desc": "Export your Goodreads library and drop the CSV here. We'll fill your virtual library with what you've already read so suggestions can be smarter — and so the shelves don't start empty.",
-    "step5Eyebrow": "Step 5 of 5 · Your goal",
+    "step5Eyebrow": "Step 6 of 6 · Your goal",
     "step5Title": "What are you hoping to get from this?",
     "step5Desc": "This shapes the kind of reading plans we'll suggest. You can change it anytime in your profile.",
     "moods": {
@@ -735,7 +734,16 @@
         "title": "Something short",
         "sub": "A slim volume or novella — I need a quick win."
       }
-    }
+    },
+    "stepNameEyebrow": "Step 1 of 6 · Your name",
+    "stepNameTitle": "First, how should the Oracle know you?",
+    "stepNameDesc": "Choose the name the Oracle will call you by, and claim a @username your reading friends can find you with. You can change both later in your profile.",
+    "labelName": "What should we call you?",
+    "namePlaceholder": "Your name",
+    "labelUsername": "Claim your username",
+    "usernameHint": "3–24 characters — letters, numbers, hyphens or underscores.",
+    "usernameChecking": "Checking availability…",
+    "usernameError": "Couldn't check that one — try again."
   },
   "rating": {
     "eyebrowOptional": "Optional",

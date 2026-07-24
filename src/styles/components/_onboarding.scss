@@ -81,6 +81,23 @@
   margin-inline: auto;
 }
 
+// ── Identity step fields (v0.55.4) ─────────────────────────────────────────────
+.onb-field {
+  margin-top: 20px;
+  max-width: 340px;
+  margin-inline: auto;
+  text-align: left;
+}
+
+.onb-field__label {
+  display: block;
+  font-family: var(--ro-font-body);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ro-muted);
+  margin-bottom: 6px;
+}
+
 // ── Step progress segments ───────────────────────────────────────────────────
 .onb-steps {
   display: flex;

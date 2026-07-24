@@ -16,9 +16,22 @@
 
 // The version label shown as "current" — keep in sync with package.json and
 // the README version line.
-export const CURRENT_VERSION = 'v0.55.3';
+export const CURRENT_VERSION = 'v0.55.4';
 
 export const RELEASES = [{
+    version: 'v0.55.4',
+    date: '2026-07-23',
+    titleEn: 'Introduce yourself first',
+    titleEs: 'Preséntate primero',
+    bodyEn: [
+      'Setting up your account now starts by asking your name and claiming your @username — so how the Oracle addresses you, and how friends find you, is set from the very first screen instead of hiding in your profile.',
+      'You can still change both anytime from your profile.',
+    ],
+    bodyEs: [
+      'Configurar tu cuenta ahora empieza preguntando tu nombre y reservando tu @usuario — así cómo te llama el Oráculo, y cómo te encuentran tus amistades, queda definido desde la primera pantalla en lugar de esconderse en tu perfil.',
+      'Puedes cambiar ambos cuando quieras desde tu perfil.',
+    ],
+  }, {
     version: 'v0.55.3',
     date: '2026-07-23',
     titleEn: 'Genre shelves, counted right',

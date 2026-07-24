@@ -118,13 +118,12 @@
     "open": "Abrir",
     "aiQuotaTitle": "Funciones de IA",
     "aiQuotaFree": "{used} de {limit} consultas {type} usadas",
-    "aiQuotaUnlimited": "Plan Pro",
+    "aiQuotaUnlimited": "Ilimitado",
     "aiQuotaResetsOn": "Se renueva el {date}",
     "aiQuotaTypeDaily": "diarias",
     "aiQuotaTypeMonthly": "mensuales",
     "aiQuotaUpgrade": "Mejorar a Pro →",
     "aiQuotaIncludes": "Oráculo, planes de lectura, categorización y más",
-    "aiQuotaUnlimited": "Ilimitado",
     "aiQuotaCuratorNote": "La categorización del catálogo no consume llamadas",
     "widgetSettingsTitle": "Personalizar panel",
     "widgetSettingsSub": "Elegí qué aparece en tu panel y en qué orden",
@@ -638,13 +637,13 @@
     "avatarOutline": "contorno"
   },
   "onboarding": {
-    "step1Eyebrow": "Paso 1 de 5 · Perfil lector",
+    "step1Eyebrow": "Paso 2 de 6 · Perfil lector",
     "step1Title": "¿Qué clase de lectora sos ahora mismo?",
     "step1Desc": "Sin juicios ni presiones. Esto solo ayuda a calibrar sugerencias y planes de lectura a donde realmente estás.",
-    "step2Eyebrow": "Paso 2 de 5 · Géneros favoritos",
+    "step2Eyebrow": "Paso 3 de 6 · Géneros favoritos",
     "step2Title": "¿Hacia dónde te inclinás?",
     "step2Desc": "Elegí hasta 5 géneros que te encanten. Esto ajusta lo que el Oráculo prioriza — podés cambiarlos cuando querás desde tu perfil.",
-    "step3Eyebrow": "Paso 3 de 5 · Ahora mismo",
+    "step3Eyebrow": "Paso 4 de 6 · Ahora mismo",
     "step3Title": "¿Qué estás buscando en este momento?",
     "step3Desc": "Elegí hasta 3. Este es el ánimo que vamos a priorizar en las sugerencias de esta semana — fácil de actualizar después.",
     "continue": "Continuar ❦",
@@ -696,10 +695,10 @@
       }
     },
     "genreCount": "{count} de {max} seleccionados",
-    "step4Eyebrow": "Paso 4 de 5 · Tus estantes",
+    "step4Eyebrow": "Paso 5 de 6 · Tus estantes",
     "step4Title": "Traé tu historial de lectura.",
     "step4Desc": "Exportá tu biblioteca de Goodreads y soltá el CSV acá. Vamos a llenar tu biblioteca virtual con lo que ya leíste para que las sugerencias sean más inteligentes — y para que los estantes no empiecen vacíos.",
-    "step5Eyebrow": "Paso 5 de 5 · Tu meta",
+    "step5Eyebrow": "Paso 6 de 6 · Tu meta",
     "step5Title": "¿Qué esperás sacar de esto?",
     "step5Desc": "Esto define el tipo de planes de lectura que te vamos a sugerir. Podés cambiarlo cuando querás desde tu perfil.",
     "moods": {
@@ -735,7 +734,16 @@
         "title": "Algo corto",
         "sub": "Un volumen breve o novela corta — necesito una victoria rápida."
       }
-    }
+    },
+    "stepNameEyebrow": "Paso 1 de 6 · Tu nombre",
+    "stepNameTitle": "Primero, ¿cómo debería conocerte el Oráculo?",
+    "stepNameDesc": "Elige el nombre con el que el Oráculo te llamará y reserva un @usuario con el que tus amigos lectores puedan encontrarte. Puedes cambiar ambos más tarde en tu perfil.",
+    "labelName": "¿Cómo te llamamos?",
+    "namePlaceholder": "Tu nombre",
+    "labelUsername": "Reserva tu nombre de usuario",
+    "usernameHint": "3–24 caracteres: letras, números, guiones o guiones bajos.",
+    "usernameChecking": "Comprobando disponibilidad…",
+    "usernameError": "No se pudo comprobar — inténtalo de nuevo."
   },
   "rating": {
     "eyebrowOptional": "Opcional",
