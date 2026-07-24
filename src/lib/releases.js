@@ -16,9 +16,24 @@
 
 // The version label shown as "current" — keep in sync with package.json and
 // the README version line.
-export const CURRENT_VERSION = 'v0.55.4';
+export const CURRENT_VERSION = 'v0.56';
 
 export const RELEASES = [{
+    version: 'v0.56',
+    date: '2026-07-24',
+    titleEn: 'Books in Spanish, found — and free to search',
+    titleEs: 'Libros en español, encontrados — y buscar es gratis',
+    bodyEn: [
+      'Books in Spanish now turn up in search and import. Titles that lived only on sites like Goodreads — invisible to the Oracle before — now resolve, thanks to a new catalogue source and smarter matching that stops the confusing near-misses (like offering a different book with a similar title).',
+      'Searching no longer spends your monthly Oracle calls. When the Oracle has to identify an obscure title for you, that one is on us — your free calls stay reserved for what you came for, like suggestions and plans.',
+      'Book covers load more reliably across the app.',
+    ],
+    bodyEs: [
+      'Los libros en español ahora aparecen al buscar e importar. Títulos que solo vivían en sitios como Goodreads — antes invisibles para el Oráculo — ahora se resuelven, gracias a una nueva fuente de catálogo y a una coincidencia más afinada que corta los desaciertos confusos (como ofrecerte otro libro de título parecido).',
+      'Buscar ya no gasta tus llamadas mensuales al Oráculo. Cuando el Oráculo tiene que identificar un título difícil por vos, esa corre por nuestra cuenta — tus llamadas gratis quedan reservadas para lo que viniste a buscar, como sugerencias y planes.',
+      'Las portadas de los libros cargan de forma más confiable en toda la app.',
+    ],
+  }, {
     version: 'v0.55.4',
     date: '2026-07-23',
     titleEn: 'Introduce yourself first',

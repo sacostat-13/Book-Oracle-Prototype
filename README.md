@@ -4,7 +4,7 @@ A reading companion — wishlist, library, reading plans, book clubs, and an AI-
 for book discovery. Built with React + Vite + SCSS, backed by Supabase for auth
 and cross-device sync, and Netlify Functions for API proxying.
 
-> Current version: **v0.55.4** — see [Releases](#releases) below for changelog.
+> Current version: **v0.56** — see [Releases](#releases) below for changelog.
 > Upgrading from an earlier version? Check the matching `MIGRATION_*.md` / `UPDATE_*.md`.
 
 ---
@@ -82,6 +82,7 @@ and SPA redirect. Just connect the repo and Netlify handles it.
 - `VITE_SUPABASE_ANON_KEY`
 - `HARDCOVER_API_TOKEN` (server-side; for the Hardcover proxy)
 - `ANTHROPIC_API_KEY` (server-side; for the Claude proxy)
+- `GOOGLE_BOOKS_API_KEY` (server-side; for the Google Books proxy — enable "Books API" on a Google Cloud project and create an API key. Keyless calls now return HTTP 429 / quota 0.)
 
 **Optional Netlify env vars:**
 - `VITE_AMAZON_AFFILIATE_TAG`, `VITE_BOOKSHOP_AFFILIATE_ID`
@@ -331,6 +332,77 @@ and forward requests. Locally you need `netlify dev` to make them work.
 ---
 
 ## Releases
+
+# Update Notes — v0.55.4 → v0.56: Spanish-language discovery + free search tier
+
+Fixes book discovery for Spanish-language / Latin American titles (which the
+English-weighted lookup chain missed), and stops the search bar's AI fallback
+from spending a user's monthly Oracle quota.
+
+Not marked critical in `public/app-version.json`: the client changes are
+additive and the server accepts old and new clients. **One deployment step is
+required though:** set `GOOGLE_BOOKS_API_KEY` in Netlify (see below) — without it
+the Google Books tier returns 500 and the chain simply falls through as before.
+
+## What's new
+
+1. **Google Books added to the lookup chain, behind a keyed proxy.** Google
+   removed anonymous quota from the Books API — keyless calls now return HTTP 429
+   with `quota_limit_value: 0`, which had silently broken both search coverage
+   and cover fetching. A new `netlify/functions/googlebooks.js` injects
+   `GOOGLE_BOOKS_API_KEY` server-side (mirrors the Hardcover proxy). Google Books
+   runs only as a fallback when Hardcover has no strong match — its covers are
+   low-trust, so it never overrides the primary sources.
+2. **Order-agnostic, accent-insensitive, validated matching.** Spanish titles
+   often read `Collective: Title` (e.g. *Morras Malditas: Apaguemos la luz y
+   entremos a la noche*, where "Apaguemos la luz…" is the real title). Matching
+   now queries every colon/dash segment, strips diacritics, and — critically —
+   validates candidates by token overlap so fuzzy near-misses ("Antes que
+   Morras", "No apagues la luz") are rejected instead of imported. Editions are
+   de-duplicated by canonical work, not ISBN.
+3. **Bulk import no longer trusts fuzzy hits blindly.** `lookupByTitle` used to
+   accept any Hardcover/OpenLibrary result, which both imported the wrong book
+   and masked the Google Books fallback. It now validates the merged result
+   against the query (segment-aware, `TITLE_MATCH_MIN = 0.6`) and falls through
+   to Google Books, then to a `needsReview` record, rather than saving a wrong
+   match.
+4. **Search's AI fallback is now free.** The NavSearch book-identification call
+   (`feature: 'search'`) no longer consumes Oracle quota. Server-side it's forced
+   to **Haiku 4.5** with a small output cap and a per-user in-memory rate limit
+   (15/min); client-side it's cached per normalized query and gated behind an
+   extra ~500ms pause so it can't fire on every keystroke. The fallback also now
+   runs whenever Hardcover has no *strong* match (not just zero hits), so wrong
+   fuzzy hits stop masking it.
+
+## Env vars
+
+- **New:** `GOOGLE_BOOKS_API_KEY` (server-side). Create a Google Cloud project →
+  enable "Books API" → create an API key → set it in Netlify env + local `.env`.
+  Restrict the key to the Books API. Free tier is ~1,000 queries/day.
+
+## Database changes
+
+None. No migration required. The free-search rate limit is in-memory (per warm
+Lambda); a durable fleet-wide limit would need a Supabase table — deferred.
+
+## Code changes
+
+- `netlify/functions/googlebooks.js` — **new** keyed Google Books proxy
+- `netlify/functions/claude.js` — added `claude-haiku-4-5` to the allowlist;
+  new free `search` feature (Haiku, `SEARCH_MAX_TOKENS = 400`, per-user rate
+  limit `allowFreeSearch`), skips the quota read/consume for that feature
+- `src/lib/googleBooksService.js` — **new**: `googleBooksLookup`,
+  `googleBooksSearchMulti`, `googleBooksLookupByIsbn`, exported `titleMatchScore`
+  / `bestTitleMatch`; segment-aware validated matching, canonical-work dedupe
+- `src/lib/bookLookup.js` — validates the merged result via `bestTitleMatch`
+  before trusting it; Google Books fallback when the primary chain misses
+- `src/lib/coverService.js` — `tryGoogleBooks` now calls the proxy
+- `src/components/NavSearch.jsx` — segment-aware strong-match gate; Google Books
+  tier between Hardcover and Claude; `feature: 'search'`; per-query cache +
+  `CLAUDE_TIER_DELAY_MS` pause guard
+- `public/app-version.json` — bumped to 0.56, `critical: false`
+
+---
 
 # Update Notes — v0.55.3 → v0.55.4: Identity as the first onboarding step
 

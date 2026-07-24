@@ -30,11 +30,39 @@ import { corsHeaders, bearerToken, verifySupabaseJwt } from './_shared/auth.js';
 // ── Abuse limits ──────────────────────────────────────────────────────────────
 // The app only ever uses the default model; categorization batches ask for up
 // to 4000 output tokens (oracleCategorizationService.js).
-const ALLOWED_MODELS = ['claude-sonnet-4-5'];
+const ALLOWED_MODELS = ['claude-sonnet-4-5', 'claude-haiku-4-5'];
 const DEFAULT_MODEL = 'claude-sonnet-4-5';
 const MAX_OUTPUT_TOKENS = 4000;
 const MAX_PROMPT_CHARS = 50_000;
 const MAX_SYSTEM_PROMPT_CHARS = 10_000;
+
+// Book-identification search fallback (NavSearch). This is a FREE tier — it does
+// NOT consume Oracle quota (searching for a book you may not read shouldn't burn
+// a monthly call). To keep it cheap and abuse-resistant it is forced server-side
+// to Haiku with a small output cap, and rate limited per user (below).
+const SEARCH_MODEL = 'claude-haiku-4-5';
+const SEARCH_MAX_TOKENS = 400;
+
+// Per-user sliding-window limit for the free search tier. This lives in the warm
+// Lambda's memory, so it's best-effort (not shared across concurrent instances)
+// — acceptable as a throttle layered on top of the client-side cache + debounce.
+// A durable, fleet-wide limit would need a Supabase table.
+const SEARCH_WINDOW_MS = 60_000;
+const SEARCH_MAX_PER_WINDOW = 15;
+const searchHits = new Map(); // userId -> timestamps[]
+
+function allowFreeSearch(userId) {
+  const now = Date.now();
+  const recent = (searchHits.get(userId) || []).filter((t) => now - t < SEARCH_WINDOW_MS);
+  if (recent.length >= SEARCH_MAX_PER_WINDOW) {
+    searchHits.set(userId, recent);
+    return false;
+  }
+  recent.push(now);
+  searchHits.set(userId, recent);
+  if (searchHits.size > 5000) searchHits.clear(); // crude memory cap for long-warm instances
+  return true;
+}
 
 const DEFAULT_SYSTEM_PROMPT =
   'You are a literary book recommendation expert with deep knowledge of horror, gothic, literary fiction, and Latin American literature.';
@@ -97,21 +125,29 @@ export async function handler(event) {
     return json(413, { error: 'System prompt too long' });
   }
 
-  const model = ALLOWED_MODELS.includes(body.model) ? body.model : DEFAULT_MODEL;
-  const maxTokens = Math.min(
-    Math.max(parseInt(body.maxTokens, 10) || 2000, 1),
-    MAX_OUTPUT_TOKENS
-  );
-
-  // ── 2. Auth + quota (fail closed) ────────────────────────────────────────────
+  // ── Feature + run id (drive both the model choice and the quota flow) ────────
   const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
   const runId = typeof body.runId === 'string' && UUID_RE.test(body.runId) ? body.runId : null;
 
   // Allowlisted, not passed through. `feature` decides whether the curator
   // exemption applies, so an arbitrary client string must never reach the RPC.
+  // 'search' is the FREE book-identification fallback: authenticated + rate
+  // limited, but never charged against the Oracle quota.
   const EXEMPTIBLE_FEATURES = ['categorization'];
-  const feature = EXEMPTIBLE_FEATURES.includes(body.feature) ? body.feature : null;
+  const rawFeature = typeof body.feature === 'string' ? body.feature : null;
+  const isFreeSearch = rawFeature === 'search';
+  const feature = EXEMPTIBLE_FEATURES.includes(rawFeature) ? rawFeature : null;
 
+  // Free search is forced to the cheap model with a small output cap, whatever
+  // the client asked for. Everything else uses the allowlisted default.
+  const model = isFreeSearch
+    ? SEARCH_MODEL
+    : (ALLOWED_MODELS.includes(body.model) ? body.model : DEFAULT_MODEL);
+  const maxTokens = isFreeSearch
+    ? SEARCH_MAX_TOKENS
+    : Math.min(Math.max(parseInt(body.maxTokens, 10) || 2000, 1), MAX_OUTPUT_TOKENS);
+
+  // ── 2. Auth + quota (fail closed) ────────────────────────────────────────────
   let userId = null;
   let quotaEnforced = false;
 
@@ -130,32 +166,43 @@ export async function handler(event) {
     if (!user) return json(401, { error: 'invalid_token', message: 'Your session has expired. Sign in again.' });
     userId = user.userId;
 
-    // READ quota first — does not consume a slot yet.
-    // p_run_id lets a multi-batch operation (Oracle categorization) pay once
-    // for the whole run: the first batch is charged, the rest come back with
-    // run_charged = true and pass the gate below even on a spent quota.
-    // Validated as a uuid so a client can't smuggle arbitrary text into the
-    // ledger's primary key.
-    const quota = await supabaseRpc('get_oracle_quota', { p_user_id: userId, p_run_id: runId, p_feature: feature });
+    if (isFreeSearch) {
+      // FREE tier: no quota read, no charge. Just throttle abuse per user so the
+      // (paid) Anthropic call can't be scripted for free inference.
+      if (!allowFreeSearch(userId)) {
+        return json(429, {
+          error: 'rate_limited',
+          message: 'Too many searches in a short time. Please slow down.',
+        });
+      }
+    } else {
+      // READ quota first — does not consume a slot yet.
+      // p_run_id lets a multi-batch operation (Oracle categorization) pay once
+      // for the whole run: the first batch is charged, the rest come back with
+      // run_charged = true and pass the gate below even on a spent quota.
+      // Validated as a uuid so a client can't smuggle arbitrary text into the
+      // ledger's primary key.
+      const quota = await supabaseRpc('get_oracle_quota', { p_user_id: userId, p_run_id: runId, p_feature: feature });
 
-    // Fail closed: no quota row / RPC error / explicit error status → deny.
-    if (!quota || quota.status === 'error') {
-      console.error('claude.js: quota lookup failed for user', userId, '— denying (fail closed)');
-      return json(503, { error: 'quota_unavailable', message: 'The Oracle cannot verify your quota right now. Try again in a moment.' });
-    }
+      // Fail closed: no quota row / RPC error / explicit error status → deny.
+      if (!quota || quota.status === 'error') {
+        console.error('claude.js: quota lookup failed for user', userId, '— denying (fail closed)');
+        return json(503, { error: 'quota_unavailable', message: 'The Oracle cannot verify your quota right now. Try again in a moment.' });
+      }
 
-    quotaEnforced = true;
-    if (!quota.unlimited && !quota.run_charged && quota.calls_remaining <= 0) {
-      const resetDate = quota.reset_at
-        ? new Date(quota.reset_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric' })
-        : null;
-      return json(402, {
-        error:       'quota_exceeded',
-        calls_used:  quota.calls_used,
-        calls_limit: quota.calls_limit,
-        reset_at:    quota.reset_at,
-        message:     `You've used all ${quota.calls_limit} free Oracle calls this month.${resetDate ? ` Your quota resets on ${resetDate}.` : ''}`,
-      });
+      quotaEnforced = true;
+      if (!quota.unlimited && !quota.run_charged && quota.calls_remaining <= 0) {
+        const resetDate = quota.reset_at
+          ? new Date(quota.reset_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric' })
+          : null;
+        return json(402, {
+          error:       'quota_exceeded',
+          calls_used:  quota.calls_used,
+          calls_limit: quota.calls_limit,
+          reset_at:    quota.reset_at,
+          message:     `You've used all ${quota.calls_limit} free Oracle calls this month.${resetDate ? ` Your quota resets on ${resetDate}.` : ''}`,
+        });
+      }
     }
   }
 
@@ -189,7 +236,7 @@ export async function handler(event) {
 
   // ── 4. Consume quota ONLY on Anthropic success ───────────────────────────────
   // Must be awaited — fire-and-forget is killed when the Lambda returns.
-  if (quotaEnforced && userId && upstreamStatus >= 200 && upstreamStatus < 300) {
+  if (!isFreeSearch && quotaEnforced && userId && upstreamStatus >= 200 && upstreamStatus < 300) {
     await supabaseRpc('consume_oracle_call', { p_user_id: userId, p_run_id: runId, p_feature: feature });
   }
 

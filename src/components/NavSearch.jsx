@@ -29,6 +29,19 @@ import BookCover from './BookCover';
 const DEBOUNCE_MS = 300;
 const MIN_QUERY_LEN = 2;
 
+// Extra pause (on top of the debounce) before the Claude book-identification
+// tier fires — so it doesn't run on every intermediate keystroke while the user
+// is still typing a long title. ~300ms debounce + this ≈ 0.8s of stillness.
+const CLAUDE_TIER_DELAY_MS = 500;
+
+// Session cache of Claude search identifications, keyed by normalized query.
+// Stores the outcome (book or null) so repeat/near-repeat searches never re-hit
+// the (paid) Claude tier. Discovered books also upsert to the shared catalog, so
+// most repeats resolve via Hardcover/local before ever reaching this.
+const claudeSearchCache = new Map();
+const CLAUDE_CACHE_MAX = 200;
+const normQuery = (s) => s.trim().toLowerCase().replace(/\s+/g, ' ');
+
 // A Hardcover hit counts as a "strong" match only if it shares at least this
 // share of the query's distinctive words. Hardcover's fuzzy search happily
 // returns near-misses (e.g. "Antes que Morras" for "Morras Malditas"); those
@@ -55,7 +68,9 @@ Identify the most likely book this refers to. Return ONLY valid JSON, no markdow
 }
 If s is not applicable, set it to null. If you cannot confidently identify a book, return null.`;
     const systemPrompt = 'You are a book identification assistant. Return only valid JSON with no markdown fences.';
-    const raw = await callClaude(prompt, systemPrompt);
+    // feature:'search' → server routes this to the free Haiku tier and does NOT
+    // charge the user's Oracle quota (see netlify/functions/claude.js).
+    const raw = await callClaude(prompt, systemPrompt, { feature: 'search', maxTokens: 300 });
     const parsed = parseJSONResponse(raw);
     if (!parsed || !parsed.t || !parsed.a) return null;
     return { ...parsed, fromClaude: true, needsReview: true };
@@ -156,17 +171,32 @@ export default function NavSearch({ onPreviewBook }) {
         fallbackHits.push({ ...b, _fromGoogleBooks: true });
       }
 
-      // 4. Claude — last resort, only if Google Books found nothing. This is
-      //    what keeps token spend down: Claude runs only on the residue Google
-      //    Books can't cover.
+      // 4. Claude — last resort, only if Google Books found nothing. Free tier
+      //    (Haiku, not charged against Oracle quota). Cached per query, and
+      //    gated behind an extra pause so it doesn't fire mid-typing.
       if (fallbackHits.length === 0 && q.length >= 4) {
-        let claudeHit = null;
-        try {
-          claudeHit = await claudeBookFallback(q);
-        } catch { /* ignore */ }
-        if (searchIdRef.current !== id) return;
-        if (claudeHit && !existingKeys.has(bookKey(claudeHit))) {
-          fallbackHits.push({ ...claudeHit, _fromClaude: true });
+        const cacheKey = normQuery(q);
+        if (claudeSearchCache.has(cacheKey)) {
+          const cached = claudeSearchCache.get(cacheKey);
+          if (cached && !existingKeys.has(bookKey(cached))) {
+            fallbackHits.push({ ...cached, _fromClaude: true });
+          }
+        } else {
+          // Wait for the user to settle; if they kept typing, a newer search
+          // owns the result and we bail without spending a Claude call.
+          await new Promise((r) => setTimeout(r, CLAUDE_TIER_DELAY_MS));
+          if (searchIdRef.current !== id) return;
+          let claudeHit = null;
+          try {
+            claudeHit = await claudeBookFallback(q);
+          } catch { /* ignore */ }
+          if (searchIdRef.current !== id) return;
+          // Cache the outcome (including null) so repeats don't re-hit Claude.
+          if (claudeSearchCache.size >= CLAUDE_CACHE_MAX) claudeSearchCache.clear();
+          claudeSearchCache.set(cacheKey, claudeHit || null);
+          if (claudeHit && !existingKeys.has(bookKey(claudeHit))) {
+            fallbackHits.push({ ...claudeHit, _fromClaude: true });
+          }
         }
       }
 
