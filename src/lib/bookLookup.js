@@ -8,6 +8,13 @@
 // PRH dropped in v0.21: narrow catalog, parallel call cost not justified.
 // Series, descriptions and genres now handled by Oracle batch (v0.21).
 //
+// Google Books coverage fallback: the three sources above are English/US-weighted
+// and miss Spanish-language / Latin American indie titles. When ALL three miss,
+// lookupByTitle makes one deterministic Google Books call (no Claude tokens)
+// before giving up. Google Books is a last resort only — its covers are
+// low-trust (see googleBooksService.js) — so it never competes with the primary
+// chain, it only rescues books that would otherwise be lost.
+//
 // All three fire in parallel. Merge is null-fill with ONE special case:
 //
 //   description (`d`): Wikipedia wins when other sources are null OR very
@@ -25,6 +32,7 @@ import {
   hardcoverSearch,
 } from './hardcoverService';
 import { wikipediaLookup } from './wikipediaService';
+import { googleBooksLookup } from './googleBooksService';
 
 // What counts as a "rich enough" description that we won't let Wikipedia
 // overwrite it. Set low enough that one-paragraph blurbs still win, high
@@ -48,6 +56,7 @@ function mergeBookData(primary, secondary) {
   out.fromHardcover = primary.fromHardcover || secondary.fromHardcover || false;
   out.fromOpenLibrary = primary.fromOpenLibrary || secondary.fromOpenLibrary || false;
   out.fromWikipedia = primary.fromWikipedia || secondary.fromWikipedia || false;
+  out.fromGoogleBooks = primary.fromGoogleBooks || secondary.fromGoogleBooks || false;
   return out;
 }
 
@@ -177,26 +186,37 @@ export async function lookupByTitle(title, author) {
 
   // Priority: Hardcover > OL > Wikipedia, with description override.
   const merged = mergeThree(hc, ol, wiki);
-  if (!merged) {
-    // ALL sources missed. Don't lose the user's input — return a raw record
-    // marked as needing review so it surfaces in the editor queue. At the
-    // upsert site this maps to status='incomplete' on the books row.
-    return {
-      t: title.trim(),
-      a: (author || '').trim() || null,
-      g: null,
-      d: null,
-      pp: null,
-      coverUrl: null,
-      s: null,
-      isbn: null,
-      manuallyAdded: true,
-      needsReview: true, // v0.15: was `unverified: true`. Maps to status='incomplete' on insert.
-      noApiMatch: true, // useful for telemetry / debug
-    };
+  if (merged) {
+    merged.manuallyAdded = true;
+    return merged;
   }
-  merged.manuallyAdded = true;
-  return merged;
+
+  // Coverage fallback: the primary chain missed entirely. Try Google Books —
+  // one deterministic call (no Claude tokens), strong on Spanish-language and
+  // Latin American titles the English-weighted sources skip. See
+  // googleBooksService.js for why it's only used as a last resort.
+  const gb = await googleBooksLookup(title, author, currentLang()).catch(() => null);
+  if (gb) {
+    gb.manuallyAdded = true;
+    return gb;
+  }
+
+  // ALL sources missed, including Google Books. Don't lose the user's input —
+  // return a raw record marked as needing review so it surfaces in the editor
+  // queue. At the upsert site this maps to status='incomplete' on the books row.
+  return {
+    t: title.trim(),
+    a: (author || '').trim() || null,
+    g: null,
+    d: null,
+    pp: null,
+    coverUrl: null,
+    s: null,
+    isbn: null,
+    manuallyAdded: true,
+    needsReview: true, // v0.15: was `unverified: true`. Maps to status='incomplete' on insert.
+    noApiMatch: true, // useful for telemetry / debug
+  };
 }
 
 // ---------- OpenLibrary implementations (fallback) ----------

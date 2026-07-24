@@ -35,12 +35,14 @@ async function tryOpenLibrary(title, author) {
 
 async function tryGoogleBooks(title, author) {
   try {
-    const query = encodeURIComponent(
-      `intitle:"${cleanTitle(title)}" inauthor:"${cleanAuthor(author)}"`
-    );
-    const resp = await fetch(
-      `https://www.googleapis.com/books/v1/volumes?q=${query}&maxResults=3`
-    );
+    // Via the Netlify proxy — keyless Google Books calls now return HTTP 429
+    // (Google removed the anonymous quota). See netlify/functions/googlebooks.js.
+    const q = `intitle:"${cleanTitle(title)}" inauthor:"${cleanAuthor(author)}"`;
+    const resp = await fetch('/.netlify/functions/googlebooks', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ q, maxResults: 3 }),
+    });
     if (!resp.ok) return null;
     const data = await resp.json();
     if (!data.items) return null;

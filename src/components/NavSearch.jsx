@@ -22,11 +22,24 @@ import { useRouter } from '../lib/RouterContext';
 import { useT } from '../lib/I18nContext';
 import { bookKey } from '../lib/bookHelpers';
 import { hardcoverSearchMulti } from '../lib/hardcoverService';
+import { googleBooksSearchMulti, titleMatchScore } from '../lib/googleBooksService';
 import { callClaude, parseJSONResponse, QuotaExceededError } from '../lib/claudeApi';
 import BookCover from './BookCover';
 
 const DEBOUNCE_MS = 300;
 const MIN_QUERY_LEN = 2;
+
+// A Hardcover hit counts as a "strong" match only if it shares at least this
+// share of the query's distinctive words. Hardcover's fuzzy search happily
+// returns near-misses (e.g. "Antes que Morras" for "Morras Malditas"); those
+// shouldn't suppress the Google Books / Claude fallbacks.
+//
+// 0.67, not 0.5: a two-word query like "morras malditas" has only two
+// distinctive tokens, so a 0.5 bar was cleared by "Antes que Morras" matching
+// just ONE of them ("morras") — masking the miss. At 0.67 a two-token query
+// effectively needs both words to match, while longer queries still tolerate
+// one missing word.
+const STRONG_MATCH = 0.67;
 
 // Claude fallback: ask Claude to identify the book and return structured data.
 async function claudeBookFallback(query) {
@@ -116,18 +129,49 @@ export default function NavSearch({ onPreviewBook }) {
     }
     if (searchIdRef.current !== id) return; // stale
 
-    const newHits = hcHits.filter((b) => !localKeys.has(bookKey(b)));
+    let newHits = hcHits.filter((b) => !localKeys.has(bookKey(b)));
 
-    // 3. Claude fallback — only if Hardcover returned nothing at all
-    if (hcHits.length === 0 && q.length >= 4) {
-      let claudeHit = null;
+    // Did Hardcover actually find THIS book, or just fuzzy near-misses?
+    // "Antes que Morras" for "Morras Malditas" is a hit but not a real match.
+    const hasStrongHc = hcHits.some((b) => titleMatchScore(q, b.t || '') >= STRONG_MATCH);
+
+    // Fallbacks run whenever Hardcover has no strong match. Their validated
+    // results lead the list, ABOVE Hardcover's weak near-misses.
+    if (!hasStrongHc) {
+      const lang = (document.documentElement.lang || 'en').startsWith('es') ? 'es' : 'en';
+      const existingKeys = new Set([...localKeys, ...newHits.map((b) => bookKey(b))]);
+      const fallbackHits = [];
+
+      // 3. Google Books — deterministic, NO Claude tokens. Covers Spanish /
+      //    Latin American titles the English-weighted Hardcover index misses.
+      let gbHits = [];
       try {
-        claudeHit = await claudeBookFallback(q);
+        gbHits = await googleBooksSearchMulti(q, lang, 6);
       } catch { /* ignore */ }
       if (searchIdRef.current !== id) return;
-      if (claudeHit && !localKeys.has(bookKey(claudeHit))) {
-        newHits.push({ ...claudeHit, _fromClaude: true });
+      for (const b of gbHits) {
+        const key = bookKey(b);
+        if (existingKeys.has(key)) continue;
+        existingKeys.add(key);
+        fallbackHits.push({ ...b, _fromGoogleBooks: true });
       }
+
+      // 4. Claude — last resort, only if Google Books found nothing. This is
+      //    what keeps token spend down: Claude runs only on the residue Google
+      //    Books can't cover.
+      if (fallbackHits.length === 0 && q.length >= 4) {
+        let claudeHit = null;
+        try {
+          claudeHit = await claudeBookFallback(q);
+        } catch { /* ignore */ }
+        if (searchIdRef.current !== id) return;
+        if (claudeHit && !existingKeys.has(bookKey(claudeHit))) {
+          fallbackHits.push({ ...claudeHit, _fromClaude: true });
+        }
+      }
+
+      // Validated fallback matches lead; weak Hardcover near-misses fall below.
+      newHits = [...fallbackHits, ...newHits];
     }
 
     setResults([...localHits, ...newHits]);
