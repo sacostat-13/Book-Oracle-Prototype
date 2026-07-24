@@ -33,10 +33,16 @@ import { cleanTitle, cleanAuthor } from './bookHelpers';
 const ENDPOINT = '/.netlify/functions/googlebooks';
 
 // Minimum share of the query's distinctive words a candidate must contain to be
-// accepted. 0.5 accepts "Apaguemos la luz y entremos a la noche" for a query of
-// "Morras Malditas Apaguemos la luz..." (4/6 tokens) while rejecting
-// "Antes que Morras" (1/6).
-const MATCH_THRESHOLD = 0.5;
+// accepted.
+//
+// 0.6, not 0.5: a two-word query like "Apaguemos la luz" has only two
+// distinctive tokens (apaguemos, luz), and a 0.5 bar was cleared by "No apagues
+// la luz" (Bernard Minier) sharing just the common word "luz" — a different
+// book. At 0.6 a two-token query effectively needs BOTH distinctive words, so
+// the discriminating token ("apaguemos") must be present, while longer queries
+// still tolerate one missing word. The real title "Apaguemos la luz y entremos
+// a la noche" contains both query tokens (1.0) and is still accepted.
+const MATCH_THRESHOLD = 0.6;
 
 // ---------- text helpers ----------
 
@@ -75,6 +81,35 @@ function matchScore(queryTitle, candidateTitle) {
 // Returns 0–1: the share of the query's distinctive words present in the title.
 export function titleMatchScore(queryTitle, candidateTitle) {
   return matchScore(queryTitle, candidateTitle);
+}
+
+// Segment-aware match: the best of matching the whole query OR any of its
+// colon/dash-separated segments against the candidate. This matters for Spanish
+// "Collective: Title" inputs — e.g. a query of "Morras Malditas: Apaguemos la
+// luz" should accept the real title "Apaguemos la luz y entremos a la noche"
+// (via the segment) even though the full-string match is diluted to 0.5 by the
+// "Morras Malditas" prefix. Wrong books like "No apagues la luz" still fail on
+// every segment.
+export function bestTitleMatch(queryTitle, candidateTitle) {
+  let best = matchScore(queryTitle, candidateTitle);
+  for (const seg of titleSegments(queryTitle || '')) {
+    best = Math.max(best, matchScore(seg, candidateTitle));
+    if (best >= 1) break;
+  }
+  return best;
+}
+
+// A canonical key that collapses different EDITIONS of the same work: strip the
+// "/ English co-title", subtitle, accents, punctuation and case, then join with
+// the first author. Two records that only differ by edition, casing, or an
+// appended translated title map to the same key (so we show the book once).
+function canonicalKey(book) {
+  const mainTitle = (book.t || '')
+    .split(/\s+\/\s+/)[0]   // drop "Spanish Title / English Title"
+    .split(/\s*:\s+/)[0];   // drop subtitle
+  const t = normalizeForMatch(mainTitle).replace(/\s+/g, '');
+  const a = normalizeForMatch(book.a || '').replace(/\s+/g, '').slice(0, 12);
+  return `${t}|${a}`;
 }
 
 // Split a title into its colon / dash-separated segments, longest first — the
@@ -147,8 +182,9 @@ function pickValidated(items, queryTitle, wantLang) {
   for (const it of items) {
     const vi = it?.volumeInfo;
     if (!vi?.title) continue;
-    let score = matchScore(queryTitle, displayTitle(vi));
-    if (score < MATCH_THRESHOLD) continue;
+    const base = bestTitleMatch(queryTitle, displayTitle(vi));
+    if (base < MATCH_THRESHOLD) continue;
+    let score = base;
     if (wantLang && vi.language === wantLang) score += 0.1; // gentle tiebreak
     if (vi.imageLinks) score += 0.05;
     if (score > bestScore) { bestScore = score; best = it; }
@@ -229,15 +265,21 @@ export async function googleBooksSearchMulti(query, lang = 'en', limit = 6) {
     for (const q of queries) {
       const items = await runQuery(q, restrict).catch(() => []);
       if (!items.length) continue;
-      const collected = new Map(); // dedupe by isbn or normalized title
+      const collected = new Map(); // dedupe by canonical work (not by edition)
       for (const it of items) {
         const vi = it?.volumeInfo;
         if (!vi?.title) continue;
-        if (matchScore(full, displayTitle(vi)) < MATCH_THRESHOLD) continue;
+        if (bestTitleMatch(full, displayTitle(vi)) < MATCH_THRESHOLD) continue;
         const norm = normalize(it);
         if (!norm) continue;
-        const key = (norm.isbn || norm.t).toLowerCase();
-        if (!collected.has(key)) collected.set(key, norm);
+        const key = canonicalKey(norm);
+        const existing = collected.get(key);
+        // First edition wins, but prefer one that actually has a cover.
+        if (!existing) {
+          collected.set(key, norm);
+        } else if (!existing.coverUrl && norm.coverUrl) {
+          collected.set(key, norm);
+        }
         if (collected.size >= limit) break;
       }
       if (collected.size) return [...collected.values()];

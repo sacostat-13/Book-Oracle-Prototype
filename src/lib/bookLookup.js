@@ -32,7 +32,14 @@ import {
   hardcoverSearch,
 } from './hardcoverService';
 import { wikipediaLookup } from './wikipediaService';
-import { googleBooksLookup } from './googleBooksService';
+import { googleBooksLookup, bestTitleMatch } from './googleBooksService';
+
+// A merged Hardcover/OL/Wikipedia result is only trusted if its title actually
+// matches what the user typed. Hardcover's fuzzy search returns near-misses
+// ("Antes que Morras" for "Morras Malditas", "No apagues la luz" for "Apaguemos
+// la luz…") that must not be silently imported. 0.6 rejects a single shared
+// common word; segment-aware matching keeps correct "Collective: Title" inputs.
+const TITLE_MATCH_MIN = 0.6;
 
 // What counts as a "rich enough" description that we won't let Wikipedia
 // overwrite it. Set low enough that one-paragraph blurbs still win, high
@@ -185,13 +192,17 @@ export async function lookupByTitle(title, author) {
   ]);
 
   // Priority: Hardcover > OL > Wikipedia, with description override.
+  // BUT only trust it if its title actually matches the query — Hardcover's
+  // fuzzy search returns confident near-misses that would otherwise be imported
+  // as the wrong book (and mask the Google Books fallback below).
   const merged = mergeThree(hc, ol, wiki);
-  if (merged) {
+  if (merged && bestTitleMatch(title, merged.t || '') >= TITLE_MATCH_MIN) {
     merged.manuallyAdded = true;
     return merged;
   }
 
-  // Coverage fallback: the primary chain missed entirely. Try Google Books —
+  // Coverage fallback: the primary chain missed (or only returned a near-miss).
+  // Try Google Books —
   // one deterministic call (no Claude tokens), strong on Spanish-language and
   // Latin American titles the English-weighted sources skip. See
   // googleBooksService.js for why it's only used as a last resort.
