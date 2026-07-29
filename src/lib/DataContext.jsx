@@ -93,17 +93,34 @@ const DataContext = createContext(null);
 // Stores the last known Supabase state per user so new tabs render instantly.
 // Keyed by userId so switching accounts invalidates automatically.
 
+// v0.57: the cached payload carries the catalog version it was built from.
+// Returns { state, catalogVersion } so the caller can check it against the live value.
 function loadSessionCache(userId) {
   try {
     const raw = sessionStorage.getItem(SESSION_KEY);
     if (!raw) return null;
-    const { uid, state, ts } = JSON.parse(raw);
+    const { uid, state, ts, catalogVersion } = JSON.parse(raw);
     if (uid !== userId) return null; // wrong user, ignore
     // Expire after 30 minutes — forces a fresh load if stale
     if (Date.now() - ts > 30 * 60 * 1000) return null;
-    return state;
+    return { state, catalogVersion: catalogVersion ?? null };
   } catch (_) { return null; }
 }
+
+// One integer, bumped by a statement-level trigger on public.books (schema_v43).
+// Deliberately a separate, tiny query rather than a full state refetch: this decides
+// whether the cache is USABLE, it never overwrites in-memory state, so it does not
+// reintroduce the race that the no-background-refresh comment below guards against.
+async function fetchCatalogVersion() {
+  try {
+    const { data, error } = await supabase.from('catalog_meta').select('version').single();
+    return error ? null : (data?.version ?? null);
+  } catch (_) { return null; }
+}
+
+// Module-scoped so the persist effect can stamp saves without threading it through
+// every call site. Set on load and whenever a fresh version is observed.
+const catalogVersionRef = { current: null };
 
 function saveSessionCache(userId, state) {
   try {
@@ -114,6 +131,9 @@ function saveSessionCache(userId, state) {
       uid: userId,
       state,
       ts: Date.now(),
+      // Preserved across saves — the persist effect has no reason to re-fetch it, and a
+      // change made outside the app is exactly what the load path is checking for.
+      catalogVersion: catalogVersionRef.current,
     }));
   } catch (_) {} // quota errors — fail silently
 }
@@ -729,23 +749,49 @@ export function DataProvider({ children }) {
         // Check session cache first — render instantly without a spinner
         const cached = loadSessionCache(user.id);
         if (cached) {
-          const merged = { ...defaultState, ...cached };
+          const merged = { ...defaultState, ...cached.state };
           if (!cancelled) {
             supabaseLoadedRef.current = true; // treat cache as authoritative
+            catalogVersionRef.current = cached.catalogVersion;
             setState(merged);
             loadedUserIdRef.current = user.id;
             setLoading(false);
           }
-          // No background refresh — mutations keep cache fresh via saveSessionCache
-          // in the persist effect. This avoids race conditions where a stale
-          // Supabase read overwrites in-memory mutations.
+          // No background refresh of STATE — mutations keep the cache fresh via
+          // saveSessionCache in the persist effect, and a stale Supabase read would
+          // overwrite in-memory mutations.
+          //
+          // v0.57: but we DO check one integer. Changes made outside the app — the
+          // weekly maintenance job, fixBook.mjs, a merge_books() call — are invisible
+          // to the cache, and for a merge that means holding a book_id that no longer
+          // exists. Checking the catalog version overwrites nothing; it only decides
+          // whether this cache is still trustworthy.
+          const live = await fetchCatalogVersion();
+          if (!cancelled && live != null && cached.catalogVersion != null && live !== cached.catalogVersion) {
+            console.info(`[catalog] cache built at v${cached.catalogVersion}, live is v${live} — reloading`);
+            clearSessionCache();
+            try {
+              const remote = await loadFromSupabase(user.id);
+              if (!cancelled) {
+                catalogVersionRef.current = live;
+                setState(remote);
+                saveSessionCache(user.id, remote);
+              }
+            } catch (e) {
+              console.error('[catalog] refresh after version change failed', e);
+            }
+          } else if (!cancelled && live != null && cached.catalogVersion == null) {
+            // Cache predates this mechanism — stamp it so the next load can compare.
+            catalogVersionRef.current = live;
+          }
         } else {
           // No cache — fetch from Supabase with spinner
           setLoading(true);
           try {
-            const remote = await loadFromSupabase(user.id);
+            const [remote, live] = await Promise.all([loadFromSupabase(user.id), fetchCatalogVersion()]);
             if (!cancelled) {
               supabaseLoadedRef.current = true;
+              catalogVersionRef.current = live;
               setState(remote);
               saveSessionCache(user.id, remote);
               loadedUserIdRef.current = user.id;
@@ -844,6 +890,12 @@ export function DataProvider({ children }) {
         _metadata: {
           amazonUrl: book.amazonUrl || null,
           manuallyAdded: book.manuallyAdded || false,
+          // v0.56: true when a lookup STAGE NEVER RAN (free-search throttle saturated,
+          // a source threw, quota spent) rather than when every source ran and missed.
+          // The weekly catalog job retries these; genuine dead ends it leaves for the
+          // Claude curate pass. Without the distinction a book that was simply never
+          // looked at is indistinguishable from one that doesn't exist.
+          lookupIncomplete: book.lookupIncomplete || false,
         },
         _series_source: book.s
           ? book.s.fromHardcover

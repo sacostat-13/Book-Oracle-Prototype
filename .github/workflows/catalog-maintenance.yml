@@ -1,0 +1,253 @@
+# Weekly catalog maintenance — keeps ISBNs and purchase links healthy without an admin.
+#
+# WHAT RUNS UNATTENDED, AND WHY
+# -----------------------------
+# The schedule runs ONLY the free, deterministic passes:
+#
+#   isbnBackfill.mjs   Hardcover      — free API, rate-limited, no per-call cost
+#   isbnFallback.mjs   OpenLibrary    — free, no key
+#                      Google Books   — free tier, ~1,000 queries/day
+#
+# curateManualBooks.mjs is deliberately NOT on the schedule. It spends Anthropic tokens
+# per book (web search, roughly 3-5 cents each), and a weekly job that quietly bills you
+# is the wrong default — cost should be a decision, not a cron side effect. It is
+# available on demand via workflow_dispatch with an explicit `curate_limit`, or locally.
+#
+# Everything the schedule does is additive: it fills a NULL field, or replaces a value
+# already established as unusable (a non-English ISBN on a book that has an English
+# edition). Nothing changes a book's identity, and nothing deletes. Title corrections and
+# merges rewrite normalized_key and can fold one book into another — those stay manual.
+#
+# HOW YOU FIND OUT ABOUT IT
+# -------------------------
+# A file on an ephemeral runner would vanish, so:
+#   1. Artifacts — every CSV uploaded, downloadable from the run page for 90 days.
+#   2. A GitHub Issue — opened or commented on when EITHER there are proposals awaiting
+#      approval, OR the ISBN-less backlog crosses 150 and a billable curate run is the
+#      only remaining lever. The issue reports the estimated cost so the decision is
+#      informed. Silence means the free passes are still making progress on their own.
+#
+# SECRETS (Settings → Secrets and variables → Actions):
+#   VITE_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, HARDCOVER_API_TOKEN,
+#   ANTHROPIC_API_KEY, GOOGLE_BOOKS_API_KEY
+
+name: Catalog maintenance
+
+on:
+  schedule:
+    # 06:00 UTC Monday — midnight in Costa Rica, so a long run never overlaps peak use.
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+    inputs:
+      limit:
+        description: 'Max books per script (blank = all)'
+        required: false
+        default: ''
+      curate_limit:
+        description: 'Run curateManualBooks on N books (BILLABLE, ~3-5c each). Blank = skip.'
+        required: false
+        default: ''
+
+# Two of these runs writing to the same tables at once would double-spend API quota and
+# race each other's updates.
+concurrency:
+  group: catalog-maintenance
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  maintain:
+    runs-on: ubuntu-latest
+    # The scripts self-throttle to stay under Hardcover's 60 req/min, so a full catalog
+    # pass is slow by design. Default 360 min is the ceiling; this is well clear of it.
+    timeout-minutes: 180
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - run: npm ci
+
+      # The scripts read .env.local directly (same as when run by hand), so compose one
+      # from secrets rather than teaching every script a second config path.
+      - name: Compose .env.local from secrets
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          HARDCOVER_API_TOKEN: ${{ secrets.HARDCOVER_API_TOKEN }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GOOGLE_BOOKS_API_KEY: ${{ secrets.GOOGLE_BOOKS_API_KEY }}
+        run: |
+          set -euo pipefail
+          for v in VITE_SUPABASE_URL SUPABASE_SERVICE_ROLE_KEY HARDCOVER_API_TOKEN; do
+            if [ -z "${!v}" ]; then echo "::error::Missing required secret $v"; exit 1; fi
+          done
+          {
+            echo "VITE_SUPABASE_URL=$VITE_SUPABASE_URL"
+            echo "SUPABASE_SERVICE_ROLE_KEY=$SUPABASE_SERVICE_ROLE_KEY"
+            echo "HARDCOVER_API_TOKEN=$HARDCOVER_API_TOKEN"
+            echo "ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY"
+            echo "GOOGLE_BOOKS_API_KEY=$GOOGLE_BOOKS_API_KEY"
+          } > .env.local
+
+      - name: Set common args
+        id: args
+        run: |
+          if [ -n "${{ github.event.inputs.limit }}" ]; then
+            echo "limit=--limit ${{ github.event.inputs.limit }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "limit=" >> "$GITHUB_OUTPUT"
+          fi
+
+      # 1. Hardcover. Resolves the most books and teaches the catalog hardcover_ids,
+      #    which makes every later pass cheaper. Must run before the fallback so the
+      #    fallback only sees what Hardcover genuinely couldn't answer.
+      - name: Backfill ISBNs from Hardcover
+        run: node batch-scripts/isbnBackfill.mjs ${{ steps.args.outputs.limit }} | tee backfill.log
+
+      # 2. OpenLibrary + Google Books for what's left, plus replacing non-English ISBNs
+      #    on books that do have an English edition.
+      - name: Fallback to OpenLibrary / Google Books
+        run: node batch-scripts/isbnFallback.mjs --target both ${{ steps.args.outputs.limit }} | tee fallback.log
+
+      # 3. Claude — MANUAL ONLY. Never runs on the schedule; only when someone types a
+      #    number into curate_limit, which makes the spend an explicit, bounded decision.
+      #    Produces proposals in a CSV; applying them is still a separate --apply-titles
+      #    run, so nothing here changes a title or merges a book.
+      - name: Curate manually-added rows (billable)
+        if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.curate_limit != '' }}
+        run: |
+          echo "::warning::Running curateManualBooks on ${{ github.event.inputs.curate_limit }} books — this bills Anthropic."
+          node batch-scripts/curateManualBooks.mjs --limit ${{ github.event.inputs.curate_limit }} | tee curate.log
+
+      - name: Summarise
+        id: summary
+        if: always()
+        run: |
+          set -uo pipefail
+          csv_rows() { [ -f "$1" ] && [ "$(wc -l < "$1")" -gt 1 ] && echo $(( $(wc -l < "$1") - 1 )) || echo 0; }
+          UNRESOLVED=$(csv_rows batch-scripts/isbn-unresolved.csv)
+          STILL=$(csv_rows batch-scripts/isbn-still-unresolved.csv)
+          PROPOSED=$(csv_rows batch-scripts/proposed-titles.csv)
+          echo "unresolved=$UNRESOLVED" >> "$GITHUB_OUTPUT"
+          echo "still=$STILL"           >> "$GITHUB_OUTPUT"
+          echo "proposed=$PROPOSED"     >> "$GITHUB_OUTPUT"
+          # Two different reasons to raise an issue:
+          #   PROPOSED > 0        a curate run happened and its output needs approving.
+          #   STILL >= BACKLOG    the free passes have plateaued; a (billable) curate run
+          #                       is now the only thing that will move the number. Told,
+          #                       not done — the whole point of taking Claude off the cron.
+          BACKLOG_THRESHOLD=150
+          NEEDS=false
+          [ "$PROPOSED" -gt 0 ] && NEEDS=true
+          [ "$STILL" -ge "$BACKLOG_THRESHOLD" ] && NEEDS=true
+          echo "needs_review=$NEEDS" >> "$GITHUB_OUTPUT"
+          # ~4c/book: 3-5c covers Sonnet tokens plus up to 4 web searches.
+          echo "curate_cost=$(awk -v n="$STILL" 'BEGIN{printf "%.2f", n*0.04}')" >> "$GITHUB_OUTPUT"
+
+          {
+            echo "## Catalog maintenance"
+            echo ""
+            echo "| Output | Rows |"
+            echo "| --- | --- |"
+            echo "| Title changes awaiting approval | $PROPOSED |"
+            echo "| ISBNs unresolved after Hardcover | $UNRESOLVED |"
+            echo "| Still unresolved after OL/Google | $STILL |"
+            echo ""
+            for f in backfill fallback curate; do
+              [ -f "$f.log" ] || continue
+              echo "<details><summary>$f</summary>"
+              echo ""
+              echo '```'
+              tail -n 20 "$f.log"
+              echo '```'
+              echo "</details>"
+              echo ""
+            done
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload review files
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: catalog-review-${{ github.run_number }}
+          retention-days: 90
+          if-no-files-found: ignore
+          path: |
+            batch-scripts/*.csv
+            *.log
+
+      # Only nags when there is a decision to make. A weekly issue that usually says
+      # "nothing to do" trains you to ignore it.
+      - name: Open review issue
+        if: ${{ always() && steps.summary.outputs.needs_review == 'true' }}
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { proposed, unresolved, still, curate_cost } = ${{ toJSON(steps.summary.outputs) }};
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const title = 'Catalog review';
+
+            const lines = [];
+            if (Number(proposed) > 0) {
+              lines.push(
+                `**${proposed}** proposed title/author correction(s) need a decision.`,
+                '',
+                `Download \`proposed-titles.csv\` from ${runUrl}`,
+                '',
+                'Put `y` in the `approve` column on the rows you accept, then run locally:',
+                '```',
+                'node batch-scripts/curateManualBooks.mjs --apply-titles --dry-run',
+                'node batch-scripts/curateManualBooks.mjs --apply-titles',
+                '```',
+                '',
+                'Rows with `merge_into` set FOLD one book into another and delete the source,',
+                'repointing wishlist/library entries. Check those individually — it is the only',
+                'irreversible operation in this pipeline.',
+                ''
+              );
+            }
+            lines.push(
+              `**${still}** book(s) still have no ISBN after Hardcover, OpenLibrary and Google Books.`,
+              '',
+              'The free passes have taken these as far as they go. Claude web-search identification',
+              `is the next lever, and it is billable — roughly **$${curate_cost}** for all ${still}`,
+              'at ~4c each. It is deliberately not on the schedule.',
+              '',
+              'Run a bounded batch when you want to:',
+              '```',
+              'node batch-scripts/curateManualBooks.mjs --limit 25 --verbose',
+              '```',
+              'or trigger this workflow manually with `curate_limit` set.',
+              '',
+              'Expect diminishing returns: much of this tail is self-published, non-English or',
+              'genuinely uncatalogued, and a low-confidence "unidentified" is the correct answer',
+              'rather than a failure.',
+              '',
+              `<sub>Unresolved after Hardcover: ${unresolved} · run: ${runUrl}</sub>`
+            );
+            const body = lines.join('\n');
+
+            // Reuse one open issue rather than opening a new one weekly.
+            const { data: open } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner, repo: context.repo.repo,
+              state: 'open', labels: 'catalog-review',
+            });
+            if (open.length) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner, repo: context.repo.repo,
+                issue_number: open[0].number, body,
+              });
+            } else {
+              await github.rest.issues.create({
+                owner: context.repo.owner, repo: context.repo.repo,
+                title, body, labels: ['catalog-review'],
+              });
+            }

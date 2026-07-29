@@ -164,7 +164,13 @@ export default function BookModal({ book, onClose, onOpenBook }) {
       display.s = { ...enrichment.series, fromOpenLibrary: true };
     }
     if (!display.pp && enrichment.pages) display.pp = enrichment.pages;
+    // v0.56: ISBN drives the direct Amazon/Bookshop product links, so pull it from
+    // enrichment if it ever carries one. Note enrichBookFromOpenLibrary currently
+    // returns only { series, pages } — this is defensive, NOT a working repopulation
+    // path. Books with a null ISBN are filled by batch-scripts/isbnBackfill.mjs.
+    if (!display.isbn && enrichment.isbn) display.isbn = enrichment.isbn;
   }
+  if (!display.isbn && enriched?.isbn) display.isbn = enriched.isbn;
 
   const k = bookKey(display);
   const inLib = state.library.some((b) => bookKey(b) === k);

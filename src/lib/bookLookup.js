@@ -1,29 +1,76 @@
 // Book lookup helpers for bulk import.
 //
-// Lookup chain (per book), v0.21:
-//   1. Hardcover  (best metadata + structured series)
-//   2. OpenLibrary (broadest coverage, no auth, no rate limit)
-//   3. Wikipedia  (best descriptions)
+// ─── THE CHAIN, END TO END (v0.56) ───────────────────────────────────────────
+//
+// lookupByTitle(title, author) runs these in order. Each stage only exists
+// because the one before it missed:
+//
+//   STAGE 1 — three deterministic sources, in parallel:
+//       Hardcover    best metadata + structured series
+//       OpenLibrary  broadest coverage, no auth, no rate limit
+//       Wikipedia    best descriptions
+//     Merged Hardcover > OpenLibrary > Wikipedia. Accepted only if the result's
+//     title actually matches what the user typed (TITLE_MATCH_MIN) — Hardcover's
+//     fuzzy search returns confident near-misses that must not be imported as
+//     the wrong book.
+//
+//   STAGE 2 — Google Books, one deterministic call, no Claude tokens.
+//     The three sources above are English/US-weighted and miss Spanish-language
+//     and Latin American indie titles. Last resort only: its covers are
+//     low-trust (see googleBooksService.js), so it never competes with stage 1.
+//
+//   STAGE 3 — Claude repairs the QUERY, then stage 1+2 run again (v0.56).
+//     Everything above missed. Historically that ended the chain and created a
+//     row from the user's raw input — no ISBN, no cover, and a normalized_key
+//     built from a title that isn't the book's real title. Those rows can never
+//     be matched or deduplicated afterwards; 206 of ~2,500 books had accumulated
+//     that way, each one a dead purchase link and a weak Oracle recommendation.
+//
+//     Claude is asked ONLY for a canonical title/author — never for a
+//     description, ISBN or cover. Those come from the real sources on the retry.
+//     So Claude misremembering a detail cannot put bad data in the catalog; the
+//     worst it can do is produce a search string that also finds nothing.
+//     Guarded by `_retried` so it runs at most once per lookup.
+//
+//   STAGE 4 — the raw record. `needsReview: true` + `noApiMatch: true`,
+//     mapping to status='incomplete' at the upsert site. Users never lose a book
+//     they typed in. These rows are what batch-scripts/curateManualBooks.mjs
+//     later repairs offline with web search.
+//
+// ─── WHAT CALLS WHAT ─────────────────────────────────────────────────────────
+//
+//   lookupByTitle  — Bulk import (titles tab), BookModal, BookPage,
+//                    SessionCreate, SessionDetail.  Gets stages 1-4.
+//   lookupByAsin   — Bulk import (Amazon URLs tab).  Does NOT get stage 3: an
+//                    ASIN is already an exact identifier, so there is no
+//                    ambiguous query for Claude to repair.
+//
+//   BulkImport.jsx adds a FIFTH stage of its own for the titles tab: when a
+//   result still comes back noApiMatch, it calls Claude a second time — this
+//   time for full book data (title, author, description, genre, series) rather
+//   than just a query fix. That produces a usable, reviewable row where this
+//   file would return a bare one. It is not redundant with stage 3: it only
+//   fires on books stage 3 already failed to rescue.
+//
+// ─── RATE LIMIT, AND WHY BULK IMPORTS DEGRADE GRACEFULLY ─────────────────────
+//
+// Stages 3 and 5 both route through feature:'search' — the free Haiku tier,
+// which does NOT charge Oracle quota but IS throttled per user (15 calls/60s,
+// see netlify/functions/claude.js). A large paste where many titles miss can
+// exhaust that: a 100-book import with 30 misses wants up to 60 calls.
+//
+// This is deliberate and safe. Past the limit the proxy returns 429,
+// claudeNormalizeQuery swallows it and returns null, and the book falls through
+// to the raw record exactly as it did before v0.56 — no error, no lost book.
+// The weekly catalog-maintenance workflow then repairs the remainder offline
+// with no rate limit and better tools. Bulk imports get best-effort enrichment;
+// the cron guarantees eventual correctness.
 //
 // PRH dropped in v0.21: narrow catalog, parallel call cost not justified.
-// Series, descriptions and genres now handled by Oracle batch (v0.21).
 //
-// Google Books coverage fallback: the three sources above are English/US-weighted
-// and miss Spanish-language / Latin American indie titles. When ALL three miss,
-// lookupByTitle makes one deterministic Google Books call (no Claude tokens)
-// before giving up. Google Books is a last resort only — its covers are
-// low-trust (see googleBooksService.js) — so it never competes with the primary
-// chain, it only rescues books that would otherwise be lost.
-//
-// All three fire in parallel. Merge is null-fill with ONE special case:
-//
+// Merge is null-fill with ONE special case:
 //   description (`d`): Wikipedia wins when other sources are null OR very
 //   short (< 200 chars). Wikipedia's lede paragraphs are usually richer.
-//
-// If ALL sources miss, we still return a "raw" book object built from the
-// user's input, marked `needsReview=true` so it can be flagged for review.
-// At the upsert site this maps to status='incomplete' on the books row.
-// This means users never lose books they typed in.
 
 import { cleanTitle, cleanAuthor } from './bookHelpers';
 import {
@@ -33,6 +80,7 @@ import {
 } from './hardcoverService';
 import { wikipediaLookup } from './wikipediaService';
 import { googleBooksLookup, bestTitleMatch } from './googleBooksService';
+import { callClaudeWithStatus, parseJSONResponse } from './claudeApi';
 
 // A merged Hardcover/OL/Wikipedia result is only trusted if its title actually
 // matches what the user typed. Hardcover's fuzzy search returns near-misses
@@ -182,14 +230,64 @@ export async function lookupByAsin(asin, amazonUrl) {
 //
 // All four sources fire in parallel here since we already have a title to
 // query Wikipedia with.
-export async function lookupByTitle(title, author) {
+// Ask Claude for the canonical title/author behind a failed query — a spelling fix, an
+// expansion of a partial title, the author a user omitted. Returns null when it can't
+// identify the book confidently, which is the correct and expected answer for genuinely
+// obscure or self-published titles.
+//
+// Deliberately NOT asked for a description, ISBN or cover: those come from the real
+// sources on the retry. Keeping the output to two fields also keeps it inside the free
+// tier's 400-token cap.
+async function claudeNormalizeQuery(title, author) {
+  const prompt = `A book search failed to match anything in several book databases.
+The user typed:
+  title: ${JSON.stringify(title)}
+  author: ${JSON.stringify(author || null)}
+
+The text may be misspelled, lowercase, truncated, partially remembered, missing the
+author, or in a language other than English.
+
+Return ONLY valid JSON, no markdown, no preamble:
+{"t": "canonical published title", "a": "primary author's full name"}
+
+Rules:
+- Give the title as published: correct capitalisation, no series markers, no subtitle
+  after a colon, no edition wording.
+- If you cannot confidently identify one specific real book, return exactly: null
+- Never invent a plausible-sounding book. null is a correct answer.`;
+  const systemPrompt =
+    'You identify books from messy user input. Return only valid JSON, no markdown fences. Return null rather than guessing.';
+
+  // { text, unavailable } — see callClaudeWithStatus. `unavailable` is the whole point:
+  // it separates "Claude could not identify this" from "Claude never saw it".
+  const { text, unavailable } = await callClaudeWithStatus(prompt, systemPrompt, {
+    feature: 'search',
+    maxTokens: 200,
+  });
+  if (unavailable) return { fixed: null, unavailable: true };
+
+  const parsed = parseJSONResponse(text);
+  if (!parsed || !parsed.t) return { fixed: null, unavailable: false };
+  return {
+    fixed: { t: String(parsed.t).trim(), a: parsed.a ? String(parsed.a).trim() : null },
+    unavailable: false,
+  };
+}
+
+export async function lookupByTitle(title, author, _retried = false) {
   if (!title) return null;
 
-  const [hc, ol, wiki] = await Promise.all([
-    hardcoverSearch(title, author).catch(() => null),
-    _lookupByTitleOL(title, author).catch(() => null),
-    wikipediaLookup(title, author, currentLang()).catch(() => null),
+  // allSettled rather than catch(() => null): a source that THREW did not run, which is
+  // a different fact from a source that ran and found nothing. Most of these services
+  // swallow their own errors internally, so this catches only outright failures — but
+  // those are exactly the ones that would otherwise masquerade as "book doesn't exist".
+  const settled = await Promise.allSettled([
+    hardcoverSearch(title, author),
+    _lookupByTitleOL(title, author),
+    wikipediaLookup(title, author, currentLang()),
   ]);
+  const sourceFailed = settled.some((r) => r.status === 'rejected');
+  const [hc, ol, wiki] = settled.map((r) => (r.status === 'fulfilled' ? r.value : null));
 
   // Priority: Hardcover > OL > Wikipedia, with description override.
   // BUT only trust it if its title actually matches the query — Hardcover's
@@ -212,9 +310,57 @@ export async function lookupByTitle(title, author) {
     return gb;
   }
 
-  // ALL sources missed, including Google Books. Don't lose the user's input —
-  // return a raw record marked as needing review so it surfaces in the editor
-  // queue. At the upsert site this maps to status='incomplete' on the books row.
+  // v0.56 — LAST RESORT: let Claude repair the QUERY, then run the chain again.
+  //
+  // Everything above has missed, and historically that meant creating a row from the
+  // user's raw input: no ISBN, no cover, no pages, no description, and a normalized_key
+  // built from a title that isn't the book's real title. Those rows can never be matched
+  // or deduplicated afterwards, and they accumulated to 206 of ~2,500 books before anyone
+  // noticed — every one of them a dead purchase link and a weak Oracle recommendation.
+  //
+  // The important design choice: Claude is used to FIX THE SEARCH STRING, not to supply
+  // the book data. The deterministic sources are far more reliable for ISBNs, covers and
+  // page counts — they were only failing because the query was misspelled, partial, or
+  // missing an author. So we ask Claude for a canonical title/author, then re-run the
+  // real chain with it. What gets stored still comes from Hardcover/OpenLibrary/Google
+  // Books, so a Claude misremembering can't put a wrong ISBN in the catalog.
+  //
+  // Routed through feature:'search' — the free Haiku tier, rate limited per user and
+  // never charged against Oracle quota (see netlify/functions/claude.js). Deeper repair
+  // with web search happens offline in batch-scripts/curateManualBooks.mjs.
+  let claudeUnavailable = false;
+  if (!_retried) {
+    const { fixed, unavailable } = await claudeNormalizeQuery(title, author);
+    claudeUnavailable = unavailable;
+    const changed = fixed && (
+      (fixed.t || '').toLowerCase() !== title.trim().toLowerCase() ||
+      (fixed.a || '').toLowerCase() !== (author || '').trim().toLowerCase()
+    );
+    if (changed) {
+      // `_retried` guards the recursion: one correction attempt, never a loop.
+      const second = await lookupByTitle(fixed.t, fixed.a || author, true).catch(() => null);
+      if (second && !second.noApiMatch) {
+        second.manuallyAdded = true;
+        second.titleCorrectedByClaude = { from: title, to: fixed.t };
+        return second;
+      }
+    }
+  }
+
+  // Nothing found. Record WHY, because the two reasons need different treatment:
+  //
+  //   noApiMatch        every source ran and none knew the book. A real dead end —
+  //                     either a genuinely obscure title or a typo. Worth a human or
+  //                     Claude-with-web-search looking at it.
+  //
+  //   lookupIncomplete  at least one stage never ran: the free-search throttle was
+  //                     saturated (15/60s per user, easily hit mid bulk-import), a
+  //                     source threw, or quota was spent. NOT evidence the book is
+  //                     unfindable. Simply retrying later usually resolves it.
+  //
+  // Conflating these is what makes "we tried everything, so the title must be wrong"
+  // unsafe as a reason to refuse the add.
+  const lookupIncomplete = claudeUnavailable || sourceFailed;
   return {
     t: title.trim(),
     a: (author || '').trim() || null,
@@ -226,7 +372,8 @@ export async function lookupByTitle(title, author) {
     isbn: null,
     manuallyAdded: true,
     needsReview: true, // v0.15: was `unverified: true`. Maps to status='incomplete' on insert.
-    noApiMatch: true, // useful for telemetry / debug
+    noApiMatch: !lookupIncomplete, // every source ran and missed → a real dead end
+    lookupIncomplete,              // a stage never ran → retryable, not a dead end
   };
 }
 

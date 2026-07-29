@@ -49,10 +49,16 @@ export async function handler(event) {
     };
   }
 
-  // Cap query depth as a basic abuse guard. Real queries top out around 9-10
-  // braces (variables + nested where + book → series → fields).
+  // Cap query depth as a basic abuse guard.
+  //
+  // NB this counts total braces, not nesting depth, so filter arguments inflate it
+  // as much as real nesting does. v0.56 added where/order_by to the nested editions
+  // selection (see BOOK_FIELDS in hardcoverService.js) to stop picking boxed-set
+  // ISBNs, which pushed the ISBN lookup query from 14 braces to 17 — it would have
+  // been rejected here with a 400 and the whole Hardcover leg of the lookup chain
+  // would have gone silently dead. Raised to 30, still far below anything abusive.
   const depth = (body.query.match(/\{/g) || []).length;
-  if (depth > 15) {
+  if (depth > 30) {
     return {
       statusCode: 400,
       headers: corsHeaders,

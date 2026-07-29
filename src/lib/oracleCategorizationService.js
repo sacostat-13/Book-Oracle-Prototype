@@ -33,6 +33,7 @@ import {
   parseJSONResponse,
   QuotaExceededError
 } from './claudeApi';
+import { hardcoverSearch } from './hardcoverService';
 
 // v0.57: lowered 10 → 5. Each batch is ONE synchronous Anthropic call inside
 // the claude.js Netlify function, which has a hard 30s ceiling. The call's
@@ -74,6 +75,25 @@ export function getBooksNeedingOracle(books, genresByBookId) {
 }
 
 // ---------- helpers ----------
+
+// Fill in a missing ISBN for a book the Oracle is already processing.
+//
+// Uses the same hardcoverSearch → pickBestEdition path as every other lookup, so an ISBN
+// written here is chosen by identical rules to one written by the backfill script or the
+// browser chain. Writes through upsert_book, whose coalesce(existing, incoming) merge
+// means this can only fill a null — it can never overwrite a curated value.
+async function topUpIsbn(book) {
+  if (!book?.t || book.isbn) return;
+  const hit = await hardcoverSearch(book.t, book.a).catch(() => null);
+  if (!hit?.isbn) return;
+  await supabase.rpc('upsert_book', {
+    _title: book.t,
+    _author: book.a || null,
+    _isbn: hit.isbn,
+    _hardcover_id: hit.hardcoverId || null,
+  });
+}
+
 
 async function fetchAllGenres() {
   const {
@@ -448,6 +468,19 @@ export async function runOracleCategorization({
           depth,
           authorGender
         );
+
+        // v0.56: opportunistic ISBN repair. A curator is already looking at this book,
+        // so top up a missing ISBN while we're here rather than waiting for the weekly
+        // cron. Deliberately fire-and-forget and null-fill only — this must never slow
+        // the categorization batch (which sits close to the 30s Lambda cap) or fail it.
+        //
+        // NOTE this is opportunistic, NOT comprehensive: getBooksNeedingOracle only
+        // yields status unreviewed|incomplete, so verified/curated books are never seen
+        // here. Catalog-wide ISBN health is the scheduled job's responsibility
+        // (.github/workflows/catalog-maintenance.yml).
+        if (!book.isbn) {
+          topUpIsbn(book).catch(() => {});
+        }
 
         batchAssignments.push({
           bookId: book.bookId,

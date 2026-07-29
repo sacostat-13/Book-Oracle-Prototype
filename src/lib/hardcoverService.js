@@ -11,12 +11,15 @@
 //   books(where, limit, order_by) → [{ id, title, pages, description,
 //     contributions { author { name } }, image { url },
 //     book_series { position, series { id, name, books_count, primary_books_count } },
-//     editions(limit) { isbn_13, isbn_10 } }]
+//     editions(where, order_by, limit) { isbn_13, isbn_10, asin, reading_format_id,
+//       compilation, edition_format, language_id, users_count } }]
+//   reading_format_id: 1=Physical, 2=Audio, 3=Both, 4=Ebook
 //   editions(where) → [{ book }]
 //   series(where) → [{ id, name, books_count, book_series { position, book } }]
 //   search(query, query_type, per_page, page) → { results: <json> }
 
 import { cleanTitle, cleanAuthor } from './bookHelpers';
+import { pickBestEdition, EDITION_FIELDS } from './editionPicker';
 
 const ENDPOINT = '/.netlify/functions/hardcover';
 
@@ -53,6 +56,7 @@ async function gql(query, variables = {}) {
 // Normalize a Hardcover book node into our internal shape.
 function normalize(node) {
   if (!node) return null;
+  const edition = pickBestEdition(node.editions);
   const author = (node.contributions || [])
     .map((c) => c?.author?.name)
     .filter(Boolean)[0] || null;
@@ -72,19 +76,15 @@ function normalize(node) {
     pp: node.pages || null,
     coverUrl: node.image?.url || null,
     s: series,
-    isbn: extractIsbnFromEditions(node.editions),
+    isbn: edition.isbn,
+    // v0.56: Hardcover's own ASIN for the chosen edition. Preferred over deriving
+    // one from the ISBN-10, since it also covers 979- ISBNs (which have no ISBN-10
+    // form at all). Not yet persisted — the books table has no asin column — so it
+    // only helps within the session that performed the lookup.
+    asin: edition.asin,
     hardcoverId: node.id || null,
     fromHardcover: true,
   };
-}
-
-function extractIsbnFromEditions(editions) {
-  if (!editions || editions.length === 0) return null;
-  for (const e of editions) {
-    if (e.isbn_13) return e.isbn_13;
-    if (e.isbn_10) return e.isbn_10;
-  }
-  return null;
 }
 
 // Reusable fragment of book fields. Keep depth shallow — Hardcover allows
@@ -97,7 +97,7 @@ const BOOK_FIELDS = `
   image { url }
   contributions { author { name } }
   book_series { position series { id name books_count primary_books_count } }
-  editions(limit: 3) { isbn_13 isbn_10 }
+  ${EDITION_FIELDS}
 `;
 
 // ---------- Public API ----------

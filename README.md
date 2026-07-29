@@ -4,7 +4,7 @@ A reading companion — wishlist, library, reading plans, book clubs, and an AI-
 for book discovery. Built with React + Vite + SCSS, backed by Supabase for auth
 and cross-device sync, and Netlify Functions for API proxying.
 
-> Current version: **v0.56** — see [Releases](#releases) below for changelog.
+> Current version: **v0.57** — see [Releases](#releases) below for changelog.
 > Upgrading from an earlier version? Check the matching `MIGRATION_*.md` / `UPDATE_*.md`.
 
 ---
@@ -332,6 +332,104 @@ and forward requests. Locally you need `netlify dev` to make them work.
 ---
 
 ## Releases
+
+# Update Notes — v0.56 → v0.57: Direct purchase links, edition selection, catalog repair
+
+**The headline:** every book now links to its own product page on Amazon and Bookshop.org,
+carrying the affiliate IDs. Previously every link went to a search results page — which
+converts poorly and, on Bookshop, earned nothing at all.
+
+## Affiliate links
+
+- `src/lib/purchaseLinks.js` rewritten. Amazon `/dp/{ISBN-10}` (the ISBN-10 *is* the ASIN
+  for print), Bookshop `/a/{affiliate_id}/{ISBN-13}` (Bookshop attributes via the URL
+  **path**, not a query param — an `aid=` on a search URL earns nothing).
+- Foreign affiliate tags on imported `amazonUrl`s are stripped before ours is applied.
+- `VITE_AMAZON_AFFILIATE_TAG` / `VITE_BOOKSHOP_AFFILIATE_ID` were declared but unset —
+  now populated. **Must also be set in Netlify env** or production ships without them.
+- Books with no ISBN still fall back to a *tagged* Amazon search. Bookshop search carries
+  no attribution, so ISBN coverage is specifically a Bookshop revenue question.
+
+## Edition selection — `src/lib/editionPicker.js` (new, shared)
+
+Hardcover's `editions(limit: 3)` returned whichever edition came first. Fourth Wing
+resolved to the Empyrean #1-2 boxed set; A Dowry of Blood to an Audible edition. Now
+scored: physical ≫ ebook ≫ audio, English preferred but never mandatory, compilations
+disqualified, popularity log-scaled as a tiebreak, ISBNs checksum-validated.
+
+`edition_format` overrides a contradicting `reading_format_id` — real rows claim
+`reading_format_id=1` while reading "Audible Audio" or "Kindle Edition".
+
+## Title matching — `src/lib/titleMatch.js` (new, shared)
+
+Four distinct bugs, each found in production data:
+
+| Symptom | Cause |
+|---|---|
+| *Agatha Christie: An Autobiography* → a Poirot omnibus | subtitle stripped, then any prefix allowed |
+| 6 X-Men arcs sharing one ISBN | `Series: Instalment` titles all reduce to the series name |
+| *The Infinity Crusade* Vol. 1 and Vol. 2 sharing one ISBN | prefix rule's 4-char floor; "vol1" is exactly 4 |
+| 15 JoJo volumes sharing one ISBN | volume extractor read only the *first* number ("Part 1") |
+
+Matching is now **asymmetric**: the stored title is never reduced past its subtitle, only
+the candidate is. Reducing the stored side turns a specific collection into its series
+container, which is how *Hellblazer: Tainted Love* and *: Dangerous Habits* both matched a
+bare "Hellblazer" record.
+
+## Lookup chain — `src/lib/bookLookup.js`
+
+New stage 3: when every source misses, Claude repairs the **query**, then stages 1–2 run
+again. Claude never supplies book data — only a corrected title/author — so a
+misremembering cannot write a bad ISBN. Free Haiku tier, no Oracle quota charge.
+
+Raw records now distinguish `noApiMatch` (every source ran and missed) from
+`lookupIncomplete` (a stage never ran — throttle saturated, source threw). The second is
+retryable and must not be treated as "book doesn't exist".
+
+## Batch scripts (`batch-scripts/`)
+
+- `isbnBackfill.mjs` — Hardcover, batched `id: {_in: […]}`, sliding-window rate limiter,
+  resumable, learns and persists `hardcover_id`.
+- `isbnFallback.mjs` — OpenLibrary (no key) + Google Books (needs `GOOGLE_BOOKS_API_KEY`;
+  anonymous quota is 0). Rejects library rebinders and audio imprints. `--probe` dumps raw
+  upstream JSON to verify response shapes.
+- `curateManualBooks.mjs` — Claude + web search. Metadata fills are automatic; title
+  changes go to a CSV for approval, then `--apply-titles`. Prompt forbids translating a
+  title out of its original language and forbids mapping a single work onto a collection
+  that contains it.
+
+## Migrations
+
+`schema_v38` reset ISBNs · `v39` `merge_books()` · `v40` cleared bad-matcher ISBNs ·
+`v41` cleared the stale `hardcover_id`s that made v40 re-derive the same wrong answers ·
+`v42` serialized-work resets. `isbn_dupe_audit.sql` distinguishes duplicate *rows* from
+genuinely mismatched ISBNs.
+
+`merge_books()` discovers FK references from `pg_constraint` at runtime and repoints
+row-by-row inside a savepoint catching `unique_violation` — several tables carry
+`unique(user_id, book_id)`, so a user holding both books would otherwise break the merge.
+Every merge is logged to `book_merge_log` with the deleted row's full JSON.
+
+**Known limitation:** `refs_moved`/`refs_deduped` record counts, not row identities, so a
+merge is not precisely reversible.
+
+## Automation
+
+`.github/workflows/catalog-maintenance.yml` — Mondays 06:00 UTC, **free passes only**
+(backfill + fallback). `curateManualBooks` is billable and runs only via
+`workflow_dispatch` with an explicit `curate_limit`. Opens a GitHub Issue when proposals
+await approval or the ISBN-less backlog crosses 150, with an estimated cost.
+
+Oracle Categorization tops up missing ISBNs opportunistically — but only reaches
+`status IN ('unreviewed','incomplete')`, so it supplements the cron rather than replacing it.
+
+## Result
+
+ISBN coverage went from near-zero usable direct links to **86.4%** (2,146 of 2,484). The
+remaining ~338 are concentrated in serialized volumes, rows with no author, and
+non-English small-press titles.
+
+---
 
 # Update Notes — v0.55.4 → v0.56: Spanish-language discovery + free search tier
 

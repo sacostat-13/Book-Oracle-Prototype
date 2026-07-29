@@ -16,9 +16,26 @@
 
 // The version label shown as "current" — keep in sync with package.json and
 // the README version line.
-export const CURRENT_VERSION = 'v0.56';
+export const CURRENT_VERSION = 'v0.57';
 
 export const RELEASES = [{
+    version: 'v0.57',
+    date: '2026-07-28',
+    titleEn: 'Buy the book you actually asked for',
+    titleEs: 'Compra el libro que realmente pediste',
+    bodyEn: [
+      'Every book now links straight to its own page on Amazon and Bookshop.org, instead of dropping you on a search results page to hunt for it yourself.',
+      'The Oracle got much better at telling editions apart. Before, a boxed set, an audiobook or a library rebinding could stand in for the book you wanted — and a comic or manga volume could quietly borrow volume one\u2019s link. Now each volume, arc and collection points where it should.',
+      'Books published only in Spanish, Japanese or another language keep their own edition rather than being swapped for an English one that may not exist. If you added the Spanish edition, that\u2019s the edition you get.',
+      'Titles that arrived garbled from an import get repaired, and duplicate entries for the same book are folded together — so your shelves stop showing the same book twice.',
+    ],
+    bodyEs: [
+      'Cada libro ahora enlaza directo a su propia página en Amazon y Bookshop.org, en vez de dejarte en una página de resultados para que lo busques vos.',
+      'El Oráculo distingue mucho mejor entre ediciones. Antes, un estuche, un audiolibro o una encuadernación de biblioteca podían hacerse pasar por el libro que querías — y un volumen de cómic o manga podía tomar prestado el enlace del primero. Ahora cada volumen, arco y colección apunta a donde corresponde.',
+      'Los libros publicados solo en español, japonés u otro idioma conservan su propia edición en vez de que se los cambie por una en inglés que quizá ni exista. Si agregaste la edición en español, esa es la que recibís.',
+      'Los títulos que llegaron mal escritos desde una importación se corrigen, y las entradas duplicadas del mismo libro se unifican — así tus estantes dejan de mostrar el mismo libro dos veces.',
+    ],
+  }, {
     version: 'v0.56',
     date: '2026-07-24',
     titleEn: 'Books in Spanish, found — and free to search',
