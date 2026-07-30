@@ -63,9 +63,30 @@ export async function handler(event) {
   // from a fresh subscription fetch (signed URLs expire, so it must be
   // fetched per click, never cached). Anything else is an error the client
   // can toast.
+  // v0.58: `comped` rather than a bare `no_subscription` when the account is
+  // ALREADY on the Pro tier without a billing record. Both mean "there is no
+  // portal to open", but they are opposite situations from the reader's side:
+  // one is an invitation to upgrade, the other is an account that has been
+  // granted Pro directly and would be baffled to be told to buy what it has.
+  // The client picks the message; the server just distinguishes them.
   if (!lsSubscriptionId) {
-    console.warn(`manage-subscription: no ls_subscription_id on file for user ${userId}`);
-    return json(404, { error: 'No subscription found for this account.', code: 'no_subscription' });
+    let isPro = false;
+    if (supabaseUrl && serviceKey) {
+      try {
+        const res = await fetch(
+          `${supabaseUrl}/rest/v1/profiles?id=eq.${userId}&select=subscription_status`,
+          { headers: { 'apikey': serviceKey, 'Authorization': `Bearer ${serviceKey}` } }
+        );
+        if (res.ok) isPro = (await res.json())[0]?.subscription_status === 'active';
+      } catch (e) { console.error('Tier lookup failed:', e); }
+    }
+    console.warn(`manage-subscription: no ls_subscription_id on file for user ${userId} (tier ${isPro ? 'active' : 'free'})`);
+    return json(404, {
+      error: isPro
+        ? 'This account has Pro access with no billing attached.'
+        : 'No subscription found for this account.',
+      code: isPro ? 'comped' : 'no_subscription',
+    });
   }
 
   try {
@@ -77,9 +98,27 @@ export async function handler(event) {
     });
     const data = await res.json();
     if (!res.ok) {
-      // 404 here usually means test/live mode mismatch: a test-mode API key
-      // can't see live subscriptions and vice versa.
       console.error(`LS subscription fetch failed: HTTP ${res.status} for sub ${lsSubscriptionId}`, JSON.stringify(data?.errors || data).slice(0, 500));
+
+      // v0.58: a 404 from Lemon Squeezy is NOT a bad gateway.
+      //
+      // It means the id we hold does not exist for this API key — a test-mode
+      // subscription seen through a live-mode key (or the reverse), or a
+      // subscription deleted LS-side. That is the same *user-facing* condition
+      // as having no subscription at all, and it is permanent: retrying cannot
+      // fix it. Returning 502 'portal_unavailable' told people to "try again
+      // shortly" about something that would fail identically forever, and hid
+      // a data problem behind what looked like an outage.
+      //
+      // 5xx is reserved for what it means: LS is actually unwell (429, 500,
+      // 503) and a retry is genuinely worth making.
+      if (res.status === 404) {
+        return json(404, {
+          error: 'The subscription on file could not be found. It may have been cancelled or created in test mode.',
+          code: 'subscription_missing',
+        });
+      }
+
       return json(502, { error: 'Could not open the billing portal. Please try again shortly.', code: 'portal_unavailable' });
     }
 

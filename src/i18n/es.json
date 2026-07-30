@@ -1498,7 +1498,13 @@
     "checkoutError": "No se pudo abrir el pago. Intentá de nuevo.",
     "portalError": "No se pudo abrir el portal. Intentá de nuevo.",
     "noSubToast": "Esta cuenta aún no tiene una suscripción activa — mejorá a Pro para desbloquear consultas diarias al Oráculo.",
-    "alreadyProToast": "Ya tenés Pro — usá Gestionar suscripción para hacer cambios."
+    "alreadyProToast": "Ya tenés Pro — usá Gestionar suscripción para hacer cambios.",
+    "compedTitle": "Pro, otorgado directamente",
+    "compedBody": "Esta cuenta tiene acceso Pro sin facturación asociada, así que no hay nada que gestionar. Tu cuota y tus funciones no se ven afectadas.",
+    "compedToast": "Esta cuenta tiene acceso Pro sin facturación asociada.",
+    "subMissingTitle": "No se encontró el registro de facturación",
+    "subMissingBody": "Tenemos una suscripción registrada para esta cuenta que el proveedor de pagos ya no reconoce — normalmente una suscripción cancelada, o una creada en modo de prueba. Tu acceso Pro no se ve afectado. Escribinos si creés que esto es un error.",
+    "subMissingToast": "No se encontró la suscripción registrada."
   },
   "oracleGate": {
     "introEyebrow": "Antes de empezar",

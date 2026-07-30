@@ -183,3 +183,31 @@
     .oracle-history__when { grid-column: 1 / -1; }
   }
 }
+
+// ══════════════════════════════════════════════════════════════════════════════
+// Billing state note
+// ══════════════════════════════════════════════════════════════════════════════
+//
+// Replaces the "Manage subscription" button on an account that has no portal
+// to open — Pro granted directly, or a subscription the payment provider no
+// longer recognises. Deliberately quiet: neither case is an error the reader
+// caused or can act on, so it reads as a statement of fact, not a warning.
+
+.pf-billing-note {
+  margin-top: 0.9rem;
+  padding: 0.9rem 1.1rem;
+  background: var(--ro-surface-2);
+  border: 1px solid var(--ro-border);
+  border-left: 2px solid var(--ro-border-strong);
+  border-radius: var(--ro-radius-md);
+  max-width: 46ch;
+}
+
+.pf-billing-note__title {
+  font-family: var(--ro-font-mono);
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ro-muted);
+  margin-bottom: 0.45rem;
+}

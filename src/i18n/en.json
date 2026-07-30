@@ -1498,7 +1498,13 @@
     "checkoutError": "Could not open checkout. Try again.",
     "portalError": "Could not open billing portal. Try again.",
     "noSubToast": "No active subscription on this account yet — upgrade to Pro to unlock daily Oracle draws.",
-    "alreadyProToast": "You're already on Pro — use Manage subscription to make changes."
+    "alreadyProToast": "You're already on Pro — use Manage subscription to make changes.",
+    "compedTitle": "Pro, granted directly",
+    "compedBody": "This account has Pro access with no billing attached, so there is nothing to manage. Your quota and features are unaffected.",
+    "compedToast": "This account has Pro access with no billing attached.",
+    "subMissingTitle": "No billing record found",
+    "subMissingBody": "We hold a subscription for this account that the payment provider no longer recognises — usually a cancelled subscription, or one created in test mode. Your Pro access is unaffected. Get in touch if you believe this is wrong.",
+    "subMissingToast": "The subscription on file could not be found."
   },
   "oracleGate": {
     "introEyebrow": "Before you begin",

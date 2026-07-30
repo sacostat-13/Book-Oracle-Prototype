@@ -410,6 +410,33 @@ a free account's month before it touched an Oracle surface. Now `feature: 'searc
 same free tier `NavSearch` and `bookLookup` already use (server-forced Haiku, 400-token
 cap, per-user rate limit). This is almost certainly the substance of the original report.
 
+## Fixed: an LS 404 was reported as a 502
+
+`manage-subscription.js` collapsed every non-2xx from Lemon Squeezy into
+`502 portal_unavailable` — "could not open the billing portal, try again
+shortly". But an LS **404** means the stored `ls_subscription_id` does not exist
+for the deployed API key: a test-mode subscription seen through a live-mode key
+(or the reverse), or one deleted LS-side. That is permanent. Retrying fails
+identically forever, and a data problem was hiding behind what read as an
+outage. 404 now returns `subscription_missing`; 5xx is reserved for LS actually
+being unwell, where a retry is worth making.
+
+The no-id path also now distinguishes `comped` (tier is already `active` — Pro
+granted directly, nothing to manage) from `no_subscription` (free tier — an
+invitation to upgrade). Same "there is no portal", opposite messages.
+
+Profile's subscription tab replaces the Manage button with a short explanation
+once either state is known, rather than offering a button whose only possible
+outcome is an error toast. `billingState` is set from the Manage response, not
+fetched on load: `profile_billing` has no client-readable policies (schema_v28),
+so answering "does this account have billing?" eagerly would cost a Netlify
+round trip on every visit to the tab.
+
+Operational counterpart: `supabase/fix_dead_subscription_id.sql` clears a dead
+handle while leaving `subscription_status` alone. Read its DANGER note first —
+never run it against a live paying subscription, as the webhook will not resend
+the id.
+
 ## Fixed: invalid hook calls in `ClubPolls.jsx`
 
 `fetchOracleSuggestions` called `useOracleQuota()` and `useT()` from a plain async

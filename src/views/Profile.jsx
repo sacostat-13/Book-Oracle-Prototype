@@ -884,6 +884,13 @@ export default function Profile() {
   const { quota, refresh: refreshQuota } = useOracleQuota();
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [portalLoading, setPortalLoading] = useState(false);
+  // v0.58: null | 'comped' | 'missing'. Set only after a Manage attempt tells
+  // us so. Deliberately NOT fetched on page load: `profile_billing` has no
+  // client-readable policies (schema_v28) and answering "does this account
+  // have billing?" eagerly would mean a Netlify round trip on every visit to
+  // the tab. The button is honest the moment it is pressed, which is when the
+  // question is actually being asked.
+  const [billingState, setBillingState] = useState(null);
 
   // Refresh quota when returning from Stripe Checkout so the tier badge
   // updates immediately. Must be in useEffect — never call setState during render.
@@ -1071,6 +1078,18 @@ export default function Profile() {
       // upgrading rather than reading as a failure.
       if (json.url) window.location.href = json.url;
       else if (json.code === 'no_subscription') showToast(t('subscription.noSubToast'), true);
+      // v0.58: two new codes, both permanent rather than retryable.
+      // `comped` = Pro granted directly, nothing to manage. `subscription_missing`
+      // = we hold an id Lemon Squeezy will not honour (test-mode leftover or a
+      // deleted subscription). Neither should say "try again shortly".
+      else if (json.code === 'comped') {
+        setBillingState('comped');
+        showToast(t('subscription.compedToast'), false);
+      }
+      else if (json.code === 'subscription_missing') {
+        setBillingState('missing');
+        showToast(t('subscription.subMissingToast'), true);
+      }
       else showToast(t('subscription.portalError'), true);
     } catch (e) {
       showToast(t('subscription.portalError'), true);
@@ -1521,9 +1540,27 @@ export default function Profile() {
 
             {/* CTA */}
             {quota?.subscription_status === 'active' ? (
-              <button className="btn-secondary" onClick={handleManage} disabled={portalLoading}>
-                {portalLoading ? t('subscription.redirecting') : t('subscription.manageBtn')}
-              </button>
+              /* v0.58: once we know there is no portal to open, stop offering
+                 to open one. A button whose only outcome is an error toast is
+                 worse than a sentence explaining why there is no button. */
+              billingState ? (
+                <div className="pf-billing-note">
+                  <div className="pf-billing-note__title">
+                    {t(billingState === 'comped'
+                      ? 'subscription.compedTitle'
+                      : 'subscription.subMissingTitle')}
+                  </div>
+                  <p className="pf-section__hint">
+                    {t(billingState === 'comped'
+                      ? 'subscription.compedBody'
+                      : 'subscription.subMissingBody')}
+                  </p>
+                </div>
+              ) : (
+                <button className="btn-secondary" onClick={handleManage} disabled={portalLoading}>
+                  {portalLoading ? t('subscription.redirecting') : t('subscription.manageBtn')}
+                </button>
+              )
             ) : (
               <div className="pf-upgrade">
                 <button className="btn-primary" onClick={handleUpgrade} disabled={checkoutLoading}>
