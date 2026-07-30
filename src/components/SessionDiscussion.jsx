@@ -39,7 +39,11 @@ Respond with ONLY valid JSON — no preamble, no markdown, no explanation:
 
   let raw = null;
   try {
-    raw = await callClaude(prompt, 'You are a thoughtful book club facilitator. Respond only with the JSON array requested. No preamble, no markdown fences.');
+    raw = await callClaude(
+      prompt,
+      'You are a thoughtful book club facilitator. Respond only with the JSON array requested. No preamble, no markdown fences.',
+      { source: 'club_discussion' } // v0.58: history label (schema_v44)
+    );
     onCallSucceeded?.();
   } catch (err) {
     if (err instanceof QuotaExceededError) {
@@ -189,7 +193,7 @@ function QuestionBlock({ question, isAdmin, onPostAnswer, onDelete, onEditCommen
 export default function SessionDiscussion({ sessionId, clubId, isAdmin, book = {} }) {
   const { postComment, deleteComment, editComment, addQuestion, deleteQuestion } = useData();
   const t = useT();
-  const { handleQuotaError, onCallSucceeded } = useOracleQuota();
+  const { handleQuotaError, onCallSucceeded, confirmOracleCall } = useOracleQuota();
   const [discussion, setDiscussion] = useState(null);
   // v0.51: comment author id -> worn Reader Title key. Loaded in one batch
   // after the discussion arrives; decoration only, so failures render nothing.
@@ -259,6 +263,7 @@ export default function SessionDiscussion({ sessionId, clubId, isAdmin, book = {
   }
 
   async function handleOracleSuggest() {
+    if (!(await confirmOracleCall('club_discussion'))) return; // v0.58
     setOracleLoading(true);
     setOracleError(null);
     setOracleSuggestions(null);

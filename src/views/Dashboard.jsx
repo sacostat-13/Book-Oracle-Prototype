@@ -164,7 +164,7 @@ function CurrentlyReadingWidget({ books, onOpenBook, t }) {
 
 // ─── Oracle Spark ─────────────────────────────────────────────────────────────
 function OracleSparkWidget({ wishlist, go, t, profile }) {
-  const { quota, refresh: refreshQuota } = useOracleQuota();
+  const { quota, refresh: refreshQuota, confirmOracleCall } = useOracleQuota();
   const [state, setState] = useState('idle');
   const [result, setResult] = useState(null);
 
@@ -173,6 +173,10 @@ function OracleSparkWidget({ wishlist, go, t, profile }) {
 
   async function draw() {
     if (!hasWishlist || quotaEmpty) return;
+    // v0.58: the Spark sits on the dashboard and is the most likely first
+    // Oracle call anyone makes, so it is the most important one to explain
+    // before it happens.
+    if (!(await confirmOracleCall('spark'))) return;
     setState('loading'); setResult(null);
     try {
       const titles = (wishlist || [])
@@ -191,7 +195,8 @@ function OracleSparkWidget({ wishlist, go, t, profile }) {
       ].filter(Boolean).join(' ');
       const raw = await callClaude(
         `${personalization ? personalization + '\n\n' : ''}From this wishlist, pick ONE book that would most pleasantly surprise me right now. Return ONLY JSON: { title, author, reason (max 20 words, evocative) }.\n\n${titles}`,
-        'You are a literary oracle. Be bold. Return only valid JSON, no markdown.'
+        'You are a literary oracle. Be bold. Return only valid JSON, no markdown.',
+        { source: 'spark' } // v0.58: history label (schema_v44)
       );
       if (!raw) { setState('error'); return; }
       const parsed = JSON.parse(raw.replace(/```json|```/g, '').trim());

@@ -58,7 +58,7 @@ export default function OracleSimilar({ onOpenBook }) {
   const { go } = useRouter();
   const t = useT();
   const { lang } = useI18n();
-  const { quota, handleQuotaError, onCallSucceeded } = useOracleQuota();
+  const { quota, handleQuotaError, onCallSucceeded, confirmOracleCall } = useOracleQuota();
   const [selection, setSelection] = useState([]);
   const [results, setResults] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -110,6 +110,11 @@ export default function OracleSimilar({ onOpenBook }) {
 
   async function findSimilar() {
     if (selection.length === 0) return;
+    // v0.58: only the AI mode spends a call — wishlist mode is a local match,
+    // so the gate is asked for here, before the spinner, but only on the AI
+    // path. Confirming a charge for work that is free would train people to
+    // click through the dialog without reading it.
+    if (mode !== 'wishlist' && !(await confirmOracleCall('similar'))) return;
     setLoading(true);
     setResults(null);
 
@@ -145,7 +150,8 @@ Return ONLY valid JSON in this exact format:
 
     const response = await callClaude(
       prompt,
-      `You are a literary expert recommending books based on a reader's tastes. Recommend accurately. Always return valid JSON. ${langDirective(lang)} Any natural-language field in the JSON (description, reason, genre label) MUST be in that language; titles and author names stay in their original language.\n${MATCH_SCORING_INSTRUCTIONS}`
+      `You are a literary expert recommending books based on a reader's tastes. Recommend accurately. Always return valid JSON. ${langDirective(lang)} Any natural-language field in the JSON (description, reason, genre label) MUST be in that language; titles and author names stay in their original language.\n${MATCH_SCORING_INSTRUCTIONS}`,
+      { source: 'similar' } // v0.58: history label (schema_v44)
     );
 
     let aiResults = null;

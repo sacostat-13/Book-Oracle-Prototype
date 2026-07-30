@@ -13,6 +13,7 @@ import { STANDARD_AVATARS, GENRE_AVATARS } from '../lib/avatars';
 import Avatar from '../components/Avatar';
 import CornerBrackets from '../components/CornerBrackets';
 import ShareModal from '../components/ShareModal';
+import OracleCallHistory from '../components/OracleCallHistory';
 
 
 // ── Small stat card ──────────────────────────────────────────────────────────
@@ -1512,6 +1513,11 @@ export default function Profile() {
                 )}
               </div>
             )}
+
+            {/* v0.58: the bar says how much is gone; this says where it went.
+                Directly beneath it, because the two are the same question
+                asked at different resolutions. */}
+            <OracleCallHistory />
 
             {/* CTA */}
             {quota?.subscription_status === 'active' ? (

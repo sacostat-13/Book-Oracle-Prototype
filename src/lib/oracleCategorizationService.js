@@ -394,7 +394,8 @@ export async function runOracleCategorization({
         raw = await callClaude(userPrompt, systemPrompt, {
           maxTokens: 4000,
           runId,
-          feature: 'categorization'
+          feature: 'categorization',
+          source: 'categorization' // v0.58: history label (schema_v44)
         });
       } catch (err) {
         if (err instanceof QuotaExceededError) throw err; // propagate to button

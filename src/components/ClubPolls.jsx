@@ -22,9 +22,14 @@ import { useOracleQuota } from '../lib/OracleQuotaContext';
 
 // ── Oracle suggestion flow ────────────────────────────────────────────────────
 
-async function fetchOracleSuggestions({ clubName, clubGenres = [], recentBooks = [] }) {
-  const t = useT();
-  const { handleQuotaError, onCallSucceeded } = useOracleQuota();
+// v0.58: this took its quota helpers by calling useOracleQuota() (and useT())
+// from inside a plain async function — a hook call outside render, which React
+// rejects with "Invalid hook call". Now passed in from the component, the way
+// SessionDiscussion.jsx already does it. `t` was never used here at all.
+async function fetchOracleSuggestions({
+  clubName, clubGenres = [], recentBooks = [],
+  handleQuotaError, onCallSucceeded,
+}) {
   const genreList = clubGenres.join(', ') || 'general fiction';
   const recentList = recentBooks.length
     ? recentBooks.map((b) => `"${b.title}" by ${b.author}`).join(', ')
@@ -48,7 +53,7 @@ Respond with ONLY valid JSON — no preamble, no markdown, no explanation:
 
   let raw = null;
   try {
-    raw = await callClaude(prompt, systemPrompt);
+    raw = await callClaude(prompt, systemPrompt, { source: 'club_poll' }); // v0.58: history label
     onCallSucceeded?.();
   } catch (err) {
     if (err instanceof QuotaExceededError) {
@@ -196,15 +201,17 @@ function CreatePollForm({ onAdd, onCancel }) {
   const [options, setOptions] = useState([{ label: '' }, { label: '' }]);
   const [saving, setSaving] = useState(false);
 
+  // v0.58: `const t = useT()` was repeated inside every handler in this file.
+  // A hook called from an event handler runs with a null dispatcher and throws
+  // "Invalid hook call" — the component's own top-level `t` was always the one
+  // to use. Removed from each handler below.
   function setOptionLabel(i, val) {
-    const t = useT();
     setOptions((opts) => opts.map((o, idx) => idx === i ? { ...o, label: val } : o));
   }
 
   const validOptions = options.filter((o) => o.label.trim()).length >= 2;
 
   async function handleAdd() {
-    const t = useT();
     if (!question.trim() || !validOptions || saving) return;
     setSaving(true);
     await onAdd({
@@ -262,6 +269,9 @@ function CreatePollForm({ onAdd, onCancel }) {
 export default function ClubPolls({ clubId, clubName, clubGenres = [], isAdmin, recentBooks = [], onCreateSession }) {
   const t = useT();
   const { createPoll, castVote, closePoll, deletePoll } = useData();
+  // v0.58: hoisted out of fetchOracleSuggestions / handleOracleSuggest, which
+  // were calling hooks outside render.
+  const { handleQuotaError, onCallSucceeded, confirmOracleCall } = useOracleQuota();
   const [polls, setPolls] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
@@ -277,7 +287,6 @@ export default function ClubPolls({ clubId, clubName, clubGenres = [], isAdmin, 
   useEffect(() => { loadPolls(); }, [loadPolls]);
 
   async function handleVote(pollId, optionId) {
-    const t = useT();
     const updatedCounts = await castVote(pollId, optionId);
     if (!updatedCounts) return;
     // Optimistically update vote counts + my_vote
@@ -295,30 +304,29 @@ export default function ClubPolls({ clubId, clubName, clubGenres = [], isAdmin, 
   }
 
   async function handleClose(pollId) {
-    const t = useT();
     await closePoll(pollId);
     setPolls((ps) => ps.map((p) => p.id === pollId ? { ...p, closed: true } : p));
   }
 
   async function handleDelete(pollId) {
-    const t = useT();
     if (!confirm(t('polls.confirmDeletePoll'))) return;
     await deletePoll(pollId);
     setPolls((ps) => ps.filter((p) => p.id !== pollId));
   }
 
   async function handleCreate({ question, options, isOraclePick }) {
-    const t = useT();
     const poll = await createPoll({ clubId, question, options, isOraclePick });
     if (poll) { setShowCreate(false); await loadPolls(); }
   }
 
   async function handleOracleSuggest() {
-    const t = useT();
+    if (!(await confirmOracleCall('club_poll'))) return; // v0.58
     setOracleLoading(true);
     setOracleError(null);
     try {
-      const suggestions = await fetchOracleSuggestions({ clubName, clubGenres, recentBooks });
+      const suggestions = await fetchOracleSuggestions({
+        clubName, clubGenres, recentBooks, handleQuotaError, onCallSucceeded,
+      });
       // Turn Oracle suggestions into a poll automatically
       await handleCreate({
         question: t('polls.oraclePollQuestion'),

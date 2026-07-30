@@ -8,6 +8,9 @@
 //   3. `model` is allowlisted, `maxTokens` is clamped, and prompt/system
 //      prompt sizes are capped, so cost-per-call is bounded.
 //   4. CORS is restricted to known origins (see _shared/auth.js).
+//   4b. `source` (the label shown in the user's call history) is allowlisted
+//       independently of `feature`, so labelling a surface can never widen the
+//       curator exemption.
 //   5. Quota-skip for local dev only applies under `netlify dev`
 //      (NETLIFY_DEV=true). In production, missing Supabase env vars is a
 //      hard 503 — never an open proxy.
@@ -138,6 +141,21 @@ export async function handler(event) {
   const isFreeSearch = rawFeature === 'search';
   const feature = EXEMPTIBLE_FEATURES.includes(rawFeature) ? rawFeature : null;
 
+  // v0.58: the label written to the user-visible call log (schema_v44).
+  // Deliberately a SEPARATE parameter from `feature`, and allowlisted
+  // separately. `feature` decides whether the curator exemption applies, so it
+  // stays as narrow as it has always been; `source` is display metadata the
+  // quota logic never reads. Splitting them means a new surface can be given a
+  // history label without anyone having to reason about whether they have just
+  // widened an exemption. Anything unrecognised logs as 'unknown' rather than
+  // being echoed back — the log renders these strings.
+  const LOGGED_SOURCES = [
+    'spark', 'ask', 'similar', 'categories', 'plan',
+    'categorization', 'club_poll', 'club_discussion',
+  ];
+  const rawSource = typeof body.source === 'string' ? body.source : null;
+  const source = LOGGED_SOURCES.includes(rawSource) ? rawSource : 'unknown';
+
   // Free search is forced to the cheap model with a small output cap, whatever
   // the client asked for. Everything else uses the allowlisted default.
   const model = isFreeSearch
@@ -237,7 +255,9 @@ export async function handler(event) {
   // ── 4. Consume quota ONLY on Anthropic success ───────────────────────────────
   // Must be awaited — fire-and-forget is killed when the Lambda returns.
   if (!isFreeSearch && quotaEnforced && userId && upstreamStatus >= 200 && upstreamStatus < 300) {
-    await supabaseRpc('consume_oracle_call', { p_user_id: userId, p_run_id: runId, p_feature: feature });
+    await supabaseRpc('consume_oracle_call', {
+      p_user_id: userId, p_run_id: runId, p_feature: feature, p_source: source,
+    });
   }
 
   return {

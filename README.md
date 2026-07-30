@@ -4,7 +4,7 @@ A reading companion — wishlist, library, reading plans, book clubs, and an AI-
 for book discovery. Built with React + Vite + SCSS, backed by Supabase for auth
 and cross-device sync, and Netlify Functions for API proxying.
 
-> Current version: **v0.57** — see [Releases](#releases) below for changelog.
+> Current version: **v0.58** — see [Releases](#releases) below for changelog.
 > Upgrading from an earlier version? Check the matching `MIGRATION_*.md` / `UPDATE_*.md`.
 
 ---
@@ -332,6 +332,92 @@ and forward requests. Locally you need `netlify dev` to make them work.
 ---
 
 ## Releases
+
+# Update Notes — v0.57 → v0.58: Oracle call history, consent before spend
+
+**The headline:** the quota stopped being a number and became a ledger. Users could see
+*how much* was gone and never *where it went*, which is what "I used my free calls up
+pretty quickly and I'm not actually fully sure how" is a report of.
+
+## Deploy order (all four steps, in order)
+
+1. `supabase/schema_v44_migration.sql` — schema.
+2. Deploy the frontend + Netlify Functions.
+3. `supabase/reset_oracle_quota_v058.sql` — zeroes everyone's metered counters
+   and re-arms the one-time disclosure.
+4. `supabase/announce_v058.sql` — bilingual broadcast. **Run once**; there is no
+   idempotency guard, and a second run duplicates every user's notification.
+
+Step 3 comes *after* step 2 deliberately: resetting while the old build is still
+serving hands back calls that the old `BulkImport` can immediately spend again on
+the same unresolved rows. Step 4 comes after step 3 because it tells people their
+calls have been restored.
+
+> **Repo gap found while writing step 3:** `profiles.subscription_status` and
+> `profiles.oracle_calls_this_month` are read and written by schema_v22/v36/v37
+> but have no `CREATE`/`ALTER` anywhere in `supabase/` — they were added outside
+> the migration files. The database cannot currently be rebuilt from this repo.
+> `reset_oracle_quota_v058.sql` step 0 asserts they exist before writing.
+
+## Migration — `supabase/schema_v44_migration.sql` (run this)
+
+- `oracle_call_log` — append-only, one row per call that actually reached Anthropic.
+  Surface, timestamp, `charged`, period, `run_id`. **No user content**: not the question,
+  not the book, not the plan goal. Written only by `consume_oracle_call` (SECURITY
+  DEFINER); RLS grants the owner SELECT and nothing else.
+- `consume_oracle_call` gains `p_source`. Dropped and recreated rather than replaced —
+  a defaulted 4th param alongside the 3-arg signature is ambiguous to Postgres (same
+  reason as v37).
+- `get_oracle_call_history(limit, offset)` — a page of rows plus current-period totals in
+  one call, so the two halves can't disagree across a period boundary. Invoker-rights,
+  scoped by `auth.uid()`; takes no user id.
+- `profiles.oracle_intro_seen_at` — backs the one-time disclosure.
+
+Uncharged calls **are** logged (`charged = false`): a curator's exempt categorization, and
+batches 2..n of an already-paid run. That is what lets the panel prove a 40-book run cost
+one call and not eight. Quota *refusals* are not logged — nothing happened.
+
+## `source` is not `feature`
+
+`netlify/functions/claude.js` allowlists them separately. `feature` decides whether the
+curator exemption applies and stays as narrow as it always was; `source` is display
+metadata the quota logic never reads, defaulting to `'unknown'` for anything
+unrecognised. Labelling a new surface therefore cannot widen an exemption by accident.
+
+## The gate — `confirmOracleCall(source)`
+
+A promise on `OracleQuotaContext` that each surface awaits in one line:
+
+```js
+if (!(await confirmOracleCall('ask'))) return;
+```
+
+Returns `true` synchronously for anyone who has seen the disclosure and isn't on their
+last call, so it is a no-op in the common case and no spinner appears before the answer.
+A surface that forgets it degrades to the old behaviour rather than breaking. The dialog
+(`OracleGateDialog`) is mounted once in `App` — inside `RouterProvider`, which
+`OracleQuotaProvider` is not, and its upgrade CTA needs the router.
+
+Gated only on paths that actually reach Anthropic: `OracleSimilar`'s wishlist mode,
+`OracleCategories`' wishlist/vault modes and `PlanCreate`'s series type are local and are
+deliberately not gated. Confirming a charge for free work trains people to click through.
+
+## Fixed: bulk import was eating the quota
+
+`BulkImport.claudeBookFallback` called `callClaude` with no `feature`, so every unmatched
+row of a CSV import was charged as a full metered Oracle call — a five-title gap emptied
+a free account's month before it touched an Oracle surface. Now `feature: 'search'`, the
+same free tier `NavSearch` and `bookLookup` already use (server-forced Haiku, 400-token
+cap, per-user rate limit). This is almost certainly the substance of the original report.
+
+## Fixed: invalid hook calls in `ClubPolls.jsx`
+
+`fetchOracleSuggestions` called `useOracleQuota()` and `useT()` from a plain async
+function, and six event handlers called `useT()` inside the handler body. Hooks outside
+render run with a null dispatcher and throw. Quota helpers are now passed in from the
+component (as `SessionDiscussion.jsx` already did); the redundant `t` locals are gone.
+
+---
 
 # Update Notes — v0.56 → v0.57: Direct purchase links, edition selection, catalog repair
 

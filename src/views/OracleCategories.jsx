@@ -20,7 +20,7 @@ export default function OracleCategories({ onOpenBook }) {
   const { go } = useRouter();
   const t = useT();
   const { lang } = useI18n();
-  const { quota, handleQuotaError, onCallSucceeded } = useOracleQuota();
+  const { quota, handleQuotaError, onCallSucceeded, confirmOracleCall } = useOracleQuota();
   const [genre, setGenre] = useState('all');
   const [draw, setDraw] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -110,6 +110,9 @@ export default function OracleCategories({ onOpenBook }) {
     }
 
     // AI mode
+    // v0.58: gate here rather than at the top of handleDraw — the wishlist and
+    // vault modes above return without ever reaching Anthropic.
+    if (!(await confirmOracleCall('categories'))) return;
     setLoading(true);
     setDraw([]);
     try {
@@ -144,7 +147,8 @@ Return ONLY valid JSON in this format:
       try {
         response = await callClaude(
           prompt,
-          `You are a literary curator. Recommend books accurately. Always return valid JSON. ${langDirective(lang)} Any natural-language field in the JSON (description, genre label) MUST be in that language; titles and author names stay in their original language.\n${MATCH_SCORING_INSTRUCTIONS}`
+          `You are a literary curator. Recommend books accurately. Always return valid JSON. ${langDirective(lang)} Any natural-language field in the JSON (description, genre label) MUST be in that language; titles and author names stay in their original language.\n${MATCH_SCORING_INSTRUCTIONS}`,
+          { source: 'categories' } // v0.58: history label (schema_v44)
         );
         onCallSucceeded();
       } catch (err) {

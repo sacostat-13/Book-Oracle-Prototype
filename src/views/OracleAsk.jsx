@@ -25,7 +25,7 @@ export default function OracleAsk({ onOpenBook }) {
   const t = useT();
   const tNode = useTNode();
   const { lang } = useI18n();
-  const { quota, handleQuotaError, onCallSucceeded } = useOracleQuota();
+  const { quota, handleQuotaError, onCallSucceeded, confirmOracleCall } = useOracleQuota();
 
   const [query, setQuery]     = useState('');
   const [results, setResults] = useState(null);
@@ -40,6 +40,10 @@ export default function OracleAsk({ onOpenBook }) {
   async function ask() {
     const trimmed = query.trim();
     if (!trimmed || loading || quotaEmpty) return;
+    // v0.58: ask before spending. Returns true immediately for anyone who has
+    // seen the disclosure and is not on their last call, so this is a no-op in
+    // the common case — no spinner is shown until the answer is yes.
+    if (!(await confirmOracleCall('ask'))) return;
     setLoading(true);
     setResults(null);
 
@@ -67,7 +71,8 @@ Return ONLY valid JSON in this exact format:
     try {
       const raw = await callClaude(
         prompt,
-        `You are a literary oracle taking a free-form request from a reader and recommending books that answer it. Recommend accurately. Always return valid JSON. ${langDirective(lang)} Any natural-language field in the JSON (description, reason, genre label) MUST be in that language; titles and author names stay in their original language.\n${MATCH_SCORING_INSTRUCTIONS}`
+        `You are a literary oracle taking a free-form request from a reader and recommending books that answer it. Recommend accurately. Always return valid JSON. ${langDirective(lang)} Any natural-language field in the JSON (description, reason, genre label) MUST be in that language; titles and author names stay in their original language.\n${MATCH_SCORING_INSTRUCTIONS}`,
+        { source: 'ask' } // v0.58: history label (schema_v44)
       );
       const parsed = parseJSONResponse(raw);
       if (parsed?.books && Array.isArray(parsed.books) && parsed.books.length > 0) {

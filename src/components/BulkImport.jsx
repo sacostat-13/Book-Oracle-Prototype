@@ -7,6 +7,20 @@ import { findBookByTitle, bookKey, cleanTitle } from '../lib/bookHelpers';
 import { extractAsinFromUrl, lookupByAsin, lookupByTitle, parseTitleList } from '../lib/bookLookup';
 import { callClaude, QuotaExceededError, parseJSONResponse } from '../lib/claudeApi';
 
+// v0.58 — this was the quota leak.
+//
+// Every row of an import that Hardcover/OL/Wikipedia could not resolve landed
+// here, and this called callClaude with no `feature`, so each one was charged
+// as a full metered Oracle call. A Goodreads CSV with five unmatched titles
+// silently emptied a free account's entire monthly budget before the user had
+// used a single Oracle surface — which is exactly the "I used my free calls up
+// pretty quickly and I'm not actually fully sure how" report.
+//
+// It is the same job NavSearch and bookLookup do, and they already run it on
+// the free tier: identifying a book you may not even keep should not cost a
+// call. `feature: 'search'` puts it there — server-forced to Haiku with a
+// 400-token cap and a per-user rate limit, which is the throttle that was
+// actually protecting this path all along. The 5-call quota never was.
 async function claudeBookFallback(title, author) {
   try {
     const query = author ? `${title} by ${author}` : title;
@@ -14,7 +28,7 @@ async function claudeBookFallback(title, author) {
     const prompt = `Identify this book: "${query}"\nReturn ONLY valid JSON (no markdown, no explanation):\n{"t":"exact title","a":"author full name","d":"2-3 sentence description","g":"primary genre","s":{"name":"series name or null","n":1,"total":null}}\nSet s to null if not part of a series. Return the JSON literal null if you cannot confidently identify the book.`;
     let raw = null;
     try {
-      raw = await callClaude(prompt, systemPrompt);
+      raw = await callClaude(prompt, systemPrompt, { feature: 'search', maxTokens: 400 });
     } catch (err) {
       if (err instanceof QuotaExceededError) return null; // treated as no match
       throw err;

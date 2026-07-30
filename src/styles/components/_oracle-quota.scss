@@ -1,0 +1,185 @@
+// _oracle-quota.scss — v0.58
+//
+// The two surfaces that explain what an Oracle call costs:
+//   .oracle-gate     — the confirmation dialog (on top of .rating-modal)
+//   .oracle-history  — the call log in Profile → Subscription
+//
+// Both lean on existing shells (.rating-modal, .db-ai__note) and add only what
+// is genuinely new. Colours come from --ro-* tokens exclusively — no hardcoded
+// parchment rgba, which breaks light mode.
+
+// ══════════════════════════════════════════════════════════════════════════════
+// Confirmation dialog
+// ══════════════════════════════════════════════════════════════════════════════
+
+.oracle-gate {
+  max-width: 520px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 0; // .modal-head / .modal-body / .modal-foot own their padding
+
+  .modal-body p + p {
+    margin-top: 0.75rem;
+  }
+}
+
+// The "this is your last one" line inside the intro variant. Warn-coloured but
+// not alarming: spending your last call is a normal thing to decide to do.
+.oracle-gate__warn {
+  font-family: var(--ro-font-mono);
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ro-gold-text);
+  margin-top: 0.9rem;
+}
+
+.oracle-gate__hint {
+  font-family: var(--ro-font-body);
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--ro-dim);
+  margin-top: 1.1rem;
+  padding-top: 0.9rem;
+  border-top: 1px solid var(--ro-border);
+}
+
+// "See plans" is a secondary escape hatch, not a third equal choice — pushed
+// left so Cancel and Confirm stay paired on the right.
+.oracle-gate__foot {
+  flex-wrap: wrap;
+
+  .btn-text {
+    margin-right: auto;
+  }
+}
+
+@media (max-width: 480px) {
+  .oracle-gate__foot {
+    justify-content: stretch;
+
+    .btn-text { margin-right: 0; width: 100%; order: 3; }
+    .btn-secondary,
+    .btn-primary { flex: 1 1 auto; }
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// Call history
+// ══════════════════════════════════════════════════════════════════════════════
+
+.oracle-history {
+  margin-top: 0.9rem;
+}
+
+.oracle-history__toggle {
+  padding-left: 0;
+}
+
+.oracle-history__panel {
+  margin-top: 0.6rem;
+  padding: 1rem 1.1rem;
+  background: var(--ro-surface-2);
+  border: 1px solid var(--ro-border);
+  border-radius: var(--ro-radius-md);
+}
+
+.oracle-history__summary-title {
+  font-family: var(--ro-font-mono);
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ro-muted);
+  margin-bottom: 0.6rem;
+}
+
+.oracle-history__breakdown {
+  list-style: none;
+  margin: 0 0 0.4rem;
+  padding: 0;
+
+  li {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 1rem;
+    font-family: var(--ro-font-body);
+    font-size: 14px;
+    line-height: 1.9;
+    color: var(--ro-text, inherit);
+  }
+}
+
+.oracle-history__count {
+  font-family: var(--ro-font-mono);
+  font-size: 13px;
+  color: var(--ro-gold-text);
+  font-variant-numeric: tabular-nums;
+}
+
+.oracle-history__list {
+  list-style: none;
+  margin: 0.6rem 0;
+  padding: 0;
+  // Long enough to scan a period, short enough not to swallow the page. The
+  // "Show older" button below pages the rest in.
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.oracle-history__row {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: baseline;
+  gap: 0.4rem 0.9rem;
+  padding: 0.45rem 0;
+  border-bottom: 1px solid var(--ro-border);
+
+  &:last-child { border-bottom: none; }
+}
+
+.oracle-history__source {
+  font-family: var(--ro-font-body);
+  font-size: 13.5px;
+}
+
+.oracle-history__when {
+  font-family: var(--ro-font-mono);
+  font-size: 11.5px;
+  color: var(--ro-muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.oracle-history__cost {
+  font-family: var(--ro-font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ro-gold-text);
+  white-space: nowrap;
+}
+
+// Uncharged rows are the reassuring ones — dimmed so the eye reads the charged
+// column as the one that matters.
+.oracle-history__cost--free {
+  color: var(--ro-dim);
+}
+
+.oracle-history__note {
+  font-family: var(--ro-font-body);
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--ro-dim);
+  margin-top: 0.9rem;
+}
+
+@media (max-width: 480px) {
+  .oracle-history__row {
+    grid-template-columns: 1fr auto;
+
+    .oracle-history__cost { grid-column: 2; }
+    .oracle-history__when { grid-column: 1 / -1; }
+  }
+}

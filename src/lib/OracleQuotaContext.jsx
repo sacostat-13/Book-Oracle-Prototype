@@ -14,7 +14,7 @@
 //                                          // straight from get_oracle_quota — Pro itself is still 5/day.
 //   }
 
-import { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import { createContext, useContext, useEffect, useRef, useState, useCallback } from 'react';
 import { supabase } from './supabase';
 import { useAuth } from './AuthContext';
 
@@ -26,6 +26,26 @@ export function OracleQuotaProvider({ children }) {
   const { user } = useAuth();
   const [quota, setQuota]     = useState(null);
   const [loading, setLoading] = useState(true);
+
+  // v0.58 — the confirmation gate.
+  //
+  // Two pieces of user feedback, one mechanism: people did not know that
+  // "Oracle" means "this spends one of your five", and they did not want to
+  // discover they had spent the last one only afterwards. Both are answered by
+  // asking BEFORE the call, so the gate is a promise the call site awaits
+  // rather than a component each surface has to mount:
+  //
+  //     if (!(await confirmOracleCall('ask'))) return;
+  //
+  // One line per surface, and a surface that forgets it degrades to today's
+  // behaviour instead of breaking. The dialog itself is rendered once, in App —
+  // this provider sits OUTSIDE RouterProvider, and the dialog's upgrade CTA
+  // needs the router.
+  const [gate, setGate] = useState(null);        // { variant, source } | null
+  const gateResolveRef  = useRef(null);
+  const [introSeen, setIntroSeen] = useState(true); // assume seen until known:
+                                                    // never flash the disclosure
+                                                    // at someone who has it.
 
   const refresh = useCallback(async () => {
     if (!user) { setQuota(null); setLoading(false); return; }
@@ -67,6 +87,75 @@ export function OracleQuotaProvider({ children }) {
 
   useEffect(() => { refresh(); }, [refresh]);
 
+  // ── One-time disclosure flag (schema_v44) ──────────────────────────────────
+  // Its own query rather than a field on get_oracle_quota: that RPC is called
+  // on every tab focus and by the Netlify function on every Oracle call, and
+  // it has no business carrying UI state.
+  useEffect(() => {
+    let cancelled = false;
+    if (!user) { setIntroSeen(true); return; }
+    (async () => {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('oracle_intro_seen_at')
+        .eq('id', user.id)
+        .maybeSingle();
+      if (cancelled) return;
+      // On error, treat it as seen. Failing open here shows a dialog to
+      // someone who has already dismissed it; failing closed would suppress a
+      // disclosure that exists precisely to prevent an unwitting charge.
+      if (error) { setIntroSeen(true); return; }
+      setIntroSeen(!!data?.oracle_intro_seen_at);
+    })();
+    return () => { cancelled = true; };
+  }, [user?.id]);
+
+  const markIntroSeen = useCallback(async () => {
+    setIntroSeen(true); // optimistic: the user has read it either way
+    if (!user) return;
+    const { error } = await supabase
+      .from('profiles')
+      .update({ oracle_intro_seen_at: new Date().toISOString() })
+      .eq('id', user.id);
+    if (error) console.error('markIntroSeen error:', error);
+  }, [user?.id]);
+
+  // ── The gate ───────────────────────────────────────────────────────────────
+  // Resolves true to proceed, false to abort. Deliberately quiet in the cases
+  // where a prompt would be noise: unlimited accounts, an already-spent quota
+  // (the server 402 and the existing wall handle that far better than a
+  // confirm dialog would), and users who have seen the disclosure and have
+  // calls to spare.
+  const confirmOracleCall = useCallback((source = null) => {
+    const remaining = quota?.calls_remaining;
+    const needsIntro = !introSeen;
+    const isLast     = !quota?.unlimited && remaining === 1;
+
+    if (!needsIntro && !isLast) return Promise.resolve(true);
+    if (quota?.unlimited && !needsIntro) return Promise.resolve(true);
+    if (!quota?.unlimited && remaining === 0) return Promise.resolve(true);
+
+    return new Promise((resolve) => {
+      // A second gate opening while one is pending would strand the first
+      // promise forever and leave its caller's spinner running. Let the new
+      // one through rather than deadlock a surface.
+      if (gateResolveRef.current) { resolve(true); return; }
+      gateResolveRef.current = resolve;
+      // `intro` wins when both apply and its copy absorbs the last-call
+      // warning — two modals in a row to start one Oracle call is a worse
+      // answer to "I didn't know this cost anything" than one clear modal.
+      setGate({ variant: needsIntro ? 'intro' : 'last', source, isLast });
+    });
+  }, [quota, introSeen]);
+
+  const resolveGate = useCallback((proceed) => {
+    const resolve = gateResolveRef.current;
+    gateResolveRef.current = null;
+    setGate(null);
+    resolve?.(proceed);
+  }, []);
+
+
   // Re-fetch when tab becomes visible — catches DB changes and webhook updates
   useEffect(() => {
     function onVisible() {
@@ -104,7 +193,10 @@ export function OracleQuotaProvider({ children }) {
   }, []);
 
   return (
-    <OracleQuotaContext.Provider value={{ quota, loading, refresh, handleQuotaError, onCallSucceeded }}>
+    <OracleQuotaContext.Provider value={{
+      quota, loading, refresh, handleQuotaError, onCallSucceeded,
+      gate, confirmOracleCall, resolveGate, introSeen, markIntroSeen,
+    }}>
       {children}
     </OracleQuotaContext.Provider>
   );

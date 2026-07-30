@@ -20,7 +20,7 @@ export default function PlanCreate() {
   const { go, route } = useRouter();
   const t = useT();
   const { lang } = useI18n();
-  const { handleQuotaError, onCallSucceeded } = useOracleQuota();
+  const { handleQuotaError, onCallSucceeded, confirmOracleCall } = useOracleQuota();
   const [type, setType] = useState(null);
   const [target, setTarget] = useState(route.params?.seriesName || null);
   const [timeline, setTimeline] = useState(6);
@@ -165,6 +165,9 @@ export default function PlanCreate() {
   }
 
   async function generate() {
+    // v0.58: series plans are assembled from catalog data, not from Anthropic
+    // (see buildSeriesPlan) — only the themed path spends a call.
+    if (type !== 'series' && !(await confirmOracleCall('plan'))) return;
     setGenerating(true);
 
     try {
@@ -264,7 +267,8 @@ Return ONLY valid JSON in this exact format:
       try {
         response = await callClaude(
           prompt,
-          `You are a literary curator building personalized reading plans. Always return valid JSON. ${langDirective(lang)} Any natural-language field in the JSON (title, intro, reason) MUST be in that language; book titles and author names stay in their original language.`
+          `You are a literary curator building personalized reading plans. Always return valid JSON. ${langDirective(lang)} Any natural-language field in the JSON (title, intro, reason) MUST be in that language; book titles and author names stay in their original language.`,
+          { source: 'plan' } // v0.58: history label (schema_v44)
         );
         onCallSucceeded?.();
       } catch (err) {
