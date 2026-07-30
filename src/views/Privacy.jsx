@@ -35,6 +35,11 @@ export default function Privacy() {
           <p>{tNode('privacy.whatDataWeCollectPara3')}</p>
           <p> {tNode('privacy.whatDataWeCollectPara4')}</p >
           <p>{tNode('privacy.whatDataWeCollectPara5')}</p >
+          {/* v0.58: recommendation history (schema_v45). Kept distinct from the
+              usage-data paragraph above on purpose — that record holds no
+              content, this one holds book titles, and collapsing them would
+              contradict a promise already made to users. */}
+          <p>{tNode('privacy.whatDataWeCollectPara6')}</p>
         </S>
         <S title={t('privacy.whatDataWeDoNotCollectTitle')}>
           <p>{tNode('privacy.whatDataWeDoNotCollectPara1')}</p>

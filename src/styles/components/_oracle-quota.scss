@@ -203,6 +203,12 @@
   max-width: 46ch;
 }
 
+// Spark's cost line. The badge sits between the promise and the button, so the
+// reader meets the price before the click rather than after it.
+.db-spark__cost {
+  margin: 0.5rem 0 0.75rem;
+}
+
 .pf-billing-note__title {
   font-family: var(--ro-font-mono);
   font-size: 11px;

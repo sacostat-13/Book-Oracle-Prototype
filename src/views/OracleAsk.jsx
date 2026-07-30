@@ -11,6 +11,7 @@ import { useData } from '../lib/DataContext';
 import { useRouter } from '../lib/RouterContext';
 import { bookKey } from '../lib/bookHelpers';
 import { callClaude, parseJSONResponse, QuotaExceededError } from '../lib/claudeApi';
+import { logRecommendations, attachRecommendationIds } from '../lib/oracleProvenance';
 import { useOracleQuota } from '../lib/OracleQuotaContext';
 import { OracleQuotaWall } from '../components/OracleQuotaBadge';
 import { useT, useTNode, useI18n, langDirective } from '../lib/I18nContext';
@@ -85,7 +86,12 @@ Return ONLY valid JSON in this exact format:
           .filter((b) => b.t && b.a);
         const reasons = {};
         parsed.books.forEach((b) => { if (b.reason) reasons[b.title] = b.reason; });
-        setResults({ books, reasons });
+        // v0.58 provenance: log what was OFFERED, before knowing what is
+        // taken. Awaited so the ids can be attached to the very objects being
+        // rendered — it is one round trip against a call that already cost
+        // several seconds, and it never throws (see oracleProvenance.js).
+        const ids = await logRecommendations('ask', books);
+        setResults({ books: attachRecommendationIds(books, ids), reasons });
         onCallSucceeded?.();
       } else {
         showToast(t('oracle.askError'), true);

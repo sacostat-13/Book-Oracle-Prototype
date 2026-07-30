@@ -339,9 +339,53 @@ and forward requests. Locally you need `netlify dev` to make them work.
 *how much* was gone and never *where it went*, which is what "I used my free calls up
 pretty quickly and I'm not actually fully sure how" is a report of.
 
+## Oracle provenance — `supabase/schema_v45_migration.sql`
+
+Spec: `docs/oracle-provenance-v1-spec.md`. Instrumentation only — nothing about
+what the Oracle recommends changes.
+
+`oracle_recommendations` records **every book the Oracle surfaces, when it is
+surfaced**, and the outcome afterwards. Stamping provenance only on accept was
+the obvious design and cannot answer the question: the Oracle's worst
+suggestions are exactly the ones nobody adds, so they would never be recorded
+and the average rating of "Oracle books" would flatter itself by construction.
+
+Titles are snapshotted rather than keyed on `book_id`, for the same reason. The
+Oracle recommends from world literature, not the catalog; most suggestions have
+no `public.books` row until someone adds them and `upsertBookOnServer` creates
+one. Keying on `book_id` alone would silently record the accepted subset.
+`book_id` is backfilled on accept.
+
+Write path: `logRecommendations()` on `setResults` in Ask / Similar /
+Categories / Spark (AI branches only — the wishlist and Vault fallbacks are
+local draws and must not be credited to the Oracle).
+`resolveRecommendation()` from `addToWishlist` and `markAsRead`, unawaited and
+unconditional — it no-ops for a book that was never recommended, and it is
+idempotent server-side so the two paths cannot double-count.
+`read_books.source` becomes `'oracle'`, which is the join key behind the
+Oracle-vs-self-chosen rating comparison.
+
+Everything in `src/lib/oracleProvenance.js` swallows its own errors. It is
+instrumentation hanging off a result the reader already paid for; if it fails
+they should never find out.
+
+Spark is logged with its own surface but is **not comparable** to the others —
+it recommends from the reader's own wishlist, so the book was already chosen
+once by them and there is no rejection to observe. The metrics queries exclude
+it.
+
+Privacy: this table holds book titles, which `oracle_call_log` deliberately does
+not. The v0.58 announcement promised "never which book you were reading" about
+the *call log*, and that stays true — the call log would have recorded what the
+reader **asked**, this records what the Oracle **offered**. The policy carries
+that distinction explicitly in `privacy.whatDataWeCollectPara6`; do not collapse
+the two paragraphs.
+
 ## Deploy order (all four steps, in order)
 
 1. `supabase/schema_v44_migration.sql` — schema.
+   Then `supabase/schema_v45_migration.sql` if shipping provenance in the same
+   release.
 2. Deploy the frontend + Netlify Functions.
 3. `supabase/reset_oracle_quota_v058.sql` — zeroes everyone's metered counters
    and re-arms the one-time disclosure.

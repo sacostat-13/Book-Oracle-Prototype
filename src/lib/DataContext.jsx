@@ -13,6 +13,7 @@ import {
   computeBackfillAccomplishments,
 } from './accomplishments';
 import { CURRENT_VERSION } from './releases';
+import { resolveRecommendation, isOracleSuggested } from './oracleProvenance';
 
 const LOCAL_KEY    = 'wishlist_oracle_state_v2';
 const SESSION_KEY  = 'wishlist_oracle_session_v3'; // bumped v0.31: genres now included in cache
@@ -1029,6 +1030,22 @@ export function DataProvider({ children }) {
         console.error('wishlist insert failed', error);
         return false;
       }
+      // v0.58 provenance: the reader took the Oracle up on it.
+      //
+      // Fire-and-forget and unconditional — resolveRecommendation is a no-op
+      // for a book that was never recommended, so this path does not need to
+      // branch on where the book came from. Deliberately NOT awaited: an add
+      // must feel instant, and the accept stamp only matters in aggregate.
+      // book_id is passed so the recommendation row can be backfilled with the
+      // catalog link it could not have when it was only an impression.
+      if (isOracleSuggested(book)) {
+        resolveRecommendation({
+          recommendationId: book.recommendationId ?? null,
+          title: book.t,
+          bookId,
+        });
+      }
+
       setState((s) => ({ ...s, wishlist: [...s.wishlist, { ...book, bookId }] }));
       showToast(`"${book.t}" added to your wishlist`);
       return true;
@@ -1324,7 +1341,15 @@ export function DataProvider({ children }) {
             user_id: user.id,
             book_id: bookId,
             read_at: today,
-            source: book.fromGoodreads ? 'goodreads_import' : 'manual',
+            // v0.58: 'oracle' is the cheap join key behind the whole point of
+            // provenance — "did the Oracle pick better books than you did?" is
+            // one filter on this column against `rating`. Ordered before the
+            // Goodreads check because a book can be both (imported long ago,
+            // then recommended and read); the Oracle origin is the newer and
+            // more specific fact, and it is the one being measured.
+            source: isOracleSuggested(book)
+              ? 'oracle'
+              : (book.fromGoodreads ? 'goodreads_import' : 'manual'),
             rating,
             notes,
           },
@@ -1333,6 +1358,19 @@ export function DataProvider({ children }) {
       if (rbErr) {
         console.error('read_books upsert failed', rbErr);
       }
+
+      // v0.58 provenance. Also stamped here, not only in addToWishlist: a
+      // reader can go straight from a recommendation to "mark as read" without
+      // the book ever passing through the wishlist. Idempotent server-side, so
+      // a book that took the wishlist route is not counted twice.
+      if (isOracleSuggested(book)) {
+        resolveRecommendation({
+          recommendationId: book.recommendationId ?? null,
+          title: book.t,
+          bookId,
+        });
+      }
+
       await supabase
         .from('wishlist_items')
         .delete()

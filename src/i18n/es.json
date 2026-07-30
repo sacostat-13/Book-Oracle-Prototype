@@ -143,7 +143,7 @@
     "widgetSeries": "Series en progreso",
     "widgetStreak": "Racha de lectura",
     "sparkTitle": "Sorprendeme",
-    "sparkSub": "Un libro de tu lista de deseos, elegido por el Oráculo",
+    "sparkSub": "Un libro de tu lista de deseos, elegido por el Oráculo — el estante es tuyo, la elección es del Oráculo, y usa una consulta.",
     "sparkButton": "Dame un libro ❦",
     "sparkDrawing": "El Oráculo está eligiendo…",
     "sparkNoWishlist": "Primero agregá libros a tu lista de deseos",
@@ -1626,14 +1626,14 @@
   "privacy": {
     "breadcrumbs": "Política de privacidad",
     "title": "Política de <em class=\"accent\">privacidad</em>",
-    "lastUpdated": "Última actualización: 25 de junio de 2026",
+    "lastUpdated": "Última actualización: 30 de julio de 2026",
     "whoWeAreTitle": "Quiénes somos",
     "whoWeArePara1": "The Books Oracle (accesible en thebooksoracle.com) es una aplicación de acompañamiento de lectura personal operada por un desarrollador individual basado en Costa Rica.",
     "whoWeArePara2": "Para preguntas relacionadas con la privacidad: support@thebooksoracle.com",
     "whatDataWeCollectTitle": "Qué datos recopilamos",
     "whatDataWeCollectPara1": "<strong>Datos de la cuenta.</strong> Cuando inicias sesión con Google, recibimos tu nombre, dirección de correo electrónico y foto de perfil. Almacenamos estos datos para identificar tu cuenta.",
     "whatDataWeCollectPara2": "<strong>Datos de lectura.</strong> Tu biblioteca, lista de deseos, cola de próximas lecturas, calificaciones, notas, fechas de lectura y progreso te pertenecen y se almacenan en tu cuenta.",
-    "whatDataWeCollectPara3": "<strong>Datos de uso.</strong> Realizamos un seguimiento de cuántas veces utilizas las funciones de IA al mes para aplicar las cuotas del plan gratuito y supervisar los costes de infraestructura. Este contador se reinicia mensualmente.",
+    "whatDataWeCollectPara3": "<strong>Datos de uso.</strong> Guardamos un registro de cada vez que usás una función del Oráculo — de qué parte de la app salió y cuándo — para que puedas ver en qué se fue tu cuota, y para aplicar los límites del plan gratuito y controlar los costos de infraestructura. Ese registro no contiene contenido: ni la pregunta que hiciste, ni el libro que estabas mirando. Podés consultar tu propio historial en Perfil → Suscripción.",
     "whatDataWeCollectPara4": "<strong>Datos de suscripción.</strong> Si te suscribes a Pro, almacenamos tu ID de cliente de Paddle y tu ID de suscripción. Nunca almacenamos números de tarjeta ni datos de pago; todo el procesamiento de pagos lo gestiona Paddle.",
     "whatDataWeCollectPara5": "<strong>Datos del club.</strong> Tu nombre visible, actividad de lectura y cualquier publicación o contribución de debate en los clubes de lectura serán visibles para los demás miembros del club.",
     "whatDataWeDoNotCollectTitle": "Qué no recopilamos",
@@ -1652,7 +1652,8 @@
     "childrenTitle": "Menores",
     "childrenPara1": "The Books Oracle no está dirigido a niños menores de 13 años. Si crees que un menor ha proporcionado datos personales, ponte en contacto con nosotros y los eliminaremos de inmediato.",
     "changesTitle": "Cambios",
-    "changesPara1": "Es posible que actualicemos esta política de vez en cuando. Los cambios significativos se indicarán en las notas de la versión dentro de la aplicación."
+    "changesPara1": "Es posible que actualicemos esta política de vez en cuando. Los cambios significativos se indicarán en las notas de la versión dentro de la aplicación.",
+    "whatDataWeCollectPara6": "<strong>Historial de recomendaciones.</strong> Cuando el Oráculo te sugiere libros, registramos los títulos que ofreció y si los agregaste. Esto es producción de la app, no algo que vos nos hayas contado, y lo guardamos por un solo motivo: es la única manera de saber si las sugerencias del Oráculo son buenas. Solo vos podés verlo, y se elimina junto con tu cuenta."
   },
   "terms": {
     "breadcrumbs": "Términos y Condiciones",

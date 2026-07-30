@@ -14,6 +14,8 @@ import { buildTasteProfile, suggestLevelFromTaste, goalDirective } from '../lib/
 import { getFriendsFeedEvents } from '../lib/useFriends';
 import { supabase } from '../lib/supabase';
 import CoachMark from '../components/CoachMark';
+import { OracleQuotaBadge } from '../components/OracleQuotaBadge';
+import { logRecommendations } from '../lib/oracleProvenance';
 import Avatar from '../components/Avatar';
 
 const FEED_PAGE_SIZE = 5;
@@ -203,7 +205,14 @@ function OracleSparkWidget({ wishlist, go, t, profile }) {
       const match = (wishlist || []).find((b) =>
         b.t?.toLowerCase().replace(/[^a-z0-9]/g, '') === parsed.title?.toLowerCase().replace(/[^a-z0-9]/g, '')
       );
-      setResult({ ...parsed, book: match || null });
+      // v0.58 provenance. Spark is logged but is NOT comparable to the other
+      // surfaces: it recommends from the reader's own wishlist, so the book was
+      // already chosen once by them. Its "accept" is picking the book up, not
+      // adding it, and it has no rejection to observe — the metrics queries
+      // exclude surface = 'spark' for that reason. Logged anyway so the
+      // exclusion is a decision made against data rather than a gap.
+      const [sparkRecId] = await logRecommendations('spark', [parsed]);
+      setResult({ ...parsed, book: match || null, recommendationId: sparkRecId ?? null });
       setState('result');
       refreshQuota?.();
     } catch (e) {
@@ -217,6 +226,19 @@ function OracleSparkWidget({ wishlist, go, t, profile }) {
         {state === 'idle' && (
           <>
             <p className="db-spark__prompt">{t('dashboard.sparkSub')}</p>
+            {/* v0.58: Spark was the ONLY Oracle surface with no quota badge —
+                Ask, Similar, Categories and the Oracle fork all carry one. It
+                is also the most prominent and the most likely first Oracle
+                call anyone makes, and its copy ("one book from your wishlist")
+                reads like a local shuffle of a list you already own. Drawing
+                from your own shelf does not make it free: the pick and the
+                reason are still written by the Oracle. Say so where the button
+                is, not only in the first-use dialog. */}
+            {hasWishlist && !quotaEmpty && (
+              <div className="db-spark__cost">
+                <OracleQuotaBadge />
+              </div>
+            )}
             <div className="db-spark__actions">
               {quotaEmpty ? (
                 <>

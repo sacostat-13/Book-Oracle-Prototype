@@ -143,7 +143,7 @@
     "widgetSeries": "Series in progress",
     "widgetStreak": "Reading streak",
     "sparkTitle": "Surprise me",
-    "sparkSub": "One book from your wishlist, chosen by the Oracle",
+    "sparkSub": "One book from your wishlist, chosen by the Oracle — the shelf is yours, the choosing is the Oracle's, and it uses one call.",
     "sparkButton": "Give me a book ❦",
     "sparkDrawing": "The Oracle is choosing…",
     "sparkNoWishlist": "Add books to your wishlist first",
@@ -1626,14 +1626,14 @@
   "privacy": {
     "breadcrumbs": "Privacy Policy",
     "title": "Privacy <em class=\"accent\">Policy</em>",
-    "lastUpdated": "Last updated: June 25, 2026",
+    "lastUpdated": "Last updated: July 30, 2026",
     "whoWeAreTitle": "Who we are",
     "whoWeArePara1": "The Books Oracle (accessible at thebooksoracle.com) is a personal reading companion application operated by an individual developer based in Costa Rica. ",
     "whoWeArePara2": "For privacy - related questions: support @thebooksoracle.com",
     "whatDataWeCollectTitle": "What data we collect",
     "whatDataWeCollectPara1": "<strong >Account data.</strong> When you sign in with Google, we receive your name, email address, and profile photo. We store these to identify your account.",
     "whatDataWeCollectPara2": "<strong >Reading data.</strong> Your library, wishlist, read-next queue, ratings, notes, reading dates, and progress belong to you and are stored in your account.",
-    "whatDataWeCollectPara3": "<strong >Usage data.</strong> We track how many times you use AI features per month to enforce free-tier quotas and monitor infrastructure costs. This counter resets monthly.",
+    "whatDataWeCollectPara3": "<strong>Usage data.</strong> We keep a record of each time you use an Oracle feature — which part of the app it came from and when — so you can see where your quota went, and so we can enforce free-tier limits and monitor infrastructure costs. This record contains no content: not the question you asked, and not the book you were looking at. You can read your own history under Profile → Subscription.",
     "whatDataWeCollectPara4": "<strong >Subscription data.</strong> If you subscribe to Pro, we store your Paddle customer ID and subscription ID. We never store card numbers or payment details — all payment processing is handled by Paddle.",
     "whatDataWeCollectPara5": "<strong >Club data.</strong> Your display name, reading activity, and any posts or discussion contributions in book clubs are visible to other club members.",
     "whatDataWeDoNotCollectTitle": "What we do not collect",
@@ -1652,7 +1652,8 @@
     "childrenTitle": "Children",
     "childrenPara1": "The Books Oracle is not directed at children under 13. If you believe a child has provided personal data, contact us and we will delete it promptly.",
     "changesTitle": "Changes",
-    "changesPara1": "We may update this policy from time to time. Significant changes will be noted in the in-app release notes."
+    "changesPara1": "We may update this policy from time to time. Significant changes will be noted in the in-app release notes.",
+    "whatDataWeCollectPara6": "<strong>Recommendation history.</strong> When the Oracle suggests books to you, we record the titles it offered and whether you added them. This is the app's own output rather than anything you told us, and we keep it for one reason: it is the only way to tell whether the Oracle's suggestions are any good. It is visible only to you, and it is deleted with your account."
   },
   "terms": {
     "breadcrumbs": "Terms & Conditions",

@@ -4,6 +4,7 @@ import { useData } from '../lib/DataContext';
 import { useRouter } from '../lib/RouterContext';
 import { ALL_BOOKS, bookKey } from '../lib/bookHelpers';
 import { callClaude, parseJSONResponse, QuotaExceededError } from '../lib/claudeApi';
+import { logRecommendations, attachRecommendationIds } from '../lib/oracleProvenance';
 import { useOracleQuota } from '../lib/OracleQuotaContext';
 import { OracleQuotaBadge, OracleQuotaWall } from '../components/OracleQuotaBadge';
 import { useT, useI18n, langDirective } from '../lib/I18nContext';
@@ -173,6 +174,14 @@ Return ONLY valid JSON in this format:
               match: Number.isFinite(b.match) ? Math.max(0, Math.min(100, Math.round(b.match))) : undefined,
             }))
             .filter((b) => b.t && b.a);
+
+          // v0.58 provenance. Inside the AI branch only: the Vault and
+          // wishlist fallbacks below are local draws, and logging them would
+          // credit the Oracle with picks it did not make.
+          if (books.length > 0) {
+            const ids = await logRecommendations('categories', books);
+            books = attachRecommendationIds(books, ids);
+          }
         }
       }
 

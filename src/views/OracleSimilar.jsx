@@ -4,6 +4,7 @@ import { useData } from '../lib/DataContext';
 import { useRouter } from '../lib/RouterContext';
 import { ALL_BOOKS, bookKey } from '../lib/bookHelpers';
 import { callClaude, parseJSONResponse, QuotaExceededError } from '../lib/claudeApi';
+import { logRecommendations, attachRecommendationIds } from '../lib/oracleProvenance';
 import { useOracleQuota } from '../lib/OracleQuotaContext';
 import { OracleQuotaWall } from '../components/OracleQuotaBadge';
 import { useT, useI18n, langDirective } from '../lib/I18nContext';
@@ -168,7 +169,11 @@ Return ONLY valid JSON in this exact format:
         const reasons = {};
         parsed.books.forEach((b) => { if (b.reason) reasons[b.title] = b.reason; });
         if (books.length >= 3) {
-          aiResults = { books, reasons, source: 'ai' };
+          // v0.58 provenance. Only the AI branch logs — the wishlist fallback
+          // below is a local match, not an Oracle recommendation, and counting
+          // it would inflate the accept rate with books the Oracle never chose.
+          const ids = await logRecommendations('similar', books);
+          aiResults = { books: attachRecommendationIds(books, ids), reasons, source: 'ai' };
         }
       }
     }

@@ -28,12 +28,14 @@ export const RELEASES = [{
       'The first time you consult the Oracle, a short note explains what does and doesn’t use a call. Anything marked Oracle draws one; searching, importing and tracking your books never will.',
       'When you’re down to your last call of the period, the Oracle asks you to confirm before spending it — so it’s your decision, not a surprise.',
       'Importing a list of books no longer quietly uses up your Oracle calls when a title needs identifying. That was never meant to be charged, and now it isn’t.',
+      'The Oracle Spark now says plainly that it uses a call. It draws from your own wishlist, but the choosing — and the reason it gives — is still the Oracle’s work.',
     ],
     bodyEs: [
       'Tu página de suscripción ahora guarda un historial de cada consulta al Oráculo — de qué parte de la app salió y cuándo. Si tus consultas se acabaron antes de lo que esperabas, por fin podés ver por qué.',
       'La primera vez que consultás al Oráculo, una nota breve te explica qué usa una consulta y qué no. Todo lo que dice Oráculo usa una; buscar, importar y registrar tus libros nunca lo van a hacer.',
       'Cuando te queda la última consulta del período, el Oráculo te pide que confirmes antes de gastarla — así es tu decisión, no una sorpresa.',
       'Importar una lista de libros ya no gasta tus consultas al Oráculo cuando hay que identificar un título. Nunca debió cobrarse, y ahora no se cobra.',
+      'La Chispa del Oráculo ahora dice claramente que usa una consulta. Saca de tu propia lista de deseos, pero la elección — y el motivo que da — sigue siendo obra del Oráculo.',
     ],
   }, {
     version: 'v0.57',
