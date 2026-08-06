@@ -5,6 +5,7 @@ import { useRouter } from '../lib/RouterContext';
 import { useT, useTNode, useI18n } from '../lib/I18nContext';
 import { useOracleQuota } from '../lib/OracleQuotaContext';
 import { parseGoodreadsCSV } from '../lib/goodreadsImport';
+import GoodreadsImportPanel from '../components/GoodreadsImportPanel';
 import { findBookByTitle, bookKey, openBookTab } from '../lib/bookHelpers';
 import { useFriends, checkUsernameAvailability, validateUsername } from '../lib/useFriends';
 import { supabase } from '../lib/supabase';
@@ -874,7 +875,7 @@ function ReadingChallenge({ library, readingGoalCount, setReadingGoalCount, t })
 }
 
 export default function Profile() {
-  const { state, resetAll, importGoodreads, showToast, setReadingGoalCount, updateUsername, updateDisplayName, updateAvatar, updatePrivacyPrefs, setProfile, accomplishments, shareAccomplishment } = useData();
+  const { state, resetAll, importGoodreads, runGoodreadsImport, showToast, setReadingGoalCount, updateUsername, updateDisplayName, updateAvatar, updatePrivacyPrefs, setProfile, accomplishments, shareAccomplishment } = useData();
   const { user } = useAuth();
   const { go, route } = useRouter();
   const t = useT();
@@ -1195,6 +1196,17 @@ export default function Profile() {
     }
   }
 
+  // v0.59: same shared job as onboarding. Progress and the completion
+  // notice are rendered globally by ImportProgressToast, so the reader can
+  // navigate away mid-import and still see where it got to.
+  function handleRssReimport({ read, toRead, currentlyReading }) {
+    const enrich = (gb) => {
+      const match = findBookByTitle(gb.t);
+      return match ? { ...match, ...gb } : { ...gb, g: 'Imported' };
+    };
+    runGoodreadsImport({ read, toRead, currentlyReading }, enrich);
+  }
+
   const hasStats = stats.totalBooks > 0;
   const sectionTitle = (label) => (
     <div className="pf-overline">{label}</div>
@@ -1435,21 +1447,35 @@ export default function Profile() {
           )}
         </p>
 
-        <div>
-          <input
-            ref={fileRef}
-            type="file"
-            accept=".csv,text/csv"
-            className="sr-only"
-            onChange={(e) => {
-              const f = e.target.files[0];
-              if (f) handleReimport(f);
-            }}
-          />
-          <button className="btn-secondary" onClick={() => fileRef.current?.click()}>
-            {state.profile.goodreadsImported
-              ? t('profile.reimportGoodreads') : t('profile.importGoodreads')}
-          </button>
+        {/* v0.59: Goodreads import lives here now, and here only — the CSV
+            tabs were removed from the Library and Wishlist bulk-import
+            modals. Direct import is primary; CSV stays folded away beneath it
+            because it is still the only route for a private profile. */}
+        <div id="pf-goodreads">
+          <GoodreadsImportPanel onImported={handleRssReimport} />
+
+
+          <details className="gr-csv-fallback">
+            <summary>{t('onboarding.import.csvFallback')}</summary>
+            <input
+              ref={fileRef}
+              type="file"
+              accept=".csv,text/csv"
+              className="sr-only"
+              onChange={(e) => {
+                const f = e.target.files[0];
+                if (f) handleReimport(f);
+              }}
+            />
+            <button
+              className="btn-secondary"
+             
+              onClick={() => fileRef.current?.click()}
+            >
+              {state.profile.goodreadsImported
+                ? t('profile.reimportGoodreads') : t('profile.importGoodreads')}
+            </button>
+          </details>
         </div>
 
         {/* ── Danger zone — lives at the bottom of the Account tab ─────────── */}

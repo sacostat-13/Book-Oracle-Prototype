@@ -4,7 +4,7 @@ A reading companion — wishlist, library, reading plans, book clubs, and an AI-
 for book discovery. Built with React + Vite + SCSS, backed by Supabase for auth
 and cross-device sync, and Netlify Functions for API proxying.
 
-> Current version: **v0.58** — see [Releases](#releases) below for changelog.
+> Current version: **v0.59** — see [Releases](#releases) below for changelog.
 > Upgrading from an earlier version? Check the matching `MIGRATION_*.md` / `UPDATE_*.md`.
 
 ---
@@ -332,6 +332,131 @@ and forward requests. Locally you need `netlify dev` to make them work.
 ---
 
 ## Releases
+
+# Update Notes — v0.58 → v0.59: Goodreads import without the CSV
+
+**The headline:** onboarding stopped depending on an export queue we don't control.
+Goodreads generates CSV exports asynchronously — minutes to hours — so the old flow
+asked a brand-new user to leave, wait for an email, and come back. Most didn't. The
+reader now pastes a profile link and their shelves arrive in seconds.
+
+**How it works.** There is no Goodreads API; key issuance stopped in December 2020.
+The remaining public surface is the per-user review feed at
+`review/list_rss/{USER_ID}?shelf={SHELF}`. No auth, no key, but it requires a public
+profile and is IP rate-limited — which is why `netlify/functions/goodreads-rss.js`
+throttles its page loop to 1 req/s and caps at 20 pages (2,000 books). A shared
+Netlify egress address means one tight loop would degrade the feature for everyone.
+
+**Deliberately a parsing layer only.** The function emits the exact shape
+`parseGoodreadsCSV()` already produces (`{ t, a, rating, dateRead, fromGoodreads, s? }`)
+and hands off to `importGoodreads` → `upsertBookOnServer`. No new ingestion path, no
+new matching logic, no second code path to drift. `splitGoodreadsSeriesTitle` is
+duplicated into `netlify/functions/_shared/goodreadsTitle.js` because Functions bundle
+separately from the Vite client — **these two must be kept in sync**, or the same book
+imported via CSV and via RSS produces two different titles and two rows.
+
+**All three shelves, one destination each.** `read`, `to-read` (the URL slug for
+"Want to Read") and `currently-reading` are fetched sequentially. Goodreads doesn't
+clear the old shelf for everyone, so a book routinely sits on several at once;
+`fetchGoodreadsShelves` resolves each to exactly one destination — finished beats
+in-progress beats intended. Done at parse time, not write time, because the library
+and wishlist are written in separate awaits and React state isn't guaranteed to have
+settled in between.
+
+**New: `bulkAddToWishlist`.** `bulkAddToLibrary` has existed since v0.44; its wishlist
+counterpart never did, so `BulkImport` looped `addToWishlist` — one `showToast` and one
+`setState` per book. Tolerable for a deliberate CSV import, fatal once "Want to Read"
+arrives automatically, since to-read is routinely the largest shelf on an account.
+The old loop is replaced.
+
+**`read_at` is left NULL when Goodreads has no date.** `user_read_at` is empty for most
+readers — Goodreads only records it when the shelving was explicitly dated. Falling
+back to `user_date_added` would put books in the wrong year and corrupt the reading
+challenge and streak. Undated is correct; wrong-dated is not. **Dashboard surfaces must
+tolerate NULL-dated read rows.**
+
+**Ratings** carry over unchanged — `read_books.rating` (1–5, NULL = unrated) with the
+same `0 → NULL` normalization the CSV path has used since v0.3.
+
+**Schema:** `schema_v25_migration.sql` — `books.goodreads_id` (exact re-import match
+key), `books.enrichment_attempts`, `profiles.goodreads_user_id` +
+`goodreads_last_import_at` (for a later re-sync). No RLS changes.
+
+**CSV is not removed** — demoted to a `<details>` fallback, and still the only route for
+a private profile.
+
+**Import progress is global, and the view-swap bug is fixed.**
+
+The first attempt put progress inside `Onboarding`. That was wrong: `App.jsx` renders
+`<Onboarding/>` only while `!state.onboarded`, and `finish()` calls `setOnboarded(true)`
+*before* the write begins — so React unmounted the progress UI about a second after the
+import started, while the loop kept running in a detached closure for another two or
+three minutes. That is what read as "the page reloaded several times for no reason,"
+and why the completion toast never appeared.
+
+The job now lives in `DataContext` (`importJob` + `runGoodreadsImport`), above the
+router. `ImportProgressToast` renders it fixed to the viewport from `App`, mounted in
+both the onboarding branch and the main app, so it survives the swap and every
+subsequent navigation. Onboarding fires the job and navigates immediately rather than
+awaiting it.
+
+The completion state is **sticky** — it does not auto-dismiss. It is the only signal
+that a multi-minute background job finished, so it waits for an explicit
+acknowledgement, and opens `ImportCompleteModal`: a one-time teaching moment pointing at
+Oracle Categorize and Oracle Similar, the two surfaces that only become useful once
+there are books to work with.
+
+**i18n placeholder syntax — single braces.** `interpolatePlain` in `I18nContext` matches
+`/\{([a-zA-Z0-9_]+)\}/`. Strings written with `{{count}}` render literally as `{140}`,
+because the inner `{count}` is substituted and the outer braces survive. Every string
+added in this release was initially written double-braced and has been corrected. Use
+`{count}`, not `{{count}}`.
+
+**Superseded:** Writing an imported shelf is a sequential
+`upsert_book` per book: 500+ books is minutes, not seconds. Previously the reader
+finished onboarding, landed on a dashboard, and watched books appear two or three
+minutes later with no explanation — indistinguishable from a failed import. Onboarding
+now blocks on a progress overlay (`.onb-saving`) counting a single total across all
+three shelves, then confirms completion by toast before navigating. Profile shows the
+same bar inline. The panel's own post-fetch message was also reworded: it says books
+were *found*, because at that moment nothing has been written yet.
+
+**NULL `read_at` audit — one real bug, in `importGoodreads` itself.**
+
+Every *consumer* of read dates already guarded correctly: the dashboard's books-this-year
+and streak widgets, the activity feed, Profile's pace and year stats, `FriendProfile`,
+`shareMoments.readYear`, and `accomplishments.computeBackfillAccomplishments` (which
+replays dated books chronologically and appends undated ones last, gating per-year
+milestones on a truthy year). `Library` and `SeriesPage` render the date conditionally.
+Nothing throws, nothing miscounts.
+
+The defect was on the *write* side. `importGoodreads` correctly wrote `read_at: null`
+to Postgres but then pushed `dateRead: new Date().toISOString()` into local React state
+— on both the guest and authenticated paths. So an undated import counted toward the
+current year's reading challenge, the current month's streak, the pace chart and the
+activity feed, and then silently dropped out of all four on the next load, when
+`loadUserData` maps `read_at → undefined`. Counts that changed on refresh.
+
+Both backfills removed; undated now stays undated on both sides. This predates the RSS
+work (the CSV path had it too) but RSS makes it the common case rather than the rare one.
+
+`bulkAddToLibrary`'s `read_at: today` is *not* affected — a manual add genuinely means
+"read now", and that is left as-is. `RatingModal` still defaults its date field to today
+when opened on an undated book, which is correct: it only writes when the reader saves.
+
+**Consequence worth knowing:** a reader who imports 500 undated books sees a large
+library but `0` toward this year's challenge. That is accurate, not broken — but it may
+warrant an explanatory line on the challenge widget. Not built; flagged.
+
+**One home for Goodreads.** The CSV tab was removed from the Library and Wishlist
+`BulkImport` modals, which now offer title paste only and carry a note pointing at
+Profile. The **Amazon URL** tab was removed outright — it asked the reader to collect
+product URLs by hand, strictly more work than typing the titles into the box beside it.
+`lookupAmazonUrls`/`handleGoodreadsFile` and their state are gone;
+`extractAsinFromUrl` stays in `bookLookup` because `purchaseLinks` still uses it.
+The orphaned `bulkImport.goodreads*` / `bulkImport.amazon*` / `bulkImport.asin*` i18n
+keys were left in place — dead but harmless, and cheaper to leave than to risk a
+dynamic lookup.
 
 # Update Notes — v0.57 → v0.58: Oracle call history, consent before spend
 

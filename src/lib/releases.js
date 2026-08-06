@@ -16,9 +16,36 @@
 
 // The version label shown as "current" — keep in sync with package.json and
 // the README version line.
-export const CURRENT_VERSION = 'v0.58';
+export const CURRENT_VERSION = 'v0.59';
 
 export const RELEASES = [{
+    version: 'v0.59',
+    date: '2026-08-05',
+    titleEn: 'Bring your Goodreads shelves in one step',
+    titleEs: 'Traé tus estantes de Goodreads en un solo paso',
+    bodyEn: [
+      'You can now import from Goodreads by pasting your profile link — no export, no waiting for an email, no CSV file. Paste, and the Oracle reads your shelves.',
+      'Your Want to Read shelf comes across too, straight into your wishlist, alongside the books you’ve finished. Before, onboarding only ever brought your library.',
+      'A book sitting on more than one Goodreads shelf now lands in exactly one place here — finished, in progress, or waiting — so nothing shows up twice.',
+      'Your Goodreads ratings come with you and become your ratings in the app, just as they did before.',
+      'Importing now shows a progress bar that stays with you wherever you go in the app, and tells you plainly when it has finished. Before, the screen changed as soon as setup ended and your books filled in silently minutes later, with no way to tell it was still working.',
+      'When an import finishes, the Oracle offers two things worth trying with a freshly filled library: sorting your shelves by genre and theme, and finding your next book from one you already loved.',
+      'Your reading challenge now explains itself when books are missing a finish date. Goodreads only records one if you set it, so most imported books arrive undated and don\u2019t count toward this year — that is now said out loud instead of just looking wrong.',
+      'All Goodreads importing now lives in one place: your Profile. The CSV upload has been taken off the Library and Wishlist screens, and uploading a CSV is still there for anyone whose Goodreads profile is private.',
+      'The Amazon URL option has been removed from bulk adding — pasting titles does the same job with far less work.',
+    ],
+    bodyEs: [
+      'Ahora podés importar de Goodreads pegando el link de tu perfil — sin exportación, sin esperar un mail, sin archivo CSV. Pegás, y el Oráculo lee tus estantes.',
+      'Tu estante Want to Read también viene, directo a tu lista de deseos, junto con los libros que terminaste. Antes, el onboarding solo traía tu biblioteca.',
+      'Un libro que está en más de un estante de Goodreads ahora aterriza en un solo lugar acá — terminado, en curso, o esperando — así nada aparece dos veces.',
+      'Tus puntuaciones de Goodreads te acompañan y pasan a ser tus puntuaciones en la app, igual que antes.',
+      'La importación ahora muestra una barra de progreso que te acompaña a donde vayas en la app, y te avisa claramente cuando terminó. Antes, la pantalla cambiaba apenas terminabas la configuración y tus libros aparecían solos minutos después, sin manera de saber que seguía trabajando.',
+      'Cuando termina una importación, el Oráculo te ofrece dos cosas que vale la pena probar con una biblioteca recién llena: ordenar tus estantes por género y tema, y encontrar tu próximo libro a partir de uno que ya amaste.',
+      'Tu desafío de lectura ahora se explica solo cuando a los libros les falta la fecha de lectura. Goodreads solo la guarda si la ponés vos, así que la mayoría de los libros importados llegan sin fecha y no cuentan para este año — ahora se dice en voz alta en vez de simplemente parecer un error.',
+      'Toda la importación de Goodreads ahora vive en un solo lugar: tu Perfil. La subida de CSV se sacó de las pantallas de Biblioteca y Lista de deseos, y subir un CSV sigue estando para quien tenga el perfil de Goodreads en privado.',
+      'La opción de URLs de Amazon se quitó del agregado masivo — pegar títulos hace lo mismo con mucho menos trabajo.',
+    ],
+  }, {
     version: 'v0.58',
     date: '2026-07-29',
     titleEn: 'See where your Oracle calls went',

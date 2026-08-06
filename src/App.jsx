@@ -13,6 +13,7 @@ import CornerBrackets from './components/CornerBrackets';
 import BookLoader from './components/BookLoader';
 import Toast from './components/Toast';
 import ShareMomentModal from './components/ShareMomentModal';
+import ImportProgressToast from './components/ImportProgressToast';
 import OracleGateDialog from './components/OracleGateDialog';
 import SignInGate from './components/SignInGate';
 
@@ -286,6 +287,9 @@ export default function App() {
       <div className="app">
         <Onboarding />
         <Toast />
+        {/* v0.59: also mounted here — an import started during onboarding
+            must keep reporting across the swap to the main app. */}
+        <ImportProgressToast />
       </div>
     );
   }
@@ -344,6 +348,7 @@ export default function App() {
       <Toast />
       {/* v0.43: global action-share modal — fires after completions */}
       <ShareMomentModal />
+      <ImportProgressToast />
       {/* v0.58: the one place the "this spends a call" confirmation lives.
           Mounted here, inside RouterProvider, because its upgrade CTA needs
           the router — OracleQuotaProvider sits above it in main.jsx. */}

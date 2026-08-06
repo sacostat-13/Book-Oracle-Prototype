@@ -4,7 +4,9 @@ import { useAuth } from '../lib/AuthContext';
 import { useRouter } from '../lib/RouterContext';
 import { useT, useTNode } from '../lib/I18nContext';
 import { parseGoodreadsCSV } from '../lib/goodreadsImport';
+import GoodreadsImportPanel from '../components/GoodreadsImportPanel';
 import CornerBrackets from '../components/CornerBrackets';
+import { supabase } from '../lib/supabase';
 import { findBookByTitle } from '../lib/bookHelpers';
 import { validateUsername, checkUsernameAvailability } from '../lib/useFriends';
 
@@ -15,7 +17,10 @@ const MOOD_MAX = 3;
 const GENRE_MAX = 5;
 
 export default function Onboarding() {
-  const { state, setProfile, setOnboarded, importGoodreads, showToast, updateUsername, updateDisplayName } = useData();
+  const {
+    state, setProfile, setOnboarded, runGoodreadsImport,
+    showToast, updateUsername, updateDisplayName,
+  } = useData();
   const { user } = useAuth();
   const { go } = useRouter();
   const t = useT();
@@ -32,6 +37,12 @@ export default function Onboarding() {
   const [currentMood, setCurrentMood] = useState([]);
   const [goal, setGoal] = useState(null);
   const [goodreadsBooks, setGoodreadsBooks] = useState([]);
+  // v0.59: the RSS import also returns "Want to Read" and currently-reading,
+  // which the CSV path in onboarding never collected. Held separately and
+  // flushed in finish(), after the library so the dedupe check sees it.
+  const [goodreadsWishlist, setGoodreadsWishlist] = useState([]);
+  const [goodreadsCurrent, setGoodreadsCurrent] = useState([]);
+  const [goodreadsId, setGoodreadsId] = useState(null);
   const [dragOver, setDragOver] = useState(false);
   const fileRef = useRef(null);
 
@@ -106,6 +117,15 @@ export default function Onboarding() {
     }
   }
 
+  // v0.59: direct import via public RSS. Shelves are already resolved to one
+  // destination each by fetchGoodreadsShelves, so nothing lands twice.
+  function handleRssImport({ read, toRead, currentlyReading, goodreadsId: grId }) {
+    setGoodreadsBooks(read);
+    setGoodreadsWishlist(toRead);
+    setGoodreadsCurrent(currentlyReading);
+    setGoodreadsId(grId);
+  }
+
   async function finish() {
     // v0.55.4: persist identity first so display name + username survive even if
     // the reader never opens their Profile. Written straight to the profiles row.
@@ -113,22 +133,48 @@ export default function Onboarding() {
     const trimmedUser = username.toLowerCase().trim();
     if (trimmedName) await updateDisplayName(trimmedName);
     if (trimmedUser && trimmedUser !== state.profile?.username) await updateUsername(trimmedUser);
-    setProfile({ readingLevel, goal, favoriteGenres, currentMood, goodreadsImported: goodreadsBooks.length > 0 });
+    setProfile({ readingLevel, goal, favoriteGenres, currentMood, goodreadsImported: goodreadsBooks.length > 0 || goodreadsWishlist.length > 0 });
     setOnboarded(true);
     // v0.55.4: clear the DEV replay flag so the flow exits to the dashboard.
     try { window.sessionStorage.removeItem('bo_dev_replay_onboarding'); } catch { /* no-op */ }
-    if (goodreadsBooks.length > 0) {
-      const enriched = goodreadsBooks.map((gb) => {
-        const match = findBookByTitle(gb.t);
-        return match ? { ...match, ...gb } : { ...gb, g: 'Imported' };
-      });
-      await importGoodreads(enriched);
+    const enrich = (gb) => {
+      const match = findBookByTitle(gb.t);
+      return match ? { ...match, ...gb } : { ...gb, g: 'Imported' };
+    };
+
+    // v0.59: the write is handed to DataContext and NOT awaited here.
+    //
+    // setOnboarded(true) above causes App to unmount this component
+    // immediately, so anything awaited past this point would be running
+    // inside a dead view with no way to report progress. runGoodreadsImport
+    // owns the job; ImportProgressToast renders it globally and survives the
+    // swap. Navigation happens right away — the reader browses their new
+    // dashboard while the shelves fill in behind them.
+    const hasImport =
+      goodreadsBooks.length + goodreadsWishlist.length + goodreadsCurrent.length > 0;
+    if (hasImport) {
+      runGoodreadsImport(
+        { read: goodreadsBooks, toRead: goodreadsWishlist, currentlyReading: goodreadsCurrent },
+        enrich
+      );
     }
+
+    // Kept so a re-sync can be offered later without asking for the ID again.
+    if (goodreadsId && user) {
+      try {
+        await supabase.from('profiles').update({
+          goodreads_user_id: goodreadsId,
+          goodreads_last_import_at: new Date().toISOString(),
+        }).eq('id', user.id);
+      } catch (e) { console.error('goodreads id persist failed', e); }
+    }
+
     setTimeout(() => go('dashboard'), 50);
   }
 
   return (
     <div className="onboarding-wrap">
+
       <div className="onboarding-card onboarding-card--wide">
         <CornerBrackets />
         <div className="onb-steps">
@@ -276,6 +322,14 @@ export default function Onboarding() {
             <h1 className="onb-title">{t('onboarding.step4Title')}</h1>
             <p className="onb-desc">{t('onboarding.step4Desc')}</p>
 
+            {/* v0.59: direct import is now the primary route. The CSV path is
+                demoted below, not removed — it stays the only option for a
+                reader whose Goodreads profile is private. */}
+            <GoodreadsImportPanel onImported={handleRssImport} />
+
+            <details className="gr-csv-fallback">
+              <summary>{t('onboarding.import.csvFallback')}</summary>
+
             <div
               className={`upload-zone ${dragOver ? 'dragover' : ''}`}
               onClick={() => fileRef.current?.click()}
@@ -311,6 +365,7 @@ export default function Onboarding() {
                 link: <a href="#" onClick={(e) => { e.preventDefault(); setStep(6); }}>{t('onboarding.skipStep')}</a>
               })}
             </div>
+            </details>
 
             <div className="onb-actions">
               <button className="btn-secondary" onClick={() => setStep(4)}>{t('onboarding.back')}</button>

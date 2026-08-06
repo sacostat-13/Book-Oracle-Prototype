@@ -1571,3 +1571,13 @@
   gap: var(--ro-space-2);
   flex-wrap: wrap;
 }
+
+// v0.59: explains a low year-count when the library is full of undated
+// imports. Without it, "0 of 30" after a 500-book import reads as a bug.
+.db-goal__undated {
+  font-family: var(--ro-font-body);
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--ro-dim);
+  margin-top: 8px;
+}

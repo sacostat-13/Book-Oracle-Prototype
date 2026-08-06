@@ -360,6 +360,14 @@ function ReadingGoalWidget({ library, genresByBookId, readingGoalCount, setReadi
   const pct = target ? Math.min(100, Math.round((done / target) * 100)) : 0;
   const reached = target && done >= target;
 
+  // v0.59: books imported from Goodreads usually carry no finish date —
+  // Goodreads only records one when the reader dated the shelving themselves.
+  // Undated books are correctly excluded from the year count, but a reader who
+  // just imported 500 books and sees "0 of 30" has no way to tell that apart
+  // from a broken import. Say so, but only when it's actually relevant.
+  const undatedCount = library.filter((b) => !b.dateRead).length;
+  const showUndatedNote = undatedCount > 0 && done < target;
+
   // v0.42-ish: yearly genre breakdown — same source of truth as Profile's
   // all-time "Top genres" (state.genresByBookId), but scoped to books read
   // this year and capped to 3, to sit compactly under the goal bar.
@@ -437,6 +445,11 @@ function ReadingGoalWidget({ library, genresByBookId, readingGoalCount, setReadi
                     ? `${t('dashboard.goalWidgetBehind', { n: Math.abs(delta) })} · ${year}`
                     : t('dashboard.goalWidgetProgress', { done, target })}
             </div>
+            {showUndatedNote && (
+              <div className="db-goal__undated">
+                {t('dashboard.goalWidgetUndated', { count: undatedCount })}
+              </div>
+            )}
           </>
         )}
 

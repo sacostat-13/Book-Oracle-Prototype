@@ -236,6 +236,92 @@
   justify-content: center;
 }
 
+// ── Goodreads direct import (v0.59) ──────────────────────────────────────────
+// Primary import route. The CSV dropzone below is the fallback, wrapped in
+// .gr-csv-fallback.
+.gr-import {
+  margin-top: 22px;
+  padding: 20px;
+  border: 1px solid var(--ro-border);
+  border-radius: 16px;
+  background: var(--ro-surface-2);
+}
+
+.gr-import-label {
+  display: block;
+  font-family: var(--ro-font-display);
+  font-size: 18px;
+  color: var(--ro-text);
+}
+
+.gr-import-desc {
+  font-family: var(--ro-font-body);
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--ro-muted);
+  margin: 8px 0 14px;
+}
+
+.gr-import-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.gr-import-input {
+  flex: 1 1 16rem;
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--ro-border-strong);
+  border-radius: 10px;
+  background: var(--ro-field);
+  color: var(--ro-text);
+  font-family: var(--ro-font-mono);
+  font-size: 14px;
+
+  &:focus-visible {
+    outline: 2px solid var(--ro-gold);
+    outline-offset: 2px;
+  }
+
+  &:disabled { opacity: .6; cursor: not-allowed; }
+}
+
+// Fixed height: without it the panel jumps every time the status text
+// appears or clears, which on a slow import is constant.
+.gr-import-status {
+  min-height: 20px;
+  margin-top: 10px;
+  font-family: var(--ro-font-body);
+  font-size: 13px;
+}
+
+.gr-import-ok      { color: var(--ro-success); }
+.gr-import-err     { color: var(--ro-error); }
+.gr-import-working { color: var(--ro-muted); }
+
+.gr-import-help {
+  margin-top: 12px;
+  font-family: var(--ro-font-body);
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--ro-dim);
+
+  summary { cursor: pointer; color: var(--ro-gold-text); }
+  p { margin-top: 6px; }
+}
+
+.gr-csv-fallback {
+  margin-top: 18px;
+
+  summary {
+    cursor: pointer;
+    font-family: var(--ro-font-body);
+    font-size: 13px;
+    color: var(--ro-gold-text);
+  }
+}
+
 // ── Goodreads CSV dropzone ────────────────────────────────────────────────────
 .upload-zone {
   border: 1.5px dashed var(--ro-border-strong);
@@ -325,4 +411,179 @@
   .btn-text {
     margin-top: 8px;
   }
+}
+
+// ── Bulk-import: pointer to the Goodreads import on Profile (v0.59) ──────────
+.bulk-moved-note {
+  margin-top: 18px;
+  padding: 12px 14px;
+  border: 1px solid var(--ro-border);
+  border-radius: 12px;
+  background: var(--ro-surface-2);
+  font-family: var(--ro-font-body);
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--ro-muted);
+
+  a { color: var(--ro-gold-text); cursor: pointer; }
+}
+
+// Profile: inline import progress, reusing the onboarding overlay's bar.
+.pf-import-progress {
+  margin-top: 14px;
+  text-align: left;
+}
+
+// ── Global import progress toast (v0.59) ─────────────────────────────────────
+// Fixed to the viewport and rendered from App, so it outlives every view
+// change — including the onboarding → dashboard swap that unmounted the old
+// in-view progress bar a second after the import started.
+.import-toast {
+  position: fixed;
+  left: 50%;
+  bottom: 20px;
+  transform: translateX(-50%);
+  z-index: 210;
+  width: calc(100% - 32px);
+  max-width: 460px;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 16px;
+  border: 1px solid var(--ro-border-strong);
+  border-radius: 14px;
+  background: var(--ro-surface);
+  box-shadow: var(--ro-shadow);
+
+  // Clear of the mobile tab bar, which sits at the same edge.
+  @media (max-width: 900px) {
+    bottom: calc(var(--ro-tabbar-h, 60px) + 14px);
+  }
+
+  &--done { border-color: var(--ro-gold); }
+}
+
+.import-toast__body { flex: 1; min-width: 0; }
+
+.import-toast__title {
+  font-family: var(--ro-font-body);
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--ro-text);
+}
+
+.import-toast__sub {
+  font-family: var(--ro-font-mono);
+  font-size: 12px;
+  color: var(--ro-gold-text);
+  margin-top: 3px;
+}
+
+.import-toast__track {
+  height: 4px;
+  border-radius: var(--ro-radius-pill);
+  background: var(--ro-ring-track);
+  margin: 9px 0 7px;
+  overflow: hidden;
+}
+
+.import-toast__fill {
+  height: 100%;
+  background: var(--ro-gold);
+  border-radius: var(--ro-radius-pill);
+  transition: width .25s ease;
+}
+
+.import-toast__note {
+  font-family: var(--ro-font-body);
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--ro-muted);
+}
+
+.import-toast__actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.import-toast__dismiss {
+  background: none;
+  border: none;
+  color: var(--ro-muted);
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 2px 6px;
+
+  &:hover { color: var(--ro-text); }
+}
+
+// ── Import-complete modal ────────────────────────────────────────────────────
+// Sits inside the shared .modal-wide shell, which sets padding:0 and expects
+// .modal-head / .modal-body / .modal-foot to own their own spacing. All the
+// rhythm below is relative to .modal-body's 1.5rem 2rem, so nothing here
+// re-states horizontal padding.
+.import-next__intro {
+  font-family: var(--ro-font-body);
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--ro-text);
+  margin: 0;
+}
+
+.import-next {
+  display: grid;
+  gap: 0.75rem;
+  margin: 1.25rem 0;
+}
+
+.import-next__card {
+  text-align: left;
+  width: 100%;
+  border: 1px solid var(--ro-border-strong);
+  background: transparent;
+  border-radius: 14px;
+  padding: 1rem 1.15rem;
+  cursor: pointer;
+  transition: border-color .15s, background .15s;
+
+  &:hover {
+    border-color: var(--ro-gold);
+    background: color-mix(in srgb, var(--ro-gold) 8%, transparent);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--ro-gold);
+    outline-offset: 2px;
+  }
+}
+
+.import-next__title {
+  font-family: var(--ro-font-body);
+  font-weight: 600;
+  font-size: 15px;
+  line-height: 1.35;
+  color: var(--ro-text);
+}
+
+.import-next__sub {
+  font-family: var(--ro-font-body);
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--ro-muted);
+  margin-top: 0.35rem;
+}
+
+// Separated from the cards above by a rule rather than by gap alone: it is an
+// aside about the import, not a third thing to click.
+.import-next__note {
+  font-family: var(--ro-font-body);
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--ro-dim);
+  margin: 0;
+  padding-top: 1rem;
+  border-top: 1px solid var(--ro-border);
 }

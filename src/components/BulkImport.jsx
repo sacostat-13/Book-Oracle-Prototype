@@ -1,10 +1,10 @@
-import { useRef, useState, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { useData } from '../lib/DataContext';
+import { useRouter } from '../lib/RouterContext';
 import { useT } from '../lib/I18nContext';
 import { useOracleQuota } from '../lib/OracleQuotaContext';
-import { parseGoodreadsToReadCSV, parseGoodreadsCSV } from '../lib/goodreadsImport';
 import { findBookByTitle, bookKey, cleanTitle } from '../lib/bookHelpers';
-import { extractAsinFromUrl, lookupByAsin, lookupByTitle, parseTitleList } from '../lib/bookLookup';
+import { lookupByTitle, parseTitleList } from '../lib/bookLookup';
 import { callClaude, QuotaExceededError, parseJSONResponse } from '../lib/claudeApi';
 
 // v0.58 — this was the quota leak.
@@ -40,56 +40,36 @@ async function claudeBookFallback(title, author) {
 }
 
 export default function BulkImport({ onClose, target = 'wishlist' }) {
-  const { state, addToWishlist, bulkAddToLibrary, importGoodreads, showToast } = useData();
+  // v0.59: addToWishlist dropped from this destructure — the only caller was
+  // the per-book import loop, now replaced by bulkAddToWishlist.
+  const { state, bulkAddToLibrary, bulkAddToWishlist, showToast } = useData();
+  const { go } = useRouter();
   const t = useT();
   const { handleQuotaError, onCallSucceeded } = useOracleQuota();
 
   const isLibrary = target === 'library';
-  const goodreadsAvailable = !isLibrary || !state.profile.goodreadsImported;
   const targetWord = isLibrary ? t('bulkImport.targetLibrary') : t('bulkImport.targetWishlist');
 
-  const tabs = useMemo(() => {
-    const arr = [];
-    if (goodreadsAvailable) {
-      arr.push({
-        id: 'goodreads',
-        label: t('bulkImport.tabGoodreads'),
-        sub: isLibrary ? t('bulkImport.tabGoodreadsReadSub') : t('bulkImport.tabGoodreadsToReadSub'),
-      });
-    }
-    arr.push({ id: 'titles', label: t('bulkImport.tabTitles'), sub: t('bulkImport.tabTitlesSub') });
-    arr.push({ id: 'amazon', label: t('bulkImport.tabAmazon'), sub: t('bulkImport.tabAmazonSub') });
-    return arr;
-  }, [goodreadsAvailable, isLibrary]);
+  // v0.59: down to one source.
+  //
+  // - Goodreads CSV moved to Profile, where the direct RSS import lives. Two
+  //   import routes in two places was the confusing part, not the CSV itself.
+  // - Amazon URL paste removed. It asked the reader to collect product URLs by
+  //   hand, which is more work than typing the titles into the box next to it.
+  //
+  // Kept as an array rather than collapsed to a constant: the tab strip and
+  // switching logic still work as-is, and adding a source back is a one-liner.
+  const tabs = useMemo(() => ([
+    { id: 'titles', label: t('bulkImport.tabTitles'), sub: t('bulkImport.tabTitlesSub') },
+  ]), [t]);
 
   const [tab, setTab] = useState(tabs[0].id);
   const [results, setResults] = useState([]);
   const [progress, setProgress] = useState(null);
   const [titleText, setTitleText] = useState('');
-  const [amazonText, setAmazonText] = useState('');
   const [importing, setImporting] = useState(false);
   // v0.44: { done, total } while the confirm-phase import is running
   const [importProgress, setImportProgress] = useState(null);
-  const csvRef = useRef(null);
-
-  async function handleGoodreadsFile(file) {
-    try {
-      const text = await file.text();
-      const books = isLibrary ? parseGoodreadsCSV(text) : parseGoodreadsToReadCSV(text);
-      if (books.length === 0) {
-        showToast(isLibrary ? t('bulkImport.goodreadsCsvError') : t('bulkImport.goodreadsCsvErrorToRead'), true);
-        return;
-      }
-      const rows = books.map((b) => {
-        const dup = isAlreadyOnTarget(b);
-        if (dup) return { input: `${b.t} — ${b.a}`, status: 'duplicate', book: b };
-        const match = findBookByTitle(b.t, state.wishlist);
-        const enriched = match ? { ...match, ...b } : b;
-        return { input: `${b.t} — ${b.a}`, status: 'found', book: enriched };
-      });
-      setResults(rows);
-    } catch { showToast(t('bulkImport.csvReadError'), true); }
-  }
 
   async function lookupTitleList() {
     const parsed = parseTitleList(titleText);
@@ -121,35 +101,6 @@ export default function BulkImport({ onClose, target = 'wishlist' }) {
       out.push(row);
       setResults([...out, ...parsed.slice(i + 1).map((p2) => ({ input: p2.raw, status: 'pending' }))]);
       setProgress({ done: i + 1, total: parsed.length });
-    }
-    setProgress(null);
-  }
-
-  async function lookupAmazonUrls() {
-    const urls = amazonText.split('\n').map((l) => l.trim()).filter((l) => l.length > 0);
-    if (urls.length === 0) { showToast(t('bulkImport.pasteUrlsFirst'), true); return; }
-    setProgress({ done: 0, total: urls.length });
-    setResults(urls.map((u) => ({ input: u, status: 'pending' })));
-
-    const out = [];
-    for (let i = 0; i < urls.length; i++) {
-      const url = urls[i];
-      const asin = extractAsinFromUrl(url);
-      let row;
-      if (!asin) {
-        row = { input: url, status: 'missing', error: url.includes('amzn.to') ? t('bulkImport.shortLinkError') : t('bulkImport.asinError') };
-      } else {
-        const book = await lookupByAsin(asin, url);
-        if (!book) {
-          row = { input: url, status: 'missing', error: t('bulkImport.asinNotFound', { asin }) };
-        } else {
-          const existing = findExistingDuplicate(book, book);
-          row = existing ? { input: url, status: 'duplicate', book } : { input: url, status: 'found', book };
-        }
-      }
-      out.push(row);
-      setResults([...out, ...urls.slice(i + 1).map((u2) => ({ input: u2, status: 'pending' }))]);
-      setProgress({ done: i + 1, total: urls.length });
     }
     setProgress(null);
   }
@@ -188,8 +139,6 @@ export default function BulkImport({ onClose, target = 'wishlist' }) {
     return null;
   }
 
-  function isAlreadyOnTarget(book) { return findExistingDuplicate(book) !== null; }
-
   async function confirmImport() {
     const toAdd = results.filter((r) => (r.status === 'found' || r.status === 'unmatched') && r.book);
     if (toAdd.length === 0) { showToast(t('bulkImport.nothingToImport', { target: targetWord }), true); return; }
@@ -201,15 +150,12 @@ export default function BulkImport({ onClose, target = 'wishlist' }) {
     // button counts up instead of showing an indeterminate "Adding…".
     const onImportProgress = (done, total) => setImportProgress({ done, total });
     if (isLibrary) {
-      if (tab === 'goodreads') { await importGoodreads(books, onImportProgress); added = books.length; }
-      else { added = await bulkAddToLibrary(books, onImportProgress); }
+      added = await bulkAddToLibrary(books, onImportProgress);
     } else {
-      let done = 0;
-      for (const row of toAdd) {
-        const ok = await addToWishlist(row.book);
-        if (ok) added++;
-        onImportProgress(++done, toAdd.length);
-      }
+      // v0.59: was a per-book addToWishlist loop, which fired a toast and a
+      // state commit for every single book. Fine for a handful, unusable for
+      // a 500-title "Want to Read" shelf.
+      added = await bulkAddToWishlist(books, onImportProgress);
     }
     setImportProgress(null);
     setImporting(false);
@@ -246,24 +192,6 @@ export default function BulkImport({ onClose, target = 'wishlist' }) {
         ))}
       </div>
 
-      {tab === 'goodreads' && !hasResults && (
-        <>
-          <input ref={csvRef} type="file" className="file-hidden" accept=".csv,text/csv" onChange={(e) => { const f = e.target.files[0]; if (f) handleGoodreadsFile(f); }} />
-          <div className="upload-zone" onClick={() => csvRef.current?.click()}>
-            <div className="upload-icon">📚</div>
-            <div className="upload-text">{t('bulkImport.goodreadsUploadText')}</div>
-            <div className="upload-sub">
-              {isLibrary ? <><strong>{t('bulkImport.goodreadsReadShelf')}</strong></> : <><strong>{t('bulkImport.goodreadsToReadShelf')}</strong></>}
-            </div>
-          </div>
-          <div className="upload-help">
-            <strong>{t('bulkImport.goodreadsHowTo')}</strong>{' '}
-            <a href="https://www.goodreads.com/review/import" target="_blank" rel="noreferrer">{t('bulkImport.goodreadsHowToLink')}</a>{' '}{t('bulkImport.goodreadsHowToSteps')}
-            {isLibrary && <> {t('bulkImport.goodreadsOneTime')}</>}
-          </div>
-        </>
-      )}
-
       {tab === 'titles' && !hasResults && (
         <>
           <div className="field field-full">
@@ -278,18 +206,18 @@ export default function BulkImport({ onClose, target = 'wishlist' }) {
         </>
       )}
 
-      {tab === 'amazon' && !hasResults && (
-        <>
-          <div className="field field-full">
-            <label>{t('bulkImport.amazonOnePerLine')}</label>
-            <textarea placeholder="https://www.amazon.com/dp/B07XYZ1234" rows={10} value={amazonText} onChange={(e) => setAmazonText(e.target.value)} className="textarea" style={{ fontFamily: "monospace" }} />
-          </div>
-          <div className="upload-help">{t('bulkImport.amazonHelp')}</div>
-          <div className="bulk-actions">
-            <span className="manual-add-note">{t('bulkImport.amazonNote')}</span>
-            <button className="btn-primary" onClick={lookupAmazonUrls} disabled={!amazonText.trim()}>{t('bulkImport.lookUpBtn')}</button>
-          </div>
-        </>
+      {/* v0.59: Goodreads now has one home. Say where it is rather than
+          leaving readers to hunt for a tab that used to be here. */}
+      {!hasResults && (
+        <div className="bulk-moved-note">
+          {t('onboarding.import.movedNotice')}{' '}
+          <a
+            href="#"
+            onClick={(e) => { e.preventDefault(); onClose(); go('profile'); }}
+          >
+            {t('onboarding.import.movedLink')}
+          </a>
+        </div>
       )}
 
       {hasResults && (
