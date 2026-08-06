@@ -5,6 +5,7 @@ import { useRouter } from '../lib/RouterContext';
 import { useT, useTNode } from '../lib/I18nContext';
 import { parseGoodreadsCSV } from '../lib/goodreadsImport';
 import GoodreadsImportPanel from '../components/GoodreadsImportPanel';
+import OnboardingStacks from '../components/OnboardingStacks';
 import CornerBrackets from '../components/CornerBrackets';
 import { supabase } from '../lib/supabase';
 import { findBookByTitle } from '../lib/bookHelpers';
@@ -43,6 +44,9 @@ export default function Onboarding() {
   const [goodreadsWishlist, setGoodreadsWishlist] = useState([]);
   const [goodreadsCurrent, setGoodreadsCurrent] = useState([]);
   const [goodreadsId, setGoodreadsId] = useState(null);
+  // Count of books picked on the Stacks step, so the final button can say
+  // "enter" rather than "skip" once the reader has actually chosen something.
+  const [stacksPicked, setStacksPicked] = useState(0);
   const [dragOver, setDragOver] = useState(false);
   const fileRef = useRef(null);
 
@@ -309,9 +313,34 @@ export default function Onboarding() {
                 </button>
               ))}
             </div>
+
+            {/* v0.59: goal moved here from its own step and sits directly under
+                mood. They were reading as the same question on two screens;
+                side by side, the distinction is obvious — mood is "right now",
+                goal is standing. Both are live Oracle inputs (currentMood feeds
+                describeTasteProfile, goal drives goalDirective), so neither was
+                a candidate for removal. Merging them also keeps the flow at six
+                steps with The Stacks added. */}
+            <div className="onb-subhead">{t('onboarding.goalsInlineTitle')}</div>
+            <p className="onb-hint">{t('onboarding.goalsInlineDesc')}</p>
+            <div className="choice-grid">
+              {GOALS.map((g) => (
+                <button
+                  key={g.v}
+                  className={`choice ${goal === g.v ? 'selected' : ''}`}
+                  onClick={() => setGoal(g.v)}
+                >
+                  <div className="choice-title">{g.title}</div>
+                  <div className="choice-sub">{g.sub}</div>
+                </button>
+              ))}
+            </div>
+
             <div className="onb-actions">
               <button className="btn-secondary" onClick={() => setStep(3)}>{t('onboarding.back')}</button>
-              <button className="btn-primary" onClick={() => setStep(5)}>{t('onboarding.continue')}</button>
+              <button className="btn-primary" disabled={goal == null} onClick={() => setStep(5)}>
+                {t('onboarding.continue')}
+              </button>
             </div>
           </>
         )}
@@ -374,27 +403,22 @@ export default function Onboarding() {
           </>
         )}
 
+        {/* v0.59: final step — a compact Stacks grid, so a reader who imported
+            nothing still reaches the dashboard with books on their shelves.
+            Always skippable: the Oracle degrades to catalog-level suggestions
+            rather than erroring on an empty library. */}
         {step === 6 && (
           <>
-            <div className="onb-eyebrow">{t('onboarding.step5Eyebrow')}</div>
-            <h1 className="onb-title">{t('onboarding.step5Title')}</h1>
-            <p className="onb-desc">{t('onboarding.step5Desc')}</p>
-            <div className="choice-grid">
-              {GOALS.map((g) => (
-                <button
-                  key={g.v}
-                  className={`choice ${goal === g.v ? 'selected' : ''}`}
-                  onClick={() => setGoal(g.v)}
-                >
-                  <div className="choice-title">{g.title}</div>
-                  <div className="choice-sub">{g.sub}</div>
-                </button>
-              ))}
-            </div>
+            <div className="onb-eyebrow">{t('onboarding.stacksStepEyebrow')}</div>
+            <h1 className="onb-title">{t('onboarding.stacksStepTitle')}</h1>
+            <p className="onb-desc">{t('onboarding.stacksStepDesc')}</p>
+
+            <OnboardingStacks favoriteGenres={favoriteGenres} onCountChange={setStacksPicked} />
+
             <div className="onb-actions">
               <button className="btn-secondary" onClick={() => setStep(5)}>{t('onboarding.back')}</button>
-              <button className="btn-primary" disabled={goal == null} onClick={finish}>
-                {t('onboarding.enterLibrary')}
+              <button className="btn-primary" onClick={finish}>
+                {stacksPicked > 0 ? t('onboarding.enterLibrary') : t('onboarding.skipToLibrary')}
               </button>
             </div>
           </>

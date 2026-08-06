@@ -236,6 +236,164 @@
   justify-content: center;
 }
 
+// ── Merged mood + goal step (v0.59) ──────────────────────────────────────────
+.onb-subhead {
+  font-family: var(--ro-font-display);
+  font-size: 20px;
+  color: var(--ro-text);
+  text-align: center;
+  margin-top: 28px;
+}
+
+// ── Onboarding Stacks grid (v0.59) ───────────────────────────────────────────
+// Compact and flat — no flip. Onboarding is the wrong place to teach an
+// interaction, so both actions are visible on every tile.
+.onb-stacks { margin-top: 20px; }
+
+.onb-stacks__progress {
+  font-family: var(--ro-font-body);
+  font-size: 13px;
+  color: var(--ro-gold-text);
+  text-align: center;
+  min-height: 20px;
+  margin-bottom: 14px;
+}
+
+.onb-stacks__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+  gap: 12px;
+  // Capped so the step stays one screen rather than becoming a browse session
+  // that competes with finishing onboarding.
+  max-height: 46vh;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.onb-stacks__card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.onb-stacks__cover {
+  position: relative;
+  aspect-ratio: 2 / 3;
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--ro-surface-2);
+
+  img { width: 100%; height: 100%; object-fit: cover; }
+}
+
+// Same redundant signalling as the full Stacks: ring plus tinted title, so a
+// choice is obvious against any cover art.
+.onb-stacks__card.is-library .onb-stacks__cover,
+.onb-stacks__card.is-wishlist .onb-stacks__cover {
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 8px;
+    border: 3px solid currentColor;
+    pointer-events: none;
+  }
+}
+
+.onb-stacks__card.is-library  .onb-stacks__cover { color: var(--ro-forest); }
+.onb-stacks__card.is-wishlist .onb-stacks__cover { color: var(--ro-gold); }
+.onb-stacks__card.is-library  .onb-stacks__title { color: var(--ro-forest); }
+.onb-stacks__card.is-wishlist .onb-stacks__title { color: var(--ro-gold-text); }
+
+.onb-stacks__placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  font-family: var(--ro-font-display);
+  font-size: 28px;
+  color: var(--ro-dim);
+}
+
+.onb-stacks__title {
+  font-family: var(--ro-font-body);
+  font-weight: 600;
+  font-size: 11px;
+  line-height: 1.25;
+  color: var(--ro-text);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.onb-stacks__author {
+  font-family: var(--ro-font-body);
+  font-size: 10px;
+  color: var(--ro-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.onb-stacks__actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  margin-top: 2px;
+}
+
+.onb-stacks__btn {
+  // Fixed height + centred content, so the two buttons stay level even if a
+  // translation runs longer than expected. nowrap + ellipsis rather than
+  // wrapping: a clipped label is recoverable (aria-label carries the full
+  // text), a ragged two-line button is not.
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 26px;
+  padding: 4px 6px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  border-radius: 6px;
+  border: 1px solid var(--ro-border-strong);
+  background: transparent;
+  color: var(--ro-muted);
+  font-family: var(--ro-font-body);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background .15s, border-color .15s, color .15s;
+
+  &:hover:not(:disabled) { border-color: var(--ro-gold); color: var(--ro-text); }
+  &:focus-visible { outline: 2px solid var(--ro-gold); outline-offset: 1px; }
+  &:disabled { opacity: .5; cursor: default; }
+}
+
+.onb-stacks__btn--read.is-on {
+  background: var(--ro-forest);
+  border-color: var(--ro-forest);
+  color: #fff;
+}
+
+.onb-stacks__btn--want.is-on {
+  background: var(--ro-gold);
+  border-color: var(--ro-gold);
+  color: var(--ro-gold-on);
+}
+
+.onb-stacks__empty,
+.onb-stacks__more {
+  display: flex;
+  justify-content: center;
+  font-family: var(--ro-font-body);
+  font-size: 12px;
+  color: var(--ro-muted);
+  margin-top: 14px;
+}
+
 // ── Goodreads direct import (v0.59) ──────────────────────────────────────────
 // Primary import route. The CSV dropzone below is the fallback, wrapped in
 // .gr-csv-fallback.

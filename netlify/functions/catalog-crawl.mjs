@@ -69,7 +69,7 @@ const GENRE_MAP = [
 ];
 
 const QUERY = `
-  query TopBooks($tag: String!, $limit: Int!, $minRatings: Int!, $minRating: numeric!) {
+  query TopBooks($tag: String!, $limit: Int!, $offset: Int!, $minRatings: Int!, $minRating: numeric!) {
     books(
       where: {
         cached_tags: { _contains: { Genre: [{ tag: $tag }] } }
@@ -78,6 +78,7 @@ const QUERY = `
       }
       order_by: { users_read_count: desc }
       limit: $limit
+      offset: $offset
     ) {
       id
       title
@@ -128,12 +129,29 @@ async function callRpc(url, key, fn, args) {
   return { error: null };
 }
 
-// Which genres this run handles. Rotating by hour means a full sweep of the
-// list completes roughly every 8 hours without any stored cursor.
+// Which genres this run handles. Rotating by hour means every genre is visited
+// at least once a day without any stored cursor.
 function genresForRun() {
   const hour = new Date().getUTCHours();
   const i = hour % GENRE_MAP.length;
   return [GENRE_MAP[i], GENRE_MAP[(i + 1) % GENRE_MAP.length]];
+}
+
+// How deep into each genre's ranking to read.
+//
+// Without this the job asked for "top 25 by readers" every single time, so it
+// pulled the SAME 25 books on every run forever. upsert_book deduped them, so
+// after the first pass per genre the crawl would have added nothing at all
+// while still reporting success — growth flat at a few hundred books.
+//
+// The offset advances one page per day, so each genre is read a page deeper
+// every 24h and the catalog keeps growing. It wraps at MAX_DEPTH because the
+// long tail stops being worth showing.
+const MAX_DEPTH = 1000;
+
+function offsetForRun() {
+  const day = Math.floor(Date.now() / 86400000);
+  return (day * PER_GENRE) % MAX_DEPTH;
 }
 
 export default async function handler() {
@@ -146,6 +164,7 @@ export default async function handler() {
   }
 
   const genres = genresForRun();
+  const offset = offsetForRun();
   let inserted = 0;
   let skipped = 0;
 
@@ -160,6 +179,7 @@ export default async function handler() {
         const rows = await hardcover(token, {
           tag,
           limit: PER_GENRE,
+          offset,
           minRatings: MIN_RATINGS,
           minRating: MIN_RATING,
         });
@@ -221,8 +241,15 @@ export default async function handler() {
   }
 
   const names = genres.map((g) => g.canonical);
-  console.log(`[catalog-crawl] genres=${names.join(', ')} inserted=${inserted} skipped=${skipped}`);
-  return new Response(JSON.stringify({ genres: names, inserted, skipped }), {
+  // `upserted` is deliberately not called "inserted": upsert_book dedupes on
+  // normalized_key, so a successful call may have updated an existing row
+  // rather than added one. Re-running a genre at the same offset will report
+  // the same number while adding nothing. To see real growth, compare
+  // `select count(*) from books` before and after, not this line.
+  console.log(
+    `[catalog-crawl] genres=${names.join(', ')} offset=${offset} upserted=${inserted} skipped=${skipped}`
+  );
+  return new Response(JSON.stringify({ genres: names, offset, upserted: inserted, skipped }), {
     status: 200,
     headers: { 'Content-Type': 'application/json' },
   });
