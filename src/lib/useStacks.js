@@ -63,6 +63,29 @@ function editionKey(b) {
   return bookKey({ t: cleanTitle(b.t || ''), a: b.a });
 }
 
+// First credited author only.
+//
+// The same book reaches the catalog with different author strings depending on
+// where it came from — Goodreads RSS exposes one author, Hardcover credits the
+// full team. "V for Vendetta / Alan Moore" and
+// "V for Vendetta / Alan Moore y David Lloyd" are the same book, but bookKey
+// includes the author, so they key differently, survived every exclusion check,
+// and could be added twice.
+//
+// Splits on the usual co-author joiners in both languages. Deliberately
+// conservative: only separators surrounded by whitespace, so a name containing
+// one of these words is untouched.
+function primaryAuthor(a) {
+  return String(a || '').split(/\s+(?:y|and|with|&|,|;|\/)\s+/i)[0].trim();
+}
+
+// Title + first author, parentheticals stripped. The loosest key we're willing
+// to match on — still requires an author, so two different books that share a
+// title stay distinct.
+function authorLooseKey(b) {
+  return bookKey({ t: cleanTitle(b.t || ''), a: primaryAuthor(b.a) });
+}
+
 export function useStacks({ favoriteGenres = [], owned = [] }) {
   const [books, setBooks] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -76,25 +99,31 @@ export function useStacks({ favoriteGenres = [], owned = [] }) {
   const ownedIdsRef = useRef(new Set());
   const ownedKeysRef = useRef(new Set());
   const ownedEditionsRef = useRef(new Set());
+  const ownedLooseRef = useRef(new Set());
 
   useEffect(() => {
     const ids = new Set();
     const keys = new Set();
     const editions = new Set();
+    const loose = new Set();
     for (const b of owned) {
       if (b?.bookId) ids.add(b.bookId);
       keys.add(bookKey(b));
       editions.add(editionKey(b));
+      loose.add(authorLooseKey(b));
     }
     ownedIdsRef.current = ids;
     ownedKeysRef.current = keys;
     ownedEditionsRef.current = editions;
+    ownedLooseRef.current = loose;
   }, [owned]);
 
+  // Four keys, loosest last. Any one matching means the reader already has it.
   const isOwned = useCallback((card) => (
     (card.bookId && ownedIdsRef.current.has(card.bookId)) ||
     ownedKeysRef.current.has(bookKey(card)) ||
-    ownedEditionsRef.current.has(editionKey(card))
+    ownedEditionsRef.current.has(editionKey(card)) ||
+    ownedLooseRef.current.has(authorLooseKey(card))
   ), []);
 
   // v0.59.3 — this must NOT mutate seenRef.

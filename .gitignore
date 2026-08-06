@@ -9,6 +9,14 @@ implementation
 
 # Local Netlify folder
 .netlify
+
+# Supabase CLI — local scratch only.
+# supabase/migrations/ and supabase/config.toml MUST stay tracked: they are the
+# schema history. `supabase` used to be ignored wholesale, which is how a
+# migration file was once overwritten with no way to recover it.
+supabase/.temp
+supabase/.branches
+supabase/dump
 .scripts
 scripts
 batch-scripts

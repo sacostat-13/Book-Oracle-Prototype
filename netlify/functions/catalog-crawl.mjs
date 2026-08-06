@@ -228,8 +228,22 @@ export default async function handler() {
     const rows = [...byId.values()].slice(0, PER_GENRE);
 
     for (const b of rows) {
-      const title = (b.title || '').trim();
-      const author = (b.contributions?.[0]?.author?.name || '').trim();
+      // Strip the series parenthetical before writing.
+      //
+      // upsert_book dedupes on normalized_key, which is built from the title —
+      // so "Howl's Moving Castle (Howl's Moving Castle, #1)" and
+      // "Howl's Moving Castle" become two rows for one book. That accounts for
+      // most of the duplicates in the catalog audit, and Hardcover titles carry
+      // these suffixes routinely. Same rule the Goodreads import applies.
+      const title = (b.title || '')
+        .replace(/\s*\([^()]*#[^()]*\)\s*$/, '')
+        .trim();
+      // First credited author only, matching dedupe_author_key in schema_v47.
+      // Hardcover credits the full team where Goodreads gives one name, and the
+      // difference alone was enough to create a second row.
+      const author = (b.contributions?.[0]?.author?.name || '')
+        .split(/\s+(?:y|and|with|&|\/|;)\s+/i)[0]
+        .trim();
       const cover = b.image?.url || null;
 
       // A book with no author or no cover is useless to The Stacks — the whole
