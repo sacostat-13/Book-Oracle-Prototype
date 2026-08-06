@@ -139,19 +139,53 @@ function genresForRun() {
 
 // How deep into each genre's ranking to read.
 //
-// Without this the job asked for "top 25 by readers" every single time, so it
-// pulled the SAME 25 books on every run forever. upsert_book deduped them, so
-// after the first pass per genre the crawl would have added nothing at all
-// while still reporting success — growth flat at a few hundred books.
+// Without an offset the job asked for "top 25 by readers" every single time, so
+// it pulled the SAME 25 books on every run forever — upsert_book deduped them
+// and the catalog flatlined while the logs still reported success.
 //
-// The offset advances one page per day, so each genre is read a page deeper
-// every 24h and the catalog keeps growing. It wraps at MAX_DEPTH because the
-// long tail stops being worth showing.
+// Advances every hour rather than every day: two genres per run and one run per
+// hour means a genre gets revisited within the same day, and a day-scoped
+// offset handed it the identical page both times.
 const MAX_DEPTH = 1000;
 
 function offsetForRun() {
-  const day = Math.floor(Date.now() / 86400000);
-  return (day * PER_GENRE) % MAX_DEPTH;
+  const hoursSinceEpoch = Math.floor(Date.now() / 3600000);
+  return (hoursSinceEpoch * PER_GENRE) % MAX_DEPTH;
+}
+
+// Fetch one tag, walking the offset back if it lands past the end of the set.
+//
+// Genres are not the same size. "Literary Fiction" past the ≥500-reader bar has
+// thousands of qualifying books; "Folk Horror" or "Cozy Fantasy" may have a
+// couple of hundred. A single shared offset therefore overshoots the narrow
+// genres and returns nothing — which is exactly the `upserted=0 skipped=0`
+// result observed at offset 775 on Gothic.
+//
+// Halving down to zero costs at most a few extra queries and guarantees the
+// deep genres keep advancing while the shallow ones keep returning their head.
+async function fetchTag(token, tag, offset) {
+  let attempt = offset;
+  for (let i = 0; i < 4; i++) {
+    const rows = await hardcover(token, {
+      tag,
+      limit: PER_GENRE,
+      offset: attempt,
+      minRatings: MIN_RATINGS,
+      minRating: MIN_RATING,
+    });
+    if (rows.length > 0) return { rows, usedOffset: attempt };
+    if (attempt === 0) return { rows: [], usedOffset: 0 };
+    attempt = Math.floor(attempt / 2);
+    await new Promise((r) => setTimeout(r, 250));
+  }
+  const rows = await hardcover(token, {
+    tag,
+    limit: PER_GENRE,
+    offset: 0,
+    minRatings: MIN_RATINGS,
+    minRating: MIN_RATING,
+  });
+  return { rows, usedOffset: 0 };
 }
 
 export default async function handler() {
@@ -174,23 +208,23 @@ export default async function handler() {
     // A canonical genre can draw from more than one Hardcover tag. Results are
     // merged and deduped by Hardcover id before writing.
     const byId = new Map();
+    const tagDepths = [];
     for (const tag of entry.tags) {
       try {
-        const rows = await hardcover(token, {
-          tag,
-          limit: PER_GENRE,
-          offset,
-          minRatings: MIN_RATINGS,
-          minRating: MIN_RATING,
-        });
+        const { rows, usedOffset } = await fetchTag(token, tag, offset);
         for (const r of rows) if (!byId.has(r.id)) byId.set(r.id, r);
+        // Logged per tag: a tag that consistently reports usedOffset=0 is a
+        // shallow one, and a tag that returns 0 rows even at offset 0 almost
+        // certainly doesn't exist in Hardcover's vocabulary and should be
+        // pruned from GENRE_MAP.
+        tagDepths.push(`${tag}@${usedOffset}:${rows.length}`);
       } catch (e) {
-        // A tag that doesn't exist on Hardcover is expected for the narrower
-        // canonical genres — skip it, don't fail the genre.
         console.error(`[catalog-crawl] tag "${tag}" failed:`, e.message);
+        tagDepths.push(`${tag}:ERR`);
       }
       await new Promise((r) => setTimeout(r, 400));
     }
+    console.log(`[catalog-crawl] ${genre} → ${tagDepths.join(', ')}`);
     const rows = [...byId.values()].slice(0, PER_GENRE);
 
     for (const b of rows) {
