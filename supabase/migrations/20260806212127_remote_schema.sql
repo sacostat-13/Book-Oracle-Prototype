@@ -4065,7 +4065,7 @@ CREATE TRIGGER notify_on_notification_insert
   FOR EACH ROW
   EXECUTE FUNCTION
     supabase_functions.http_request('https://thebooksoracle.com/.netlify/functions/send-notification-email', 'POST',
-    '{"Content-type":"application/json","x-webhook-secret":"SHfHtS3Ya9bkCIUK8GhWlWBVDifkZ2BZKu4PA2JxNFY"}', '{}', '5000');
+    '{"Content-type":"application/json","x-webhook-secret":"WEBHOOK SECRET"}', '{}', '5000');
 
 CREATE POLICY "own notifications" ON public.notifications
   USING ((user_id = auth.uid()));
