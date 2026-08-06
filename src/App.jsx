@@ -18,6 +18,7 @@ import OracleGateDialog from './components/OracleGateDialog';
 import SignInGate from './components/SignInGate';
 
 import Onboarding from './views/Onboarding';
+import Stacks from './views/Stacks';
 import Dashboard from './views/Dashboard';
 import Landing from './views/Landing';
 import Wishlist from './views/Wishlist';
@@ -87,6 +88,7 @@ export default function App() {
     about: { title: 'About — The Books Oracle', description: 'The Books Oracle — wishlist, library, reading plans and an Oracle that knows what you will love next.' },
     changelog: { title: 'What’s New — The Books Oracle', description: 'Every release of The Books Oracle: new features, improvements, and fixes across the reading app.' },
     oracle: { title: 'Oracle — The Books Oracle' },
+    'stacks': { title: 'Wander the Stacks — The Books Oracle' },
     'oracle-categories': { title: 'Explore by Genre — The Books Oracle' },
     'oracle-similar': { title: 'Find Similar Books — The Books Oracle' },
     'oracle-ask': { title: 'Ask the Oracle — The Books Oracle' },
@@ -289,8 +291,7 @@ export default function App() {
         <Toast />
         {/* v0.59: also mounted here — an import started during onboarding
             must keep reporting across the swap to the main app. */}
-        <ImportProgressToast />
-      </div>
+        <ImportProgressToast />      </div>
     );
   }
 
@@ -313,6 +314,7 @@ export default function App() {
     case 'terms': page = <Terms />; break;
     case 'refund': page = <Refund />; break;
     case 'oracle': page = <OracleFork />; break;
+    case 'stacks': page = <Stacks />; break;
     case 'oracle-categories': page = <OracleCategories onOpenBook={openBook} />; break;
     case 'oracle-similar': page = <OracleSimilar onOpenBook={openBook} />; break;
     case 'oracle-ask': page = <OracleAsk onOpenBook={openBook} />; break;

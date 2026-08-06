@@ -21,9 +21,10 @@ export const CURRENT_VERSION = 'v0.59';
 export const RELEASES = [{
     version: 'v0.59',
     date: '2026-08-05',
-    titleEn: 'Bring your Goodreads shelves in one step',
-    titleEs: 'Traé tus estantes de Goodreads en un solo paso',
+    titleEn: 'Wander the stacks, and bring your Goodreads shelves in one step',
+    titleEs: 'Deambulá por los estantes, y traé tus Goodreads en un solo paso',
     bodyEn: [
+      'The Stacks is a new place to browse: a wall of covers you can wander through. Turn any book over to read the back, then take it to your library or leave it on the shelf. No import needed, and nothing to type.',
       'You can now import from Goodreads by pasting your profile link — no export, no waiting for an email, no CSV file. Paste, and the Oracle reads your shelves.',
       'Your Want to Read shelf comes across too, straight into your wishlist, alongside the books you’ve finished. Before, onboarding only ever brought your library.',
       'A book sitting on more than one Goodreads shelf now lands in exactly one place here — finished, in progress, or waiting — so nothing shows up twice.',
@@ -35,6 +36,7 @@ export const RELEASES = [{
       'The Amazon URL option has been removed from bulk adding — pasting titles does the same job with far less work.',
     ],
     bodyEs: [
+      'Los Estantes es un lugar nuevo para explorar: una pared de portadas por la que podés deambular. Dale vuelta a cualquier libro para leer la contratapa, y llevátelo a tu biblioteca o dejalo en el estante. Sin importar nada, y sin escribir nada.',
       'Ahora podés importar de Goodreads pegando el link de tu perfil — sin exportación, sin esperar un mail, sin archivo CSV. Pegás, y el Oráculo lee tus estantes.',
       'Tu estante Want to Read también viene, directo a tu lista de deseos, junto con los libros que terminaste. Antes, el onboarding solo traía tu biblioteca.',
       'Un libro que está en más de un estante de Goodreads ahora aterriza en un solo lugar acá — terminado, en curso, o esperando — así nada aparece dos veces.',

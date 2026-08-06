@@ -50,7 +50,8 @@
     "myBooks": "My Books",
     "plans": "Reading Plans",
     "social": "Social",
-    "parchmentMode": "Parchment"
+    "parchmentMode": "Parchment",
+    "stacks": "The Stacks"
   },
   "signIn": {
     "eyebrow": "Welcome",
@@ -1894,5 +1895,30 @@
     "sage": "Sage of the Athenaeum",
     "warden": "Warden of the Grand Archive",
     "library": "The Living Library"
+  },
+  "stacks": {
+    "eyebrow": "The Stacks",
+    "title": "Wander the stacks",
+    "desc": "Covers, one after another. Turn any book over to read the back — then take it, or leave it on the shelf.",
+    "searchPlaceholder": "Look for a title or author",
+    "searchBtn": "Search",
+    "searchResults": "{count} found for “{query}”.",
+    "searchEmpty": "Nothing in the stacks for “{query}”.",
+    "backToBrowse": "Back to browsing",
+    "progress": "{count} taken from the shelf",
+    "actionRead": "I've read this",
+    "actionWant": "I want this",
+    "viewBook": "Full details ↗",
+    "markedRead": "Read",
+    "markedWant": "Wanted",
+    "noDescription": "No description on this one yet. The Oracle will fill it in.",
+    "flipHint": "Turn the book over",
+    "showMore": "Show more",
+    "loading": "Pulling more from the shelf…",
+    "exhausted": "You've reached the end of the stacks for now. More arrive as readers bring their libraries in.",
+    "empty": "Nothing left to show here.",
+    "addedRead": "“{title}” added to your library.",
+    "addFailed": "That one didn't save. Try again.",
+    "notForMe": "Not for me"
   }
 }

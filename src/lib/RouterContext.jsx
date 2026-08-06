@@ -38,6 +38,7 @@ const ROUTE_DEFS = [
   { name: 'profile',            path: '/profile' },
   { name: 'about',              path: '/about' },
   { name: 'changelog',          path: '/changelog' },
+  { name: 'stacks',             path: '/stacks' },
   { name: 'oracle',             path: '/oracle' },
   { name: 'oracle-categories',  path: '/oracle/categories' },
   { name: 'oracle-similar',     path: '/oracle/similar' },

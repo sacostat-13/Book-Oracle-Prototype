@@ -293,6 +293,17 @@ export default function Nav({ onPreviewBook, guestMode = false }) {
             <span className="nav-oracle__icon"><IconOracle /></span>
             {t('nav.oracle')}
           </button>
+
+          {/* v0.59: The Stacks sits beside the Oracle as the second primary
+              action. It's the browse-anytime destination, so it gets the same
+              visual weight rather than being buried in a dropdown or at the
+              bottom of the dashboard. */}
+          <button
+            className={`nav-stacks${route.name === 'stacks' ? ' is-active' : ''}`}
+            onClick={() => nav('stacks')}
+          >
+            {t('nav.stacks')}
+          </button>
         </div>
 
         <div className="nav-spacer" />
@@ -430,6 +441,7 @@ export default function Nav({ onPreviewBook, guestMode = false }) {
           <div className="mobile-menu__body">
             <div className="mobile-menu__section-label">{t('nav.myBooks') || 'My Books'}</div>
             {[
+              { name: 'stacks', label: t('nav.stacks') },
               { name: 'wishlist', label: t('nav.wishlist'), count: state.wishlist?.length },
               { name: 'library', label: t('nav.library'), count: state.library?.length },
               { name: 'currently-reading', label: t('nav.currentlyReadingFull'), count: state.currentlyReading?.length },

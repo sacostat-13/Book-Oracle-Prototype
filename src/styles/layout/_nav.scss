@@ -246,6 +246,32 @@ body.theme-parchment .nav-logo__img--light {
   }
 }
 
+// ── The Stacks pill (v0.59) ───────────────────────────────────────────────────
+// Sits beside the Oracle as the second primary action. Shares the Oracle's
+// geometry so the pair reads as one cluster, but takes the gold accent rather
+// than the Oracle's burgundy — two peers, not one CTA and a copy of it.
+.nav-stacks {
+  display: flex;
+  align-items: center;
+  height: 36px;
+  padding: 0 14px;
+  margin-left: 8px;
+  border-radius: var(--ro-radius-md);
+  background: var(--ro-gold);
+  color: var(--ro-gold-on);
+  border: 0;
+  cursor: pointer;
+  font-family: var(--ro-font-body);
+  font-weight: 600;
+  font-size: 14px;
+  white-space: nowrap;
+  transition: filter .15s;
+
+  &:hover { filter: brightness(1.08); }
+  &.is-active { filter: brightness(1.12); }
+  &:focus-visible { outline: 2px solid var(--ro-text); outline-offset: 2px; }
+}
+
 // ── Icon cluster (bell + user chip) ───────────────────────────────────────────
 .nav-icons {
   display: flex;

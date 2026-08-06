@@ -378,7 +378,7 @@ tolerate NULL-dated read rows.**
 **Ratings** carry over unchanged — `read_books.rating` (1–5, NULL = unrated) with the
 same `0 → NULL` normalization the CSV path has used since v0.3.
 
-**Schema:** `schema_v25_migration.sql` — `books.goodreads_id` (exact re-import match
+**Schema:** `schema_v46_migration.sql` — `books.goodreads_id` (exact re-import match
 key), `books.enrichment_attempts`, `profiles.goodreads_user_id` +
 `goodreads_last_import_at` (for a later re-sync). No RLS changes.
 
@@ -405,6 +405,82 @@ that a multi-minute background job finished, so it waits for an explicit
 acknowledgement, and opens `ImportCompleteModal`: a one-time teaching moment pointing at
 Oracle Categorize and Oracle Similar, the two surfaces that only become useful once
 there are books to work with.
+
+**The Stacks (`/stacks`).** A paged wall of covers over the shared `books` catalog.
+Reads `books` directly — the "Anyone can read books" RLS policy makes it world-readable
+— so a long browse costs no external API calls and no Oracle quota.
+
+The pool is deliberately **wide**: it excludes only `flagged`, rather than requiring
+`verified`/`oracle_categorized` the way `get_curated_catalog` does. The Stacks exists to
+help readers grow their shelves, and Oracle Categorize is available once a book reaches
+a Library or Wishlist — so gating *discovery* behind review would starve the wall for no
+benefit. The real quality bar is `cover_url is not null`; an entry with no cover has
+nothing to show on a wall of covers.
+
+Ordering is stable (`order by id`), never random: the reader pages forward, and
+reshuffling per request would repeat some books and silently hide others. Page 1 is
+seeded from the reader's chosen genres via **`books.genre`**, not a `book_genres` join —
+`book_genres` is only populated after Oracle categorisation, so joining it would exclude
+every crawled and freshly imported title, i.e. exactly the books keeping the wall
+stocked. Coarser (one primary genre per book) but it covers the whole pool, and it
+degrades to the general pool when a reader's genres match nothing. Books already on any shelf, and books already shown this
+session, are filtered out — and `loadMore` keeps pulling until it has something to
+show, because a fully-filtered page would otherwise look like a dead button.
+
+**The overlay bug (fixed).** The first `StackCard` laid a full-tile `<button>` over the
+card to catch taps for flipping, relying on `z-index: 2` on the actions to sit above it.
+That cannot work: `.stack-card__inner` has a `transform`, which creates a stacking
+context, so its children's z-index only competes *inside* it — the overlay, a sibling
+outside that context, painted above everything. Every click landed on it. Symptoms:
+Read/Want did nothing, "Full details" did nothing, and the description couldn't be
+scrolled. There is no overlay now; the cover carries the flip affordance and the back
+face is plain content with real buttons and nothing layered on top.
+
+**Batch sizing.** Rows are filtered after fetching (owned / seen / dismissed), so a fixed
+page size gave wildly uneven results — 6 books, then 4, then 5 — and an entirely-filtered
+first page rendered the empty state on a catalog of thousands. `collectBatch` now keeps
+querying (40 rows a time, up to 8 queries) until it has 20 books to *show* or the catalog
+runs out, and the initial load uses that same path rather than a single query.
+
+**Randomness across sessions.** Ordering by `id` is stable, which is correct *within* a
+session — paging forward must not reshuffle — but meant an identical wall after every
+refresh. A random start offset is now chosen once per mount from an exact row count, and
+the window slides forward from there, wrapping once at the end so a high starting roll
+still reaches the books before it.
+
+`StackCard` flips to reveal description and actions. The flip is driven by an
+`is-flipped` class from JS — hover on pointer devices, tap on touch — never by `:hover`
+alone, which would hide the actions entirely on phones. The tile has a locked aspect
+ratio so the grid can't jump when a long description renders; the back scrolls
+internally instead. The full-card tap target sits at `z-index: 1`, beneath the action
+buttons at `z-index: 2`, so it can never swallow an add. `prefers-reduced-motion`
+cross-fades instead of spinning.
+
+Entry points: a primary pill in the top nav sitting beside the Oracle (`.nav-stacks`,
+gold to the Oracle's burgundy — two peers, not a CTA and a copy of it), plus the mobile
+menu. There is deliberately **no dashboard widget**: it was tried and cut, because
+anything below the fold on a long dashboard is invisible, and a browse habit needs to be
+reachable from every screen rather than from one you have to scroll.
+
+**Catalog growth — two engines.** Reader imports are the main one and need no code:
+every Goodreads import upserts unseen titles into `books`, so the catalog compounds as
+people join. `catalog-crawl.mjs` is the second: an hourly scheduled function pulling ~25
+books each for two rotating genres via Hardcover, filtered to ≥500 readers and ≥3.6
+rating, skipping anything without an author or cover. Rotation derives from the UTC
+hour, so a full sweep completes about every 8 hours with no stored cursor.
+
+**`GENRE_MAP` is the important part of that job.** Our taxonomy is specific — *Folk
+Horror*, *Sapphic & Feminist Gothic*, *Southern & American Gothic* — while Hardcover's
+tags are broad. Crawling Hardcover's generic genres directly would fill the catalog with
+mainstream bestsellers that map to none of our 15 canonical genres, can never be
+genre-seeded, and don't belong on a dark-academia shelf. The map pulls from one or more
+Hardcover tags per canonical genre, dedupes by Hardcover id, and writes the **canonical**
+name to `books.genre`.
+
+Crawled books land as `unreviewed` and are browsable immediately, per the relaxed filter
+above. Watch the logs after the first runs: the narrower tags (`Folk Horror`, `Sapphic`,
+`Motherhood`) may not exist in Hardcover's vocabulary. A missing tag logs and is skipped
+rather than failing the run, but prune any that never return rows.
 
 **i18n placeholder syntax — single braces.** `interpolatePlain` in `I18nContext` matches
 `/\{([a-zA-Z0-9_]+)\}/`. Strings written with `{{count}}` render literally as `{140}`,

@@ -50,7 +50,8 @@
     "myBooks": "Mis Libros",
     "plans": "Planes de lectura",
     "social": "Social",
-    "parchmentMode": "Pergamino"
+    "parchmentMode": "Pergamino",
+    "stacks": "Los Estantes"
   },
   "signIn": {
     "eyebrow": "Bienvenida",
@@ -1894,5 +1895,30 @@
     "sage": "Sabio del Ateneo",
     "warden": "Custodio del Gran Archivo",
     "library": "La Biblioteca Viviente"
+  },
+  "stacks": {
+    "eyebrow": "Los Estantes",
+    "title": "Deambulá por los estantes",
+    "desc": "Portadas, una tras otra. Dale vuelta a cualquier libro para leer la contratapa — y llevátelo, o dejalo en el estante.",
+    "searchPlaceholder": "Buscá un título o autor",
+    "searchBtn": "Buscar",
+    "searchResults": "{count} encontrados para «{query}».",
+    "searchEmpty": "Nada en los estantes para «{query}».",
+    "backToBrowse": "Volver a explorar",
+    "progress": "{count} sacados del estante",
+    "actionRead": "Ya lo leí",
+    "actionWant": "Lo quiero",
+    "viewBook": "Ver ficha ↗",
+    "markedRead": "Leído",
+    "markedWant": "Lo quiero",
+    "noDescription": "Todavía no tiene descripción. El Oráculo la va a completar.",
+    "flipHint": "Dar vuelta el libro",
+    "showMore": "Mostrar más",
+    "loading": "Sacando más del estante…",
+    "exhausted": "Por ahora llegaste al final de los estantes. Van a llegar más a medida que los lectores traigan sus bibliotecas.",
+    "empty": "No queda nada para mostrar acá.",
+    "addedRead": "«{title}» se sumó a tu biblioteca.",
+    "addFailed": "Ese no se guardó. Probá de nuevo.",
+    "notForMe": "No es para mí"
   }
 }
