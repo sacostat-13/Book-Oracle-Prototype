@@ -21,7 +21,7 @@ import { useState } from 'react';
 import { useT } from '../lib/I18nContext';
 import { openBookTab } from '../lib/bookHelpers';
 
-export default function StackCard({ book, onAdd, onHide, state }) {
+export default function StackCard({ book, onAdd, onHide, state, busy }) {
   const t = useT();
   const [flipped, setFlipped] = useState(false);
 
@@ -76,20 +76,27 @@ export default function StackCard({ book, onAdd, onHide, state }) {
             {book.d || t('stacks.noDescription')}
           </div>
 
+          {/* v0.59.1: these are toggles, not one-way doors. Clicking the
+              active choice clears it; clicking the other switches shelf. They
+              are never `disabled` on account of being chosen — that was what
+              made a decision impossible to undo. Only an in-flight write
+              disables them. */}
           <div className="stack-card__actions">
             <button
               className={`stack-card__btn stack-card__btn--read${state === 'library' ? ' is-on' : ''}`}
               onClick={() => onAdd?.(book, 'library')}
-              disabled={decided}
+              disabled={busy}
               aria-pressed={state === 'library'}
+              title={state === 'library' ? t('stacks.undoHint') : undefined}
             >
               {state === 'library' ? `✓ ${t('stacks.markedRead')}` : t('stacks.actionRead')}
             </button>
             <button
               className={`stack-card__btn stack-card__btn--want${state === 'wishlist' ? ' is-on' : ''}`}
               onClick={() => onAdd?.(book, 'wishlist')}
-              disabled={decided}
+              disabled={busy}
               aria-pressed={state === 'wishlist'}
+              title={state === 'wishlist' ? t('stacks.undoHint') : undefined}
             >
               {state === 'wishlist' ? `✓ ${t('stacks.markedWant')}` : t('stacks.actionWant')}
             </button>

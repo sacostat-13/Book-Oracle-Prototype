@@ -19,7 +19,19 @@
 //
 // v0.59
 
-import { createClient } from '@supabase/supabase-js';
+// NOTE — deliberately no `@supabase/supabase-js` here.
+//
+// createClient() constructs a RealtimeClient in its constructor, which needs a
+// WebSocket. Netlify runs Node 20, which has no native WebSocket, so the client
+// threw before this job ever reached Hardcover:
+//
+//   "Node.js 20 detected without native WebSocket support"
+//
+// Passing `ws` as a realtime transport would work, but pulling a websocket
+// stack into a function that only makes one RPC call is the wrong shape. We
+// call PostgREST over plain fetch instead: no client, no realtime, no bundle.
+//
+// (The browser build still uses supabase-js — browsers have WebSocket.)
 
 const HARDCOVER_URL = 'https://api.hardcover.app/v1/graphql';
 const PER_GENRE = 25;
@@ -94,6 +106,28 @@ async function hardcover(token, variables) {
   return json.data?.books || [];
 }
 
+// Calls a Postgres function through PostgREST. Both headers are required —
+// `apikey` authenticates the project, `Authorization` carries the role. Missing
+// either gives "No API key found in request".
+async function callRpc(url, key, fn, args) {
+  const res = await fetch(`${url}/rest/v1/rpc/${fn}`, {
+    method: 'POST',
+    headers: {
+      apikey: key,
+      Authorization: `Bearer ${key}`,
+      'Content-Type': 'application/json',
+      // upsert_book returns a uuid; we don't need it echoed back.
+      Prefer: 'return=minimal',
+    },
+    body: JSON.stringify(args),
+  });
+  if (!res.ok) {
+    const detail = await res.text().catch(() => '');
+    return { error: `${res.status} ${detail.slice(0, 200)}` };
+  }
+  return { error: null };
+}
+
 // Which genres this run handles. Rotating by hour means a full sweep of the
 // list completes roughly every 8 hours without any stored cursor.
 function genresForRun() {
@@ -111,7 +145,6 @@ export default async function handler() {
     return new Response(JSON.stringify({ error: 'missing env' }), { status: 500 });
   }
 
-  const supabase = createClient(url, key, { auth: { persistSession: false } });
   const genres = genresForRun();
   let inserted = 0;
   let skipped = 0;
@@ -153,7 +186,7 @@ export default async function handler() {
       // upsert_book is the only write path into `books` (no direct
       // insert/update RLS policies exist), and it dedupes on normalized_key,
       // so re-crawling the same genre is a no-op rather than a duplicate.
-      const { error } = await supabase.rpc('upsert_book', {
+      const { error } = await callRpc(url, key, 'upsert_book', {
         _title: title,
         _author: author,
         _hardcover_id: b.id || null,
@@ -173,9 +206,10 @@ export default async function handler() {
       });
 
       if (error) {
-        // Signature drift is the likely failure here — log once per row rather
+        // Argument-name drift is the likely failure here — log once per row rather
         // than aborting the whole run.
-        console.error('[catalog-crawl] upsert_book failed:', error.message);
+        // `error` is a string here (status + body), not a supabase error object.
+        console.error('[catalog-crawl] upsert_book failed:', error);
         skipped++;
       } else {
         inserted++;

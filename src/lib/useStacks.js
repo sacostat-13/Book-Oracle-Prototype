@@ -4,35 +4,41 @@
 // can read books" RLS policy), so browsing costs no external API calls and no
 // Oracle quota.
 //
-// The pool is deliberately WIDE. It excludes only `flagged` (books readers have
-// reported) rather than requiring `verified`/`oracle_categorized`. The Stacks
-// exists to help people grow their shelves, and a reader can run Oracle
-// Categorize once a book reaches their Library or Wishlist, so gating discovery
-// behind review would starve the wall. The real bar is `cover_url is not null`
-// — an entry with no cover has nothing to show on a wall of covers.
+// The pool is deliberately WIDE — it excludes only `flagged`. Discovery is not
+// gated on review; Oracle Categorize happens once a book reaches a shelf.
 //
-// Two things this has to get right, both learned the hard way:
+// ── Randomness (v0.59.1) ────────────────────────────────────────────────────
+// The previous version picked ONE random offset per session and then paged
+// forward from it. For anyone with favourite genres that made no difference at
+// all: the genre phase always started at offset 0, so every visit opened on the
+// same books in the same order. Now EVERY query picks a fresh random offset
+// into the matching set, and the `seen` set prevents repeats within a session.
+// Genuinely different each load, at the cost of no guarantee you'll eventually
+// see all N books — which is the right trade for an infinite browse.
 //
-//   1. Deliver a FULL batch, not a full *query*. Rows get filtered out after
-//      fetching (already owned, already seen, dismissed), so a fixed page size
-//      produced wildly uneven results — 6 books, then 4, then 5. Every call now
-//      keeps fetching until it has BATCH_TARGET books to show or the catalog
-//      runs out.
-//   2. Be different every visit. Ordering by id is stable, which is right
-//      *within* a session (paging forward must not reshuffle) but wrong
-//      *across* sessions — the reader saw an identical wall after every
-//      refresh. A random offset is chosen once per mount and the window slides
-//      forward from there, wrapping at the end.
-//
-// v0.59
+// ── Exclusion (v0.59.1) ─────────────────────────────────────────────────────
+// Books already on a shelf must never appear. Three keys are checked, because
+// one is not enough:
+//   1. bookId          — same catalog row. Strongest signal, and was missing
+//                        entirely, which is why "V for Vendetta" showed up
+//                        despite being in the library.
+//   2. bookKey         — normalised title+author.
+//   3. edition key     — bookKey with parentheticals stripped via cleanTitle,
+//                        so "The Well of Ascension" matches
+//                        "The Well of Ascension (Mistborn, #2)".
+// And `owned` must include currently-reading — its omission is why "The
+// Haunting of Hill House" appeared while it was being read.
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from './supabase';
-import { bookKey } from './bookHelpers';
+import { bookKey, cleanTitle } from './bookHelpers';
 
 const BATCH_TARGET = 20;   // books actually shown per load
 const FETCH_SIZE = 40;     // rows pulled per query; overshoots to absorb filtering
 const MAX_QUERIES = 8;     // per load, so a fully-owned catalog can't spin
+// Upper bound for the random offset guess. Comfortably above the current
+// catalog size so windows spread across it; overshoots walk themselves back.
+const OFFSET_CEILING = 4000;
 
 const COLS = 'id, title, author, cover_url, description, pages, genre, isbn, status, source';
 
@@ -51,171 +57,184 @@ function rowToCard(r) {
   };
 }
 
+// Parenthetical-insensitive key. "The Well of Ascension (Mistborn, #2)" and
+// "The Well of Ascension" produce the same value.
+function editionKey(b) {
+  return bookKey({ t: cleanTitle(b.t || ''), a: b.a });
+}
+
 export function useStacks({ favoriteGenres = [], owned = [] }) {
   const [books, setBooks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [exhausted, setExhausted] = useState(false);
 
-  const cursorRef = useRef(0);        // absolute row offset into the ordered set
-  const startRef = useRef(null);      // random session start; null until measured
-  const totalRef = useRef(null);      // total matching rows
-  const wrappedRef = useRef(false);   // true once the window has looped past the end
   const seenRef = useRef(new Set());
   const hiddenRef = useRef(new Set());
   const genrePhaseRef = useRef(true);
+  const genreRoundsRef = useRef(0);
 
+  const ownedIdsRef = useRef(new Set());
   const ownedKeysRef = useRef(new Set());
+  const ownedEditionsRef = useRef(new Set());
+
   useEffect(() => {
-    ownedKeysRef.current = new Set(owned.map(bookKey));
+    const ids = new Set();
+    const keys = new Set();
+    const editions = new Set();
+    for (const b of owned) {
+      if (b?.bookId) ids.add(b.bookId);
+      keys.add(bookKey(b));
+      editions.add(editionKey(b));
+    }
+    ownedIdsRef.current = ids;
+    ownedKeysRef.current = keys;
+    ownedEditionsRef.current = editions;
   }, [owned]);
 
-  const filterOut = useCallback((rows) => {
+  const isOwned = useCallback((card) => (
+    (card.bookId && ownedIdsRef.current.has(card.bookId)) ||
+    ownedKeysRef.current.has(bookKey(card)) ||
+    ownedEditionsRef.current.has(editionKey(card))
+  ), []);
+
+  // v0.59.3 — this must NOT mutate seenRef.
+  //
+  // It used to mark every fetched row as seen inline. Under React 18 StrictMode
+  // the mount effect runs, is cleaned up, and runs again: the first (discarded)
+  // pass had already marked everything seen, so the second pass filtered its
+  // own results down to nothing and the wall came up empty. Coming back to the
+  // page later "worked" only because fresh random offsets happened to find rows
+  // the discarded pass hadn't touched.
+  //
+  // Seen-marking is now deferred to `commit()`, called only when a batch is
+  // actually kept. A cancelled fetch leaves no trace.
+  const selectFresh = useCallback((rows, batchSeen) => {
     const out = [];
     for (const r of rows) {
-      if (seenRef.current.has(r.id)) continue;
+      if (seenRef.current.has(r.id) || batchSeen.has(r.id)) continue;
       if (hiddenRef.current.has(r.id)) continue;
-      seenRef.current.add(r.id);
+      batchSeen.add(r.id);
       const card = rowToCard(r);
-      if (ownedKeysRef.current.has(bookKey(card))) continue;
+      if (isOwned(card)) continue;
       out.push(card);
     }
     return out;
-  }, []);
+  }, [isOwned]);
 
-  // How many rows match, so the random start offset lands somewhere real.
-  const measure = useCallback(async () => {
-    const { count } = await supabase
-      .from('books')
-      .select('id', { count: 'exact', head: true })
-      .neq('status', 'flagged')
-      .not('cover_url', 'is', null);
-    const total = count || 0;
-    totalRef.current = total;
-    // Leave room for at least one full batch after the start point, so a high
-    // roll doesn't drop the reader onto the last three books in the table.
-    const span = Math.max(1, total - BATCH_TARGET);
-    startRef.current = total > 0 ? Math.floor(Math.random() * span) : 0;
-    return total;
-  }, []);
-
-  // One query. Returns raw rows; caller handles filtering and accumulation.
-  const queryWindow = useCallback(async () => {
-    const total = totalRef.current ?? (await measure());
-    if (!total) return { rows: [], done: true };
-
-    // Genre-seeded first, so the opening screen looks assembled for this
-    // reader. Seeds on books.genre (written by upsert_book) rather than a
-    // book_genres join — that table is only populated after Oracle
-    // categorisation, so joining it would exclude every crawled and freshly
-    // imported title, i.e. the books keeping this wall stocked.
-    if (genrePhaseRef.current && favoriteGenres.length > 0) {
-      const from = cursorRef.current;
-      const { data, error } = await supabase
-        .from('books')
-        .select(COLS)
-        .in('genre', favoriteGenres)
-        .neq('status', 'flagged')
-        .not('cover_url', 'is', null)
-        .order('id', { ascending: true })
-        .range(from, from + FETCH_SIZE - 1);
-
-      if (!error && data && data.length > 0) {
-        cursorRef.current += data.length;
-        if (data.length < FETCH_SIZE) {
-          // Genre pool spent — hand over to the general pool, starting at the
-          // random offset so the fallback isn't alphabetical either.
-          genrePhaseRef.current = false;
-          cursorRef.current = startRef.current || 0;
-        }
-        return { rows: data, done: false };
-      }
-      genrePhaseRef.current = false;
-      cursorRef.current = startRef.current || 0;
-    }
-
-    const from = cursorRef.current;
-    const { data, error } = await supabase
+  // ── Windowing (v0.59.2) ───────────────────────────────────────────────────
+  //
+  // The previous version asked PostgREST for an exact row count and derived a
+  // random offset from it. When that count came back null — which it does if
+  // the content-range header isn't what supabase-js expects — `total` became 0,
+  // every query short-circuited to `return []`, and the wall rendered BOTH
+  // "Nothing left to show here" and "You've reached the end". An empty shelf on
+  // a catalog of thousands.
+  //
+  // No count is used now. We take a random offset on spec and walk it back
+  // toward zero if it lands past the end of the table, with a guaranteed final
+  // read from the top. That can't produce an empty result while the table has
+  // rows, and it keeps the per-query randomness that stops every visit looking
+  // the same.
+  const baseQuery = useCallback((genreScoped) => {
+    let q = supabase
       .from('books')
       .select(COLS)
       .neq('status', 'flagged')
-      .not('cover_url', 'is', null)
-      .order('id', { ascending: true })
-      .range(from, from + FETCH_SIZE - 1);
+      .not('cover_url', 'is', null);
+    if (genreScoped) q = q.in('genre', favoriteGenres);
+    return q.order('id', { ascending: true });
+  }, [favoriteGenres]);
 
-    if (error) return { rows: [], done: true };
+  const fetchWindow = useCallback(async (genreScoped) => {
+    let offset = Math.floor(Math.random() * OFFSET_CEILING);
 
-    const rows = data || [];
-    cursorRef.current += rows.length;
+    for (let attempt = 0; attempt < 4 && offset > 0; attempt++) {
+      const { data, error } = await baseQuery(genreScoped)
+        .range(offset, offset + FETCH_SIZE - 1);
+      if (error) return [];
+      if (data && data.length > 0) return data;
+      // Overshot the end of this set — halve and try nearer the start.
+      offset = Math.floor(offset / 2);
+    }
 
-    // Reached the end of the table. Wrap to the top once so a reader who
-    // started at a high offset still sees the books before it; stop on the
-    // second pass rather than looping forever.
-    if (rows.length < FETCH_SIZE) {
-      if (!wrappedRef.current && (startRef.current || 0) > 0) {
-        wrappedRef.current = true;
-        cursorRef.current = 0;
-        return { rows, done: false };
+    // Guaranteed read from the top. Reached when the set is smaller than the
+    // offsets we guessed, which is the normal case for a narrow genre.
+    const { data } = await baseQuery(genreScoped).range(0, FETCH_SIZE - 1);
+    return data || [];
+  }, [baseQuery]);
+
+  const queryWindow = useCallback(async () => {
+    // Genre-seeded first so the opening screens look assembled for this reader.
+    // Seeds on books.genre (written by upsert_book), not a book_genres join —
+    // that table is only populated after Oracle categorisation, so joining it
+    // would exclude every crawled and freshly imported title.
+    //
+    // Capped at a few rounds so a reader isn't locked inside their own five
+    // genres for an entire session.
+    if (genrePhaseRef.current && favoriteGenres.length > 0) {
+      if (genreRoundsRef.current < 6) {
+        genreRoundsRef.current += 1;
+        const rows = await fetchWindow(true);
+        if (rows.length > 0) return rows;
       }
-      return { rows, done: true };
+      genrePhaseRef.current = false;
     }
-    // Wrapped all the way back around to where we began.
-    if (wrappedRef.current && cursorRef.current >= (startRef.current || 0)) {
-      return { rows, done: true };
-    }
-    return { rows, done: false };
-  }, [favoriteGenres, measure]);
 
-  // Fetch until BATCH_TARGET books are ready to show. This is what makes the
-  // first load and every "Show more" a consistent size regardless of how many
-  // rows get filtered out.
+    return fetchWindow(false);
+  }, [favoriteGenres, fetchWindow]);
+
+  // Fetch until BATCH_TARGET books are ready to show, so the first load and
+  // every "Show more" are a consistent size regardless of how many rows get
+  // filtered out as owned/seen/hidden.
   const collectBatch = useCallback(async () => {
+    const batchSeen = new Set();
     const collected = [];
-    let done = false;
-    for (let i = 0; i < MAX_QUERIES && collected.length < BATCH_TARGET && !done; i++) {
-      const res = await queryWindow();
-      collected.push(...filterOut(res.rows));
-      done = res.done;
+    let emptyRounds = 0;
+    for (let i = 0; i < MAX_QUERIES && collected.length < BATCH_TARGET; i++) {
+      const rows = await queryWindow();
+      const fresh = selectFresh(rows, batchSeen);
+      collected.push(...fresh);
+      // With random windows, an empty round means overlap with what we've
+      // already shown rather than a dead catalog — but several in a row means
+      // there is genuinely little left.
+      emptyRounds = fresh.length === 0 ? emptyRounds + 1 : 0;
+      if (emptyRounds >= 3) break;
     }
-    return { collected, done };
-  }, [queryWindow, filterOut]);
+    // Call only when the batch is kept. A discarded fetch must not poison the
+    // seen set for the fetch that replaces it.
+    const commit = () => { for (const id of batchSeen) seenRef.current.add(id); };
+    return { collected, dry: collected.length === 0, commit };
+  }, [queryWindow, selectFresh]);
 
   const loadMore = useCallback(async () => {
     setLoading(true);
-    const { collected, done } = await collectBatch();
+    const { collected, dry, commit } = await collectBatch();
+    commit();
     setBooks((prev) => [...prev, ...collected]);
-    if (done) setExhausted(true);
+    if (dry) setExhausted(true);
     setLoading(false);
   }, [collectBatch]);
 
-  // Initial load uses the exact same accumulation path. Previously it made a
-  // single query, so a first page that happened to be entirely owned/filtered
-  // rendered the empty state — "Nothing left to show here" — on a catalog with
-  // thousands of books in it.
   useEffect(() => {
     let cancelled = false;
     (async () => {
       setLoading(true);
-      await measure();
-      cursorRef.current = genrePhaseRef.current && favoriteGenres.length > 0
-        ? 0
-        : (startRef.current || 0);
-      const { collected, done } = await collectBatch();
-      if (!cancelled) {
-        setBooks(collected);
-        if (done) setExhausted(true);
-        setLoading(false);
-      }
+      const { collected, dry, commit } = await collectBatch();
+      // Bail before committing. Under StrictMode this pass is discarded and the
+      // one after it must start from a clean seen set.
+      if (cancelled) return;
+      commit();
+      setBooks(collected);
+      if (dry) setExhausted(true);
+      setLoading(false);
     })();
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // "Not for me" — drops a book from the wall for this session.
-  //
-  // Session-scoped on purpose: persisting it needs a `user_hidden_books` table
-  // and a decision about whether a dismissal is forever. Until then, hiding
-  // survives scrolling but not a reload, which is the honest behaviour for
-  // something with no storage behind it.
+  // Drops a book from the wall for this session. Session-scoped on purpose:
+  // persisting it needs a `user_hidden_books` table and a decision about
+  // whether a dismissal is forever.
   const hide = useCallback((bookId) => {
     hiddenRef.current.add(bookId);
     setBooks((prev) => prev.filter((b) => b.bookId !== bookId));

@@ -324,11 +324,67 @@
 // Visible at a glance across the whole wall: a coloured ring plus a corner
 // badge. This is the "I've collected these" feedback that makes a long browse
 // feel like it's accumulating something.
-.stack-card.is-library .stack-card__cover { box-shadow: inset 0 0 0 3px var(--ro-forest); }
-.stack-card.is-wishlist .stack-card__cover { box-shadow: inset 0 0 0 3px var(--ro-gold); }
+// v0.59.4 — the ring is drawn as a pseudo-element, not an outline or an inset
+// shadow.
+//
+// Both of those were invisible in practice: .stack-card__img is object-fit:
+// cover at 100% × 100%, so the artwork paints over the parent's own box
+// decoration. An ::after layered above the image cannot be covered by it.
+//
+// Goal is scanning a hundred covers at speed, so the signal is deliberately
+// redundant — ring + corner badge + tinted title. Any one of them can be lost
+// against a particular cover; all three at once cannot.
+.stack-card.is-library .stack-card__cover::after,
+.stack-card.is-wishlist .stack-card__cover::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 12px;
+  border: 3px solid currentColor;
+  pointer-events: none;
+  // Inner hairline: keeps the ring legible against a cover that happens to be
+  // the same colour as the ring itself.
+  box-shadow: inset 0 0 0 1px rgb(0 0 0 / .45);
+}
 
+.stack-card.is-library .stack-card__cover { color: var(--ro-forest); }
+.stack-card.is-wishlist .stack-card__cover { color: var(--ro-gold); }
+
+// Dim the art slightly so the ring and badge stay dominant.
 .stack-card.is-library .stack-card__img,
-.stack-card.is-wishlist .stack-card__img { opacity: .82; }
+.stack-card.is-wishlist .stack-card__img { opacity: .72; }
+
+// Wash the whole tile in the shelf colour. At a distance — scrolling fast past
+// a hundred covers — this is what actually registers, before any single ring
+// or badge is legible.
+.stack-card.is-library .stack-card__cover,
+.stack-card.is-wishlist .stack-card__cover {
+  position: relative;
+}
+
+.stack-card.is-library .stack-card__cover::before,
+.stack-card.is-wishlist .stack-card__cover::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  border-radius: 12px;
+  background: currentColor;
+  opacity: .18;
+  pointer-events: none;
+}
+
+// Keep the ring above the wash.
+.stack-card.is-library .stack-card__cover::after,
+.stack-card.is-wishlist .stack-card__cover::after { z-index: 2; }
+
+// ...and the badge above both.
+.stack-card__stamp { z-index: 3; }
+
+// Tint the title too — the signal shouldn't disappear when the cover is
+// scrolled past and only the caption is in view.
+.stack-card.is-library .stack-card__meta .stack-card__title { color: var(--ro-forest); }
+.stack-card.is-wishlist .stack-card__meta .stack-card__title { color: var(--ro-gold-text); }
 
 .stack-card__stamp {
   position: absolute;

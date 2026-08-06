@@ -43,7 +43,10 @@ export default function Library({ onOpenBook }) {
   const { genresByBookId } = state;
   const lib = state.library;
 
-  const primaryGenreOf = (b) => getPrimaryGenre(b, genresByBookId[b.bookId], 'Imported');
+  // v0.59.1: was 'Imported', which named where the book came from rather than
+  // what it is — and disagreed with the Wishlist, which already used
+  // 'Uncategorized'. Same fallback on both shelves now.
+  const primaryGenreOf = (b) => getPrimaryGenre(b, genresByBookId[b.bookId], 'Uncategorized');
 
   // --- Genre dropdown options ---
   const genreOptions = useMemo(() => {

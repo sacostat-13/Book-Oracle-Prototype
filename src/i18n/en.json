@@ -1919,6 +1919,9 @@
     "empty": "Nothing left to show here.",
     "addedRead": "“{title}” added to your library.",
     "addFailed": "That one didn't save. Try again.",
+    "addedWant": "“{title}” added to your wishlist.",
+    "removed": "“{title}” taken back off the shelf.",
+    "undoHint": "Click again to undo",
     "notForMe": "Not for me"
   }
 }

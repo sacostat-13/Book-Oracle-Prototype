@@ -1919,6 +1919,9 @@
     "empty": "No queda nada para mostrar acá.",
     "addedRead": "«{title}» se sumó a tu biblioteca.",
     "addFailed": "Ese no se guardó. Probá de nuevo.",
+    "addedWant": "«{title}» se sumó a tu lista de deseos.",
+    "removed": "«{title}» volvió al estante.",
+    "undoHint": "Clickeá de nuevo para deshacer",
     "notForMe": "No es para mí"
   }
 }

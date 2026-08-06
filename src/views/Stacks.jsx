@@ -13,7 +13,14 @@ import { useStacks, searchStacks } from '../lib/useStacks';
 import StackCard from '../components/StackCard';
 
 export default function Stacks() {
-  const { state, addToWishlist, bulkAddToLibrary, showToast } = useData();
+  const {
+    state,
+    bulkAddToLibrary,
+    bulkAddToWishlist,
+    removeFromLibrary,
+    removeFromWishlist,
+    showToast,
+  } = useData();
   const t = useT();
 
   const [query, setQuery] = useState('');
@@ -22,10 +29,19 @@ export default function Stacks() {
   // bookId → 'library' | 'wishlist'. Optimistic, so a card responds instantly
   // and the reader can keep clicking without waiting on a round trip.
   const [decided, setDecided] = useState({});
+  // bookIds with a write in flight, so a fast double-tap can't fire twice.
+  const [busy, setBusy] = useState({});
 
+  // v0.59.1: currentlyReading was missing here, which is why a book being read
+  // right now still appeared on the wall.
   const owned = useMemo(
-    () => [...state.library, ...state.wishlist, ...(state.readNext || [])],
-    [state.library, state.wishlist, state.readNext]
+    () => [
+      ...state.library,
+      ...state.wishlist,
+      ...(state.readNext || []),
+      ...(state.currentlyReading || []),
+    ],
+    [state.library, state.wishlist, state.readNext, state.currentlyReading]
   );
 
   const favoriteGenres = state.profile?.favoriteGenres || [];
@@ -33,27 +49,57 @@ export default function Stacks() {
 
   const addedCount = Object.keys(decided).length;
 
+  // One handler for add, switch and undo.
+  //
+  // Clicking the active choice clears it; clicking the other switches. Writes
+  // go through the bulk helpers rather than addToWishlist because the card
+  // already carries a `bookId` — the bulk path reuses it instead of running
+  // another upsert_book, which is one fewer request and removes the conflict
+  // that was surfacing as a 409 on wishlist_items.
   const handleAdd = useCallback(async (book, target) => {
-    setDecided((d) => ({ ...d, [book.bookId]: target }));
+    const id = book.bookId;
+    if (busy[id]) return;
+
+    const current = decided[id];
+    const next = current === target ? null : target;
+
+    setBusy((b) => ({ ...b, [id]: true }));
+    setDecided((d) => {
+      const copy = { ...d };
+      if (next) copy[id] = next; else delete copy[id];
+      return copy;
+    });
+
     try {
-      if (target === 'wishlist') {
-        await addToWishlist(book);
-      } else {
-        await bulkAddToLibrary([book]);
-        showToast(t('stacks.addedRead', { title: book.t }));
-      }
+      // Leaving the previous shelf first, so switching never leaves the book
+      // on both.
+      if (current === 'library' && next !== 'library') await removeFromLibrary(book);
+      if (current === 'wishlist' && next !== 'wishlist') await removeFromWishlist(book, true);
+
+      if (next === 'library') await bulkAddToLibrary([book]);
+      if (next === 'wishlist') await bulkAddToWishlist([book]);
+
+      if (next === 'library') showToast(t('stacks.addedRead', { title: book.t }));
+      else if (next === 'wishlist') showToast(t('stacks.addedWant', { title: book.t }));
+      else showToast(t('stacks.removed', { title: book.t }));
     } catch (e) {
-      console.error('stacks add failed', e);
-      // Roll the card back so the reader can retry rather than being left
-      // with a card that looks added but isn't.
+      console.error('stacks write failed', e);
+      // Put the card back the way it was so the reader can retry, rather than
+      // leaving it showing a state that never reached the server.
       setDecided((d) => {
-        const next = { ...d };
-        delete next[book.bookId];
-        return next;
+        const copy = { ...d };
+        if (current) copy[id] = current; else delete copy[id];
+        return copy;
       });
       showToast(t('stacks.addFailed'), true);
+    } finally {
+      setBusy((b) => {
+        const copy = { ...b };
+        delete copy[id];
+        return copy;
+      });
     }
-  }, [addToWishlist, bulkAddToLibrary, showToast, t]);
+  }, [busy, decided, bulkAddToLibrary, bulkAddToWishlist, removeFromLibrary, removeFromWishlist, showToast, t]);
 
   async function runSearch(e) {
     e?.preventDefault();
@@ -119,6 +165,7 @@ export default function Stacks() {
             key={b.bookId}
             book={b}
             state={decided[b.bookId]}
+            busy={!!busy[b.bookId]}
             onAdd={handleAdd}
             onHide={hide}
           />
