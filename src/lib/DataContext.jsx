@@ -996,11 +996,17 @@ export function DataProvider({ children }) {
     for (const b of seedBooks) {
       const bookId = await upsertBookOnServer(b, 'curated');
       if (!bookId) continue;
+      // No .select().single() here any more. It was there to read the row back,
+      // but it turned an already-seeded book into an error twice over: the
+      // insert raised 23505, and .single() then raised again on zero rows. The
+      // book was dropped from `linked` and vanished from the seeded wishlist.
+      // Nothing downstream needs the returned row — bookId is already known.
       const { error } = await supabase
         .from('wishlist_items')
-        .insert({ user_id: user.id, book_id: bookId })
-        .select()
-        .single();
+        .upsert(
+          { user_id: user.id, book_id: bookId },
+          { onConflict: 'user_id,book_id', ignoreDuplicates: true }
+        );
       if (!error) linked.push({ ...b, bookId, status: 'verified', verifiedSource: 'curated_seed', source: 'curated' });
     }
     setState((s) => ({ ...s, wishlist: dedupeBooks([...s.wishlist, ...linked]) }));
@@ -1023,11 +1029,18 @@ export function DataProvider({ children }) {
         showToast(`Couldn't save "${book.t}"`, true);
         return false;
       }
+      // upsert, not insert: matches bulkAddToLibrary, and means a book already
+      // on the shelf is a no-op instead of a 409. The old code forgave 23505 in
+      // JS, so the UI was correct — but the request still failed at the network
+      // layer and filled the console with errors that looked like real ones.
       const { error } = await supabase
         .from('wishlist_items')
-        .insert({ user_id: user.id, book_id: bookId, notes: book.notes || null });
-      if (error && error.code !== '23505') {
-        console.error('wishlist insert failed', error);
+        .upsert(
+          { user_id: user.id, book_id: bookId, notes: book.notes || null },
+          { onConflict: 'user_id,book_id', ignoreDuplicates: true }
+        );
+      if (error) {
+        console.error('wishlist upsert failed', error);
         return false;
       }
       // v0.58 provenance: the reader took the Oracle up on it.
@@ -1747,15 +1760,19 @@ export function DataProvider({ children }) {
           b.bookId ||
           (await upsertBookOnServer(b, b.fromGoodreads ? 'goodreads_import' : undefined));
         if (bookId) {
+          // upsert rather than insert-and-forgive-23505: a book already on the
+          // shelf is a no-op at the database, so no 409 is raised in the first
+          // place. Still counted as linked — being already present is success.
           const { error } = await supabase
             .from('wishlist_items')
-            .insert({ user_id: user.id, book_id: bookId, notes: b.notes || null });
-          // 23505 is a unique violation — the row is already there, which is
-          // success for our purposes, not failure. Anything else is real.
-          if (!error || error.code === '23505') {
+            .upsert(
+              { user_id: user.id, book_id: bookId, notes: b.notes || null },
+              { onConflict: 'user_id,book_id', ignoreDuplicates: true }
+            );
+          if (!error) {
             linked.push({ ...b, bookId });
           } else {
-            console.error('wishlist bulk insert failed', error);
+            console.error('wishlist bulk upsert failed', error);
           }
         }
         onProgress?.(i + 1, toAdd.length);

@@ -117,7 +117,25 @@ jobs:
       - name: Fallback to OpenLibrary / Google Books
         run: node batch-scripts/isbnFallback.mjs --target both ${{ steps.args.outputs.limit }} | tee fallback.log
 
-      # 3. Claude — MANUAL ONLY. Never runs on the schedule; only when someone types a
+      # 3. Covers. Runs AFTER both ISBN passes on purpose: half this script's
+      #    lookup chain is ISBN-keyed (Penguin Random House CDN, Open Library by
+      #    ISBN), so every ISBN resolved above turns into a cover that would
+      #    otherwise have been missed this week.
+      #
+      #    --no-claude is mandatory here. coverBackfill's last-resort step calls
+      #    Claude with web_search, and this workflow's whole premise is that the
+      #    schedule spends nothing — same reason curateManualBooks below is
+      #    dispatch-only. Steps 1-6 of the chain are free APIs and do the bulk
+      #    of the work; run the Claude step by hand when it's worth paying for.
+      #
+      #    Why this matters more than it looks: 32% of the catalog (813 of 2542
+      #    books) has no cover, and The Stacks filters on `cover_url IS NOT NULL`
+      #    — so those books can never be shown to anyone, no matter how long a
+      #    reader browses. goodreads_import is the worst offender at 58% bare.
+      - name: Backfill missing covers
+        run: node batch-scripts/coverBackfill.mjs --no-claude ${{ steps.args.outputs.limit }} | tee covers.log
+
+      # 4. Claude — MANUAL ONLY. Never runs on the schedule; only when someone types a
       #    number into curate_limit, which makes the spend an explicit, bounded decision.
       #    Produces proposals in a CSV; applying them is still a separate --apply-titles
       #    run, so nothing here changes a title or merges a book.

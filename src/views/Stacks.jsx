@@ -15,6 +15,7 @@ import StackCard from '../components/StackCard';
 export default function Stacks() {
   const {
     state,
+    loading: dataLoading,
     bulkAddToLibrary,
     bulkAddToWishlist,
     removeFromLibrary,
@@ -45,7 +46,14 @@ export default function Stacks() {
   );
 
   const favoriteGenres = state.profile?.favoriteGenres || [];
-  const { books, loading, exhausted, loadMore, hide } = useStacks({ favoriteGenres, owned });
+  // `ready` holds the first fetch until the shelves are in. Without it the
+  // opening batch is drawn before state.wishlist/library exist and the wall
+  // offers books the reader already has.
+  const { books, loading, exhausted, loadMore, hide } = useStacks({
+    favoriteGenres,
+    owned,
+    ready: !dataLoading,
+  });
 
   const addedCount = Object.keys(decided).length;
 

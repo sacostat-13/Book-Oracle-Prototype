@@ -38,6 +38,24 @@ const PER_GENRE = 25;
 const MIN_RATINGS = 500;   // filters out obscure/duplicate editions
 const MIN_RATING = 3.6;    // keeps the wall worth browsing
 
+// Per-genre floor on `users_read_count` (v0.60).
+//
+// A single global MIN_RATINGS of 500 is the reason the crawl stopped adding
+// anything. It was tuned for genres like Literary Fiction, where thousands of
+// books clear 500 readers. It is far above the entire population of a niche
+// tag: "Folk Horror" run at 500 returns nothing at all, at any offset — which
+// is exactly what `Folk Horror@0:0` in the logs means. Zero rows at offset 0
+// is not a paging problem, and no amount of offset walking fixes it.
+//
+// So the bar moves with the genre. Broad genres keep the high floor that keeps
+// the wall respectable; narrow ones drop low enough that their real catalog is
+// reachable. A niche book with 60 readers is still a good recommendation to
+// someone browsing a Folk Horror shelf — it is only "obscure" relative to
+// bestsellers it was never competing with.
+const NICHE = { minRatings: 50,  minRating: 3.5 };
+const MID   = { minRatings: 150, minRating: 3.5 };
+const BROAD = { minRatings: MIN_RATINGS, minRating: MIN_RATING };
+
 // The 15 canonical genres (schema_v7 seeds) mapped onto the tags Hardcover
 // actually carries.
 //
@@ -51,21 +69,21 @@ const MIN_RATING = 3.6;    // keeps the wall worth browsing
 // `canonical` is written to books.genre so The Stacks can seed on it.
 // `tags` are what we ask Hardcover for.
 const GENRE_MAP = [
-  { canonical: 'Epic & Dark Fantasy',              tags: ['Dark Fantasy', 'Epic Fantasy'] },
-  { canonical: 'Sci-Fi & Speculative',             tags: ['Science Fiction', 'Speculative Fiction'] },
-  { canonical: 'Literary Fiction',                 tags: ['Literary Fiction'] },
-  { canonical: 'Gothic & Haunted Houses',          tags: ['Gothic', 'Haunted House'] },
-  { canonical: 'Classic & Older Gothic',           tags: ['Gothic Fiction', 'Classics'] },
-  { canonical: 'Southern & American Gothic',       tags: ['Southern Gothic'] },
-  { canonical: 'Folk Horror',                      tags: ['Folk Horror'] },
-  { canonical: 'Body Horror & Transgressive',      tags: ['Body Horror', 'Transgressive Fiction'] },
-  { canonical: 'Vampires',                         tags: ['Vampires'] },
-  { canonical: 'Witches',                          tags: ['Witches', 'Witchcraft'] },
-  { canonical: 'Cozy Fantasy',                     tags: ['Cozy Fantasy'] },
-  { canonical: 'Sapphic & Feminist Gothic',        tags: ['Sapphic', 'Feminist'] },
-  { canonical: 'Korean, Japanese & East Asian Lit', tags: ['Japanese Literature', 'Korean Literature'] },
-  { canonical: 'Latin American Horror & Literary', tags: ['Latin American Literature'] },
-  { canonical: 'Parenting & Motherhood',           tags: ['Parenting', 'Motherhood'] },
+  { canonical: 'Epic & Dark Fantasy',              tags: ['Dark Fantasy', 'Epic Fantasy'],                 ...BROAD },
+  { canonical: 'Sci-Fi & Speculative',             tags: ['Science Fiction', 'Speculative Fiction'],        ...BROAD },
+  { canonical: 'Literary Fiction',                 tags: ['Literary Fiction'],                              ...BROAD },
+  { canonical: 'Gothic & Haunted Houses',          tags: ['Gothic', 'Haunted House'],                       ...MID },
+  { canonical: 'Classic & Older Gothic',           tags: ['Gothic Fiction', 'Classics'],                    ...BROAD },
+  { canonical: 'Southern & American Gothic',       tags: ['Southern Gothic'],                               ...NICHE },
+  { canonical: 'Folk Horror',                      tags: ['Folk Horror'],                                   ...NICHE },
+  { canonical: 'Body Horror & Transgressive',      tags: ['Body Horror', 'Transgressive Fiction'],          ...NICHE },
+  { canonical: 'Vampires',                         tags: ['Vampires'],                                      ...MID },
+  { canonical: 'Witches',                          tags: ['Witches', 'Witchcraft'],                         ...MID },
+  { canonical: 'Cozy Fantasy',                     tags: ['Cozy Fantasy'],                                  ...NICHE },
+  { canonical: 'Sapphic & Feminist Gothic',        tags: ['Sapphic', 'Feminist'],                           ...NICHE },
+  { canonical: 'Korean, Japanese & East Asian Lit', tags: ['Japanese Literature', 'Korean Literature'],     ...MID },
+  { canonical: 'Latin American Horror & Literary', tags: ['Latin American Literature'],                     ...NICHE },
+  { canonical: 'Parenting & Motherhood',           tags: ['Parenting', 'Motherhood'],                       ...MID },
 ];
 
 const QUERY = `
@@ -163,18 +181,22 @@ function offsetForRun() {
 //
 // Halving down to zero costs at most a few extra queries and guarantees the
 // deep genres keep advancing while the shallow ones keep returning their head.
-async function fetchTag(token, tag, offset) {
+async function fetchTag(token, tag, offset, bar) {
+  const { minRatings, minRating } = bar;
   let attempt = offset;
   for (let i = 0; i < 4; i++) {
     const rows = await hardcover(token, {
       tag,
       limit: PER_GENRE,
       offset: attempt,
-      minRatings: MIN_RATINGS,
-      minRating: MIN_RATING,
+      minRatings,
+      minRating,
     });
-    if (rows.length > 0) return { rows, usedOffset: attempt };
-    if (attempt === 0) return { rows: [], usedOffset: 0 };
+    if (rows.length > 0) return { rows, usedOffset: attempt, dead: false };
+    // Zero rows at offset 0 means the tag itself yields nothing at this bar —
+    // either the tag name isn't in Hardcover's vocabulary, or no book carrying
+    // it clears minRatings. Either way, walking the offset can't help.
+    if (attempt === 0) return { rows: [], usedOffset: 0, dead: true };
     attempt = Math.floor(attempt / 2);
     await new Promise((r) => setTimeout(r, 250));
   }
@@ -182,10 +204,10 @@ async function fetchTag(token, tag, offset) {
     tag,
     limit: PER_GENRE,
     offset: 0,
-    minRatings: MIN_RATINGS,
-    minRating: MIN_RATING,
+    minRatings,
+    minRating,
   });
-  return { rows, usedOffset: 0 };
+  return { rows, usedOffset: 0, dead: rows.length === 0 };
 }
 
 export default async function handler() {
@@ -211,13 +233,24 @@ export default async function handler() {
     const tagDepths = [];
     for (const tag of entry.tags) {
       try {
-        const { rows, usedOffset } = await fetchTag(token, tag, offset);
+        const bar = { minRatings: entry.minRatings, minRating: entry.minRating };
+        const { rows, usedOffset, dead } = await fetchTag(token, tag, offset, bar);
+        if (dead) {
+          // Loud on purpose. A dead tag is a silent catalog leak: the run still
+          // reports success while contributing nothing, which is how the crawl
+          // flatlined without anyone noticing. If this repeats for the same tag
+          // across runs, either the name is wrong or its bar is still too high.
+          console.warn(
+            `[catalog-crawl] DEAD TAG "${tag}" — 0 rows at offset 0 with ` +
+            `minRatings=${bar.minRatings} minRating=${bar.minRating}`
+          );
+        }
         for (const r of rows) if (!byId.has(r.id)) byId.set(r.id, r);
         // Logged per tag: a tag that consistently reports usedOffset=0 is a
         // shallow one, and a tag that returns 0 rows even at offset 0 almost
         // certainly doesn't exist in Hardcover's vocabulary and should be
         // pruned from GENRE_MAP.
-        tagDepths.push(`${tag}@${usedOffset}:${rows.length}`);
+        tagDepths.push(`${tag}@${usedOffset}:${rows.length}≥${bar.minRatings}`);
       } catch (e) {
         console.error(`[catalog-crawl] tag "${tag}" failed:`, e.message);
         tagDepths.push(`${tag}:ERR`);

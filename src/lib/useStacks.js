@@ -28,6 +28,19 @@
 //                        "The Well of Ascension (Mistborn, #2)".
 // And `owned` must include currently-reading — its omission is why "The
 // Haunting of Hill House" appeared while it was being read.
+//
+// ── Reach (v0.60) ───────────────────────────────────────────────────────────
+// The wall shows every book with a cover. Favourite genres shape the ORDER,
+// not the eligibility — except while a reader is still building a library, when
+// the wall stays inside their favourites so the first impression is curated.
+// See queryWindow for the two modes.
+//
+// This replaces a scheme where genre-scoped rounds ran first and the catalog
+// opened up afterwards. It looked similar and behaved very differently: the
+// canonical genres hold only a few dozen browsable books each (443 of 1729
+// total at the time of writing — most of the catalog carries a null or
+// non-canonical genre), so genre-scoped rounds ran dry almost immediately and
+// then spent the query budget proving it.
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from './supabase';
@@ -39,6 +52,11 @@ const MAX_QUERIES = 8;     // per load, so a fully-owned catalog can't spin
 // Upper bound for the random offset guess. Comfortably above the current
 // catalog size so windows spread across it; overshoots walk themselves back.
 const OFFSET_CEILING = 4000;
+// Books across all shelves below which a reader counts as still building a
+// library, and The Stacks stays inside their favourite genres. Roughly a
+// session's worth of adding — enough for the wall to feel curated, short of
+// the point where narrow starts costing them variety.
+const BUILDING_LIBRARY_THRESHOLD = 20;
 
 const COLS = 'id, title, author, cover_url, description, pages, genre, isbn, status, source';
 
@@ -86,16 +104,22 @@ function authorLooseKey(b) {
   return bookKey({ t: cleanTitle(b.t || ''), a: primaryAuthor(b.a) });
 }
 
-export function useStacks({ favoriteGenres = [], owned = [] }) {
+// `ready` — hold the first fetch until the caller's shelves have loaded, so the
+// opening batch can actually be filtered against them. Defaults true so a
+// caller that has nothing to wait for behaves as before.
+export function useStacks({ favoriteGenres = [], owned = [], ready = true }) {
   const [books, setBooks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [exhausted, setExhausted] = useState(false);
 
   const seenRef = useRef(new Set());
   const hiddenRef = useRef(new Set());
-  const genrePhaseRef = useRef(true);
-  const genreRoundsRef = useRef(0);
+  // Set once the genre-only phase has been abandoned for this session, so an
+  // empty genre set isn't re-probed on every round.
+  const strictSpentRef = useRef(false);
 
+  const totalRef = useRef(null);
+  const ownedCountRef = useRef(0);
   const ownedIdsRef = useRef(new Set());
   const ownedKeysRef = useRef(new Set());
   const ownedEditionsRef = useRef(new Set());
@@ -116,6 +140,11 @@ export function useStacks({ favoriteGenres = [], owned = [] }) {
     ownedKeysRef.current = keys;
     ownedEditionsRef.current = editions;
     ownedLooseRef.current = loose;
+    // Drives the building-vs-browsing decision in queryWindow. Counted from
+    // `owned` rather than state.library alone so a reader who has been adding
+    // to the wishlist counts as building a library — which is what they are
+    // doing.
+    ownedCountRef.current = owned.length;
   }, [owned]);
 
   // Four keys, loosest last. Any one matching means the reader already has it.
@@ -174,8 +203,35 @@ export function useStacks({ favoriteGenres = [], owned = [] }) {
     return q.order('id', { ascending: true });
   }, [favoriteGenres]);
 
+  // Real size of the browsable catalog — rows passing the same status/cover
+  // filters the wall uses. Fetched once per session with a HEAD request, so it
+  // costs no rows.
+  //
+  // v0.60: an earlier version derived offsets from this and broke when the
+  // count came back null, so the count was removed entirely. Removing it cost
+  // us two things: offsets were guessed against OFFSET_CEILING (4000) on a
+  // catalog nearer 2.5K, so most guesses overshot and the halving walked them
+  // back toward the head of the table — the same few hundred books, over and
+  // over — and there was no way to tell "the random windows overlapped" from
+  // "the catalog is finished". It is back, but nullable and never trusted
+  // blindly: every caller falls back to the old behaviour when it is null.
+  const ensureTotal = useCallback(async () => {
+    if (totalRef.current !== null) return totalRef.current;
+    const { count, error } = await supabase
+      .from('books')
+      .select('id', { count: 'exact', head: true })
+      .neq('status', 'flagged')
+      .not('cover_url', 'is', null);
+    totalRef.current = error || typeof count !== 'number' ? null : count;
+    return totalRef.current;
+  }, []);
+
   const fetchWindow = useCallback(async (genreScoped) => {
-    let offset = Math.floor(Math.random() * OFFSET_CEILING);
+    const total = await ensureTotal();
+    // Scope the guess to the catalog we actually have. Genre-scoped sets are
+    // smaller still, so the halving below remains the safety net for those.
+    const ceiling = total && total > FETCH_SIZE ? total : OFFSET_CEILING;
+    let offset = Math.floor(Math.random() * Math.max(1, ceiling - FETCH_SIZE));
 
     for (let attempt = 0; attempt < 4 && offset > 0; attempt++) {
       const { data, error } = await baseQuery(genreScoped)
@@ -190,26 +246,58 @@ export function useStacks({ favoriteGenres = [], owned = [] }) {
     // offsets we guessed, which is the normal case for a narrow genre.
     const { data } = await baseQuery(genreScoped).range(0, FETCH_SIZE - 1);
     return data || [];
-  }, [baseQuery]);
+  }, [baseQuery, ensureTotal]);
 
+  // Two modes, decided by how much of a library the reader has built (v0.60).
+  //
+  // BUILDING (owned < BUILDING_LIBRARY_THRESHOLD): favourite genres only.
+  //   Someone with an empty shelf is trying to answer "is this app for me?",
+  //   and a wall of things they already like answers it faster than a wall of
+  //   everything. Narrow on purpose.
+  //
+  // BROWSING (owned >= threshold): the whole catalog, favourites first.
+  //   Once the shelf exists, narrow stops helping and starts running out. Each
+  //   round now draws a genre window AND a global window and concatenates them
+  //   genre-first — `selectFresh` and `collected.push(...)` both preserve
+  //   order, so favourites surface at the top of the wall without anything
+  //   being excluded from it.
+  //
+  // A reader with no favourite genres gets the whole catalog in both modes;
+  // there is nothing to prefer.
+  //
+  // Genre matching is on books.genre (written by upsert_book), not a
+  // book_genres join — that table is only populated after Oracle
+  // categorisation, so joining it would exclude every crawled and freshly
+  // imported title.
   const queryWindow = useCallback(async () => {
-    // Genre-seeded first so the opening screens look assembled for this reader.
-    // Seeds on books.genre (written by upsert_book), not a book_genres join —
-    // that table is only populated after Oracle categorisation, so joining it
-    // would exclude every crawled and freshly imported title.
-    //
-    // Capped at a few rounds so a reader isn't locked inside their own five
-    // genres for an entire session.
-    if (genrePhaseRef.current && favoriteGenres.length > 0) {
-      if (genreRoundsRef.current < 6) {
-        genreRoundsRef.current += 1;
-        const rows = await fetchWindow(true);
-        if (rows.length > 0) return rows;
-      }
-      genrePhaseRef.current = false;
+    if (favoriteGenres.length === 0) return fetchWindow(false);
+
+    const building =
+      ownedCountRef.current < BUILDING_LIBRARY_THRESHOLD && !strictSpentRef.current;
+
+    if (building) {
+      const rows = await fetchWindow(true);
+      if (rows.length > 0) return rows;
+      // The genre pool is dry — either the reader's favourites match no book in
+      // the catalog (an old taxonomy, a renamed genre), or they have genuinely
+      // seen all of it. Both are possible early: the canonical genres hold only
+      // a few dozen browsable books each.
+      //
+      // Opening up rather than showing an end screen is deliberate. A brand-new
+      // reader hitting "You've reached the end" in their first session is the
+      // worst outcome available to us, and strictness was only ever meant to
+      // make the opening feel curated — not to cap it. Latched for the session
+      // so we don't re-probe an empty genre set on every round.
+      strictSpentRef.current = true;
+      return fetchWindow(false);
     }
 
-    return fetchWindow(false);
+    // Browsing: favourites first, then everything.
+    const [preferred, everything] = await Promise.all([
+      fetchWindow(true),
+      fetchWindow(false),
+    ]);
+    return [...preferred, ...everything];
   }, [favoriteGenres, fetchWindow]);
 
   // Fetch until BATCH_TARGET books are ready to show, so the first load and
@@ -232,34 +320,63 @@ export function useStacks({ favoriteGenres = [], owned = [] }) {
     // Call only when the batch is kept. A discarded fetch must not poison the
     // seen set for the fetch that replaces it.
     const commit = () => { for (const id of batchSeen) seenRef.current.add(id); };
-    return { collected, dry: collected.length === 0, commit };
-  }, [queryWindow, selectFresh]);
+
+    // v0.60: a dry batch is NOT proof the catalog is finished.
+    //
+    // The windows are random, so several rounds landing entirely on books
+    // already shown is ordinary — especially late in a long browse, and
+    // especially for a reader with a big library filtering rows out. The old
+    // code set `exhausted` on the first dry batch and never cleared it, so
+    // "You've reached the end" appeared over a catalog of thousands after a
+    // couple of minutes' scrolling.
+    //
+    // Now a dry batch only ends the wall if the seen set actually accounts for
+    // the whole catalog. When the count is unavailable we keep the old
+    // behaviour rather than looping forever.
+    const total = await ensureTotal();
+    const reallyExhausted =
+      collected.length === 0 &&
+      (total === null || seenRef.current.size + batchSeen.size >= total);
+
+    return { collected, dry: collected.length === 0, reallyExhausted, commit };
+  }, [queryWindow, selectFresh, ensureTotal]);
 
   const loadMore = useCallback(async () => {
     setLoading(true);
-    const { collected, dry, commit } = await collectBatch();
+    const { collected, reallyExhausted, commit } = await collectBatch();
     commit();
     setBooks((prev) => [...prev, ...collected]);
-    if (dry) setExhausted(true);
+    setExhausted(reallyExhausted);
     setLoading(false);
   }, [collectBatch]);
 
+  // Gated on `ready` (v0.60).
+  //
+  // This used to be a bare mount effect. On a page load that lands directly on
+  // The Stacks it therefore ran while DataContext was still loading the
+  // reader's shelves from Supabase, so `owned` was empty and `isOwned` matched
+  // nothing — the opening batch of 20 was drawn with no ownership filter at
+  // all. That is why a book already on the wishlist appeared on the wall, and
+  // why adding it raised a duplicate-key error the reader had no way to
+  // predict. Waiting for the shelves costs a moment on first paint and makes
+  // the filter mean something.
   useEffect(() => {
+    if (!ready) return undefined;
     let cancelled = false;
     (async () => {
       setLoading(true);
-      const { collected, dry, commit } = await collectBatch();
+      const { collected, reallyExhausted, commit } = await collectBatch();
       // Bail before committing. Under StrictMode this pass is discarded and the
       // one after it must start from a clean seen set.
       if (cancelled) return;
       commit();
       setBooks(collected);
-      if (dry) setExhausted(true);
+      setExhausted(reallyExhausted);
       setLoading(false);
     })();
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [ready]);
 
   // Drops a book from the wall for this session. Session-scoped on purpose:
   // persisting it needs a `user_hidden_books` table and a decision about
