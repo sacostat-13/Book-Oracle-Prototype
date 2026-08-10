@@ -52,7 +52,7 @@ cp .env.example .env.local
 Required:
 ```
 VITE_SUPABASE_URL=https://YOUR-PROJECT.supabase.co
-VITE_SUPABASE_ANON_KEY=eyJhbGc...
+VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_...
 ```
 
 Optional (for affiliate purchase links):
@@ -79,7 +79,7 @@ and SPA redirect. Just connect the repo and Netlify handles it.
 
 **Required env vars in Netlify** (Site → Environment variables):
 - `VITE_SUPABASE_URL`
-- `VITE_SUPABASE_ANON_KEY`
+- `VITE_SUPABASE_PUBLISHABLE_KEY`
 - `HARDCOVER_API_TOKEN` (server-side; for the Hardcover proxy)
 - `ANTHROPIC_API_KEY` (server-side; for the Claude proxy)
 - `GOOGLE_BOOKS_API_KEY` (server-side; for the Google Books proxy — enable "Books API" on a Google Cloud project and create an API key. Keyless calls now return HTTP 429 / quota 0.)

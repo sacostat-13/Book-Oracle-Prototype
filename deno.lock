@@ -24,6 +24,7 @@
         "npm:react@^18.3.1",
         "npm:sass@^1.77.0",
         "npm:satori@0.26",
+        "npm:supabase@^2.22.6",
         "npm:three@0.184",
         "npm:vite-plugin-pwa@0.20",
         "npm:vite@^5.3.0",

@@ -17,8 +17,29 @@
 // not deployed as endpoints themselves.
 
 const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
+
+// Fallback chain updated for the new API keys (v0.60.4).
+//
+// Supabase is retiring the legacy `anon` and `service_role` JWTs. The last two
+// entries below name keys that will stop existing, so without the publishable
+// entries this chain would have silently emptied once legacy keys are disabled
+// — and `verifySupabaseJwt` failing open-ended is not a failure mode worth
+// discovering in production.
+//
+// The service key stays first because /auth/v1/user needs a key with at least
+// anon rights and this function already holds the secret one; nothing here
+// depends on elevated privileges beyond that.
+//
+// NOTE: `SUPABASE_SERVICE_ROLE_KEY` is a variable NAME, not a claim about the
+// key type. After the 2026 rotation it holds an `sb_secret_…` value. The name
+// was kept deliberately: thirteen call sites across functions, edge functions
+// and batch scripts read it, and renaming them all mid-incident would have
+// risked more than the inaccurate label costs.
 const SUPABASE_KEY =
+  process.env.SUPABASE_SECRET_KEY ||
   process.env.SUPABASE_SERVICE_ROLE_KEY ||
+  process.env.SUPABASE_PUBLISHABLE_KEY ||
+  process.env.VITE_SUPABASE_PUBLISHABLE_KEY ||
   process.env.SUPABASE_ANON_KEY ||
   process.env.VITE_SUPABASE_ANON_KEY;
 
