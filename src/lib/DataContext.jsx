@@ -4,6 +4,7 @@
 // app still works for anonymous prototyping.
 import { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
 import { supabase } from './supabase';
+import { fetchAllRows } from './supabasePaging';
 import { useAuth } from './AuthContext';
 import { ALL_BOOKS, bookKey } from './bookHelpers';
 import { computeCompletionMoments } from './shareMoments';
@@ -333,14 +334,25 @@ function rollupGenres(rows) {
 async function loadFromSupabase(userId) {
   const [profileRes, wishlistRes, readBooksRes, plansRes, currentlyReadingRes, memoriesRes, accomplishmentsRes] = await Promise.all([
     supabase.from('profiles').select('*').eq('id', userId).maybeSingle(),
-    supabase
-      .from('wishlist_items')
-      .select('id, added_at, notes, book:books(*, position_in_series, series:series(*))')
-      .eq('user_id', userId),
-    supabase
-      .from('read_books')
-      .select('id, rating, notes, read_at, source, book:books(*, position_in_series, series:series(*))')
-      .eq('user_id', userId),
+    // v0.48: paged. PostgREST caps any single response at `max-rows` (1000) and
+    // truncates SILENTLY — a 1170-item wishlist loaded as 1000 on every visit.
+    // Both queries carry an explicit stable sort so page boundaries are safe.
+    fetchAllRows(() =>
+      supabase
+        .from('wishlist_items')
+        .select('id, added_at, notes, book:books(*, position_in_series, series:series(*))')
+        .eq('user_id', userId)
+        .order('added_at', { ascending: true })
+        .order('id', { ascending: true })
+    ),
+    fetchAllRows(() =>
+      supabase
+        .from('read_books')
+        .select('id, rating, notes, read_at, source, book:books(*, position_in_series, series:series(*))')
+        .eq('user_id', userId)
+        .order('read_at', { ascending: false, nullsFirst: false })
+        .order('id', { ascending: true })
+    ),
     supabase
       .from('plans')
       .select('*')
