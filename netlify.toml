@@ -5,6 +5,11 @@
   edge_functions = "netlify/edge-functions"
 
 [build.environment]
+  # Stays on 20. Node 22 would give every function a native WebSocket and let
+  # send-notification-email.js drop its `ws` dependency and realtime.transport
+  # option — that alternative is recorded in that file's own header — but it is
+  # a runtime change for the whole site and does not belong in an SEO release.
+  # Worth doing deliberately, on its own, with the `ws` cleanup alongside it.
   NODE_VERSION = "20"
 
 [dev]

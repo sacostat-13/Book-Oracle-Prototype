@@ -2,8 +2,10 @@
 // Wired via netlify.toml: GET /sitemap.xml -> this function (200 rewrite,
 // not a redirect, so the URL bar and robots.txt both stay /sitemap.xml).
 //
-// Required env vars: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY (same ones
-// already used by send-notification-email.js).
+// Required env vars: SUPABASE_URL (or VITE_SUPABASE_URL) and
+// SUPABASE_SERVICE_ROLE_KEY. Both must be scoped to Functions in Netlify, not
+// Builds only — a build-scoped variable is inlined into the client bundle and
+// is invisible here at runtime.
 //
 // Covers:
 //   - Static public routes (home, about, legal pages)
@@ -14,7 +16,33 @@
 // profiles) — those are ephemeral/private-by-default and not meaningful
 // to index. book-page/series-page are the SEO-relevant surface here.
 
-import { createClient } from '@supabase/supabase-js';
+// v0.61.2: supabase-js REMOVED. Importing it crashed this function outright on
+// Netlify's Node 20 runtime:
+//
+//   Error: Node.js 20 detected without native WebSocket support.
+//   at WebSocketFactory.getWebSocketConstructor (@supabase/realtime-js/...)
+//   at new SupabaseClient (...)  at createClient (...)  at sitemap.js:57
+//
+// createClient() constructs a RealtimeClient unconditionally, and realtime-js
+// requires a global WebSocket, which Node 20 does not provide. The throw
+// happened inside the try block, so the catch below did its job and served the
+// 7 static entries with a clean 200 — which is why this looked for weeks like a
+// credentials problem rather than a crash.
+//
+// THIS FUNCTION WAS THE ONE THAT MISSED THE MEMO. The same crash was hit and
+// fixed twice already, two different ways, both documented in place:
+//
+//   send-notification-email.js — imports `ws` and passes it as
+//     realtime.transport, satisfying the RealtimeClient constructor without
+//     ever opening a channel.
+//   catalog-crawl.mjs — dropped supabase-js entirely and calls PostgREST over
+//     fetch, on the grounds that "pulling a websocket stack into a function
+//     that only makes one RPC call is the wrong shape".
+//
+// This file predates both and kept the naive createClient() call. It follows
+// catalog-crawl's route, for the same reason: one SELECT does not justify a
+// client library, let alone a websocket stack. That also makes it immune to
+// the Node version rather than dependent on a workaround.
 
 // v0.61.2 — www, matching Netlify's primary domain. thebooksoracle.com 301s
 // here, so the previous non-www value meant every URL emitted by this file
@@ -88,32 +116,40 @@ export async function handler() {
   }
 
   try {
-    const supabase = createClient(supabaseUrl, serviceKey);
-
-    // v0.39.8: PostgREST caps returned rows at the project's Max Rows
-    // setting (default 1000) regardless of .limit() — a single query
-    // silently truncates on any catalog bigger than that. Paginate with
-    // .range() until a page comes back short, same fix applied to
-    // og-prerender.js's book lookup.
+    // PostgREST caps returned rows at the project's Max Rows setting (default
+    // 1000) regardless of any limit — a single request silently truncates on
+    // any catalog bigger than that. Page with Range headers until a short page
+    // comes back. Same fix as og-prerender.js and DataContext's wishlist load.
     const PAGE_SIZE = 1000;
     const MAX_PAGES = 20; // hard ceiling so a runaway catalog can't hang the function
+    // status is filtered server-side: 'oracle_categorized' is treated as
+    // equivalent to 'verified' everywhere else in the app, so books the Oracle
+    // classified but nobody hand-checked belong in the sitemap too.
+    const select = 'title,author,series:series(name)';
+    const query = `${supabaseUrl}/rest/v1/books` +
+      `?select=${encodeURIComponent(select)}` +
+      `&status=in.(verified,oracle_categorized)`;
+
     let books = [];
     for (let page = 0; page < MAX_PAGES; page++) {
-      const { data, error } = await supabase
-        .from('books')
-        .select('title, author, series:series(name)')
-        // v0.39.8: widened from .eq('status', 'verified') — the app treats
-        // 'oracle_categorized' as equivalent to verified everywhere else (see
-        // DataContext.jsx's isVerified-style check), so books categorized by
-        // the Oracle but not yet manually verified were missing from the
-        // sitemap for no good reason. Same fix applied to og-prerender.js.
-        .in('status', ['verified', 'oracle_categorized'])
-        .range(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE - 1);
-
-      if (error) throw error;
+      const from = page * PAGE_SIZE;
+      const res = await fetch(`${query}&order=id.asc`, {
+        headers: {
+          apikey: serviceKey,
+          Authorization: `Bearer ${serviceKey}`,
+          Range: `${from}-${from + PAGE_SIZE - 1}`,
+          'Range-Unit': 'items',
+        },
+      });
+      if (!res.ok) {
+        throw new Error(`PostgREST ${res.status}: ${(await res.text()).slice(0, 200)}`);
+      }
+      const data = await res.json();
       books = books.concat(data);
-      if (!data || data.length < PAGE_SIZE) break; // last page
+      if (!Array.isArray(data) || data.length < PAGE_SIZE) break; // last page
     }
+
+    console.log(`[sitemap] ${books.length} catalog rows fetched`);
 
     const bookEntries = [];
     const seriesNames = new Set();
@@ -132,7 +168,11 @@ export async function handler() {
 
     return xmlResponse([...STATIC_ENTRIES, ...bookEntries, ...seriesEntries]);
   } catch (err) {
-    console.error('sitemap generation failed', err);
+    // Loud on purpose. This catch previously turned any failure — including a
+    // hard crash in createClient — into a valid-looking 7-entry sitemap, and
+    // Search Console cheerfully reported "Success". Graceful degradation is
+    // still right for a crawler-facing endpoint, but it must never be silent.
+    console.error('[sitemap] DEGRADED: falling back to static entries only.', err);
     // Degrade gracefully — static entries only, still a 200.
     return xmlResponse(STATIC_ENTRIES);
   }

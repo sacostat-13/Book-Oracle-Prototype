@@ -389,13 +389,55 @@ about two weeks after this deploys before reopening the question.
 
 Both found while verifying the sitemap, both invisible by construction.
 
-**`sitemap.js` served 7 URLs instead of ~2,500.** It read `process.env.SUPABASE_URL`
-with no `VITE_SUPABASE_URL` fallback — the only Supabase consumer in
-`netlify/functions` without one. With just `VITE_SUPABASE_URL` set in Netlify,
-the credentials guard fired on every request and the function returned its 7
-static entries with a valid 200. Search Console reported "Success · 7 pages
-discovered", which reads as a working sitemap. Not one book or series page had
-ever been submitted to Google.
+**`sitemap.js` served 7 URLs instead of ~1,400.** Two independent bugs, either
+one sufficient.
+
+The real one: `createClient()` from `@supabase/supabase-js` **throws on Netlify's
+Node 20 runtime**.
+
+```
+Error: Node.js 20 detected without native WebSocket support.
+  at WebSocketFactory.getWebSocketConstructor (@supabase/realtime-js/…)
+  at new SupabaseClient (…)  at createClient (…)  at sitemap.js:57
+```
+
+`createClient` constructs a `RealtimeClient` unconditionally, and realtime-js now
+requires a global `WebSocket` — Node 20 has none, Node 22 does. The throw landed
+inside the `try`, the `catch` did exactly what it was written to do, and the
+function returned its 7 static entries with a clean 200. Search Console reported
+"Success · 7 pages discovered". Not one book or series page had ever been
+submitted to Google.
+
+`sitemap.js` now talks to PostgREST over plain `fetch`, with `Range` headers for
+pagination.
+
+Worth noting how this bug survived: **the same crash had already been hit and
+fixed twice**, and this function missed both.
+
+- `send-notification-email.js` imports `ws` and passes it as
+  `realtime.transport`, satisfying the `RealtimeClient` constructor without ever
+  opening a channel.
+- `catalog-crawl.mjs` dropped supabase-js entirely for `fetch`, reasoning that
+  "pulling a websocket stack into a function that only makes one RPC call is the
+  wrong shape."
+
+Both carry that reasoning in their own headers. `sitemap.js` predates them, kept
+the naive `createClient()` call, and — because its `catch` degraded so
+gracefully — never announced that it had stopped working. It now follows
+`catalog-crawl`'s route, which makes it immune to the Node version rather than
+dependent on a workaround.
+
+`NODE_VERSION` stays at **20**. Node 22 would give every function a native
+WebSocket and let `send-notification-email.js` drop both the `ws` dependency and
+the transport option — that alternative is already recorded in its header — but
+it is a runtime change for the whole site and does not belong in an SEO release.
+
+The second bug, found first and fixed anyway: `sitemap.js` read
+`process.env.SUPABASE_URL` with no `VITE_SUPABASE_URL` fallback — the only
+Supabase consumer in `netlify/functions` without one. It would have produced an
+identical 7-entry sitemap on its own. Both env vars must also be scoped to
+**Functions** in Netlify, not Builds only; a build-scoped variable is inlined
+into the client bundle and invisible at runtime.
 
 **`og-prerender.js` had the identical bug**, via `Deno.env.get('SUPABASE_URL')`.
 When it fires, the function returns `context.next()` — which is *also* the
