@@ -72,7 +72,13 @@ const env = Object.fromEntries(
 
 const SUPABASE_URL = env['VITE_SUPABASE_URL'] || '';
 const SERVICE_KEY = env['SUPABASE_SERVICE_ROLE_KEY'] || '';
-const ANTHROPIC_KEY = env['ANTHROPIC_KEY'] || '';
+// v0.61: was `env['ANTHROPIC_KEY']` only — which matched neither this script's
+// own usage docs above, nor its error message below, nor any sibling script
+// (curateManualBooks and coverBackfill both read ANTHROPIC_API_KEY). It worked
+// locally because a hand-written .env.local happened to carry the short name;
+// it would have failed on the first nightly CI run, where the file is composed
+// from the ANTHROPIC_API_KEY secret. Both are accepted so neither breaks.
+const ANTHROPIC_KEY = env['ANTHROPIC_API_KEY'] || env['ANTHROPIC_KEY'] || '';
 
 if (!SUPABASE_URL || !SERVICE_KEY) {
   console.error('Missing VITE_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY in .env.local');

@@ -91,7 +91,7 @@ export default function Landing() {
     title: 'The Books Oracle — An Oracle that knows what you’ll love next',
     description:
       'Track your reading, get suggestions that actually fit your taste, and join book clubs. Free to start, full library import, English & Spanish.',
-    image: 'https://thebooksoracle.com/images/landing/og-share.png',
+    image: 'https://www.thebooksoracle.com/images/landing/og-share.png',
   });
 
   useEffect(() => {
@@ -100,20 +100,20 @@ export default function Landing() {
       name: t(`landing.questions.q${i}`),
       acceptedAnswer: { '@type': 'Answer', text: t(`landing.questions.a${i}`) },
     }));
+    // v0.61.2: the SoftwareApplication node moved OUT of here and into
+    // index.html as static markup. It was being injected after mount, which is
+    // the same deferred-rendering problem the whole SEO pass exists to fix —
+    // and it declared a different description and price than the static block
+    // would have, so shipping both would have handed a crawler two conflicting
+    // definitions of the same entity.
+    //
+    // FAQPage stays client-side. It is built from translated strings, so it
+    // cannot be static without duplicating the copy, and it is additive rather
+    // than identifying: worth having when Google does render, no loss when it
+    // doesn't.
     const jsonLd = {
       '@context': 'https://schema.org',
       '@graph': [
-        {
-          '@type': 'SoftwareApplication',
-          name: 'The Books Oracle',
-          applicationCategory: 'LifestyleApplication',
-          operatingSystem: 'Web',
-          offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
-          url: 'https://thebooksoracle.com/',
-          inLanguage: ['en', 'es'],
-          description:
-            'A reading companion with AI-powered suggestions, wishlist, library, reading plans, book clubs, and friends activity.',
-        },
         { '@type': 'FAQPage', mainEntity: faqEntities },
       ],
     };

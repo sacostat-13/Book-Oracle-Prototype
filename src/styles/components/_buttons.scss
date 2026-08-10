@@ -152,64 +152,33 @@
   }
 }
 
-// ── Oracle categorization progress (previously had zero CSS behind it —
-// rendered as plain unstyled text, no spacing, no visible bar) ────────────────
-.oracle-categorization-button {
-  margin: var(--ro-space-4) 0;
-}
-
-.oracle-progress {
+// ── Curation notice (v0.61) ───────────────────────────────────────────────────
+// Replaces the Oracle categorization button and its progress bar. Nothing here
+// is interactive: the nightly job does the work, this only says so. Styled as
+// a quiet marginal note rather than a card, so it reads as an aside to the
+// shelf rather than another thing competing for attention.
+.curation-notice {
   display: flex;
-  flex-direction: column;
-  gap: var(--ro-space-3);
-  padding: 16px 20px;
-  border-radius: 12px;
+  align-items: baseline;
+  gap: var(--ro-space-2);
+  margin: var(--ro-space-4) 0;
+  padding: 10px 14px;
+  border-left: 2px solid var(--ro-accent-line);
   background: var(--ro-surface);
-  border: 1px solid var(--ro-border);
+  border-radius: 0 8px 8px 0;
 }
 
-.oracle-progress-label {
+.curation-notice__ornament {
+  color: var(--ro-accent);
+  font-size: 13px;
+  line-height: 1;
+}
+
+.curation-notice__text {
   font-family: var(--ro-font-body);
   font-style: italic;
   font-size: 14px;
   color: var(--ro-text-2);
-}
-
-.oracle-progress-track {
-  width: 100%;
-  height: 8px;
-  border-radius: var(--ro-radius-pill);
-  background: var(--ro-ring-track);
-  overflow: hidden;
-}
-
-.oracle-progress-fill {
-  height: 100%;
-  background: var(--ro-accent);
-  border-radius: var(--ro-radius-pill);
-  transition: width .3s ease;
-}
-
-.oracle-progress-errors {
-  display: flex;
-  flex-direction: column;
-  gap: var(--ro-space-2);
-  margin-top: var(--ro-space-1);
-}
-
-.oracle-progress-error {
-  font-family: var(--ro-font-body);
-  font-size: 13px;
-  color: var(--ro-error);
-  padding-left: 14px;
-  position: relative;
-
-  &::before {
-    content: '⚑';
-    position: absolute;
-    left: 0;
-    font-size: 11px;
-  }
 }
 
 // ── Sizes ─────────────────────────────────────────────────────────────────────

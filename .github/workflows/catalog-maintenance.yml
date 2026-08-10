@@ -65,6 +65,23 @@ jobs:
     # pass is slow by design. Default 360 min is the ceiling; this is well clear of it.
     timeout-minutes: 180
 
+    # v0.61.2 — THIS IS THE FIX FOR "the run was green but the logs were empty".
+    #
+    # GitHub runs `run:` blocks as `bash -e {0}`. No pipefail. Every script step
+    # here is `node script.mjs | tee x.log`, and in a pipeline without pipefail
+    # the exit status is TEE's, not node's — tee always succeeds. So when a
+    # script died on startup (every one of these exits 1 via its own
+    # `main().catch(...)`), the step went green, the .log was empty because
+    # nothing was ever written to stdout, no CSVs were produced, the summary
+    # counted zero rows everywhere, needs_review stayed false, and no issue was
+    # opened. A completely silent failure that looked like a clean run.
+    #
+    # `shell: bash` opts into `bash --noprofile --norc -eo pipefail {0}`, so a
+    # script that dies now fails its step loudly.
+    defaults:
+      run:
+        shell: bash
+
     steps:
       - uses: actions/checkout@v4
 
@@ -96,6 +113,13 @@ jobs:
             echo "ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY"
             echo "GOOGLE_BOOKS_API_KEY=$GOOGLE_BOOKS_API_KEY"
           } > .env.local
+
+      # writeFileSync does not create parent directories. batch-scripts/output/
+      # is gitignored except for .gitkeep, so it does exist in a fresh checkout
+      # — but if that .gitkeep is ever dropped, every CSV write throws and takes
+      # its whole script down. One mkdir removes the class of failure.
+      - name: Ensure output directory exists
+        run: mkdir -p batch-scripts/output
 
       - name: Set common args
         id: args
@@ -169,6 +193,20 @@ jobs:
         run: |
           set -uo pipefail
           csv_rows() { [ -f "$1" ] && [ "$(wc -l < "$1")" -gt 1 ] && echo $(( $(wc -l < "$1") - 1 )) || echo 0; }
+          # metadataBackfill prints a machine-readable last line:
+          #   [metadataBackfill] descriptions=N genres=N unmatchedGenre=N nothingFound=N
+          # Nothing was reading it, which is why a run that filled hundreds of
+          # descriptions reported nothing about them — the table only ever
+          # counted CSV rows, and metadataBackfill's CSV lists its FAILURES.
+          # Absence of a genre-unmatched.csv means total success, and rendered
+          # as a row of zeros indistinguishable from "never ran".
+          meta_field() {
+            grep -o "$1=[0-9]*" metadata.log 2>/dev/null | tail -1 | cut -d= -f2 || true
+          }
+          DESCS=$(meta_field descriptions); DESCS=${DESCS:-0}
+          GENRES=$(meta_field genres);      GENRES=${GENRES:-0}
+          NOTHING=$(meta_field nothingFound); NOTHING=${NOTHING:-0}
+
           UNRESOLVED=$(csv_rows batch-scripts/output/isbn-unresolved.csv)
           STILL=$(csv_rows batch-scripts/output/isbn-still-unresolved.csv)
           PROPOSED=$(csv_rows batch-scripts/output/proposed-titles.csv)
@@ -202,10 +240,27 @@ jobs:
             echo "| ISBNs unresolved after Hardcover | $UNRESOLVED |"
             echo "| Still unresolved after OL/Google | $STILL |"
             echo "| Books with subjects but no genre rule | $NOGENRE |"
+            echo "| Descriptions filled (free APIs) | $DESCS |"
+            echo "| Genres filled (free APIs) | $GENRES |"
+            echo "| Looked up, nothing found | $NOTHING |"
             echo ""
+            # Report every expected log, including the ones that are missing or
+            # empty. `continue`-ing past an absent file is what made a silent
+            # failure look identical to a step that had nothing to say.
             for f in backfill fallback covers metadata curate; do
-              [ -f "$f.log" ] || continue
-              echo "<details><summary>$f</summary>"
+              if [ ! -f "$f.log" ]; then
+                # curate is dispatch-only, so its absence is normal.
+                [ "$f" = "curate" ] && continue
+                echo "⚠️ **$f** — no log file. The step did not run, or died before writing anything."
+                echo ""
+                continue
+              fi
+              if [ ! -s "$f.log" ]; then
+                echo "⚠️ **$f** — log is empty. The script produced no stdout at all."
+                echo ""
+                continue
+              fi
+              echo "<details><summary>$f ($(wc -l < "$f.log") lines)</summary>"
               echo ""
               echo '```'
               tail -n 20 "$f.log"

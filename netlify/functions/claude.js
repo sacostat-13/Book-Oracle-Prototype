@@ -136,7 +136,18 @@ export async function handler(event) {
   // exemption applies, so an arbitrary client string must never reach the RPC.
   // 'search' is the FREE book-identification fallback: authenticated + rate
   // limited, but never charged against the Oracle quota.
-  const EXEMPTIBLE_FEATURES = ['categorization'];
+  // v0.61: EXEMPTIBLE_FEATURES is now empty, and deliberately kept rather than
+  // deleted. 'categorization' was its only member — the curator exemption
+  // existed solely so catalog maintenance didn't eat a curator's own quota.
+  // That surface is gone (the in-app categorize button was removed; the work
+  // runs nightly in CI under the service role), so nothing should be exempt.
+  //
+  // The array stays because the mechanism is sound and the next exemption will
+  // want it. `feature` therefore always resolves to null today, which means the
+  // RPC never takes its exemption branch — the safe default. Deleting the
+  // plumbing and re-deriving it later is how exemptions get re-introduced
+  // without the allowlist that keeps an arbitrary client string out of the RPC.
+  const EXEMPTIBLE_FEATURES = [];
   const rawFeature = typeof body.feature === 'string' ? body.feature : null;
   const isFreeSearch = rawFeature === 'search';
   const feature = EXEMPTIBLE_FEATURES.includes(rawFeature) ? rawFeature : null;

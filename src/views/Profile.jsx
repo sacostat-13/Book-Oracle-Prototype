@@ -1548,9 +1548,7 @@ export default function Profile() {
                     style={{ '--ai-pct': `${Math.min(100, Math.round(((quota.calls_used ?? 0) / (quota.calls_limit ?? 5)) * 100))}%` }}
                   />
                 </div>
-                {quota.is_curator && (
-                  <div className="db-ai__note">{t('dashboard.aiQuotaCuratorNote')}</div>
-                )}
+                {/* v0.61: curator exemption note removed — see Dashboard.jsx */}
                 {quota.reset_at && (
                   <div className="db-ai__note">
                     {t('subscription.resetsOn', { date: new Date(quota.reset_at).toLocaleDateString(undefined, { month: 'long', day: 'numeric' }) })}

@@ -6,6 +6,104 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>The Books Oracle — Your Reading Companion</title>
 
+    <!-- v0.61.2 SEO.
+         Everything in this block is STATIC on purpose. It used to be set by
+         useDocumentMeta() after React mounted, on the stated assumption that
+         "Google executes JS before indexing". Google can, but rendering is a
+         deferred second pass with no guaranteed timing, and it is deprioritised
+         hardest for exactly this site's profile: new domain, few inbound links,
+         no crawl history. Meanwhile the OG prerender edge function served fully
+         populated HTML to Slack and Facebook. Link previews were better
+         optimised than search.
+         The client hook still runs and still overrides these per route — this
+         is the floor, not the ceiling. -->
+
+    <!-- CANONICAL HOST: www.
+         thebooksoracle.com 301s to www.thebooksoracle.com, but robots.txt, the
+         sitemap function, the OG prerender SITE constant and the client-side
+         canonical all previously declared the NON-www form. Every sitemap URL
+         submitted to Google therefore redirected, and the canonical pointed at
+         a URL that was not the one being served — splitting signals across two
+         hosts and a third domain (readingoracle.com).
+         If you ever flip Netlify's primary domain to non-www, four places have
+         to change together: here, robots.txt, netlify/functions/sitemap.js and
+         netlify/edge-functions/og-prerender.js. -->
+    <link rel="canonical" href="https://www.thebooksoracle.com/">
+
+    <meta name="description"
+        content="The Books Oracle is a reading companion for people with more books than evenings. Keep your wishlist and library, track series and reading plans, and let the Oracle suggest what to read next — from your own shelf, always with reasons.">
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
+
+    <!-- Open Graph / Twitter. The edge function overwrites these on entity
+         routes (/book/:key, /series/:name, …); these are the landing defaults,
+         which no prerender path ever covered. -->
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="The Books Oracle">
+    <meta property="og:url" content="https://www.thebooksoracle.com/">
+    <meta property="og:title" content="The Books Oracle — Your Reading Companion">
+    <meta property="og:description"
+        content="Three hundred books on your list. Which one will you read tonight? The Oracle reads your own shelf and suggests what to read next — always with reasons.">
+    <meta property="og:image" content="https://www.thebooksoracle.com/Logo-Social.jpeg">
+    <meta property="og:locale" content="en_US">
+    <meta property="og:locale:alternate" content="es_AR">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="The Books Oracle — Your Reading Companion">
+    <meta name="twitter:description"
+        content="A reading companion for people with more books than evenings. The Oracle reads your shelf and suggests tonight's book — with reasons.">
+    <meta name="twitter:image" content="https://www.thebooksoracle.com/Logo-Social.jpeg">
+
+    <!-- Both domains serve the same app; declare the pairing rather than
+         leaving Google to guess which is primary. -->
+    <link rel="alternate" hreflang="en" href="https://www.thebooksoracle.com/">
+    <link rel="alternate" hreflang="es" href="https://www.thebooksoracle.com/">
+    <link rel="alternate" hreflang="x-default" href="https://www.thebooksoracle.com/">
+
+    <!-- JSON-LD. Two entities, because the site is both a thing you use and a
+         thing you might subscribe to, and the free tier is a fact worth
+         stating in structured form. -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "WebSite",
+          "@id": "https://www.thebooksoracle.com/#website",
+          "url": "https://www.thebooksoracle.com/",
+          "name": "The Books Oracle",
+          "alternateName": "Books Oracle",
+          "description": "A reading companion that suggests your next book from your own shelf, with reasons.",
+          "inLanguage": ["en", "es"]
+        },
+        {
+          "@type": "SoftwareApplication",
+          "@id": "https://www.thebooksoracle.com/#app",
+          "name": "The Books Oracle",
+          "applicationCategory": "LifestyleApplication",
+          "operatingSystem": "Web",
+          "url": "https://www.thebooksoracle.com/",
+          "description": "Keep your wishlist and library, track series, build reading plans, join book clubs, and let the Oracle suggest what to read next from books you already own.",
+          "inLanguage": ["en", "es"],
+          "offers": [
+            {
+              "@type": "Offer",
+              "name": "The Seeker",
+              "price": "0",
+              "priceCurrency": "USD",
+              "description": "Free forever. Unlimited wishlist and library, reading plans, book clubs, and 5 Oracle suggestions per month."
+            },
+            {
+              "@type": "Offer",
+              "name": "The Adept",
+              "price": "5.99",
+              "priceCurrency": "USD",
+              "description": "Five Oracle suggestions per day, each with reasons."
+            }
+          ]
+        }
+      ]
+    }
+    </script>
+
     <!-- PWA -->
     <link rel="manifest" href="/manifest.json">
     <meta name="theme-color" content="#1a1410">
@@ -17,10 +115,6 @@
     <link rel="apple-touch-icon" href="/icons/icon-192.png">
     <link rel="icon" href="/icons/favicon-light.png" media="(prefers-color-scheme: light)">
     <link rel="icon" href="/icons/favicon-dark.png" media="(prefers-color-scheme: dark)">
-
-    <!-- Splash / description -->
-    <meta name="description"
-        content="The Books Oracle — wishlist, library, reading plans and an Oracle that knows what you will love next.">
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -34,10 +128,83 @@
         href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=IBM+Plex+Mono:wght@300;400;500&family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap"
         rel="stylesheet">
 
+    <style>
+        /* Styling for the pre-mount fallback below. Deliberately inline and
+           tiny: it has to be correct before any stylesheet arrives, or the
+           first paint is unstyled text on white. */
+        #root>.pre-mount {
+            min-height: 100vh;
+            margin: 0;
+            padding: 12vh 6vw;
+            box-sizing: border-box;
+            background: #1a1410;
+            color: #e8e0d4;
+            font-family: 'Instrument Serif', 'EB Garamond', Georgia, serif;
+        }
+
+        #root>.pre-mount h1 {
+            font-size: clamp(2rem, 6vw, 3.5rem);
+            font-weight: 400;
+            margin: 0 0 .5em;
+            line-height: 1.1;
+        }
+
+        #root>.pre-mount p {
+            font-size: clamp(1rem, 2.2vw, 1.25rem);
+            line-height: 1.6;
+            max-width: 46ch;
+            margin: 0 0 1em;
+            color: #b8ac9a;
+        }
+
+        #root>.pre-mount ul {
+            color: #b8ac9a;
+            line-height: 1.8;
+            padding-left: 1.2em;
+            max-width: 46ch;
+        }
+
+        #root>.pre-mount .eyebrow {
+            font-family: 'IBM Plex Mono', ui-monospace, monospace;
+            font-size: .75rem;
+            letter-spacing: .18em;
+            text-transform: uppercase;
+            color: #c9a227;
+        }
+    </style>
 </head>
 
 <body>
-    <div id="root"></div>
+    <!-- The #root fallback is REAL CONTENT, not a spinner.
+         Previously this element was empty, so the homepage served to a crawler
+         was a title, a meta description and nothing else — no body copy at all
+         to rank for "reading companion" or anything near it.
+         React's createRoot().render() replaces these children wholesale on
+         mount, so a reader sees this only for the few hundred ms before the
+         bundle executes. It is styled to read as an intentional opening rather
+         than a flash of unstyled content.
+         This is not cloaking: it is the same markup for every visitor, human or
+         crawler, and it says the same thing the rendered page says. -->
+    <div id="root">
+        <div class="pre-mount">
+            <p class="eyebrow">A reading companion</p>
+            <h1>The Books Oracle</h1>
+            <p>Three hundred books on your list. Which one will you read tonight?</p>
+            <p>The Books Oracle is a reading companion for people with more books than evenings. It keeps your wishlist
+                and your library, tracks the series you are partway through, and builds reading plans that pace you
+                through a stack. When you want to be told what to read, the Oracle draws from your own shelf — and
+                always tells you why it chose what it chose. The choice stays yours.</p>
+            <ul>
+                <li>Ranked suggestions from books you already own, each with its reasons</li>
+                <li>Reading plans that turn a stack of books into a path</li>
+                <li>Series tracking, book clubs, shared lists and reading friends</li>
+                <li>The Vault — a curated catalog of around a thousand proven titles</li>
+                <li>Fully bilingual: every page exists in English and Spanish</li>
+                <li>Free forever as a Seeker; five Oracle suggestions a month</li>
+            </ul>
+            <p>Loading the Oracle…</p>
+        </div>
+    </div>
     <script type="module" src="/src/main.jsx"></script>
 </body>
 

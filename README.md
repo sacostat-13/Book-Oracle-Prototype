@@ -4,7 +4,7 @@ A reading companion — wishlist, library, reading plans, book clubs, and an AI-
 for book discovery. Built with React + Vite + SCSS, backed by Supabase for auth
 and cross-device sync, and Netlify Functions for API proxying.
 
-> Current version: **v0.59** — see [Releases](#releases) below for changelog.
+> Current version: **v0.61.2** — see [Releases](#releases) below for changelog.
 > Upgrading from an earlier version? Check the matching `MIGRATION_*.md` / `UPDATE_*.md`.
 
 ---
@@ -332,6 +332,154 @@ and forward requests. Locally you need `netlify dev` to make them work.
 ---
 
 ## Releases
+
+# Update Notes — v0.61 → v0.61.2: the homepage becomes indexable
+
+## The problem
+
+Searching for the exact brand name returned nothing from the site. The cause was
+not the name — it was that `https://www.thebooksoracle.com/` served a `<title>`,
+a meta description, and `<div id="root"></div>`. No body copy at all.
+
+`netlify/edge-functions/og-prerender.js` prerenders entity routes for
+link-preview bots, and its header states the assumption behind leaving the
+landing page out: *"fine for Google (which executes JS before indexing)"*. Google
+can render JS, but it is a deferred second pass with no guaranteed timing,
+deprioritised hardest for new domains with no crawl history. The result was that
+Slack and Facebook received fully populated HTML while Google received an empty
+shell.
+
+A second, compounding problem: the apex domain 301s to `www`, but `robots.txt`,
+`sitemap.js`, `og-prerender.js` and the client-side canonical in `App.jsx` all
+declared the **non-www** host. Every sitemap URL redirected, and the canonical
+named a URL that was never the one served.
+
+## The fix
+
+**Static content in `index.html`.** The `#root` div now ships real copy — an h1,
+the opening line, a description, and a feature list — which React replaces on
+mount. Not cloaking: identical markup for every visitor, saying what the rendered
+page says. Styled inline so first paint is not unstyled text.
+
+**Static `<head>`.** Canonical, Open Graph, Twitter Card, hreflang and a JSON-LD
+`@graph` (`WebSite` + `SoftwareApplication` with both pricing tiers) are now in
+the HTML rather than injected by `useDocumentMeta()` after mount. The client hook
+still runs and still overrides per route — the static block is the floor.
+
+**One host.** Everything now declares `https://www.thebooksoracle.com`, matching
+Netlify's primary domain. Four files must change together if that ever flips:
+`index.html`, `robots.txt`, `netlify/functions/sitemap.js`,
+`netlify/edge-functions/og-prerender.js`.
+
+**De-duplicated structured data.** `Landing.jsx` was injecting its own
+`SoftwareApplication` node with a different description and price than the static
+one. It now emits only `FAQPage`, which is built from translated strings and
+cannot be static without duplicating copy.
+
+## What was NOT changed, and why
+
+The brand name. `The Books Oracle` competes with tarot and Oracle Corp in generic
+search, but brand queries are the easiest class to win once *any* page is
+indexed, and the site was absent from the index entirely rather than
+outranked. Renaming would have reset domain age and existing links while
+inheriting the same divination-adjacent neighbours. Re-measure in Search Console
+about two weeks after this deploys before reopening the question.
+
+## Also in this release: CI logging
+
+`catalog-maintenance.yml` ran green while doing nothing. GitHub executes `run:`
+blocks as `bash -e {0}` — no `pipefail` — and every script step is
+`node script.mjs | tee x.log`. In a pipeline without `pipefail` the exit status
+is **tee's**, and tee always succeeds. So a script dying on startup (each exits 1
+via its own `main().catch`) produced: a green step, an empty log, no CSVs, a
+summary of zeros, `needs_review=false`, and therefore no issue. Both workflows
+now set `defaults.run.shell: bash`, which opts into `-eo pipefail`.
+
+Three further reporting fixes:
+
+- The summary parses `metadataBackfill`'s own `descriptions=N genres=N
+  nothingFound=N` line. Nothing read it before, so a run that filled hundreds of
+  descriptions reported nothing about them — the table counted only CSV rows, and
+  that CSV lists *failures*, so total success rendered identically to never
+  having run.
+- Missing or empty logs are now reported as warnings instead of being skipped
+  with `continue`, which is what made silent failure indistinguishable from
+  having nothing to say.
+- `nightly-curation.yml` reports books enriched, books failed, failed batches,
+  cost for the run, cost per book, and a 30-night projection. It fails loudly if
+  it spends money and enriches zero books, and warns when failures exceed
+  successes.
+
+# Update Notes — v0.59 → v0.61: catalogue curation moves to a nightly cron
+
+## What changed
+
+The in-app "Let the Oracle categorize my books" button is gone from Wishlist and
+Library, along with `runOracleCategorization()` in
+`src/lib/oracleCategorizationService.js`. Nothing in `src/` calls Anthropic for
+categorisation any more — the `claudeApi` import was removed from that module
+specifically so an unused `callClaude` cannot quietly reintroduce the path.
+
+The work moved to `.github/workflows/nightly-curation.yml` (07:00 UTC daily),
+which runs `metadataBackfill.mjs` free first, then `oracleBatch.mjs` under the
+service role key at a capped `NIGHTLY_LIMIT` of 40 books (~$0.28/night at
+~$0.007/book).
+
+## Why
+
+The button billed a reader's own Oracle quota for work that lands on the
+**shared** `books` table. Genres, series linkage, complexity, depth and author
+gender benefit every user who ever sees that title; charging whoever pressed the
+button was the wrong party. Free-tier readers get five calls a month, and those
+now go entirely to suggestions, plans and asking.
+
+## Knock-on changes
+
+- `EXEMPTIBLE_FEATURES` in `netlify/functions/claude.js` is now empty.
+  `'categorization'` was its only member, and the curator exemption existed
+  solely to stop catalogue maintenance eating a curator's quota. The array and
+  its allowlist logic are kept deliberately — the mechanism is sound and the
+  next exemption will want it — so `feature` always resolves to `null` and the
+  RPC never takes its exemption branch. The `get_oracle_quota` exemption
+  branches (`schema.sql:327`, `:899`) are now unreachable but harmless; leave
+  them until a schema pass tidies them.
+- `dashboard.aiQuotaCuratorNote` and its two render sites (Dashboard, Profile)
+  are removed. With no exemption, there is no longer a class of user for whom
+  part of the quota bar behaves differently.
+- `oracleHistory.source.categorization` is **kept** — historical call logs still
+  render that label.
+- `buildPrompt()` and its GENRE RULES stay in `oracleCategorizationService.js`
+  as the canonical classification spec that `oracleBatch.mjs` mirrors. They are
+  reference, not a live path. Deleting them would leave the copy as sole source
+  of truth for rules that took a long time to get right.
+- `batch-scripts/manual/oracleBatch.mjs` read `env['ANTHROPIC_KEY']`, matching
+  neither its own usage docs, its error message, nor any sibling script. It
+  worked only because a hand-written `.env.local` carried the short name; the
+  first CI run would have failed. Now accepts `ANTHROPIC_API_KEY` first.
+- `oracleBatch.mjs` stays in `manual/` despite running on a cron.
+  `batch-scripts/README.md` documents why: the folder answers "safe to run
+  unattended and free?", and for that script the answer is still no. A billable
+  workflow must announce itself in its own header.
+
+## New user-facing surface
+
+`src/components/CurationNotice.jsx` occupies the slot the button vacated. It is
+not a control — it counts books awaiting genres via `getBooksNeedingGenres()`
+and states that the Oracle reaches them overnight. It renders nothing when the
+queue is empty. Copy: `oracle.curationPending` / `curationPendingPlural`, EN+ES.
+
+Marketing copy updated to match: `landing.questions.a2`, the import-complete
+next-step card, and the Pro feature lists (which advertised "5 book
+categorization runs per day" — no longer a thing a reader can buy). That slot
+now reads "Book club polls & discussion prompts", which is a real metered
+feature.
+
+## Note on versioning
+
+`CURRENT_VERSION` was still `v0.59` while code comments referenced v0.60 and
+v0.60.1. This release jumps to **v0.61** without a v0.60 entry in `releases.js`
+— the v0.60.x work (descriptions removed from the Oracle) never got user-facing
+notes. Worth backfilling one if the gap matters.
 
 # Update Notes — v0.58 → v0.59: Goodreads import without the CSV
 

@@ -28,11 +28,17 @@ does:
 - **`output/`** — generated results. Gitignored.
 
 Nothing billable belongs in `scheduled/`, whatever its schedule happens to be
-today. That is the whole point of the split.
+today. That is the whole point of the split — and it is why `oracleBatch.mjs`
+stays in `manual/` even though a workflow now runs it nightly. The folder
+answers "is this safe to run unattended and free?", which for that script is
+still no. A workflow that spends money has to say so in its own header; the
+folder layout must not be the thing that quietly stops saying it.
 
 ## Cost
 
-**Only two scripts spend money**, and neither is on any schedule:
+**Only two scripts spend money.** As of v0.61 one of them is on a schedule —
+see "Nightly curation" below. That is a deliberate, bounded exception, not a
+softening of the rule:
 
 | | Script | Cost |
 |---|---|---|
@@ -66,8 +72,36 @@ matters and is not arbitrary.
 | 4 | `scheduled/metadataBackfill.mjs` | Descriptions and genres. Last, because it only considers books that already have a cover. |
 
 These four and no others. `curateManualBooks.mjs` and `oracleBatch.mjs` are the
-only scripts that bill Anthropic, so neither is here — a recurring charge that
-nobody approved is exactly what this layout exists to prevent.
+only scripts that bill Anthropic, so neither lives here — a recurring charge
+that nobody approved is exactly what this layout exists to prevent.
+
+## Nightly curation — billable, capped
+
+`.github/workflows/nightly-curation.yml`, 07:00 UTC daily. Added in v0.61, when
+the in-app "Let the Oracle categorize my books" button was removed from Wishlist
+and Library.
+
+That button billed a *reader's* Oracle quota to enrich the shared `books` table
+— the wrong party to charge, since the genres and series it wrote benefit
+everyone who ever sees the title. Readers' five calls a month now go entirely to
+suggestions, plans and asking. The work itself still has to happen, so it moved
+to a cron under the service role key.
+
+| # | Script | Cost |
+|---|---|---|
+| 1 | `scheduled/metadataBackfill.mjs --limit 200` | free |
+| 2 | `manual/oracleBatch.mjs --limit 40` 💸 | ~$0.007/book → ~$0.28/night |
+
+Order is the same principle as the weekly job, for two reasons rather than one:
+every description the free pass resolves is a book Claude is never asked about,
+*and* the descriptions it writes go into the prompt as the best available
+evidence for complexity and depth.
+
+The cap is the control. A permanently full queue costs about $8.50/month; in
+practice the queue drains and most nights cost cents. Raise `NIGHTLY_LIMIT` in
+the workflow to clear a backlog faster, and watch the run summary — it prints
+the estimate before spending anything. `workflow_dispatch` also takes a
+`dry_run` input that estimates without calling the API.
 
 A book with no cover never appears in The Stacks, which filters on
 `cover_url IS NOT NULL`. That is why covers come before descriptions.
@@ -77,7 +111,7 @@ A book with no cover never appears in The Stacks, which filters on
 | Script | Use |
 |---|---|
 | `manual/curateManualBooks.mjs` 💸 | Proposes title/author corrections for manually-added rows. Writes `output/proposed-titles.csv`; applying is a separate `--apply-titles` run, so nothing changes without a second decision. |
-| `manual/oracleBatch.mjs` 💸 | Bulk Oracle categorisation. |
+| `manual/oracleBatch.mjs` 💸 | Bulk Oracle categorisation — genres, series, complexity, depth, author gender. Also invoked nightly by `nightly-curation.yml` at a capped limit; run it by hand only to clear a backlog faster than the cron will. |
 | `manual/fixBook.mjs` | Repair a single book by id — surgical, for when one row is wrong. |
 | `manual/fixBadCovers.mjs` | Remove covers that resolve to placeholders or dead URLs. |
 

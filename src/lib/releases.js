@@ -16,9 +16,39 @@
 
 // The version label shown as "current" — keep in sync with package.json and
 // the README version line.
-export const CURRENT_VERSION = 'v0.59';
+export const CURRENT_VERSION = 'v0.61.2';
 
 export const RELEASES = [{
+    version: 'v0.61.2',
+    date: '2026-08-10',
+    titleEn: 'The Oracle can be found',
+    titleEs: 'Al Oráculo se lo puede encontrar',
+    bodyEn: [
+      'Searching for The Books Oracle by name did not find The Books Oracle. The site described itself only after it had finished loading, and search engines do not always wait that long — so to them the front page looked blank. It now says what it is before a single line of the app runs.',
+      'Links to the site should also start looking right wherever they are shared, and the site now answers to one address instead of quietly disagreeing with itself about which one is home.',
+    ],
+    bodyEs: [
+      'Buscar The Books Oracle por su nombre no encontraba The Books Oracle. El sitio se describía recién después de terminar de cargar, y los buscadores no siempre esperan tanto — así que para ellos la portada parecía vacía. Ahora dice lo que es antes de que corra una sola línea de la app.',
+      'Los links al sitio también deberían empezar a verse bien donde se compartan, y el sitio ahora responde a una sola dirección en vez de contradecirse en silencio sobre cuál es su casa.',
+    ],
+  }, {
+    version: 'v0.61',
+    date: '2026-08-10',
+    titleEn: 'The Oracle reads overnight, and your calls are yours again',
+    titleEs: 'El Oráculo lee de noche, y tus consultas vuelven a ser tuyas',
+    bodyEn: [
+      'Sorting your shelves no longer costs you an Oracle call. The categorize button has been taken off your Wishlist and Library, and the work it did now runs every night on its own.',
+      'This was never really your work to pay for. Genres, series and reading levels get written to the shared catalogue, where they help every reader who ever opens that book — so charging the person who happened to press the button was the wrong arrangement. Your five calls a month now go entirely to what you came for: suggestions, reading plans, and asking.',
+      'Books you add still arrive unsorted, and that is expected. Where there are books waiting, your Wishlist and Library now say so plainly, and the Oracle reaches them overnight.',
+      'Descriptions, covers and genres keep coming from Hardcover, Open Library and Google Books, as they have since the catalogue work moved off the Oracle entirely. The Oracle is left with the judgment: what a book is like to read, and where it sits among its kin.',
+    ],
+    bodyEs: [
+      'Ordenar tus estantes ya no te cuesta una consulta al Oráculo. El botón de categorizar se sacó de tu Lista de deseos y tu Biblioteca, y el trabajo que hacía ahora corre solo, todas las noches.',
+      'Esto nunca fue realmente trabajo tuyo para pagar. Los géneros, las series y los niveles de lectura se escriben en el catálogo compartido, donde ayudan a cualquiera que abra ese libro — así que cobrarle a quien justo apretó el botón era un arreglo injusto. Tus cinco consultas al mes ahora van enteras a lo que viniste a buscar: sugerencias, planes de lectura y preguntas.',
+      'Los libros que agregás siguen llegando sin ordenar, y es lo esperable. Donde haya libros esperando, tu Lista de deseos y tu Biblioteca ahora lo dicen con claridad, y el Oráculo llega a ellos durante la noche.',
+      'Las descripciones, portadas y géneros siguen viniendo de Hardcover, Open Library y Google Books, como desde que el trabajo de catálogo salió del Oráculo. Al Oráculo le queda el juicio: cómo se siente leer un libro, y dónde se ubica entre los suyos.',
+    ],
+  }, {
     version: 'v0.59',
     date: '2026-08-05',
     titleEn: 'Wander the stacks, and bring your Goodreads shelves in one step',

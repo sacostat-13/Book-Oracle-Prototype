@@ -108,11 +108,23 @@ export default function App() {
   useDocumentMeta(isLandingVisit ? {} : (ROUTE_META[route.name] || {}));
 
   // v0.39: keep <link rel="canonical"> in sync with the current path, now that
-  // paths are real routes instead of a hash. Always points at thebooksoracle.com
+  // paths are real routes instead of a hash. Always points at one host
   // regardless of which domain/alias served the request, so .net/.org visitors
   // and any lingering readingoracle.com traffic canonicalize correctly.
+  //
+  // v0.61.2, two corrections:
+  //
+  // 1. www. The host was thebooksoracle.com, which 301s to www — so this tag
+  //    named a URL that is never the one served. See index.html for the four
+  //    places that must agree.
+  // 2. index.html now ships a static canonical for `/`. This effect still runs
+  //    and still updates it per route, but it is no longer the ONLY source of
+  //    one. It used to be: the tag was created in an effect, so it existed only
+  //    after React mounted — which is precisely the rendering pass a canonical
+  //    is supposed to be robust against. The static tag is the floor; this
+  //    keeps it accurate as the reader navigates.
   useEffect(() => {
-    const canonicalUrl = `https://thebooksoracle.com${window.location.pathname}${window.location.search}`;
+    const canonicalUrl = `https://www.thebooksoracle.com${window.location.pathname}${window.location.search}`;
     let link = document.querySelector('link[rel="canonical"]');
     if (!link) {
       link = document.createElement('link');

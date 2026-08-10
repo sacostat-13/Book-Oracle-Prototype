@@ -29,27 +29,31 @@
 // guardrail this enforces: never guess from a name, only from a real public
 // signal, or return 'unknown'.
 //
-// WHAT IT DOES
-// Runs on books with status in ['unreviewed', 'incomplete'] that are still
-// missing at least one Oracle-only field — one Claude call per batch returns
-// genres, series info, complexity, depth, and author gender. All five are
-// written back to Supabase in the same pass.
+// v0.61 — NO LONGER RUNS IN THE BROWSER. runOracleCategorization() and the
+// Wishlist/Library button that called it are both gone. See the note at the
+// foot of this file for the reasoning and for where the work moved.
 //
-// 'discovered' books are intentionally excluded: they haven't been added to
-// anyone's collection, so spending tokens on them isn't warranted.
+// WHAT THIS MODULE IS NOW
+// Two things, and nothing that spends money:
 //
-// FAILURE MODEL
-// One bad batch is logged and skipped; the rest continue. The caller receives
-// progress callbacks so the UI can show a progress bar.
+//   1. Eligibility — getBooksNeedingGenres() / getBooksNeedingOracle() decide
+//      which books still need the Oracle. CurationNotice.jsx counts with the
+//      first one to tell a reader what tonight's job will pick up.
+//   2. Reference — buildPrompt() and its GENRE RULES remain the canonical
+//      statement of how a book gets classified. oracleBatch.mjs mirrors them.
+//
+// Eligibility is books with status in ['unreviewed', 'incomplete'] still
+// missing at least one Oracle-only field: genres, complexity, depth, author
+// gender. 'discovered' books are intentionally excluded — they haven't been
+// added to anyone's collection, so spending tokens on them isn't warranted.
 
 import {
   supabase
 } from './supabase';
-import {
-  callClaude,
-  parseJSONResponse,
-  QuotaExceededError
-} from './claudeApi';
+// v0.61: the claudeApi import is gone entirely along with
+// runOracleCategorization. This module no longer reaches Anthropic from the
+// browser at all — that is the guarantee, and a lingering import of callClaude
+// would quietly undermine it.
 import { hardcoverSearch } from './hardcoverService';
 
 // v0.57: lowered 10 → 5. Each batch is ONE synchronous Anthropic call inside
@@ -76,6 +80,8 @@ import { hardcoverSearch } from './hardcoverService';
 // If timeouts reappear, lower this first; the real fix remains moving the proxy
 // to a Netlify background function rather than tuning the batch under a 30s
 // synchronous ceiling.
+// Retained as reference alongside buildPrompt(): oracleBatch.mjs batches to the
+// same size, and the reasoning below is why that number is what it is.
 const BATCH_SIZE = 10;
 
 const UNVERIFIED_STATUSES = ['unreviewed', 'incomplete'];
@@ -399,203 +405,26 @@ async function writeBookEnrichment(bookId, genreIds, seriesData, complexity, dep
 
 // ---------- main export ----------
 
-/**
- * Run Oracle enrichment (genres + series + descriptions) on a list of books.
- *
- * @param {Object}   opts
- * @param {Array}    opts.books         — pre-filtered eligible books
- * @param {Function} opts.onProgress    — (done, total) callback
- * @param {Function} opts.onBatchResult — ({ assignments, batchIndex }) callback
- * @param {Function} opts.onError       — (err, batchIndex) non-fatal
- * @returns {Promise<{ processed: number, failed: number, newGenres: string[] }>}
- *   newGenres — names of any genre the Oracle created that wasn't already
- *   in the catalog at the start of this run. Genre creation isn't disabled
- *   (a hard block would force genuinely novel books into the wrong
- *   existing bucket), but every creation is worth a look — this is the
- *   audit trail. Log to console immediately and surface via the return
- *   value so the caller (OracleCategorizationButton) can show it, e.g. in
- *   a toast or the completion summary, instead of it going unnoticed until
- *   the genre list is audited by hand again.
- */
-export async function runOracleCategorization({
-  books,
-  onProgress,
-  onBatchResult,
-  onError
-}) {
-  const total = books.length;
-  let processed = 0;
-  let failed = 0;
-  const newGenreNames = new Set();
-
-  const existingGenres = await fetchAllGenres();
-  const batches = [];
-  for (let i = 0; i < books.length; i += BATCH_SIZE) {
-    batches.push(books.slice(i, i + BATCH_SIZE));
-  }
-
-  // One id for the whole run. schema_v37 charges the first batch that presents
-  // it and lets the rest through free, so a 300-book shelf costs one Oracle
-  // call instead of sixty. The server owns that decision — this is an
-  // idempotency key, not a "please don't charge me" flag.
-  const runId = crypto.randomUUID();
-
-  for (let batchIdx = 0; batchIdx < batches.length; batchIdx++) {
-    const batch = batches[batchIdx];
-
-    try {
-      const {
-        systemPrompt,
-        userPrompt
-      } = buildPrompt(batch, existingGenres);
-      let raw;
-      try {
-        // BATCH_SIZE books × 5 fields each (genres, series, complexity, depth,
-        // author_gender) can run past the Netlify function's 2000-token
-        // default, truncating the JSON mid-response (seen as "Batch N returned
-        // an unexpected response" once parsing failed). 4000 is a cap, not a
-        // target — the model stops when the JSON is done, so this doesn't slow
-        // small batches; it just prevents truncation on a full one.
-        //
-        // Kept at 4000 despite description leaving the response in v0.60.1:
-        // the batch doubled to 10 at the same time, so the ceiling still needs
-        // headroom. It costs nothing when unused.
-        raw = await callClaude(userPrompt, systemPrompt, {
-          maxTokens: 4000,
-          runId,
-          feature: 'categorization',
-          source: 'categorization' // v0.58: history label (schema_v44)
-        });
-      } catch (err) {
-        if (err instanceof QuotaExceededError) throw err; // propagate to button
-        throw err;
-      }
-      const parsed = parseJSONResponse(raw);
-
-      if (!Array.isArray(parsed)) {
-        console.warn(`Batch ${batchIdx + 1}: non-array response`, raw);
-        failed += batch.length;
-        onError ?.(`Batch ${batchIdx + 1} returned an unexpected response.`, batchIdx);
-        processed += batch.length;
-        onProgress ?.(processed, total);
-        continue;
-      }
-
-      const batchAssignments = [];
-
-      for (const item of parsed) {
-        const bookIdx = (item.index || 0) - 1;
-        if (bookIdx < 0 || bookIdx >= batch.length) continue;
-        const book = batch[bookIdx];
-        if (!book.bookId) continue;
-
-        // Genres
-        const genreNames = Array.isArray(item.genres) ? item.genres.slice(0, 3) : [];
-        const resolvedGenres = (
-          await Promise.all(
-            genreNames.map(async (name) => {
-              const id = await resolveGenreId(name);
-              if (!id) return null;
-              const existing = existingGenres.find((g) => g.id === id);
-              if (!existing) {
-                newGenreNames.add(name);
-                console.warn(`[Oracle] Created new genre not in catalog: "${name}"`);
-                existingGenres.push({
-                  id,
-                  name,
-                  normalized_name: name.toLowerCase().replace(/[^a-z0-9]/g, ''),
-                  source: 'oracle',
-                  usage_count: 0,
-                  description: null,
-                });
-              }
-              return {
-                genreId: id,
-                name: existing ?.name || name,
-                normalizedName: existing ?.normalized_name || name.toLowerCase().replace(/[^a-z0-9]/g, ''),
-                source: existing ?.source || 'oracle',
-                usageCount: existing ?.usage_count || 0,
-                description: existing ?.description || null,
-                assignedBySource: 'oracle',
-              };
-            })
-          )
-        ).filter(Boolean);
-
-        // No description here any more — see the header note. metadataBackfill
-        // owns that field now, and a value read from Open Library is both free
-        // and incapable of being invented.
-        const seriesData = item.series || null;
-        const complexity = sanitizeLevel(item.complexity);
-        const depth = sanitizeLevel(item.depth);
-        const authorGender = sanitizeAuthorGender(item.authorGender);
-
-        await writeBookEnrichment(
-          book.bookId,
-          resolvedGenres.map((g) => g.genreId),
-          seriesData,
-          complexity,
-          depth,
-          authorGender
-        );
-
-        // v0.56: opportunistic ISBN repair. A curator is already looking at this book,
-        // so top up a missing ISBN while we're here rather than waiting for the weekly
-        // cron. Deliberately fire-and-forget and null-fill only — this must never slow
-        // the categorization batch (which sits close to the 30s Lambda cap) or fail it.
-        //
-        // NOTE this is opportunistic, NOT comprehensive: getBooksNeedingOracle only
-        // yields status unreviewed|incomplete, so verified/curated books are never seen
-        // here. Catalog-wide ISBN health is the scheduled job's responsibility
-        // (.github/workflows/catalog-maintenance.yml).
-        if (!book.isbn) {
-          topUpIsbn(book).catch(() => {});
-        }
-
-        batchAssignments.push({
-          bookId: book.bookId,
-          genres: resolvedGenres,
-          series: seriesData,
-          complexity,
-          depth,
-          authorGender,
-        });
-
-        processed++;
-        onProgress ?.(processed, total);
-      }
-
-      onBatchResult ?.({
-        assignments: batchAssignments,
-        batchIndex: batchIdx
-      });
-
-    } catch (err) {
-      // Quota exhaustion is not a per-batch failure — it is the end of the
-      // run. The inner catch rethrows QuotaExceededError intending to
-      // "propagate to button", but this outer catch used to swallow it and
-      // continue, so a run over a large shelf would grind through every
-      // remaining batch against a spent quota, each one bouncing off the
-      // 429 in netlify/functions/claude.js and reporting itself to the user
-      // as "Batch N failed". Stop here and let the button show the quota wall.
-      if (err instanceof QuotaExceededError) throw err;
-
-      console.error(`Batch ${batchIdx + 1} failed:`, err);
-      failed += batch.length;
-      processed += batch.length;
-      onError ?.(`Batch ${batchIdx + 1} failed: ${err.message}`, batchIdx);
-    }
-
-    onProgress ?.(processed, total);
-  }
-
-  if (newGenreNames.size > 0) {
-    console.warn(`[Oracle] ${newGenreNames.size} new genre(s) created this run:`, Array.from(newGenreNames));
-  }
-
-  return {
-    processed,
-    failed,
-    newGenres: Array.from(newGenreNames)
-  };
-}
+// ── REMOVED in v0.61: runOracleCategorization() ───────────────────────────────
+//
+// This was the in-app execution path — the one the Wishlist/Library button
+// called. It billed a reader's own Oracle quota to enrich the SHARED `books`
+// catalog, which is the wrong party to charge: the genres and series it wrote
+// benefit everyone who ever sees that book, not the person who pressed the
+// button. A reader's five calls a month now go entirely to suggestions, plans
+// and asking.
+//
+// The work moved to .github/workflows/nightly-curation.yml, which runs
+// batch-scripts/manual/oracleBatch.mjs against the service role key on a
+// capped nightly batch.
+//
+// WHAT STAYS, AND WHY
+// buildPrompt() and its GENRE RULES remain above and are deliberately NOT
+// deleted: they are the canonical statement of how the Oracle classifies a
+// book, and oracleBatch.mjs mirrors them. Deleting the original because its
+// only in-app caller went away would leave the copy as the sole source of
+// truth for rules that took a long time to get right. They are reference now,
+// not a live code path — nothing in src/ calls Claude for categorization.
+//
+// getBooksNeedingGenres() is still live: CurationNotice.jsx uses it to count
+// what the nightly job has yet to reach.

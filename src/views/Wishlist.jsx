@@ -3,7 +3,7 @@ import { useData } from '../lib/DataContext';
 import { useRouter } from '../lib/RouterContext';
 import { GENRES, bookKey, getPrimaryGenre } from '../lib/bookHelpers';
 import BulkImport from '../components/BulkImport';
-import OracleCategorizationButton from '../components/OracleCategorizationButton';
+import CurationNotice from '../components/CurationNotice';
 import LibraryCoverGrid from '../components/LibraryCoverGrid';
 import ScrollSentinel from '../components/ScrollSentinel';
 import { useT, useTNode } from '../lib/I18nContext';
@@ -225,7 +225,7 @@ export default function Wishlist({ onOpenBook }) {
 
       {bulkOpen && <BulkImport target="wishlist" onClose={() => setBulkOpen(false)} />}
 
-      <OracleCategorizationButton books={wl} />
+      <CurationNotice books={wl} />
       <SelectionBar
         count={sel.count}
         selectedBooks={sel.selectedBooks}

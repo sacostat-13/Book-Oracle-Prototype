@@ -877,10 +877,10 @@ function AIQuotaBar({ go, t }) {
       </div>
       <div className="db-ai__note">
         {t('dashboard.aiQuotaIncludes')}
-        {/* Curators are metered here like everyone else — the exemption only
-            covers catalog categorization — so say which part is free rather
-            than leaving them to infer it from a full bar. */}
-        {quota.is_curator && <> · {t('dashboard.aiQuotaCuratorNote')}</>}
+        {/* v0.61: the curator note is gone with the exemption it explained.
+            Catalog categorization is no longer a metered in-app action for
+            anyone — it runs nightly in CI — so there is no longer a class of
+            user for whom part of this bar behaves differently. */}
         {resetDate && <> · {t('dashboard.aiQuotaResetsOn', { date: resetDate })}</>}
         {!isPro && (
           <> · <button className="btn-text" style={{ padding: 0, fontSize: 'inherit' }}

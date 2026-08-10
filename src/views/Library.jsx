@@ -3,7 +3,7 @@ import { useData } from '../lib/DataContext';
 import { useRouter } from '../lib/RouterContext';
 import { bookKey, getPrimaryGenre } from '../lib/bookHelpers';
 import BulkImport from '../components/BulkImport';
-import OracleCategorizationButton from '../components/OracleCategorizationButton';
+import CurationNotice from '../components/CurationNotice';
 import RatingModal from '../components/RatingModal';
 import LibraryCoverGrid from '../components/LibraryCoverGrid';
 import ScrollSentinel from '../components/ScrollSentinel';
@@ -237,7 +237,7 @@ export default function Library({ onOpenBook }) {
 
       {bulkOpen && <BulkImport target="library" onClose={() => setBulkOpen(false)} />}
 
-      <OracleCategorizationButton books={lib} />
+      <CurationNotice books={lib} />
       <SelectionBar
         count={sel.count}
         selectedBooks={sel.selectedBooks}

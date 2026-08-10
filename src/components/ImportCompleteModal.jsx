@@ -59,10 +59,14 @@ export default function ImportCompleteModal({ count, onClose }) {
 
           <div className="import-next">
             {/* Wishlist, not 'oracle-categories' — that route is Explore by
-                Genre, a different feature. Oracle Categorize is the button
-                rendered on the Wishlist and Library screens themselves
-                (OracleCategorizationButton). Wishlist is the useful landing
-                of the two here, since the footer already offers Library. */}
+                Genre, a different feature.
+
+                v0.61: this card no longer points at an action. The Oracle
+                Categorize button it used to advertise is gone; curation runs
+                nightly instead, and the copy now sets that expectation rather
+                than promising a tap. Wishlist is still where it lands, because
+                that is where CurationNotice reports what is queued — and the
+                footer already offers Library. */}
             <button className="import-next__card" onClick={() => goTo('wishlist')}>
               <div className="import-next__title">{t('onboarding.import.nextCategorizeTitle')}</div>
               <div className="import-next__sub">{t('onboarding.import.nextCategorizeBody')}</div>

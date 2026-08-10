@@ -1,0 +1,265 @@
+# Nightly curation — the Oracle reads the day's new books.
+#
+# WHY THIS EXISTS
+# ---------------
+# Until v0.61 this work was triggered by readers, from a button on Wishlist and
+# Library. That was the wrong party to charge. The genres, series links,
+# complexity and depth it writes land on the SHARED `books` table and benefit
+# everyone who ever sees that title — but the call came out of the quota of
+# whoever happened to press the button. A reader's five calls a month now go
+# entirely to what they came for: suggestions, plans, and asking.
+#
+# So the work moved here. Same prompt, same model, service role key, no reader
+# quota involved.
+#
+# THIS WORKFLOW SPENDS MONEY. THAT IS DELIBERATE.
+# -----------------------------------------------
+# batch-scripts/README.md states the rule: nothing billable belongs in
+# scheduled/. That rule still holds, which is why oracleBatch.mjs stays in
+# manual/ and is invoked here by explicit path rather than being moved. This
+# workflow is the documented exception, and it is bounded three ways:
+#
+#   1. NIGHTLY_LIMIT caps books per run. At ~$0.007/book (Sonnet, ~800 in /
+#      ~300 out — see oracleBatch.mjs) 40 books is ~$0.28/night, ~$8.50/month
+#      at a permanently full queue. In practice the queue empties and most
+#      nights cost cents or nothing at all.
+#   2. The free passes run FIRST. metadataBackfill fills descriptions and
+#      genres from Hardcover / Open Library / Google Books for nothing, so
+#      every book it resolves is a book Claude is not asked about. It also
+#      makes the books Claude *does* see cheaper to judge: the description is
+#      the best evidence for complexity and depth, and it goes into the prompt.
+#   3. Nothing here changes a book's identity. oracleBatch fills NULL fields;
+#      titles, merges and normalized_key stay manual, same as the weekly job.
+#
+# Deliberately separate from catalog-maintenance.yml rather than folded into
+# it. That workflow's entire premise, stated in its own header, is that the
+# schedule spends nothing. Adding a billable step to it would make the premise
+# false and the next person would have to read the whole file to find out.
+# Two workflows, two honest descriptions.
+#
+# SECRETS (Settings → Secrets and variables → Actions):
+#   VITE_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, HARDCOVER_API_TOKEN,
+#   ANTHROPIC_API_KEY, GOOGLE_BOOKS_API_KEY
+
+name: Nightly curation
+
+on:
+  schedule:
+    # 07:00 UTC — 01:00 in Costa Rica. After the day's adds have settled and
+    # well clear of the Monday 06:00 catalog-maintenance run, which writes the
+    # same rows. An hour's gap is enough: that job self-throttles and is slow,
+    # but the concurrency group below is the real guard.
+    - cron: '0 7 * * *'
+  workflow_dispatch:
+    inputs:
+      limit:
+        description: 'Books to curate this run (BILLABLE, ~$0.007 each)'
+        required: false
+        default: '40'
+      dry_run:
+        description: 'Estimate cost only — no API calls, no writes'
+        type: boolean
+        required: false
+        default: false
+
+# Shares a group with catalog-maintenance: both write books rows via the
+# service role, and two concurrent runs would race each other's updates and
+# double-spend the Hardcover rate limit.
+concurrency:
+  group: catalog-maintenance
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  NIGHTLY_LIMIT: '40'
+
+jobs:
+  curate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    # Opts into `bash -eo pipefail`. Without it, `node script.mjs | tee x.log`
+    # reports TEE's exit status, so a script that dies on startup produces a
+    # green step and an empty log — which is exactly how catalog-maintenance.yml
+    # ran silently for weeks. A job that spends money must never fail quietly.
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - run: npm ci
+
+      # The scripts read .env.local directly (same as when run by hand), so
+      # compose one from secrets rather than teaching every script a second
+      # config path. Mirrors catalog-maintenance.yml on purpose.
+      - name: Compose .env.local from secrets
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          HARDCOVER_API_TOKEN: ${{ secrets.HARDCOVER_API_TOKEN }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GOOGLE_BOOKS_API_KEY: ${{ secrets.GOOGLE_BOOKS_API_KEY }}
+        run: |
+          set -euo pipefail
+          for v in VITE_SUPABASE_URL SUPABASE_SERVICE_ROLE_KEY ANTHROPIC_API_KEY; do
+            if [ -z "${!v}" ]; then echo "::error::Missing required secret $v"; exit 1; fi
+          done
+          {
+            echo "VITE_SUPABASE_URL=$VITE_SUPABASE_URL"
+            echo "SUPABASE_SERVICE_ROLE_KEY=$SUPABASE_SERVICE_ROLE_KEY"
+            echo "HARDCOVER_API_TOKEN=$HARDCOVER_API_TOKEN"
+            echo "ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY"
+            echo "GOOGLE_BOOKS_API_KEY=$GOOGLE_BOOKS_API_KEY"
+          } > .env.local
+
+      # writeFileSync does not create parent directories.
+      - name: Ensure output directory exists
+        run: mkdir -p batch-scripts/output
+
+      - name: Resolve run parameters
+        id: args
+        run: |
+          LIMIT="${{ github.event.inputs.limit }}"
+          [ -z "$LIMIT" ] && LIMIT="${NIGHTLY_LIMIT}"
+          echo "limit=$LIMIT" >> "$GITHUB_OUTPUT"
+          if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
+            echo "dry=--dry-run" >> "$GITHUB_OUTPUT"
+          else
+            echo "dry=" >> "$GITHUB_OUTPUT"
+          fi
+
+      # 1. FREE PASS FIRST — always. Every description and genre resolved here
+      #    is one Claude is not asked for, and the descriptions it writes become
+      #    prompt evidence for the complexity/depth judgments in step 2. Run at
+      #    a wider limit than the billable step because it costs nothing.
+      - name: Backfill descriptions and genres (free)
+        run: node batch-scripts/scheduled/metadataBackfill.mjs --target both --limit 200 | tee metadata.log
+
+      # 2. BILLABLE — capped. Genres from the curated taxonomy, series linkage,
+      #    complexity, depth, author gender. None of these are retrievable from
+      #    any free API; that is the whole test for whether a call is worth
+      #    making, and it is why this step exists while descriptions no longer
+      #    go through Claude at all.
+      - name: Curate with the Oracle (billable, capped)
+        run: |
+          echo "::notice::Curating up to ${{ steps.args.outputs.limit }} books — approx \$$(awk -v n=${{ steps.args.outputs.limit }} 'BEGIN{printf "%.2f", n*0.007}')"
+          node batch-scripts/manual/oracleBatch.mjs \
+            --limit ${{ steps.args.outputs.limit }} \
+            ${{ steps.args.outputs.dry }} | tee curate.log
+
+      # ── Accounting ────────────────────────────────────────────────────────
+      # A job that spends money every night has to report three numbers without
+      # anyone opening a log: how many books it touched, how many failed, and
+      # what it cost. Both scripts already print machine-readable summaries —
+      # this reads them rather than re-deriving anything.
+      #
+      #   metadataBackfill: [metadataBackfill] descriptions=N genres=N ...
+      #   oracleBatch:      │  Processed: N / Failed: N / Actual cost: ~$N
+      - name: Report books, errors and cost
+        id: report
+        if: always()
+        run: |
+          set -uo pipefail
+
+          num() { local v; v=$(grep -oP "$2" "$1" 2>/dev/null | tail -1); echo "${v:-0}"; }
+
+          DESCS=$(num metadata.log '(?<=descriptions=)[0-9]+')
+          GENRES=$(num metadata.log '(?<=genres=)[0-9]+')
+          NOTHING=$(num metadata.log '(?<=nothingFound=)[0-9]+')
+
+          PROCESSED=$(num curate.log '(?<=Processed:)\s*[0-9]+' | tr -d ' ')
+          FAILED=$(num curate.log '(?<=Failed:)\s*[0-9]+' | tr -d ' ')
+          COST=$(grep -oP '(?<=Actual cost: ~\$)[0-9.]+' curate.log 2>/dev/null | tail -1)
+          COST=${COST:-0.0000}
+
+          # Per-batch failures carry their reason on the line; collect them so a
+          # recurring error is visible in the summary without downloading logs.
+          BATCH_ERRORS=$(grep -c '^FAILED:\|FAILED: ' curate.log 2>/dev/null || echo 0)
+
+          for k in DESCS GENRES NOTHING PROCESSED FAILED COST BATCH_ERRORS; do
+            echo "${k,,}=${!k}" >> "$GITHUB_OUTPUT"
+          done
+
+          # Cost per book actually enriched — the number that tells you whether
+          # the cap is set sensibly. Guard against divide-by-zero on empty runs.
+          if [ "${PROCESSED:-0}" -gt 0 ]; then
+            PER=$(awk -v c="$COST" -v n="$PROCESSED" 'BEGIN{printf "%.4f", c/n}')
+          else
+            PER="0.0000"
+          fi
+          echo "per_book=$PER" >> "$GITHUB_OUTPUT"
+
+          {
+            echo "## Nightly curation"
+            echo ""
+            echo "Cap: ${{ steps.args.outputs.limit }} books${{ steps.args.outputs.dry && ' · DRY RUN' || '' }}"
+            echo ""
+            echo "| | Count |"
+            echo "| --- | ---: |"
+            echo "| Books enriched by the Oracle | $PROCESSED |"
+            echo "| Books the Oracle failed on | $FAILED |"
+            echo "| Failed batches | $BATCH_ERRORS |"
+            echo "| Descriptions filled (free) | $DESCS |"
+            echo "| Genres filled (free) | $GENRES |"
+            echo "| Looked up, nothing found | $NOTHING |"
+            echo ""
+            echo "| Cost | USD |"
+            echo "| --- | ---: |"
+            echo "| This run | \$$COST |"
+            echo "| Per book enriched | \$$PER |"
+            echo "| Projected 30 nights at this rate | \$$(awk -v c="$COST" 'BEGIN{printf "%.2f", c*30}') |"
+            echo ""
+
+            for f in metadata curate; do
+              if [ ! -s "$f.log" ]; then
+                echo "⚠️ **$f** — no output. The script died before writing anything; check the step log."
+                echo ""
+                continue
+              fi
+              echo "<details><summary>$f ($(wc -l < "$f.log") lines)</summary>"
+              echo ""
+              echo '```'
+              tail -n 25 "$f.log"
+              echo '```'
+              echo "</details>"
+              echo ""
+            done
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # A spend with nothing to show for it is the failure mode worth catching:
+      # the cap was consumed, the money went out, and no book got better. Warn
+      # rather than fail — a night where the queue was simply empty is normal
+      # and both numbers are legitimately zero.
+      - name: Flag an unproductive run
+        if: always()
+        run: |
+          P="${{ steps.report.outputs.processed }}"
+          F="${{ steps.report.outputs.failed }}"
+          if [ "${F:-0}" -gt 0 ] && [ "${P:-0}" -eq 0 ]; then
+            echo "::error::Spent \$${{ steps.report.outputs.cost }} and enriched 0 books ($F failed). Check curate.log before the next run."
+            exit 1
+          fi
+          if [ "${F:-0}" -gt "${P:-0}" ]; then
+            echo "::warning::More failures ($F) than successes ($P) — the prompt or the batch size may need attention."
+          fi
+
+      - name: Upload logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nightly-curation-logs
+          path: |
+            metadata.log
+            curate.log
+            batch-scripts/output/*.csv
+          if-no-files-found: ignore
+          retention-days: 30

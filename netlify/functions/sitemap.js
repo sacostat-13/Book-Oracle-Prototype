@@ -16,7 +16,14 @@
 
 import { createClient } from '@supabase/supabase-js';
 
-const SITE = 'https://thebooksoracle.com';
+// v0.61.2 — www, matching Netlify's primary domain. thebooksoracle.com 301s
+// here, so the previous non-www value meant every URL emitted by this file
+// redirected. Google treats a redirecting sitemap entry and a canonical that
+// points at a redirect as weaker signals than the real thing, and it split
+// authority across two hosts. Changing the primary domain in Netlify means
+// changing this in four places: index.html, robots.txt,
+// netlify/functions/sitemap.js and netlify/edge-functions/og-prerender.js.
+const SITE = 'https://www.thebooksoracle.com';
 
 // Mirrors src/lib/bookHelpers.js bookKey() — duplicated here since this
 // function runs server-side and can't import client source directly.
