@@ -70,9 +70,9 @@ const env = Object.fromEntries(
   })
 );
 
-const SUPABASE_URL = "https://wwkqgnbnacajeqpdedbp.supabase.co";
-const SERVICE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind3a3FnbmJuYWNhamVxcGRlZGJwIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4MDA2NDQxNiwiZXhwIjoyMDk1NjQwNDE2fQ.Jak1Xj8Ox4tAEITDgzcR9EERE-6pjncu5C46RvwUJy4";
-const ANTHROPIC_KEY = "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";
+const SUPABASE_URL = env['VITE_SUPABASE_URL'] || '';
+const SERVICE_KEY = env['SUPABASE_SERVICE_ROLE_KEY'] || '';
+const ANTHROPIC_KEY = env['ANTHROPIC_KEY'] || '';
 
 if (!SUPABASE_URL || !SERVICE_KEY) {
   console.error('Missing VITE_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY in .env.local');
