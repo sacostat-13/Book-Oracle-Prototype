@@ -130,6 +130,31 @@ export default defineConfig({
         skipWaiting: true,
         clientsClaim: true,
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
+        // v0.61.2: keep the SPA navigation fallback off routes that are served
+        // by Netlify, not by the app.
+        //
+        // vite-plugin-pwa registers a NavigationRoute bound to index.html with
+        // no denylist by default. That is correct for client-side routes — it
+        // is what makes /wishlist work offline — but a NavigationRoute matches
+        // ANY navigation request, including typing /sitemap.xml into the
+        // address bar. The worker answered with cached index.html, React
+        // routed on a path it doesn't know, and rendered the app's own 404.
+        //
+        // The server was never wrong: /sitemap.xml returns application/xml with
+        // a 200 the whole time. Only browsers that had registered the worker
+        // saw a 404, which made the sitemap impossible to verify by eye — and
+        // made it look like the Netlify redirect had broken.
+        //
+        // Googlebot does not run service workers, so indexing was never
+        // affected. This is a "you cannot check your own work" bug rather than
+        // an SEO one, which is exactly why it survived this long.
+        navigateFallbackDenylist: [
+          /^\/sitemap\.xml$/,
+          /^\/robots\.txt$/,
+          // Function and edge-function paths. share-card and og-prerender are
+          // reached directly in some flows; none of them are app routes.
+          /^\/\.netlify\//,
+        ],
         // Share-card frame/art (public/cards/**) are large (2-3 MB each) and only
         // fetched on demand when a user shares — never needed offline. Keep them
         // out of the SW precache so they don't exceed the size limit (which fails

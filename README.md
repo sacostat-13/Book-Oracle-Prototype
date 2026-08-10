@@ -385,6 +385,41 @@ outranked. Renaming would have reset domain age and existing links while
 inheriting the same divination-adjacent neighbours. Re-measure in Search Console
 about two weeks after this deploys before reopening the question.
 
+## Also in this release: two silent-degradation bugs
+
+Both found while verifying the sitemap, both invisible by construction.
+
+**`sitemap.js` served 7 URLs instead of ~2,500.** It read `process.env.SUPABASE_URL`
+with no `VITE_SUPABASE_URL` fallback — the only Supabase consumer in
+`netlify/functions` without one. With just `VITE_SUPABASE_URL` set in Netlify,
+the credentials guard fired on every request and the function returned its 7
+static entries with a valid 200. Search Console reported "Success · 7 pages
+discovered", which reads as a working sitemap. Not one book or series page had
+ever been submitted to Google.
+
+**`og-prerender.js` had the identical bug**, via `Deno.env.get('SUPABASE_URL')`.
+When it fires, the function returns `context.next()` — which is *also* the
+correct response for a non-public entity, so a total credential failure is
+indistinguishable from normal operation. Every book, series, list and plan
+shared to Slack, WhatsApp or Discord would have fallen back to the generic site
+preview.
+
+Both now read `SUPABASE_URL || VITE_SUPABASE_URL` and log a `DEGRADED` line, so
+the next occurrence shows up in the function log rather than as a suspiciously
+round number weeks later. **Check the Netlify env vars** — if only the `VITE_`
+name is set, the fallback fixes it; if neither is, the log will now say so.
+
+**Service worker swallowed `/sitemap.xml` in the browser.** `vite-plugin-pwa`
+registers a Workbox `NavigationRoute` bound to `index.html` with no denylist.
+That is right for client-side routes and wrong for Netlify-served paths: typing
+`/sitemap.xml` into the address bar is a navigation, so the worker answered from
+cache, React routed on an unknown path, and rendered the app's 404 — while the
+server was returning `application/xml` the whole time. Googlebot never runs
+service workers, so indexing was unaffected; this was purely a "you cannot check
+your own work" bug. `navigateFallbackDenylist` now covers `/sitemap.xml`,
+`/robots.txt` and `/.netlify/*`. Existing clients need every tab closed before
+the new worker takes control.
+
 ## Also in this release: CI logging
 
 `catalog-maintenance.yml` ran green while doing nothing. GitHub executes `run:`

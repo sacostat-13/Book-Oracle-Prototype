@@ -59,12 +59,31 @@ const STATIC_ENTRIES = [
 ];
 
 export async function handler() {
-  const supabaseUrl = process.env.SUPABASE_URL;
+  // v0.61.2: added the VITE_ fallback. This function was the ONLY one reading
+  // process.env.SUPABASE_URL without it — claude.js, create-checkout-session,
+  // lemon-squeezy-webhook, manage-subscription and _shared/auth.js all do
+  // `SUPABASE_URL || VITE_SUPABASE_URL`. With only VITE_SUPABASE_URL set in
+  // Netlify, the guard below fired on every request and the sitemap served
+  // exactly its 7 static entries — no books, no series — while still returning
+  // a valid 200. Search Console reported "Success · 7 pages discovered", which
+  // looks like a working sitemap rather than a broken one.
+  //
+  // That is the trap in the graceful degradation below: silently serving a
+  // truncated sitemap is indistinguishable from serving a correct one unless
+  // you know what the count should be. Hence the console.error — a missing
+  // credential is now visible in the function log instead of only inferable
+  // from a suspiciously round number.
+  const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
   // Without credentials, still serve the static entries rather than erroring —
   // a partial sitemap is better than a 500 for crawlers.
   if (!supabaseUrl || !serviceKey) {
+    console.error(
+      '[sitemap] DEGRADED: serving static entries only. Missing ' +
+      [!supabaseUrl && 'SUPABASE_URL / VITE_SUPABASE_URL', !serviceKey && 'SUPABASE_SERVICE_ROLE_KEY']
+        .filter(Boolean).join(' and ')
+    );
     return xmlResponse(STATIC_ENTRIES);
   }
 

@@ -146,9 +146,21 @@ export default async (request, context) => {
   if (!isBot) return context.next();
 
   const url = new URL(request.url);
-  const supabaseUrl = Deno.env.get('SUPABASE_URL');
+  // v0.61.2: added the VITE_ fallback, same fix as sitemap.js. Every other
+  // Supabase consumer in netlify/functions reads `SUPABASE_URL ||
+  // VITE_SUPABASE_URL`; these two read only the short name. If Netlify has just
+  // VITE_SUPABASE_URL set, this returns context.next() on every request and
+  // NO entity page ever gets its OG tags injected — every book, series, list
+  // and plan shared to Slack or WhatsApp falls back to the generic site
+  // preview. Silent by construction: passing through is also the correct
+  // behaviour for a non-public entity, so the failure looks like normal
+  // operation. The log line distinguishes them.
+  const supabaseUrl = Deno.env.get('SUPABASE_URL') || Deno.env.get('VITE_SUPABASE_URL');
   const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-  if (!supabaseUrl || !serviceKey) return context.next();
+  if (!supabaseUrl || !serviceKey) {
+    console.error('[og-prerender] DEGRADED: no Supabase credentials — serving generic previews for every entity page.');
+    return context.next();
+  }
 
   const restHeaders = {
     apikey: serviceKey,
