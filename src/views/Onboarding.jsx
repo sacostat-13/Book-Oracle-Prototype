@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useData } from '../lib/DataContext';
 import { useAuth } from '../lib/AuthContext';
 import { useRouter } from '../lib/RouterContext';
@@ -51,6 +51,21 @@ export default function Onboarding() {
   const fileRef = useRef(null);
 
   const TOTAL_STEPS = 6;
+
+  // Back to the top on every step change.
+  //
+  // Steps are different heights — the genre grid and the Stacks wall are far
+  // taller than the name form — and the browser keeps the scroll position when
+  // only the card's contents swap. Someone who scrolled to the bottom of a tall
+  // step to press Continue landed halfway down the next one, with its heading
+  // and instructions above the fold. On a phone that reads as a broken screen
+  // rather than a new step.
+  //
+  // `instant` rather than smooth: this is a page change, not a movement within
+  // a page, and animating it just delays the reader seeing where they are.
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+  }, [step]);
 
   // v0.55.4: live username validation + availability, mirroring the Profile check.
   function onUsernameChange(val) {

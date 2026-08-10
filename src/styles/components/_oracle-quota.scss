@@ -19,8 +19,50 @@
   overflow: hidden;
   padding: 0; // .modal-head / .modal-body / .modal-foot own their padding
 
+  // v0.60.3 — head and foot pinned, body scrolls.
+  //
+  // .rating-modal now caps its own height, which alone is enough to keep this
+  // dialog on screen: the whole card scrolls. But this is the one modal where
+  // the buttons are the entire point — it asks the reader to spend something,
+  // and Cancel must always be one tap away. Scrolling only the body means the
+  // title stays visible for context and the actions stay visible for the
+  // decision, however long the copy runs.
+  //
+  // `min-height: 0` on the body is what actually allows it to shrink; a flex
+  // item defaults to min-height:auto and refuses to go below its content, which
+  // would push the footer straight back off screen.
+  display: flex;
+  flex-direction: column;
+  overflow: hidden; // the body owns scrolling now, not the card
+
+  .modal-head,
+  .modal-foot {
+    flex: 0 0 auto;
+  }
+
+  .modal-body {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
   .modal-body p + p {
     margin-top: 0.75rem;
+  }
+}
+
+// Reclaim horizontal room on phones. 32px of padding either side of a 320px
+// screen leaves very little for the copy, which is part of why this dialog grew
+// tall enough to overflow in the first place.
+@media (max-width: 480px) {
+  .oracle-gate {
+    .modal-head,
+    .modal-body,
+    .modal-foot {
+      padding-left: 20px;
+      padding-right: 20px;
+    }
   }
 }
 

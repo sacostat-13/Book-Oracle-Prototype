@@ -225,6 +225,13 @@ function bookRowToClient(b, extra = {}) {
     // genres/genresByBookId taxonomy. 'unknown' (checked, no signal) is kept
     // undefined here same as other unset enrichment fields.
     ag: (b.author_gender && b.author_gender !== 'unknown') ? b.author_gender : undefined,
+    // v0.60.1: `ag` collapses 'unknown' and never-checked into undefined, which
+    // is right for display but useless for deciding whether to spend an Oracle
+    // call. Without this flag, every book the Oracle honestly answered
+    // "unknown" for would look unprocessed forever and be re-billed on every
+    // run. The timestamp is stamped for 'unknown' too, so it is the only
+    // reliable "we already asked" signal.
+    agChecked: !!b.author_gender_checked_at,
     c: b.complexity || undefined,
     p: b.depth || undefined,
     d: b.description || undefined,

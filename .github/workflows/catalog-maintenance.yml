@@ -110,12 +110,12 @@ jobs:
       #    which makes every later pass cheaper. Must run before the fallback so the
       #    fallback only sees what Hardcover genuinely couldn't answer.
       - name: Backfill ISBNs from Hardcover
-        run: node batch-scripts/isbnBackfill.mjs ${{ steps.args.outputs.limit }} | tee backfill.log
+        run: node batch-scripts/scheduled/isbnBackfill.mjs ${{ steps.args.outputs.limit }} | tee backfill.log
 
       # 2. OpenLibrary + Google Books for what's left, plus replacing non-English ISBNs
       #    on books that do have an English edition.
       - name: Fallback to OpenLibrary / Google Books
-        run: node batch-scripts/isbnFallback.mjs --target both ${{ steps.args.outputs.limit }} | tee fallback.log
+        run: node batch-scripts/scheduled/isbnFallback.mjs --target both ${{ steps.args.outputs.limit }} | tee fallback.log
 
       # 3. Covers. Runs AFTER both ISBN passes on purpose: half this script's
       #    lookup chain is ISBN-keyed (Penguin Random House CDN, Open Library by
@@ -133,9 +133,27 @@ jobs:
       #    — so those books can never be shown to anyone, no matter how long a
       #    reader browses. goodreads_import is the worst offender at 58% bare.
       - name: Backfill missing covers
-        run: node batch-scripts/coverBackfill.mjs --no-claude ${{ steps.args.outputs.limit }} | tee covers.log
+        run: node batch-scripts/scheduled/coverBackfill.mjs --no-claude ${{ steps.args.outputs.limit }} | tee covers.log
 
-      # 4. Claude — MANUAL ONLY. Never runs on the schedule; only when someone types a
+      # 4. Descriptions and genres, from the same free APIs. Runs last of the
+      #    free passes because it reads books that already have a cover — a book
+      #    the cover step just rescued becomes eligible in the same run.
+      #
+      #    This step exists so that Claude does not have to. 682 books had a
+      #    cover but no description, and the only routes to fixing that were
+      #    curateManualBooks or oracleBatch, both of which bill Anthropic for
+      #    text Hardcover and Open Library give away. Descriptions are facts
+      #    somebody already wrote down; the Oracle budget belongs on judgment —
+      #    recommendations, plans, memory — not on retrieval.
+      #
+      #    Genre inference rides along in the same requests: the subject lists
+      #    come back in the same responses as the descriptions, and a keyword
+      #    table maps them onto the canonical 15. Books matching no rule are
+      #    left null and listed in genre-unmatched.csv rather than guessed at.
+      - name: Backfill descriptions and genres
+        run: node batch-scripts/scheduled/metadataBackfill.mjs --target both ${{ steps.args.outputs.limit }} | tee metadata.log
+
+      # 5. Claude — MANUAL ONLY. Never runs on the schedule; only when someone types a
       #    number into curate_limit, which makes the spend an explicit, bounded decision.
       #    Produces proposals in a CSV; applying them is still a separate --apply-titles
       #    run, so nothing here changes a title or merges a book.
@@ -143,7 +161,7 @@ jobs:
         if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.curate_limit != '' }}
         run: |
           echo "::warning::Running curateManualBooks on ${{ github.event.inputs.curate_limit }} books — this bills Anthropic."
-          node batch-scripts/curateManualBooks.mjs --limit ${{ github.event.inputs.curate_limit }} | tee curate.log
+          node batch-scripts/manual/curateManualBooks.mjs --limit ${{ github.event.inputs.curate_limit }} | tee curate.log
 
       - name: Summarise
         id: summary
@@ -151,12 +169,17 @@ jobs:
         run: |
           set -uo pipefail
           csv_rows() { [ -f "$1" ] && [ "$(wc -l < "$1")" -gt 1 ] && echo $(( $(wc -l < "$1") - 1 )) || echo 0; }
-          UNRESOLVED=$(csv_rows batch-scripts/isbn-unresolved.csv)
-          STILL=$(csv_rows batch-scripts/isbn-still-unresolved.csv)
-          PROPOSED=$(csv_rows batch-scripts/proposed-titles.csv)
+          UNRESOLVED=$(csv_rows batch-scripts/output/isbn-unresolved.csv)
+          STILL=$(csv_rows batch-scripts/output/isbn-still-unresolved.csv)
+          PROPOSED=$(csv_rows batch-scripts/output/proposed-titles.csv)
+          # Books whose subject lists matched no rule in GENRE_RULES. Read this
+          # before considering any Claude spend on genres: a theme recurring
+          # here is a one-line fix in metadataBackfill.mjs, not a billable run.
+          NOGENRE=$(csv_rows batch-scripts/output/genre-unmatched.csv)
           echo "unresolved=$UNRESOLVED" >> "$GITHUB_OUTPUT"
           echo "still=$STILL"           >> "$GITHUB_OUTPUT"
           echo "proposed=$PROPOSED"     >> "$GITHUB_OUTPUT"
+          echo "nogenre=$NOGENRE"       >> "$GITHUB_OUTPUT"
           # Two different reasons to raise an issue:
           #   PROPOSED > 0        a curate run happened and its output needs approving.
           #   STILL >= BACKLOG    the free passes have plateaued; a (billable) curate run
@@ -178,8 +201,9 @@ jobs:
             echo "| Title changes awaiting approval | $PROPOSED |"
             echo "| ISBNs unresolved after Hardcover | $UNRESOLVED |"
             echo "| Still unresolved after OL/Google | $STILL |"
+            echo "| Books with subjects but no genre rule | $NOGENRE |"
             echo ""
-            for f in backfill fallback curate; do
+            for f in backfill fallback covers metadata curate; do
               [ -f "$f.log" ] || continue
               echo "<details><summary>$f</summary>"
               echo ""
@@ -199,7 +223,7 @@ jobs:
           retention-days: 90
           if-no-files-found: ignore
           path: |
-            batch-scripts/*.csv
+            batch-scripts/output/*.csv
             *.log
 
       # Only nags when there is a decision to make. A weekly issue that usually says
@@ -222,8 +246,8 @@ jobs:
                 '',
                 'Put `y` in the `approve` column on the rows you accept, then run locally:',
                 '```',
-                'node batch-scripts/curateManualBooks.mjs --apply-titles --dry-run',
-                'node batch-scripts/curateManualBooks.mjs --apply-titles',
+                'node batch-scripts/manual/curateManualBooks.mjs --apply-titles --dry-run',
+                'node batch-scripts/manual/curateManualBooks.mjs --apply-titles',
                 '```',
                 '',
                 'Rows with `merge_into` set FOLD one book into another and delete the source,',
@@ -241,7 +265,7 @@ jobs:
               '',
               'Run a bounded batch when you want to:',
               '```',
-              'node batch-scripts/curateManualBooks.mjs --limit 25 --verbose',
+              'node batch-scripts/manual/curateManualBooks.mjs --limit 25 --verbose',
               '```',
               'or trigger this workflow manually with `curate_limit` set.',
               '',

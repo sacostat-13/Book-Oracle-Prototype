@@ -120,6 +120,9 @@ export function useStacks({ favoriteGenres = [], owned = [], ready = true }) {
 
   const totalRef = useRef(null);
   const ownedCountRef = useRef(0);
+  // Cursor for the sequential fallback. Starts at a random page so two readers
+  // opening the app at the same moment don't sweep the catalog in lockstep.
+  const sweepRef = useRef(0);
   const ownedIdsRef = useRef(new Set());
   const ownedKeysRef = useRef(new Set());
   const ownedEditionsRef = useRef(new Set());
@@ -193,12 +196,29 @@ export function useStacks({ favoriteGenres = [], owned = [], ready = true }) {
   // read from the top. That can't produce an empty result while the table has
   // rows, and it keeps the per-query randomness that stops every visit looking
   // the same.
+  // A card needs BOTH sides to work (v0.60.2).
+  //
+  // The wall has always filtered on cover_url, because the front of a card is
+  // the cover. It did not filter on description, so ~40% of the catalog flipped
+  // over to "No description on this one yet" — a dead end at exactly the moment
+  // a reader has shown interest in a book.
+  //
+  // Requiring a description shrinks the pool, which is the trade: browsing
+  // fewer books that are all complete beats browsing more where two in five
+  // are a blank. metadataBackfill exists to shrink the gap from the other side,
+  // and it refuses to write stubs under 40 characters, so a description that
+  // survives this filter is a real one.
+  //
+  // NOTE: searchStacks deliberately does NOT apply this. Someone searching for
+  // a specific title should find it; hiding a book because our metadata is
+  // incomplete would be a worse failure than a thin card.
   const baseQuery = useCallback((genreScoped) => {
     let q = supabase
       .from('books')
       .select(COLS)
       .neq('status', 'flagged')
-      .not('cover_url', 'is', null);
+      .not('cover_url', 'is', null)
+      .not('description', 'is', null);
     if (genreScoped) q = q.in('genre', favoriteGenres);
     return q.order('id', { ascending: true });
   }, [favoriteGenres]);
@@ -217,12 +237,21 @@ export function useStacks({ favoriteGenres = [], owned = [], ready = true }) {
   // blindly: every caller falls back to the old behaviour when it is null.
   const ensureTotal = useCallback(async () => {
     if (totalRef.current !== null) return totalRef.current;
+    // MUST mirror baseQuery's filters exactly. This count is what decides
+    // `exhausted`, so a filter present in one and not the other makes the wall
+    // either end early or never end at all.
     const { count, error } = await supabase
       .from('books')
       .select('id', { count: 'exact', head: true })
       .neq('status', 'flagged')
-      .not('cover_url', 'is', null);
+      .not('cover_url', 'is', null)
+      .not('description', 'is', null);
     totalRef.current = error || typeof count !== 'number' ? null : count;
+    // Seed the sweep cursor once the real size is known, so the sequential
+    // fallback doesn't always start from row 0.
+    if (totalRef.current) {
+      sweepRef.current = Math.floor(Math.random() * totalRef.current / FETCH_SIZE) * FETCH_SIZE;
+    }
     return totalRef.current;
   }, []);
 
@@ -300,6 +329,31 @@ export function useStacks({ favoriteGenres = [], owned = [], ready = true }) {
     return [...preferred, ...everything];
   }, [favoriteGenres, fetchWindow]);
 
+  // Sequential fallback for a long browse (v0.60.2).
+  //
+  // Random offsets are great early and get steadily worse. With a pool near
+  // 2000 and 40 rows a window, a reader who has already seen 1200 books has a
+  // ~60% chance of any given window being entirely seen — so batches come back
+  // short, then empty, and "Show more" starts doing visibly nothing. The wall
+  // never claims to have ended (exhaustion needs seen >= total), which is
+  // arguably worse: a button that appears to be broken.
+  //
+  // Random sampling also cannot guarantee it will ever reach the last few
+  // hundred unseen books. This walks the table in order instead, so every
+  // remaining book is reachable and progress is monotonic. Used only once
+  // random rounds start failing, so early browsing keeps its variety.
+  const sweepWindow = useCallback(async (genreScoped) => {
+    const total = await ensureTotal();
+    const { data } = await baseQuery(genreScoped)
+      .range(sweepRef.current, sweepRef.current + FETCH_SIZE - 1);
+    // Wrap rather than stop: the seen set is what ends the browse, not the
+    // cursor. Without the wrap a reader who joined mid-table would never see
+    // anything before their starting offset.
+    const next = sweepRef.current + FETCH_SIZE;
+    sweepRef.current = total && next >= total ? 0 : next;
+    return data || [];
+  }, [baseQuery, ensureTotal]);
+
   // Fetch until BATCH_TARGET books are ready to show, so the first load and
   // every "Show more" are a consistent size regardless of how many rows get
   // filtered out as owned/seen/hidden.
@@ -308,14 +362,17 @@ export function useStacks({ favoriteGenres = [], owned = [], ready = true }) {
     const collected = [];
     let emptyRounds = 0;
     for (let i = 0; i < MAX_QUERIES && collected.length < BATCH_TARGET; i++) {
-      const rows = await queryWindow();
+      // Two dry random rounds is the signal that the unseen books are no longer
+      // easy to stumble on. Switch to the sequential sweep for the rest of this
+      // batch rather than rolling the dice six more times.
+      const rows = emptyRounds >= 2 ? await sweepWindow(false) : await queryWindow();
       const fresh = selectFresh(rows, batchSeen);
       collected.push(...fresh);
-      // With random windows, an empty round means overlap with what we've
-      // already shown rather than a dead catalog — but several in a row means
-      // there is genuinely little left.
       emptyRounds = fresh.length === 0 ? emptyRounds + 1 : 0;
-      if (emptyRounds >= 3) break;
+      // Raised from 3: with the sweep now guaranteeing progress, an empty round
+      // means those specific rows are seen, not that the catalog is done. Give
+      // the sweep room to walk past them.
+      if (emptyRounds >= 6) break;
     }
     // Call only when the batch is kept. A discarded fetch must not poison the
     // seen set for the fetch that replaces it.
@@ -339,7 +396,7 @@ export function useStacks({ favoriteGenres = [], owned = [], ready = true }) {
       (total === null || seenRef.current.size + batchSeen.size >= total);
 
     return { collected, dry: collected.length === 0, reallyExhausted, commit };
-  }, [queryWindow, selectFresh, ensureTotal]);
+  }, [queryWindow, sweepWindow, selectFresh, ensureTotal]);
 
   const loadMore = useCallback(async () => {
     setLoading(true);

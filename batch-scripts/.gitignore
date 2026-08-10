@@ -1,0 +1,10 @@
+# Generated results, never hand-edited, never committed.
+#
+# The scripts themselves ARE tracked — the workflow in .github/workflows runs
+# them from a clean checkout, so they have to be. Only their output is ignored.
+# Keep the folder itself so scripts can write into it without mkdir.
+output/*
+!output/.gitkeep
+
+# Run logs, if anyone tees one here rather than at the repo root.
+*.log

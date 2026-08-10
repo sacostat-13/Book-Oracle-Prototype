@@ -21,7 +21,18 @@
   min-height: 100vh; // fallback for browsers without dvh support
   min-height: 100dvh; // v0.39.4: excludes mobile browser toolbar, fixes phantom scroll
   display: flex;
-  align-items: center;
+  // v0.60.3 — flex-start, NOT center.
+  //
+  // `align-items: center` centres beautifully while the card fits and clips the
+  // TOP of it the moment it doesn't. Overflow from a centred flex item spills
+  // in both directions, and the part above the container's top edge cannot be
+  // scrolled to — scrollTop 0 is already past it. On a phone, where the genre
+  // and mood steps are much taller than the viewport, that put readers into the
+  // middle of a step with the heading unreachable.
+  //
+  // flex-start plus `margin-block: auto` on the card (below) gives the same
+  // centring when there is room, and top-anchors it when there isn't.
+  align-items: flex-start;
   justify-content: center;
   padding: var(--ro-space-6) var(--ro-gutter-mobile);
 
@@ -41,6 +52,11 @@
 
 .onboarding-card {
   position: relative;
+  // Pairs with `align-items: flex-start` on the wrapper: auto block margins
+  // centre the card vertically when there is spare room and collapse to zero
+  // when there isn't, so a tall step starts at its heading instead of its
+  // middle. See the note on .onboarding-wrap.
+  margin-block: auto;
   background: var(--ro-surface);
   border: 1px solid var(--ro-border-strong);
   border-radius: var(--ro-radius-xl);

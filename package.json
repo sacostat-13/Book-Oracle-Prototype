@@ -16,11 +16,7 @@
     "list:db": "npx supabase migration list",
     "dump:db": "npx supabase db dump -f supabase/dump/schema.sql",
     "dump:data": "npx supabase db dump --data-only -f supabase/dump/data.sql",
-    "reset:db": "npx supabase db reset",
-    "_comment_pgdump": "No-Docker fallbacks. Need native pg_dump on PATH and SUPABASE_DB_URL set. See supabase/SETUP.md.",
-    "dump:schema:pg": "pg_dump --schema-only --no-owner --no-privileges --schema=public --file=supabase/dump/schema.sql \"%SUPABASE_DB_URL%\"",
-    "dump:data:pg": "pg_dump --data-only --no-owner --no-privileges --schema=public --file=supabase/dump/data.sql \"%SUPABASE_DB_URL%\"",
-    "dump:full:pg": "pg_dump --no-owner --no-privileges --schema=public --file=supabase/dump/full.sql \"%SUPABASE_DB_URL%\""
+    "reset:db": "npx supabase db reset"
   },
   "dependencies": {
     "@gsap/react": "^2.1.2",
@@ -32,16 +28,15 @@
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "satori": "^0.26.0",
-    "scoop": "^0.0.2",
     "three": "^0.184.0",
     "ws": "^8.21.0"
   },
   "devDependencies": {
+    "supabase": "^2.22.6",
     "@vitejs/plugin-react": "^4.3.1",
     "jpeg-js": "^0.4.4",
     "pngjs": "^7.0.0",
     "sass": "^1.77.0",
-    "supabase": "^2.22.6",
     "vite": "^5.3.0",
     "vite-plugin-pwa": "^0.20.0",
     "workbox-window": "^7.0.0"

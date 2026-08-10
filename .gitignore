@@ -19,4 +19,13 @@ supabase/.branches
 supabase/dump
 .scripts
 scripts
-batch-scripts
+# batch-scripts is NOT ignored (v0.60.1).
+#
+# It used to be, wholesale, and that quietly broke the weekly catalog
+# maintenance workflow: .github/workflows/catalog-maintenance.yml runs
+# `node batch-scripts/isbnBackfill.mjs`, and a fresh CI checkout had no such
+# file. The job could only ever have worked on a machine that already had the
+# untracked scripts — i.e. never in Actions.
+#
+# Generated results are ignored instead, one level down, in
+# batch-scripts/.gitignore. Scripts are source; CSVs and logs are not.

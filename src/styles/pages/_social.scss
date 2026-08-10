@@ -1145,13 +1145,19 @@
   backdrop-filter: blur(4px);
   z-index: 1000;
   display: flex;
-  align-items: center;
+  // flex-start, not center — see the note on .onboarding-wrap. A centred flex
+  // item that outgrows its container spills past the top edge, and nothing can
+  // scroll to it. `margin: auto` on the modal restores centring when it fits.
+  align-items: flex-start;
   justify-content: center;
   padding: 1rem;
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .rating-modal {
   position: relative;
+  margin: auto;
   background: var(--ro-surface);
   border: 1px solid var(--ro-border-strong);
   border-radius: var(--ro-radius-xl);
@@ -1159,10 +1165,30 @@
   width: 100%;
   padding: 32px;
   box-shadow: var(--ro-shadow);
+
+  // v0.60.3 — no modal may exceed the viewport.
+  //
+  // This shell had no height limit at all; only the opt-in .rating-modal--scroll
+  // did, and most modals never asked for it. On a short screen the Oracle intro
+  // dialog — five paragraphs plus a three-button footer — grew past the top and
+  // bottom of the display, and its Cancel/Confirm buttons became unreachable.
+  // With the overlay covering the page and Escape being the only other exit,
+  // the reported workaround was switching the phone to desktop view.
+  //
+  // Applied to the shell rather than to that one dialog because every modal
+  // using it has the same failure waiting: enough content, short enough screen.
+  max-height: calc(100vh - 2rem);  // fallback
+  max-height: calc(100dvh - 2rem); // excludes mobile browser chrome
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 // For forms that can grow tall (e.g. edit-session with book picker + dates
 // + notes) — keeps the modal from overflowing the viewport.
+// Now largely redundant — .rating-modal caps and scrolls itself as of v0.60.3.
+// Kept because SessionDetail still applies it and 90vh is a slightly tighter
+// cap than the shell's, which suits that form. Safe to delete once that view
+// stops asking for it; harmless in the meantime.
 .rating-modal--scroll {
   max-height: 90vh;
   overflow-y: auto;

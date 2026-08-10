@@ -1,4 +1,21 @@
 // oracleCategorizationService.js
+//
+// v0.60.1 — DESCRIPTIONS REMOVED. The Oracle no longer writes books.description.
+//
+// It was generating text that Hardcover, Open Library and Google Books already
+// hand out for free, which meant paying Anthropic for retrieval and accepting a
+// model's summary of a book in place of the publisher's. A generated blurb can
+// also be wrong in ways a fetched one cannot.
+// batch-scripts/scheduled/metadataBackfill.mjs owns the field now, on the
+// weekly cron, at no cost.
+//
+// What stays is what no API can supply: the curated book_genres taxonomy,
+// series linkage, complexity, depth, and author gender. Judgment, not lookup —
+// which is the whole test for whether an Oracle call is worth making.
+//
+// Descriptions still go INTO the prompt as context; they are the best available
+// evidence for complexity and depth. They just don't come back out.
+//
 // v0.21 — Oracle now handles genres, series, AND descriptions in one batch call.
 // v0.42-ish — also assigns complexity + depth (previously "curated only" fields,
 // left null for every book added via Hardcover/OpenLibrary/Goodreads/manual entry —
@@ -13,10 +30,10 @@
 // signal, or return 'unknown'.
 //
 // WHAT IT DOES
-// Runs on books with status in ['unreviewed', 'incomplete'] — one Claude call
-// per batch of 20 returns genres, series info, a description, complexity,
-// depth, and author gender for each book. All six are written back to
-// Supabase in the same pass.
+// Runs on books with status in ['unreviewed', 'incomplete'] that are still
+// missing at least one Oracle-only field — one Claude call per batch returns
+// genres, series info, complexity, depth, and author gender. All five are
+// written back to Supabase in the same pass.
 //
 // 'discovered' books are intentionally excluded: they haven't been added to
 // anyone's collection, so spending tokens on them isn't warranted.
@@ -47,7 +64,19 @@ import { hardcoverSearch } from './hardcoverService';
 // primarily a curator/catalog tool). If this ever needs to go back up, the
 // real fix is moving the proxy to a Netlify background function (15-min limit)
 // rather than raising the batch under the 30s sync cap.
-const BATCH_SIZE = 5;
+// v0.60.1: 5 → 10, reversing the v0.57 halving.
+//
+// That halving was forced by output length: six fields per book, one of them a
+// 2-4 sentence description, pushed generation time onto the 30s edge. Dropping
+// description removes by far the largest output field — the remaining five are
+// a short array, a small object and three scalars — so the per-book generation
+// cost is a fraction of what it was and 10 sits comfortably under the cap
+// again. Halves the number of calls, which is where the fixed cost lives.
+//
+// If timeouts reappear, lower this first; the real fix remains moving the proxy
+// to a Netlify background function rather than tuning the batch under a 30s
+// synchronous ceiling.
+const BATCH_SIZE = 10;
 
 const UNVERIFIED_STATUSES = ['unreviewed', 'incomplete'];
 
@@ -63,14 +92,46 @@ export function getBooksNeedingGenres(books, genresByBookId) {
   });
 }
 
-// v0.21: broader eligibility — any book needing genres, series, OR description.
-// Option A (always re-run): pass all unreviewed/incomplete books.
-// The Oracle overwrites all three fields unconditionally.
+// Books the Oracle can still add something to.
+//
+// v0.60.1 — this used to return every unreviewed book unconditionally ("Option
+// A: always re-run"), which was defensible when the Oracle also wrote
+// descriptions: almost every book was missing one, so almost every book was
+// genuinely work.
+//
+// It is not defensible now. Descriptions and books.genre are filled for free by
+// metadataBackfill, so re-running the whole shelf bills Anthropic to regenerate
+// fields that are already correct. The button should light up only for books
+// missing something no free source can supply:
+//
+//   genres        the curated book_genres taxonomy — no API knows it
+//   complexity    a reading of the prose
+//   depth         a reading of the themes
+//   author_gender only from a real biographical signal
+//
+// Series is excluded from the test on purpose: a standalone book legitimately
+// has none, so "no series" can never mean "needs the Oracle" without making
+// every standalone permanently eligible.
 export function getBooksNeedingOracle(books, genresByBookId) {
   return books.filter((b) => {
     if (!b.bookId) return false;
     if (!UNVERIFIED_STATUSES.includes(b.status || 'unreviewed')) return false;
-    return true; // Option A: run on all eligible books every time
+
+    // Client-side field names, not column names: bookRowToClient maps
+    // complexity → c, depth → p, author_gender → ag. Using the column names
+    // here reads as undefined on every book and quietly makes the whole shelf
+    // eligible again, which is the exact bug this function exists to prevent.
+    const genres = genresByBookId[b.bookId];
+    if (!genres || genres.length === 0) return true;
+    if (b.c == null) return true;
+    if (b.p == null) return true;
+    // `ag` is undefined for BOTH 'unknown' and never-checked, so it cannot
+    // answer this on its own — 'unknown' is a final answer and re-asking bills
+    // for the same shrug. agChecked reads author_gender_checked_at, which is
+    // stamped either way.
+    if (!b.agChecked) return true;
+
+    return false;
   });
 }
 
@@ -134,11 +195,19 @@ function buildPrompt(books, existingGenres) {
       if (author) parts.push(`   Author: ${author}`);
       if (genreHint) parts.push(`   Auto-genre hint: ${genreHint}`);
       if (seriesHint) parts.push(`   Series hint: ${seriesHint}`);
-      // Only include description when it adds signal beyond title/author/genre.
-      // Keep it short to stay within the Netlify 30s timeout.
-      if (description && !genreHint) {
-        const desc = description.length > 150 ?
-          description.slice(0, 150) + '…' :
+      // v0.60.1: description is now INPUT-only, and included whenever we have
+      // one rather than only when the genre hint is missing.
+      //
+      // It used to be withheld to save tokens, back when the Oracle was also
+      // generating descriptions and every token counted against the 30s cap.
+      // Now that it only generates judgment fields, a real description is the
+      // single most useful signal available for complexity and depth — those
+      // are readings of the prose, and title plus author is thin evidence for
+      // either. Input tokens are also far cheaper than output tokens, and
+      // dropping description from the response freed plenty of both.
+      if (description) {
+        const desc = description.length > 400 ?
+          description.slice(0, 400) + '…' :
           description;
         parts.push(`   Description: ${desc}`);
       }
@@ -151,10 +220,9 @@ function buildPrompt(books, existingGenres) {
 For each book you will return:
 1. GENRES — 1-3 canonical genre labels from or inspired by the existing catalog
 2. SERIES — series name, position, and total books (null if standalone)
-3. DESCRIPTION — a rich 2-4 sentence description in the style of a literary review
-4. COMPLEXITY — prose complexity, 1-5
-5. DEPTH — thematic/genre depth, 1-5
-6. AUTHOR GENDER — the author's gender, ONLY when you're confident from a real public signal
+3. COMPLEXITY — prose complexity, 1-5
+4. DEPTH — thematic/genre depth, 1-5
+5. AUTHOR GENDER — the author's gender, ONLY when you're confident from a real public signal
 
 GENRE RULES:
 - The existing catalog above is the source of truth. Read every description before deciding — a genre that looks unrelated by name alone (e.g. "International Fiction") may be exactly the right fit once you read what it actually covers.
@@ -168,12 +236,6 @@ GENRE RULES:
 SERIES RULES:
 - Return null for standalone books not part of any series.
 - "total" may be null if the series is ongoing or total is unknown.
-
-DESCRIPTION RULES:
-- 2-4 sentences. Evocative, literary, informative — not a blurb or marketing copy.
-- Focus on themes, tone, and what makes the book distinctive.
-- Write in English regardless of the book's original language.
-- If you already see a good description in the input, you may improve it or keep it.
 
 COMPLEXITY RULES (prose-level difficulty, 1 = approachable, 5 = challenging):
 1 = casual/page-turners
@@ -214,7 +276,6 @@ RESPONSE FORMAT (JSON array, one object per book, in input order):
     "index": 1,
     "genres": ["Exact Genre Name"],
     "series": { "name": "Series Name", "n": 1, "total": 3 },
-    "description": "Rich literary description here.",
     "complexity": 1-5,
     "depth": 1-5,
     "authorGender": "female" | "male" | "nonbinary" | "mixed" | "unknown"
@@ -263,7 +324,10 @@ function sanitizeAuthorGender(v) {
   return VALID_AUTHOR_GENDERS.has(v) ? v : null;
 }
 
-async function writeBookEnrichment(bookId, genreIds, seriesData, description, complexity, depth, authorGender) {
+// v0.60.1: `description` parameter removed. It used to sit between seriesData
+// and complexity — if you are merging an older branch, check the call site
+// rather than trusting positional arguments to line up.
+async function writeBookEnrichment(bookId, genreIds, seriesData, complexity, depth, authorGender) {
   // 1. Genres
   for (const genreId of genreIds) {
     const {
@@ -276,14 +340,16 @@ async function writeBookEnrichment(bookId, genreIds, seriesData, description, co
     if (error) console.warn('link_book_genre failed', bookId, genreId, error);
   }
 
-  // 2. Description, complexity, depth, author gender — only write fields the
-  // Oracle actually produced. author_gender_checked_at is stamped whenever
-  // authorGender is present (including 'unknown') so "checked, inconclusive"
-  // stays distinguishable from "never checked" (NULL) going forward.
+  // 2. Complexity, depth, author gender — only write fields the Oracle actually
+  // produced. author_gender_checked_at is stamped whenever authorGender is
+  // present (including 'unknown') so "checked, inconclusive" stays
+  // distinguishable from "never checked" (NULL) going forward.
+  //
+  // `description` is deliberately absent. It is filled by
+  // batch-scripts/scheduled/metadataBackfill.mjs from Hardcover / Open Library
+  // / Google Books, for free, and this write would clobber a real publisher
+  // blurb with a generated one.
   const enrichPatch = {
-    ...(description ? {
-      description
-    } : {}),
     ...(complexity != null ? {
       complexity
     } : {}),
@@ -384,13 +450,16 @@ export async function runOracleCategorization({
       } = buildPrompt(batch, existingGenres);
       let raw;
       try {
-        // BATCH_SIZE books × 6 fields each (genres, series, description,
-        // complexity, depth, author_gender) can run past the Netlify function's
-        // 2000-token default, especially with verbose descriptions, truncating
-        // the JSON mid-response (seen as "Batch N returned an unexpected
-        // response" once parsing failed). 4000 is a cap, not a target — the
-        // model stops when the JSON is done, so this doesn't slow small batches;
-        // it just prevents truncation on a full one. Matches oracleBatch.mjs.
+        // BATCH_SIZE books × 5 fields each (genres, series, complexity, depth,
+        // author_gender) can run past the Netlify function's 2000-token
+        // default, truncating the JSON mid-response (seen as "Batch N returned
+        // an unexpected response" once parsing failed). 4000 is a cap, not a
+        // target — the model stops when the JSON is done, so this doesn't slow
+        // small batches; it just prevents truncation on a full one.
+        //
+        // Kept at 4000 despite description leaving the response in v0.60.1:
+        // the batch doubled to 10 at the same time, so the ceiling still needs
+        // headroom. It costs nothing when unused.
         raw = await callClaude(userPrompt, systemPrompt, {
           maxTokens: 4000,
           runId,
@@ -453,9 +522,10 @@ export async function runOracleCategorization({
           )
         ).filter(Boolean);
 
-        // Series and description
+        // No description here any more — see the header note. metadataBackfill
+        // owns that field now, and a value read from Open Library is both free
+        // and incapable of being invented.
         const seriesData = item.series || null;
-        const description = item.description || null;
         const complexity = sanitizeLevel(item.complexity);
         const depth = sanitizeLevel(item.depth);
         const authorGender = sanitizeAuthorGender(item.authorGender);
@@ -464,7 +534,6 @@ export async function runOracleCategorization({
           book.bookId,
           resolvedGenres.map((g) => g.genreId),
           seriesData,
-          description,
           complexity,
           depth,
           authorGender
@@ -487,7 +556,6 @@ export async function runOracleCategorization({
           bookId: book.bookId,
           genres: resolvedGenres,
           series: seriesData,
-          description,
           complexity,
           depth,
           authorGender,
