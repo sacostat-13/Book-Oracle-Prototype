@@ -87,10 +87,18 @@ export default function Landing() {
   }, []);
 
   // ── SEO: title/description + JSON-LD (SoftwareApplication + FAQPage) ────
+  // v0.61.3: title rewritten for what people search, not for what reads best
+  // in a browser tab. "An Oracle that knows what you'll love next" is the
+  // better line and says less: it contains no word anyone types into Google.
+  // "Reading tracker" and "book recommendations" are the two category terms
+  // this product actually is — head terms owned by Goodreads and StoryGraph, so
+  // not winnable head-on, but they belong in the title anyway because they are
+  // what qualifies the page for the long-tail variants that ARE winnable.
+  // The poetic line survives where it belongs: as the h1 on the page itself.
   useDocumentMeta({
-    title: 'The Books Oracle — An Oracle that knows what you’ll love next',
+    title: 'The Books Oracle — Reading Tracker & Book Recommendations',
     description:
-      'Track your reading, get suggestions that actually fit your taste, and join book clubs. Free to start, full library import, English & Spanish.',
+      'Track what you read, keep your wishlist and series in order, and get book recommendations drawn from your own shelf — each one with the reason behind it. Free to start, full library import, English & Spanish.',
     image: 'https://www.thebooksoracle.com/images/landing/og-share.png',
   });
 

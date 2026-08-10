@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { bookKey, openBookTab } from './lib/bookHelpers';
+import { canonicalUrl } from './lib/siteUrl';
 import { useAuth } from './lib/AuthContext';
 import { useData } from './lib/DataContext';
 import { useRouter } from './lib/RouterContext';
@@ -123,15 +124,20 @@ export default function App() {
   //    after React mounted — which is precisely the rendering pass a canonical
   //    is supposed to be robust against. The static tag is the floor; this
   //    keeps it accurate as the reader navigates.
+  //
+  // v0.61.2 also drops window.location.search from the canonical. `?lang=en`
+  // is a UI preference, not a different document — including it told Google
+  // that `/` and `/?lang=en` were two pages competing for the same content.
+  // See src/lib/siteUrl.js.
   useEffect(() => {
-    const canonicalUrl = `https://www.thebooksoracle.com${window.location.pathname}${window.location.search}`;
+    const canonical = canonicalUrl();
     let link = document.querySelector('link[rel="canonical"]');
     if (!link) {
       link = document.createElement('link');
       link.setAttribute('rel', 'canonical');
       document.head.appendChild(link);
     }
-    link.setAttribute('href', canonicalUrl);
+    link.setAttribute('href', canonical);
   }, [route.name, route.params]);
 
   // v0.55.4: local-only onboarding replay. Visiting the app with ?onboarding=reset

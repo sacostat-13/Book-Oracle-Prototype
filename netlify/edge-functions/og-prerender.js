@@ -126,14 +126,75 @@ function injectMeta(html, {
     jsonLd ? `<script type="application/ld+json">${JSON.stringify(jsonLd)}</script>` : '',
   ].filter(Boolean).join('\n    ');
 
-  // Remove the static <title> and description <meta> from index.html so we
-  // don't end up with two of each — bots typically use the first tag they
-  // see, but better to not rely on that.
+  // Strip everything from index.html that this function is about to restate.
+  //
+  // Originally this only had to remove <title> and the description meta,
+  // because index.html carried nothing else. v0.61.2 gave it a full static
+  // head — og:*, twitter:*, canonical, hreflang — and appending on top of that
+  // left every entity page serving TWO og:title tags, TWO canonicals, and an
+  // hreflang set pointing at the homepage. Bots usually take the first tag they
+  // see, which would have been the generic homepage one on all ~1,700 pages:
+  // strictly worse than before the static head existed.
+  //
+  // hreflang goes too. The homepage genuinely is available in both languages
+  // at the same URL; a book page inheriting that claim says nothing true.
   let out = html
     .replace(/<title>.*?<\/title>/is, '')
-    .replace(/<meta\s+name="description"[^>]*>/i, '');
+    .replace(/<meta\s+name="description"[^>]*>/i, '')
+    .replace(/<meta\s+property="og:(?:title|description|url|image|image:width|image:height|type)"[^>]*>/gi, '')
+    .replace(/<meta\s+name="twitter:(?:card|title|description|image)"[^>]*>/gi, '')
+    .replace(/<link\s+rel="canonical"[^>]*>/gi, '')
+    .replace(/<link\s+rel="alternate"\s+hreflang="[^"]*"[^>]*>/gi, '');
 
   return out.replace('</head>', `    ${tags}\n  </head>`);
+}
+
+
+// ── v0.61.3: BODY injection ───────────────────────────────────────────────────
+//
+// injectMeta() only ever rewrote <head>. That was fine while index.html shipped
+// an empty <div id="root">: every entity page was thin, but thin in the same
+// way an empty page is thin.
+//
+// v0.61.2 put real fallback copy inside #root to make the HOMEPAGE indexable —
+// and because the SPA serves that same index.html for every route, all ~1,700
+// book and series URLs in the sitemap started serving byte-identical body copy.
+// Google handles 1,700 duplicates worse than 1,700 blanks.
+//
+// So the fallback is now swapped for per-entity content on the routes this
+// function already understands. It is written between explicit HTML comment
+// markers in index.html rather than matched by a div regex, because the block
+// will be edited by people who have no reason to know this function exists.
+//
+// ON DYNAMIC RENDERING: this runs for bots only, like everything else here.
+// The injected content states the same facts the React page renders — title,
+// author, description, series order — so it is within what Google tolerates,
+// but their guidance treats dynamic rendering as a workaround rather than a
+// destination. The real fix is server rendering these routes. Revisit if the
+// app ever grows an SSR story.
+const PREMOUNT_RE = /<!--PREMOUNT-->[\s\S]*?<!--\/PREMOUNT-->/;
+
+function injectBody(html, blockHtml) {
+  if (!PREMOUNT_RE.test(html)) return html; // markers gone — leave it alone
+  return html.replace(PREMOUNT_RE, `<div class="pre-mount">${blockHtml}</div>`);
+}
+
+// Internal links are the point of this as much as the prose. Google discovers
+// and weighs deep pages through links from other pages; 1,700 orphans reachable
+// only from a sitemap is a much weaker position than 1,700 pages that reference
+// each other by series and genre.
+function bookLink(title, author) {
+  const key = (title || '').toLowerCase().replace(/[^a-z0-9]/g, '') +
+    '|' + (author || '').toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 10);
+  return `/book/${encodeURIComponent(key)}`;
+}
+
+function listItems(rows) {
+  return rows.map((b) => {
+    const pos = b.position_in_series != null ? `${Number(b.position_in_series)}. ` : '';
+    return `<li>${escapeHtml(pos)}<a href="${escapeHtml(bookLink(b.title, b.author))}">${escapeHtml(b.title)}</a>` +
+      `${b.author ? ` — ${escapeHtml(b.author)}` : ''}</li>`;
+  }).join('');
 }
 
 export default async (request, context) => {
@@ -185,10 +246,16 @@ export default async (request, context) => {
   }
 
   // Shared tail for every match: get the SPA HTML, inject, respond.
-  async function respond(meta) {
+  // v0.61.3: `body` is optional. Branches that pass one get the #root fallback
+  // replaced with entity content; branches that don't (lists, plans, clubs,
+  // profiles) keep the generic block. That is deliberate — those are private-
+  // by-default share targets that the sitemap never invites Google to index,
+  // so there is nothing to gain from describing them in crawlable HTML.
+  async function respond(meta, body) {
     const response = await context.next();
     const html = await response.text();
-    return new Response(injectMeta(html, meta), response);
+    const injected = injectMeta(html, meta);
+    return new Response(body ? injectBody(injected, body) : injected, response);
   }
 
   try {
@@ -225,7 +292,7 @@ export default async (request, context) => {
 
       for (let page = 0; page < MAX_PAGES; page++) {
         const res = await fetch(
-          `${supabaseUrl}/rest/v1/books?select=title,author,description,cover_url&limit=${PAGE_SIZE}&offset=${page * PAGE_SIZE}`, {
+          `${supabaseUrl}/rest/v1/books?select=title,author,description,cover_url,genre,series_id,position_in_series&limit=${PAGE_SIZE}&offset=${page * PAGE_SIZE}`, {
             headers: restHeaders
           }
         );
@@ -280,14 +347,51 @@ export default async (request, context) => {
           } : {}),
         },
       });
-      return new Response(injected, response);
+      // ── Body content + internal links ──────────────────────────────────
+      // Two extra reads, bots only. Series siblings first (strongest possible
+      // relation between two book pages), then same-genre neighbours to give
+      // standalone books something to link to as well.
+      let siblings = [];
+      let neighbours = [];
+      let seriesName = null;
+      if (match.series_id) {
+        const [sRes, bRes] = await Promise.all([
+          fetch(`${supabaseUrl}/rest/v1/series?select=name&id=eq.${encodeURIComponent(match.series_id)}&limit=1`, { headers: restHeaders }),
+          fetch(`${supabaseUrl}/rest/v1/books?select=title,author,position_in_series&series_id=eq.${encodeURIComponent(match.series_id)}&order=position_in_series.asc&limit=30`, { headers: restHeaders }),
+        ]);
+        if (sRes.ok) seriesName = (await sRes.json())[0]?.name || null;
+        if (bRes.ok) siblings = await bRes.json();
+      } else if (match.genre) {
+        const nRes = await fetch(
+          `${supabaseUrl}/rest/v1/books?select=title,author&genre=eq.${encodeURIComponent(match.genre)}` +
+          `&status=in.(verified,oracle_categorized)&title=neq.${encodeURIComponent(match.title)}&limit=8`,
+          { headers: restHeaders }
+        );
+        if (nRes.ok) neighbours = await nRes.json();
+      }
+
+      const bookBody = [
+        `<p class="eyebrow">${escapeHtml(match.genre || 'The Books Oracle')}</p>`,
+        `<h1>${escapeHtml(match.title)}</h1>`,
+        `<p>by ${escapeHtml(authorDisplay)}${seriesName ? ` · ${escapeHtml(seriesName)} series` : ''}</p>`,
+        match.description ? `<p>${escapeHtml(match.description.slice(0, 600))}</p>` : '',
+        siblings.length > 1
+          ? `<h2>${escapeHtml(seriesName || 'This series')} in reading order</h2><ul>${listItems(siblings)}</ul>`
+          : '',
+        neighbours.length
+          ? `<h2>More ${escapeHtml(match.genre)}</h2><ul>${listItems(neighbours)}</ul>`
+          : '',
+        `<p><a href="/">The Books Oracle</a> — reading tracker and book recommendations drawn from your own shelf.</p>`,
+      ].filter(Boolean).join('');
+
+      return new Response(injectBody(injected, bookBody), response);
     }
 
     if (seriesMatch) {
       const seriesName = decodeURIComponent(seriesMatch[1]);
       const normalized = normalizeSeriesName(seriesName);
       const res = await fetch(
-        `${supabaseUrl}/rest/v1/series?select=name,description&normalized_name=eq.${encodeURIComponent(normalized)}&limit=1`, {
+        `${supabaseUrl}/rest/v1/series?select=id,name,description&normalized_name=eq.${encodeURIComponent(normalized)}&limit=1`, {
           headers: restHeaders
         }
       );
@@ -296,19 +400,56 @@ export default async (request, context) => {
       const match = rows[0];
       if (!match) return context.next();
 
+      // v0.61.3: fetch the books, in order. "<series> reading order" is the
+      // query these pages can realistically win — high intent, thin
+      // competition, and the answer is already in position_in_series. Serving
+      // a page titled after the series with none of its books on it was
+      // leaving the entire point of the page unsaid.
+      let volumes = [];
+      const vRes = await fetch(
+        `${supabaseUrl}/rest/v1/books?select=title,author,position_in_series,description` +
+        `&series_id=eq.${encodeURIComponent(match.id)}&order=position_in_series.asc&limit=60`,
+        { headers: restHeaders }
+      );
+      if (vRes.ok) volumes = await vRes.json();
+
+      const first = volumes[0];
+      const seriesDesc = match.description
+        || (first?.description ? first.description.slice(0, 300) : null)
+        || `Every book in the ${match.name} series, in reading order.`;
+
+      const seriesBody = [
+        `<p class="eyebrow">Series</p>`,
+        `<h1>${escapeHtml(match.name)} series in reading order</h1>`,
+        `<p>${escapeHtml(seriesDesc)}</p>`,
+        volumes.length
+          ? `<h2>All ${volumes.length} book${volumes.length === 1 ? '' : 's'}</h2><ul>${listItems(volumes)}</ul>`
+          : '',
+        `<p><a href="/">The Books Oracle</a> — track the series you are partway through, and see what to read next.</p>`,
+      ].filter(Boolean).join('');
+
       return respond({
-        title: `${match.name} series — The Books Oracle`,
-        description: match.description ? match.description.slice(0, 200) : undefined,
+        // Front-load the words people actually type. "X series — The Books
+        // Oracle" said nothing a searcher was looking for.
+        title: `${match.name} series in order — every book | The Books Oracle`,
+        description: seriesDesc.slice(0, 200),
         url: SITE + url.pathname,
         jsonLd: {
           '@context': 'https://schema.org',
           '@type': 'BookSeries',
           name: match.name,
-          ...(match.description ? {
-            description: match.description.slice(0, 300)
+          ...(match.description ? { description: match.description.slice(0, 300) } : {}),
+          ...(volumes.length ? {
+            hasPart: volumes.map((b) => ({
+              '@type': 'Book',
+              name: b.title,
+              ...(b.author ? { author: { '@type': 'Person', name: b.author } } : {}),
+              ...(b.position_in_series != null ? { position: Number(b.position_in_series) } : {}),
+              url: SITE + bookLink(b.title, b.author),
+            })),
           } : {}),
         },
-      });
+      }, seriesBody);
     }
 
     // ── Lists: /l/:listId (public share links) ────────────────────────────

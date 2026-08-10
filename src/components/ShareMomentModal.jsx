@@ -18,6 +18,7 @@
 
 import { useRef, useState } from 'react';
 import { useData } from '../lib/DataContext';
+import { SITE_ORIGIN } from '../lib/siteUrl';
 import { useI18n } from '../lib/I18nContext';
 import CornerBrackets from './CornerBrackets';
 import ShareCard from './ShareCard';
@@ -51,7 +52,7 @@ export default function ShareMomentModal() {
 
   const moment = shareMoment;
   const text = momentShareText(moment, t);
-  const url = moment.url || 'https://thebooksoracle.com';
+  const url = moment.url || SITE_ORIGIN; // v0.61.2: was the apex, which 301s
 
   async function handleShareImage() {
     setBusy(true);

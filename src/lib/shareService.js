@@ -5,9 +5,14 @@
 // place and always match the routes og-prerender covers.
 
 import { bookKey } from './bookHelpers';
+import { SITE_ORIGIN } from './siteUrl';
 
+// window.location.origin stays primary so deploy previews share preview links
+// rather than production ones. v0.61.2 only changes the SSR/no-window fallback,
+// which was the apex — a host that 301s, so every share link built without a
+// window carried a redirect. SITE_ORIGIN keeps it in step with everything else.
 export const SHARE_ORIGIN =
-  typeof window !== 'undefined' ? window.location.origin : 'https://thebooksoracle.com';
+  typeof window !== 'undefined' ? window.location.origin : SITE_ORIGIN;
 
 export function bookShareUrl(book) {
   return `${SHARE_ORIGIN}/book/${encodeURIComponent(bookKey(book))}`;
