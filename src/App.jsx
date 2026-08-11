@@ -163,6 +163,14 @@ export default function App() {
 
   // previewBook holds a book from search results that isn't in the collection yet.
   // BookPage reads this ref when route.params.preview === 'true'.
+  //
+  // ONE SLOT, NEVER CLEARED. It holds the most recent search selection for the
+  // rest of the session, which means it is not on its own an answer to "which
+  // book is this page for" — a second search overwrites it while older preview
+  // URLs stay in browser history pointing at it. BookPage compares
+  // bookKey(previewBookRef.current) against route.params.bookKey before
+  // trusting it; anything that reads this ref must do the same, or it will
+  // render the wrong book after any second search (fixed in v0.62.2).
   const previewBookRef = useRef(null);
   function setPreviewBook(book) { previewBookRef.current = book; }
 

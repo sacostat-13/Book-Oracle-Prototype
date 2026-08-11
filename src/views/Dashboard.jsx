@@ -660,10 +660,17 @@ function ClubsWidget({ clubs, summary, go, t }) {
 function QuickActionsWidget({ go, t }) {
   const tNode = useTNode();
   const actions = [
-    { richLabel: 'dashboard.ctaOracle', sub: t('dashboard.ctaOracleSub'), glyph: '❦', route: 'oracle', isAccent: true },
-    { richLabel: 'dashboard.ctaPlan', sub: t('dashboard.ctaPlanSub'), glyph: '✦', route: 'plan-create', isAccent: false },
     { richLabel: 'dashboard.ctaWishlist', sub: t('dashboard.ctaWishlistSub'), glyph: '↗', route: 'wishlist', isAccent: false },
     { richLabel: 'dashboard.ctaLibrary', sub: t('dashboard.ctaLibrarySub'), glyph: '▤', route: 'library', isAccent: false },
+    { richLabel: 'dashboard.ctaOracle', sub: t('dashboard.ctaOracleSub'), glyph: '❦', route: 'oracle', isAccent: true },
+    { richLabel: 'dashboard.ctaPlan', sub: t('dashboard.ctaPlanSub'), glyph: '✦', route: 'plan-create', isAccent: false },
+    // v0.62.2: the Stacks, curated Lists and the club directory all existed and
+    // were only reachable from the nav. Ordered after the four originals
+    // deliberately — these are places to wander, not the things a reader most
+    // often arrives wanting to do.
+    { richLabel: 'dashboard.ctaStacks', sub: t('dashboard.ctaStacksSub'), glyph: '▦', route: 'stacks', isAccent: false },
+    { richLabel: 'dashboard.ctaList', sub: t('dashboard.ctaListSub'), glyph: '❧', route: 'lists', isAccent: false },
+    { richLabel: 'dashboard.ctaClubs', sub: t('dashboard.ctaClubsSub'), glyph: '◈', route: 'club-directory', isAccent: false },
   ];
   return (
     <section className="db-ctas">
@@ -767,7 +774,11 @@ function WishlistEvent({ ev, onOpenBook, t }) {
 function PlanEvent({ ev, go, t }) {
   const { plan } = ev;
   return (
-    <div className="feed-row feed-row--clickable" onClick={() => go('plan-view')}>
+    // v0.62.2: was go('plan-view') with no planId. 'plan-view' is /plans/:planId,
+    // so buildPath() returned null and the URL never moved — same silent failure
+    // as the search bug. It also meant every plan row in the feed opened
+    // whichever plan happened to be current, not the one named on the row.
+    <div className="feed-row feed-row--clickable" onClick={() => go('plan-view', { planId: plan._id })}>
       <FeedAccent type="plan" /><FeedIcon type="plan" />
       <div className="feed-row__body">
         <span className="feed-verb">{t('dashboard.feedPlanCreated')}</span>{' '}
@@ -1167,7 +1178,6 @@ export default function Dashboard({ onOpenBook }) {
     switch (id) {
       case 'currently-reading': return <CurrentlyReadingWidget key={id} books={state.currentlyReading || []} onOpenBook={onOpenBook} t={t} />;
       case 'oracle-spark': return <OracleSparkWidget key={id} wishlist={state.wishlist} go={go} t={t} profile={state.profile} />;
-      case 'quick-actions': return <QuickActionsWidget key={id} go={go} t={t} />;
       case 'reading-stats': return <ReadingStatsWidget key={id} library={state.library || []} go={go} t={t} />;
       case 'reading-goal': return <ReadingGoalWidget key={id} library={state.library || []} genresByBookId={state.genresByBookId || {}} readingGoalCount={state.readingGoalCount} setReadingGoalCount={setReadingGoalCount} t={t} />;
       case 'series-progress': return <SeriesProgressWidget key={id} library={state.library || []} wishlist={state.wishlist} readNext={state.readNext} go={go} t={t} />;
@@ -1223,6 +1233,9 @@ export default function Dashboard({ onOpenBook }) {
           ))}
         </div>
       </div>
+
+      {/* Quick Actions Permanent Widget   */}
+      <QuickActionsWidget go={go} t={t} />
 
       {/* Sparkle divider */}
       <div className="db-divider">

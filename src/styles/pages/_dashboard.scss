@@ -419,6 +419,23 @@
   @include tokens.ro-down(mobile) {
     grid-template-columns: 1fr;
   }
+
+  // v0.62.2: the count went from 4 to 7 when Stacks, Lists and the club
+  // directory were added. Four filled a 2x2 exactly; seven leaves a lone
+  // half-width card on the last row, which reads as a rendering fault rather
+  // than a layout. An odd last child spans the full width instead.
+  //
+  // Written as a rule rather than a one-off so it self-corrects at 8, 9, 10 —
+  // the next person to add a quick action should not have to know this.
+  > :last-child:nth-child(odd) {
+    grid-column: 1 / -1;
+  }
+
+  @include tokens.ro-down(mobile) {
+    > :last-child:nth-child(odd) {
+      grid-column: auto;
+    }
+  }
 }
 
 .db-cta-card {

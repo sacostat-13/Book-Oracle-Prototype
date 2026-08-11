@@ -16,9 +16,26 @@
 
 // The version label shown as "current" — keep in sync with package.json and
 // the README version line.
-export const CURRENT_VERSION = 'v0.62';
+export const CURRENT_VERSION = 'v0.62.2';
 
 export const RELEASES = [{
+    version: 'v0.62.2',
+    date: '2026-08-11',
+    titleEn: 'Books found through search now have an address',
+    titleEs: 'Los libros que encontrás buscando ahora tienen dirección',
+    bodyEn: [
+      'Opening a book from the search bar left the address bar behind. The book page appeared, but the browser still thought you were wherever you started — so back went too far, refreshing lost the book, and copying the link sent someone else to your home page. Every book you found by searching now has its own address, ready to share.',
+      'Going back to a book you had looked at earlier now shows that book. Before, the address changed but the page kept showing the last book you searched for, until you refreshed.',
+      'Reading plans in your activity feed now open the plan named on the row, rather than whichever plan happened to be current. Finishing a series plan takes you to that plan properly too.',
+      'The dashboard now shows the rest of what is here: wander the Stacks, curate a list, or find a book club, alongside the Oracle, your plans and your shelves.',
+    ],
+    bodyEs: [
+      'Abrir un libro desde el buscador dejaba atrás la barra de direcciones. La página del libro aparecía, pero el navegador seguía creyendo que estabas donde arrancaste — así que atrás te llevaba demasiado lejos, recargar perdía el libro, y copiar el link mandaba a otra persona a tu página de inicio. Cada libro que encontrás buscando ahora tiene su propia dirección, lista para compartir.',
+      'Volver atrás a un libro que habías mirado antes ahora muestra ese libro. Antes cambiaba la dirección pero la página seguía mostrando el último libro que habías buscado, hasta que recargabas.',
+      'Los planes de lectura en tu actividad ahora abren el plan que nombra la fila, y no el que estuviera activo en ese momento. Terminar un plan de una saga también te lleva a ese plan como corresponde.',
+      'El panel ahora muestra el resto de lo que hay acá: deambulá por los Estantes, curá una lista, o buscá un club de lectura, además del Oráculo, tus planes y tus estantes.',
+    ],
+  }, {
     version: 'v0.62',
     date: '2026-08-11',
     titleEn: 'Filter your shelves by what an evening can hold',

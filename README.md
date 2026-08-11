@@ -4,7 +4,7 @@ A reading companion — wishlist, library, reading plans, book clubs, and an AI-
 for book discovery. Built with React + Vite + SCSS, backed by Supabase for auth
 and cross-device sync, and Netlify Functions for API proxying.
 
-> Current version: **v0.62** — see [Releases](#releases) below for changelog.
+> Current version: **v0.62.2** — see [Releases](#releases) below for changelog.
 > Upgrading from an earlier version? Check the matching `MIGRATION_*.md` / `UPDATE_*.md`.
 
 ---
@@ -332,6 +332,129 @@ and forward requests. Locally you need `netlify dev` to make them work.
 ---
 
 ## Releases
+
+# Update Notes — v0.62 → v0.62.2: the URL follows the view
+
+## The bug
+
+Opening a book from the global search bar changed the view but not the address
+bar. Open five books in a row from `/` and the URL still read `/`. Back,
+refresh, copy-link and share were all wrong for every book found by search that
+wasn't already in the collection.
+
+## Root cause
+
+`NavSearch.selectResult()` had two branches. The in-collection branch passed
+`bookKey`; the preview branch did not:
+
+```js
+go('book-page', { preview: 'true', from: 'search', fromLabel: … });
+```
+
+`book-page` is the dynamic route `/book/:bookKey`. `buildPath()` checks that
+every segment param is present and **returns `null`** when one is missing —
+correct in itself, since writing `/book/undefined` into the address bar is worse
+than writing nothing. `RouterProvider.go()` then guards on `if (url && …)` and
+skips the `pushState`. React state updated, the URL did not, and nothing said
+so.
+
+The reasoning behind the omission was sound as far as it went: `BookPage`
+resolves a preview from `previewBookRef` and never reads `bookKey` on that path.
+True for rendering — and irrelevant to the URL, which is built from the same
+params.
+
+## Fix
+
+`NavSearch` now uses `buildBookPageParams(book, 'search', …)` on the preview
+branch, which supplies `bookKey` **and** the `snap` payload. That helper's own
+doc comment describes precisely this failure ("Without snap, BookPage shows Not
+Found for uncollected books, and the back button also stays broken") — it
+existed, and this call site predated it. `previewBookRef` still wins in-session,
+so the immediate render is unchanged; a reloaded or shared URL now renders from
+the snapshot instead of 404ing.
+
+## Two more instances of the same fault, found by grepping every dynamic-route `go()`
+
+- `Dashboard.jsx :: PlanEvent` — `go('plan-view')` with no `planId`. Besides not
+  moving the URL, every plan row in the activity feed opened whichever plan was
+  current rather than the one named on the row.
+- `PlanCreate.jsx` — the series path did `await setCurrentPlan(plan);
+  go('plan-view')`, discarding the saved plan's id. The themed path three
+  hundred lines below already did this correctly; the series path (added v0.58)
+  didn't follow it.
+
+## The follow-on: the URL moved, the page didn't
+
+Giving preview URLs real addresses made them reachable by Back and Forward for
+the first time, which exposed a second fault immediately behind the first.
+
+`previewBookRef` is a **single slot on `App` that is never cleared** — it holds
+the last book chosen from search for the rest of the session. `BookPage` tested
+it for presence only:
+
+```js
+if (isPreview && previewBookRef?.current) { setBook(previewBookRef.current); return; }
+```
+
+So `preview === 'true'` meant "render whatever was searched most recently",
+not "render this book". Search A, search B, press Back: the address bar returned
+to A and the page kept showing B until a refresh discarded the ref.
+
+Latent before v0.62.2 — with no `bookKey`, no history entry was ever written, so
+a preview URL could not be arrived at, only created.
+
+The guard now compares identity, not presence:
+
+```js
+const previewIsThisBook = !!previewBook && (!bookKey_ || bookKey(previewBook) === bookKey_);
+```
+
+A stale ref falls through to the collection lookup, then the URL snapshot — both
+keyed on `bookKey_`, which preview URLs now always carry. `bookKey_` is optional
+in the test so an older keyless in-session URL still resolves from the ref rather
+than 404ing. Verified across six cases, including that a fresh search still uses
+the ref (its Hardcover record is richer than the snapshot) and that non-preview
+navigation is untouched.
+
+## The silence is the real defect
+
+A router that declines to write a URL and says nothing turns a one-line mistake
+into a bug only findable by watching the address bar. `go()` now
+`console.warn`s in dev (`import.meta.env.DEV`) when `buildPath()` returns null,
+naming the route and the params it did get. Production behaviour is byte-identical.
+
+## Also in this release
+
+**Quick Actions on the dashboard** gains Stacks, Curate a List, and Find a Book
+Club — all three already existed and were reachable only from the nav. Ordered
+after the original four: these are places to wander, not what a reader most
+often arrives wanting to do. EN + rioplatense ES, matching the existing
+`richLabel` (`Verb <em class="accent">Noun</em>`) and short-`sub` pattern.
+
+`.db-ctas` was a fixed `1fr 1fr` grid, exact for four cards and leaving a lone
+half-width card on the last row at seven. An odd last child now spans both
+columns. Written as a rule rather than a one-off so it self-corrects at 8, 9, 10.
+
+## Files
+
+- `src/components/NavSearch.jsx` — preview branch uses `buildBookPageParams`
+- `src/views/BookPage.jsx` — preview ref checked against the URL's bookKey
+- `src/App.jsx` — comment recording that `previewBookRef` is a single, uncleared slot
+- `src/lib/RouterContext.jsx` — dev warning on a skipped URL write
+- `src/views/Dashboard.jsx` — `PlanEvent` planId; three new quick actions
+- `src/views/PlanCreate.jsx` — series path passes the saved plan id
+- `src/styles/pages/_dashboard.scss` — orphan-card rule
+- `src/i18n/en.json`, `es.json` — six new `dashboard.cta*` keys each
+
+## Noted, not fixed
+
+`ListView.jsx:113` builds a book key inline with a hand-rolled regex rather than
+calling `bookKey()`. It currently produces the same string, so it works — but it
+is a second copy of a rule that also exists in `compute_book_key()` in SQL and in
+`computeBookKey()` in `curateManualBooks.mjs`. If the normalisation ever changes,
+this is the copy that will be missed.
+
+---
 
 # Update Notes — v0.61.2 → v0.62: advanced shelf filters
 

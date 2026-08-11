@@ -212,6 +212,23 @@ export function RouterProvider({ children }) {
     const url = buildPath(name, effectiveParams);
     if (url && url !== window.location.pathname + window.location.search) {
       history.pushState(null, '', url);
+    } else if (!url && import.meta.env?.DEV) {
+      // v0.62.2: buildPath() returns null when a dynamic route is missing a
+      // segment param, and skipping the pushState is the right call — writing
+      // '/book/undefined' into the address bar is worse than not writing
+      // anything. But it failed SILENTLY, and the result is a view that
+      // renders correctly while the URL still points at wherever the reader
+      // came from. Back, refresh, copy-link and share all break, and nothing
+      // anywhere says so.
+      //
+      // That is how NavSearch shipped go('book-page') with no bookKey and went
+      // unnoticed until someone watched the address bar. Loud in dev, silent in
+      // production — the user-facing behaviour is unchanged either way.
+      console.warn(
+        `[router] go('${name}') did not update the URL: the route needs a path ` +
+        `param that wasn't provided. The view will render but back/refresh/share ` +
+        `will be wrong. Params given: ${JSON.stringify(Object.keys(effectiveParams || {}))}`
+      );
     }
 
     window.scrollTo({ top: 0, behavior: 'smooth' });

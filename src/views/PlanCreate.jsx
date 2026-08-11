@@ -173,8 +173,13 @@ export default function PlanCreate() {
     try {
       if (type === 'series') {
         const plan = await buildSeriesPlan(target);
-        await setCurrentPlan(plan);
-        go('plan-view');
+        // v0.62.2: was `await setCurrentPlan(plan); go('plan-view');` —
+        // discarding the return value and then navigating without a planId, so
+        // /plans/:planId got no param and the URL stayed on /plans/new. The
+        // themed path below already did this correctly; the series path added
+        // in v0.58 didn't follow it.
+        const saved = await setCurrentPlan(plan);
+        go('plan-view', { planId: saved?._id, plan: saved });
         return;
       }
 

@@ -202,14 +202,37 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
   // Resolve book: preview (from search) or collection lookup
   useEffect(() => {
     const isPreview = route.params?.preview === 'true';
-    if (isPreview && previewBookRef?.current) {
-      const previewBook = previewBookRef.current;
+    const previewBook = previewBookRef?.current;
+
+    // v0.62.2: the ref must be checked against the URL, not just for presence.
+    //
+    // previewBookRef is a single slot on App that holds the LAST book chosen
+    // from search, and nothing ever clears it. `preview === 'true'` therefore
+    // said "render whatever was searched most recently" rather than "render
+    // this book" — so any preview URL rendered the wrong book as soon as a
+    // second search had happened.
+    //
+    // Latent until v0.62.2. Before then, preview navigations passed no bookKey,
+    // buildPath() returned null and no history entry was ever written, so there
+    // was no way to arrive at a preview URL except by making it. Giving those
+    // URLs real addresses made them reachable by Back, Forward and paste — and
+    // the symptom was precise: the address bar changed to book A and the page
+    // went on showing book B until a refresh threw the ref away.
+    //
+    // bookKey_ is optional in the test so an older in-session preview URL with
+    // no key still resolves from the ref rather than falling through to 404.
+    const previewIsThisBook =
+      !!previewBook && (!bookKey_ || bookKey(previewBook) === bookKey_);
+
+    if (isPreview && previewIsThisBook) {
       setBook(previewBook);
       // Silently upsert as discovered status - enriches catalog without
       // adding to the user's collection (no wishlist_items row).
       upsertDiscoveredBook?.(previewBook);
       return;
     }
+    // Falls through on a stale ref: the collection lookup below, then the URL
+    // snapshot. Both key off bookKey_, which preview URLs now always carry.
     if (!bookKey_) { setNotFound(true); return; }
     const sources = [...state.wishlist, ...state.library, ...state.readNext];
     const found = sources.find((b) => bookKey(b) === bookKey_);

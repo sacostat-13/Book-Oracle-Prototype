@@ -20,7 +20,7 @@ import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useData } from '../lib/DataContext';
 import { useRouter } from '../lib/RouterContext';
 import { useT } from '../lib/I18nContext';
-import { bookKey } from '../lib/bookHelpers';
+import { bookKey, buildBookPageParams } from '../lib/bookHelpers';
 import { hardcoverSearchMulti } from '../lib/hardcoverService';
 import { googleBooksSearchMulti, titleMatchScore } from '../lib/googleBooksService';
 import { callClaude, parseJSONResponse, QuotaExceededError } from '../lib/claudeApi';
@@ -249,12 +249,26 @@ export default function NavSearch({ onPreviewBook }) {
         fromLabel: t('navSearch.fromSearch'),
       });
     } else {
-      // Preview book — pass through App state
+      // Preview book — pass through App state.
+      //
+      // v0.62.2: this used to omit bookKey entirely, on the reasoning that
+      // BookPage resolves a preview from previewBookRef and never needs it.
+      // True for rendering, false for the URL: 'book-page' is the dynamic route
+      // /book/:bookKey, so buildPath() found a missing segment param, returned
+      // null, and RouterProvider skipped pushState. The view changed and the
+      // address bar did not — open five books from search in a row and the URL
+      // still said '/'. Back, refresh, copy-link and share were all broken for
+      // every book found through search that wasn't already in the collection.
+      //
+      // buildBookPageParams also carries the `snap` payload, which is what
+      // makes such a URL survive a reload or a paste into another tab — its own
+      // doc comment describes exactly this failure. previewBookRef still wins
+      // in-session (BookPage checks preview first), so nothing about the
+      // immediate render changes.
       onPreviewBook(book);
       go('book-page', {
+        ...buildBookPageParams(book, 'search', t('navSearch.fromSearch')),
         preview: 'true',
-        from: 'search',
-        fromLabel: t('navSearch.fromSearch'),
       });
     }
   }
