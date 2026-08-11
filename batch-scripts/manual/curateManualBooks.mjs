@@ -36,7 +36,7 @@
 // COST: one Claude call with web search per book. Budget roughly 2-4 cents each — check
 // --limit 10 against your Anthropic console before turning it loose on the full set.
 
-import { createClient } from '@supabase/supabase-js';
+import { createServiceClient } from '../_shared/supabaseClient.mjs';
 import { readFileSync, writeFileSync, existsSync } from 'fs';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
@@ -94,7 +94,7 @@ for (const [k, v] of [['VITE_SUPABASE_URL', SUPABASE_URL], ['SUPABASE_SERVICE_RO
 }
 if (!APPLY_TITLES && !ANTHROPIC_KEY) { console.error('Missing ANTHROPIC_API_KEY in .env.local'); process.exit(1); }
 
-const supabase = createClient(SUPABASE_URL, SERVICE_KEY);
+const supabase = createServiceClient(SUPABASE_URL, SERVICE_KEY);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const vlog = (m) => { if (VERBOSE) process.stdout.write('    ' + m + '\n'); };
 

@@ -15,7 +15,7 @@
 //
 // If you're on Node < 22, install ws first:  npm install --save-dev ws
 
-import { createClient } from '@supabase/supabase-js';
+import { createServiceClient } from '../batch-scripts/_shared/supabaseClient.mjs';
 import { readFileSync } from 'fs';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
@@ -42,23 +42,13 @@ if (!url || !serviceKey) {
   process.exit(1);
 }
 
-// Optional ws shim for Node < 22
-let clientOptions = {
-  auth: { autoRefreshToken: false, persistSession: false },
-};
-try {
-  if (parseInt(process.versions.node.split('.')[0], 10) < 22) {
-    const wsMod = await import('ws');
-    const ws = wsMod.default || wsMod;
-    clientOptions.realtime = { transport: ws };
-    clientOptions.global = { WebSocket: ws };
-  }
-} catch {
-  // ws not installed; only matters if Supabase client tries to open a realtime channel,
-  // which the REST/RPC operations below don't.
-}
-
-const supabase = createClient(url, serviceKey, clientOptions);
+// v0.62: the ws shim that used to live here moved to
+// batch-scripts/_shared/supabaseClient.mjs, along with the four other copies of
+// it scattered across netlify/functions and the batch scripts. The version this
+// file had was gated on `node major < 22`; the shared one asks whether
+// globalThis.WebSocket exists, which is the question realtime-js actually asks.
+// auth.persistSession/autoRefreshToken are defaults there too.
+const supabase = createServiceClient(url, serviceKey);
 
 // Load BOOKS_DATA. We convert the ES module export to something node can read.
 const booksDataText = readFileSync(

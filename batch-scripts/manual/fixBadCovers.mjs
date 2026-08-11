@@ -6,7 +6,7 @@
 //   node batch-scripts/fixBadCovers.mjs            # fix
 //   node batch-scripts/fixBadCovers.mjs --dry-run  # preview only
 
-import { createClient } from '@supabase/supabase-js';
+import { createServiceClient } from '../_shared/supabaseClient.mjs';
 import { readFileSync } from 'fs';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
@@ -24,7 +24,7 @@ const env = Object.fromEntries(
     })
 );
 
-const supabase = createClient(env['VITE_SUPABASE_URL'], env['SUPABASE_SERVICE_ROLE_KEY']);
+const supabase = createServiceClient(env['VITE_SUPABASE_URL'], env['SUPABASE_SERVICE_ROLE_KEY']);
 
 // Exact bad URLs
 const BAD_URLS = [

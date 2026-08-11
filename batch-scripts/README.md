@@ -16,6 +16,36 @@ Run from the repo root, not from this folder:
 node batch-scripts/scheduled/metadataBackfill.mjs --dry-run --limit 20 --verbose
 ```
 
+## Never call `createClient()` directly
+
+Import the client from the shared module instead:
+
+```js
+import { createServiceClient } from '../_shared/supabaseClient.mjs';
+const supabase = createServiceClient(SUPABASE_URL, SERVICE_KEY);
+```
+
+`createClient()` builds a `RealtimeClient` unconditionally, and realtime-js
+requires a global `WebSocket`. Node 22 has one; Node 20 does not. None of these
+scripts open a realtime channel, but the constructor throws before any of that —
+at import time, so the script dies having done nothing:
+
+```
+Error: Node.js 20 detected without native WebSocket support.
+  at WebSocketFactory.getWebSocketConstructor (@supabase/realtime-js/...)
+```
+
+This crash was hit and fixed **four separate times, four different ways** — in
+`send-notification-email.js`, `catalog-crawl.mjs`, `sitemap.js` and
+`seedCuratedCatalog.mjs` — before anyone put the fix somewhere reusable. The
+batch scripts were the fifth site, and they took down the nightly curation run.
+`_shared/supabaseClient.mjs` is that one place now.
+
+It detects the capability rather than the Node version, so it needs no changes
+when the runtime moves. **Bumping `node-version` in the workflows is not the
+fix** — it would hide this in CI while leaving anyone on Node 20 locally with
+the same opaque startup crash.
+
 ## Layout
 
 The folder a script lives in states **when it is safe to run**, not what it
@@ -26,6 +56,8 @@ does:
   changes data in a way you want to look at.
 - **`probes/`** — read-only diagnostics. Write no database rows.
 - **`output/`** — generated results. Gitignored.
+- **`_shared/`** — code imported by the scripts. Not runnable; nothing here
+  touches the network or the database on its own.
 
 Nothing billable belongs in `scheduled/`, whatever its schedule happens to be
 today. That is the whole point of the split — and it is why `oracleBatch.mjs`
@@ -44,6 +76,7 @@ softening of the rule:
 |---|---|---|
 | 💸 | `curateManualBooks.mjs` | ~4c/book — Sonnet + up to 4 web searches |
 | 💸 | `oracleBatch.mjs` | Anthropic tokens per book |
+| 💸 | `authorGenderBackfill.mjs` | ~$0.40 per 1,000 distinct authors — one-shot |
 
 Everything else uses free APIs: Hardcover, Open Library, Google Books, Penguin
 Random House's cover CDN.
@@ -112,12 +145,31 @@ A book with no cover never appears in The Stacks, which filters on
 |---|---|
 | `manual/curateManualBooks.mjs` 💸 | Proposes title/author corrections for manually-added rows. Writes `output/proposed-titles.csv`; applying is a separate `--apply-titles` run, so nothing changes without a second decision. |
 | `manual/oracleBatch.mjs` 💸 | Bulk Oracle categorisation — genres, series, complexity, depth, author gender. Also invoked nightly by `nightly-curation.yml` at a capped limit; run it by hand only to clear a backlog faster than the cron will. |
+| `manual/authorGenderBackfill.mjs` 💸 | One-shot backfill of `books.author_gender`, keyed on **author** rather than book. Batched Sonnet, no web search. Only touches rows where `author_gender_checked_at IS NULL`, so it is safe to re-run and drains to zero. Writes `output/author-gender.csv`. |
 | `manual/fixBook.mjs` | Repair a single book by id — surgical, for when one row is wrong. |
 | `manual/fixBadCovers.mjs` | Remove covers that resolve to placeholders or dead URLs. |
 
 `curateManualBooks.mjs` does appear in `catalog-maintenance.yml`, but only in a
 step gated on `workflow_dispatch` with a `curate_limit` typed in by hand. It
 never runs on the cron. Living in `manual/` reflects that.
+
+`authorGenderBackfill.mjs` is a one-shot, and stays out of every workflow. Two
+reasons worth stating, because the second is easy to lose:
+
+- **It has an end.** It only selects `author_gender_checked_at IS NULL`, and it
+  stamps that column even when the answer is `"unknown"` — so each run strictly
+  shrinks the queue and a second full run costs nothing. Work that terminates
+  does not belong on a timer.
+- **It is retrieval, which usually means Claude is the wrong tool** — but no
+  free API exposes author gender, so the "three APIs will hand it over for
+  nothing" escape hatch that justifies `metadataBackfill.mjs` doesn't exist
+  here. Hence the deliberately cheap shape: grouped by author so each person is
+  asked about once, batched 50 to a call, and no web search. `unknown` is an
+  accepted answer rather than something to spend more money chasing.
+
+New books get their gender from `oracleBatch.mjs` on the nightly run, once that
+script's prompt is fixed to ask for it — it currently does not. Until then this
+script is the only thing filling the column.
 
 ## Probes — read-only, write nothing to the database
 
@@ -141,6 +193,7 @@ re-running its script. Nothing here should ever be edited by hand.
 | `isbn-unresolved.csv` | `isbnBackfill.mjs` |
 | `isbn-still-unresolved.csv` | `isbnFallback.mjs` |
 | `proposed-titles.csv` | `curateManualBooks.mjs` — **review before applying** |
+| `author-gender.csv` | `authorGenderBackfill.mjs` — already applied; for spot-checking |
 | `genre-unmatched.csv` | `metadataBackfill.mjs` — books whose subjects matched no rule |
 | `hardcover-tag-*.csv`, `hardcover-neighbours-*.csv` | `probeHardcoverTags.mjs` |
 

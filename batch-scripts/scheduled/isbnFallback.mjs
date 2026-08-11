@@ -48,7 +48,7 @@
 // Required in .env.local: VITE_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
 // Optional:               GOOGLE_BOOKS_API_KEY
 
-import { createClient } from '@supabase/supabase-js';
+import { createServiceClient } from '../_shared/supabaseClient.mjs';
 import { readFileSync, writeFileSync } from 'fs';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
@@ -97,7 +97,7 @@ if (!SUPABASE_URL || !SERVICE_KEY) {
   process.exit(1);
 }
 
-const supabase = createClient(SUPABASE_URL, SERVICE_KEY);
+const supabase = createServiceClient(SUPABASE_URL, SERVICE_KEY);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const vlog = (m) => { if (VERBOSE) process.stdout.write('    ' + m + '\n'); };
 const UA = 'BooksOracle-isbnFallback/1.0 (https://thebooksoracle.com)';

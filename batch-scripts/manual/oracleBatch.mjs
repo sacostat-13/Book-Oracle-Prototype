@@ -1,7 +1,28 @@
 // oracleBatch.mjs — v0.22: also backfills complexity + depth for older
 // oracle_categorized books that predate those fields.
 // Standalone Node.js script to run Oracle enrichment (genres + series +
-// description + complexity + depth) over all eligible books in the Supabase DB.
+// description + complexity + depth + author gender) over all eligible books in
+// the Supabase DB.
+//
+// v0.62 — author_gender is written here for the first time.
+//
+// It was added to the schema in v0.55 and to the prompt in
+// src/lib/oracleCategorizationService.js, which this script is supposed to
+// mirror. It was never added HERE. When v0.61 moved the work off the reader's
+// button and onto the nightly cron, that module stopped executing entirely and
+// this script became the only thing writing the column — so the field shipped,
+// was documented in nightly-curation.yml as something this job fills, and
+// stayed null on every row for six versions.
+//
+// The lesson worth keeping: "mirrors buildPrompt() in oracleCategorizationService"
+// is a claim no test checks. When you change one prompt, grep for the other.
+//
+// This change does NOT widen fetchEligibleBooks(). Books already
+// oracle_categorized with complexity and depth filled remain unreachable, which
+// means the existing catalog is not fixed by this script — that is
+// authorGenderBackfill.mjs's job, run once, by hand. Widening the `.or()` here
+// would make every categorized book eligible again on a nightly cron, which is
+// a recurring charge nobody approved.
 //
 // complexity/depth were previously "curated only" — every book added via
 // Hardcover/OpenLibrary/Goodreads import or manual entry has them null. This
@@ -27,9 +48,7 @@
 //   Output: $15.00 / 1M tokens → ~$0.0045 per book
 //   Total:  ~$0.007 per book (~$7 per 1000 books)
 
-import {
-  createClient
-} from '@supabase/supabase-js';
+import { createServiceClient } from '../_shared/supabaseClient.mjs';
 import {
   readFileSync
 } from 'fs';
@@ -71,7 +90,11 @@ const env = Object.fromEntries(
 );
 
 const SUPABASE_URL = env['VITE_SUPABASE_URL'] || '';
-const SERVICE_KEY = env['SUPABASE_SERVICE_ROLE_KEY'] || '';
+// v0.62: SUPABASE_SECRET_KEY accepted first, for the sb_secret_… keys replacing
+// the legacy service_role JWT (docs/KEY_ROTATION.md). The old name still works —
+// that runbook deliberately keeps it, since the value changes but the name does
+// not. Same chain as netlify/functions/_shared/auth.js.
+const SERVICE_KEY = env['SUPABASE_SECRET_KEY'] || env['SUPABASE_SERVICE_ROLE_KEY'] || '';
 // v0.61: was `env['ANTHROPIC_KEY']` only — which matched neither this script's
 // own usage docs above, nor its error message below, nor any sibling script
 // (curateManualBooks and coverBackfill both read ANTHROPIC_API_KEY). It worked
@@ -90,7 +113,7 @@ if (!DRY_RUN && !ANTHROPIC_KEY) {
 }
 
 // ── Supabase ──────────────────────────────────────────────────────────────────
-const supabase = createClient(SUPABASE_URL, SERVICE_KEY);
+const supabase = createServiceClient(SUPABASE_URL, SERVICE_KEY);
 
 // ── Fetch eligible books ──────────────────────────────────────────────────────
 async function fetchEligibleBooks() {
@@ -208,7 +231,7 @@ function buildPrompt(books, existingGenres) {
     return parts.join('\n');
   }).join('\n\n');
 
-  const systemPrompt = `You are the Book Oracle, a literary curator. For each book return genres, series info, a description, complexity, and depth.
+  const systemPrompt = `You are the Book Oracle, a literary curator. For each book return genres, series info, a description, complexity, depth, and author gender.
 
 GENRE RULES: Prefer existing catalog genres. 1-3 per book. Only invent when nothing fits.
 SERIES RULES: null for standalone books. "total" may be null for ongoing series.
@@ -216,11 +239,27 @@ DESCRIPTION RULES: 2-4 sentences. Evocative, literary, informative. English only
 COMPLEXITY RULES (prose difficulty, 1-5): 1=casual/page-turners, 2=mid-difficulty, 3=literary, 4=challenging (Faulkner, Han Kang), 5=experimental (Donoso, Lispector). Judge sentence structure/vocabulary/technique, not length or genre.
 DEPTH RULES (thematic/genre depth, 1-5): how demanding the themes are within the book's own genre, not prose difficulty — a simply-written book can still be high-depth. Always return an integer 1-5 for both, never null, even if unsure.
 
+AUTHOR GENDER RULES (strict — read carefully, this is not like COMPLEXITY/DEPTH):
+- Return one of: "female", "male", "nonbinary", "mixed", "unknown".
+- Only return "female", "male", or "nonbinary" when you have a real, reliable
+  public signal: the author's own stated pronouns/identity, an official bio,
+  publisher copy, or a well-known interview. Being confident the name "sounds"
+  female or male is NOT a reliable signal — names are not a reliable indicator
+  of gender, and guessing from one risks misgendering a real person. If you
+  are not certain from an actual biographical fact, return "unknown".
+- Use "mixed" for books with multiple credited authors/editors whose genders
+  are not all the same (anthologies, co-authored nonfiction).
+- Unlike COMPLEXITY/DEPTH, "unknown" is a normal, expected, frequent answer
+  here — do not strain to produce a definite value. A wrong guess is worse
+  than an honest "unknown".
+- The book's subject matter is not evidence. A book about women does not imply
+  a female author.
+
 EXISTING GENRE CATALOG:
 ${catalogList || '(empty — you are seeding the catalog)'}
 
 RESPONSE FORMAT (JSON array, input order):
-[{"index":1,"genres":["Genre"],"series":{"name":"Name","n":1,"total":3},"description":"Text.","complexity":1-5,"depth":1-5}]
+[{"index":1,"genres":["Genre"],"series":{"name":"Name","n":1,"total":3},"description":"Text.","complexity":1-5,"depth":1-5,"authorGender":"female"|"male"|"nonbinary"|"mixed"|"unknown"}]
 Return ONLY valid JSON.`;
 
   const userPrompt = `Enrich these ${books.length} books:\n\n${bookList}`;
@@ -290,7 +329,18 @@ function sanitizeLevel(n) {
   return v;
 }
 
-async function writeEnrichment(book, genreIds, seriesData, description, complexity, depth) {
+// v0.62: mirrors VALID_AUTHOR_GENDERS / sanitizeAuthorGender in
+// src/lib/oracleCategorizationService.js. Anything outside the enum → null →
+// the field is not written and the book stays eligible for a later run.
+const VALID_AUTHOR_GENDERS = new Set(['female', 'male', 'nonbinary', 'mixed', 'unknown']);
+
+function sanitizeAuthorGender(v) {
+  if (typeof v !== 'string') return null;
+  const s = v.trim().toLowerCase();
+  return VALID_AUTHOR_GENDERS.has(s) ? s : null;
+}
+
+async function writeEnrichment(book, genreIds, seriesData, description, complexity, depth, authorGender) {
   // Genres: direct upsert into book_genres (link_book_genre RPC requires auth.uid)
   if (genreIds.length > 0) {
     await supabase.from('book_genres').upsert(
@@ -305,13 +355,25 @@ async function writeEnrichment(book, genreIds, seriesData, description, complexi
     );
   }
 
-  // Description + complexity + depth + status
+  // Description + complexity + depth + author gender + status
   const patch = {
     status: 'oracle_categorized'
   };
   if (description) patch.description = description;
   if (complexity != null) patch.complexity = complexity;
   if (depth != null) patch.depth = depth;
+
+  // v0.62. Stamp author_gender_checked_at for EVERY resolved answer, including
+  // 'unknown'. That timestamp is the only signal distinguishing "we asked and
+  // there was no reliable public signal" from "nobody has asked yet" — the
+  // client's `ag` field collapses both into undefined (see bookRowToClient in
+  // DataContext.jsx). getBooksNeedingOracle() reads it via `agChecked`, so
+  // without the stamp every honest 'unknown' looks unprocessed forever and gets
+  // re-billed on every subsequent run.
+  if (authorGender != null) {
+    patch.author_gender = authorGender;
+    patch.author_gender_checked_at = new Date().toISOString();
+  }
 
   // Series: direct upsert into series table (upsert_series RPC also requires auth.uid)
   if (seriesData ?.name) {
@@ -445,8 +507,14 @@ async function main() {
         const description = backfillOnly ? null : (item.description || null);
         const complexity = sanitizeLevel(item.complexity);
         const depth = sanitizeLevel(item.depth);
+        // NOT gated on backfillOnly. Those rows qualified because complexity or
+        // depth was null, but author_gender is null on effectively all of them
+        // too — gating it here would mean the only books that ever get a gender
+        // are ones the Oracle has never seen, which reproduces the v0.55 bug in
+        // a subtler form.
+        const authorGender = sanitizeAuthorGender(item.authorGender);
 
-        await writeEnrichment(book, genreIds, seriesData, description, complexity, depth);
+        await writeEnrichment(book, genreIds, seriesData, description, complexity, depth, authorGender);
 
         // Keep genre catalog fresh for subsequent batches
         for (const name of genreNames) {

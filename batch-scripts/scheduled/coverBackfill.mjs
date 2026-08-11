@@ -19,9 +19,7 @@
 //   VITE_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
 //   ANTHROPIC_API_KEY  (optional — only for Claude fallback)
 
-import {
-  createClient
-} from '@supabase/supabase-js';
+import { createServiceClient } from '../_shared/supabaseClient.mjs';
 import {
   readFileSync
 } from 'fs';
@@ -73,7 +71,7 @@ if (!SUPABASE_URL || !SERVICE_KEY) {
   process.exit(1);
 }
 
-const supabase = createClient(SUPABASE_URL, SERVICE_KEY);
+const supabase = createServiceClient(SUPABASE_URL, SERVICE_KEY);
 
 // -- Helpers ------------------------------------------------------------------
 function cleanTitle(t) {

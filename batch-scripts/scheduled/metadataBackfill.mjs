@@ -40,7 +40,7 @@
 //   HARDCOVER_API_TOKEN  (optional — the other two sources still work without)
 //   GOOGLE_BOOKS_API_KEY (optional — Google Books allows anonymous use, rate-limited)
 
-import { createClient } from '@supabase/supabase-js';
+import { createServiceClient } from '../_shared/supabaseClient.mjs';
 import { readFileSync, writeFileSync } from 'fs';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
@@ -94,7 +94,7 @@ if (!SUPABASE_URL || !SERVICE_KEY) {
   process.exit(1);
 }
 
-const supabase = createClient(SUPABASE_URL, SERVICE_KEY);
+const supabase = createServiceClient(SUPABASE_URL, SERVICE_KEY);
 
 // -- Helpers ------------------------------------------------------------------
 function cleanTitle(t) {

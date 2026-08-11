@@ -34,7 +34,7 @@
 // Required in .env.local: VITE_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
 // Optional:               GOOGLE_BOOKS_API_KEY (better descriptions), HARDCOVER_API_TOKEN
 
-import { createClient } from '@supabase/supabase-js';
+import { createServiceClient } from '../_shared/supabaseClient.mjs';
 import { readFileSync } from 'fs';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
@@ -98,7 +98,7 @@ if (!SUPABASE_URL || !SERVICE_KEY) {
   console.error('Missing VITE_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY in .env.local');
   process.exit(1);
 }
-const supabase = createClient(SUPABASE_URL, SERVICE_KEY);
+const supabase = createServiceClient(SUPABASE_URL, SERVICE_KEY);
 
 // Mirrors compute_book_key() — see curateManualBooks.mjs for why these must stay in step.
 function computeBookKey(title, author) {
