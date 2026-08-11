@@ -12,6 +12,8 @@ import { useSelection } from '../lib/useSelection';
 import SelectionBar from '../components/SelectionBar';
 import { usePagedList } from '../lib/usePagedList';
 import EmptyState from '../components/EmptyState';
+import ShelfFilters from '../components/ShelfFilters';
+import { useShelfFilters } from '../lib/useShelfFilters';
 
 // v0.15 phase 2.5: two-dropdown filter (genres + categories) + Oracle genre grouping.
 // v0.16 DS pass: migrated to .lv-* / .btn-* / .select tokens.
@@ -33,9 +35,6 @@ export default function Library({ onOpenBook }) {
   const tNode = useTNode();
   const [bulkOpen, setBulkOpen] = useState(false);
   const [editing, setEditing] = useState(null);
-  const [genreFilter, setGenreFilter] = useState('all');
-  const [categoryFilter, setCategoryFilter] = useState('all');
-  const [search, setSearch] = useState('');
   const [viewMode, setViewMode] = useState(() => {
     try { return localStorage.getItem('library_view_mode') || 'list'; } catch { return 'list'; }
   });
@@ -48,67 +47,13 @@ export default function Library({ onOpenBook }) {
   // 'Uncategorized'. Same fallback on both shelves now.
   const primaryGenreOf = (b) => getPrimaryGenre(b, genresByBookId[b.bookId], 'Uncategorized');
 
-  // --- Genre dropdown options ---
-  const genreOptions = useMemo(() => {
-    const map = new Map();
-    for (const b of lib) {
-      const genres = genresByBookId[b.bookId] || [];
-      for (const g of genres) {
-        const existing = map.get(g.normalizedName);
-        if (existing) existing.count++;
-        else map.set(g.normalizedName, { name: g.name, normalizedName: g.normalizedName, count: 1 });
-      }
-    }
-    return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name));
-  }, [lib, genresByBookId]);
+  // v0.62: filter state, options and the filtered result all live in
+  // useShelfFilters now — Wishlist.jsx held an identical copy of what used to be
+  // here. See docs/shelf-filters-v1-spec.md.
+  const filters = useShelfFilters(lib, { genresByBookId, getCategoriesForBook, storageKey: 'library_filters' });
+  const { filtered, resetKey } = filters;
 
-  // --- Category dropdown options ---
-  const categoryOptions = useMemo(() => {
-    const map = new Map();
-    for (const b of lib) {
-      for (const c of getCategoriesForBook(b)) {
-        if (!map.has(c.name)) map.set(c.name, { name: c.name, verified: c.verified });
-        else if (c.verified) map.get(c.name).verified = true;
-      }
-    }
-    return Array.from(map.values()).sort((a, b) => {
-      if (a.verified !== b.verified) return a.verified ? -1 : 1;
-      return a.name.localeCompare(b.name);
-    });
-  }, [lib, getCategoriesForBook]);
-
-  const hasCategoryFilter = categoryOptions.length > 0;
-
-  // --- Filtering (runs on the full library) ---
   const sel = useSelection(lib);
-
-  const filtered = useMemo(() => {
-    let result = lib;
-    if (genreFilter !== 'all') {
-      result = result.filter((b) => {
-        const genres = genresByBookId[b.bookId] || [];
-        return genres.some((g) => g.normalizedName === genreFilter);
-      });
-    }
-    if (categoryFilter !== 'all') {
-      result = result.filter((b) => {
-        const cats = getCategoriesForBook(b);
-        return cats.some((c) => c.name === categoryFilter);
-      });
-    }
-    if (search) {
-      const q = search.toLowerCase();
-      result = result.filter(
-        (b) => b.t.toLowerCase().includes(q) || (b.a || '').toLowerCase().includes(q)
-      );
-    }
-    return result;
-  }, [lib, genreFilter, categoryFilter, search, genresByBookId, getCategoriesForBook]);
-
-  // resetKey: a stable string that changes when any filter changes.
-  // usePagedList watches this to snap the page count back to 1 on filter change,
-  // so the user doesn't see a half-loaded page from a prior filter state.
-  const resetKey = `${genreFilter}|${categoryFilter}|${search}`;
 
   // Group the FULL filtered set first, so every genre section carries all its
   // titles and an accurate count — independent of how far the user has scrolled.
@@ -139,6 +84,23 @@ export default function Library({ onOpenBook }) {
   // Stable loadMore reference for the sentinel
   const handleLoadMore = useCallback(() => loadMore(), [loadMore]);
 
+  // Human-readable list of what is currently narrowing the shelf, for the
+  // empty state. Built here rather than in the hook because it needs t().
+  const activeFilterSummary = useMemo(() => {
+    const v = filters.values;
+    const parts = [];
+    if (v.pages !== 'all') {
+      parts.push(Number(v.pages) === 501
+        ? t('shelfFilters.pagesOver').replace('{n}', 500)
+        : t('shelfFilters.pagesUnder').replace('{n}', v.pages));
+    }
+    if (v.complexity.length) parts.push(`${t('shelfFilters.complexity')} ${[...v.complexity].sort().join(', ')}`);
+    if (v.depth.length) parts.push(`${t('shelfFilters.depth')} ${[...v.depth].sort().join(', ')}`);
+    if (v.gender !== 'all') parts.push(t(`shelfFilters.author_${v.gender}`));
+    return parts.join(' · ');
+  }, [filters.values, t]);
+
+
   function switchViewMode(mode) {
     setViewMode(mode);
     try { localStorage.setItem('library_view_mode', mode); } catch { }
@@ -165,36 +127,7 @@ export default function Library({ onOpenBook }) {
         <div className="lv-toolbar lv-toolbar--split">
           <div className="lv-toolbar__group lv-toolbar__group--filter">
           <span className="lv-toolbar__label">{t('common.filterLabel')}</span>
-          <div className="lv-toolbar__filters">
-            <div className="lv-search">
-              <svg className="lv-search__icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-                <circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" />
-              </svg>
-              <input
-                type="text"
-                className="lv-search__input"
-                placeholder={t('library.searchPlaceholder')}
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-              />
-            </div>
-            <select className="select" value={genreFilter} onChange={(e) => setGenreFilter(e.target.value)}>
-              <option value="all">{t('library.allGenres')}</option>
-              {genreOptions.map((o) => (
-                <option key={o.normalizedName} value={o.normalizedName}>☩ {o.name}</option>
-              ))}
-            </select>
-            {hasCategoryFilter && (
-              <select className="select" value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)}>
-                <option value="all">{t('library.allCategories')}</option>
-                {categoryOptions.map((o) => (
-                  <option key={o.name} value={o.name}>
-                    {o.verified ? `☩ ${o.name}` : o.name}
-                  </option>
-                ))}
-              </select>
-            )}
-          </div>
+          <ShelfFilters state={filters} context="library" />
           </div>
           <div className="lv-chips">
             <button
@@ -258,7 +191,23 @@ export default function Library({ onOpenBook }) {
         <div className="lv-empty">
           <div className="lv-empty-icon">📚</div>
           <div className="lv-empty-title">No books match</div>
-          <div className="lv-empty-text">Try clearing your filters.</div>
+          {/* v0.62: naming the active filters is the fix. "Try clearing your
+              filters" makes the reader hunt for which of seven controls did
+              this; listing them makes the culprit obvious in one glance. */}
+          {filters.activeCount > 0 ? (
+            <>
+              <div className="lv-empty-text">
+                {t('shelfFilters.noMatchFilters').replace('{list}', activeFilterSummary)}
+              </div>
+              <div className="empty-state-action">
+                <button className="btn btn-secondary" onClick={filters.clearAdvanced}>
+                  {t('shelfFilters.clear')}
+                </button>
+              </div>
+            </>
+          ) : (
+            <div className="lv-empty-text">Try clearing your filters.</div>
+          )}
         </div>
       ) : viewMode === 'covers' ? (
         <>

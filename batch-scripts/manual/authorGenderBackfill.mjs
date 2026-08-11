@@ -367,7 +367,15 @@ async function writeAuthorGender(group, gender) {
     const ids = group.bookIds.slice(i, i + CHUNK);
     const { error } = await supabase
       .from('books')
-      .update({ author_gender: gender, author_gender_checked_at: checkedAt })
+      .update({
+        author_gender: gender,
+        // Constrained to 'oracle_inferred' | 'verified' | 'self_identified'.
+        // Everything this script writes is inference from model knowledge with
+        // no web search, so it is never anything but the first. Recording it is
+        // what makes a later hand-correction distinguishable and protectable.
+        author_gender_source: 'oracle_inferred',
+        author_gender_checked_at: checkedAt,
+      })
       .in('id', ids);
     if (error) {
       console.error(`  ! write failed for ${group.display}: ${error.message}`);

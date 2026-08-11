@@ -4,7 +4,7 @@ A reading companion — wishlist, library, reading plans, book clubs, and an AI-
 for book discovery. Built with React + Vite + SCSS, backed by Supabase for auth
 and cross-device sync, and Netlify Functions for API proxying.
 
-> Current version: **v0.61.2** — see [Releases](#releases) below for changelog.
+> Current version: **v0.62** — see [Releases](#releases) below for changelog.
 > Upgrading from an earlier version? Check the matching `MIGRATION_*.md` / `UPDATE_*.md`.
 
 ---
@@ -332,6 +332,147 @@ and forward requests. Locally you need `netlify dev` to make them work.
 ---
 
 ## Releases
+
+# Update Notes — v0.61.2 → v0.62: advanced shelf filters
+
+Spec: `docs/shelf-filters-v1-spec.md`. Eligibility SQL:
+`supabase/legacy/oracle_eligibility_audit.sql`.
+
+## The feature
+
+Wishlist and Library gain a "More filters" disclosure panel: page count, prose
+complexity (1-5), thematic depth (1-5), and author gender. All four read columns
+that already existed — `books.pages`, `complexity`, `depth`, `author_gender` —
+via the client fields `pp`, `c`, `p`, `ag`. **No migration.** Filtering is
+entirely client-side over the already-loaded shelf arrays; no new query.
+
+## Four bugs found on the way, three of them pre-existing
+
+**1. `author_gender` was never written by anything.** Added to the schema in
+v0.55 and to the prompt in `oracleCategorizationService.js` — which stopped
+executing in the browser at v0.61, leaving `oracleBatch.mjs` as the only writer.
+That script's prompt was a v0.22 copy and had no gender field at all; grepping it
+for "gender" returned zero hits. Meanwhile `nightly-curation.yml` documented the
+job as filling it. The column was null on every row for six versions.
+
+Fixed in two parts: `oracleBatch.mjs` now asks for and writes it (prompt rules
+ported verbatim from `oracleCategorizationService.js`), and the existing
+catalogue was drained by a new one-shot script, `authorGenderBackfill.mjs`. That
+script keys on **author** rather than book — gender is a property of a person,
+so asking once per book re-asks for every Le Guin title — batches 50 authors per
+call with no web search, and cost $0.85 for the whole catalogue.
+
+`fetchEligibleBooks()` was deliberately **not** widened to pick up already-
+categorised rows. Doing so would make every one of them eligible again on a
+nightly cron: a recurring charge nobody approved. One-shot work got a one-shot
+script.
+
+**2. `books.author_gender_source` was never written either.** Constrained to
+`oracle_inferred | verified | self_identified`. Both scripts now set
+`'oracle_inferred'`, and `oracleBatch` refuses to overwrite a row whose source is
+`verified` or `self_identified`. The DB constraint validates the value, not the
+precedence — without the guard, a gender confirmed by hand is silently clobbered
+on the next run.
+
+**3. `fetchEligibleBooks()` reported the PostgREST row cap as a count.** No
+`.range()`, so the select was capped at 1000 and a manual run reported "1000
+found" regardless of the true backlog. Now paged, ordered by `created_at, id`
+(the non-unique `created_at` alone can skip or duplicate rows across page
+boundaries), and the reported figure comes from a separate exact `count` query
+rather than the length of a page.
+
+**4. The Node 20 WebSocket crash took down the nightly job.** `createClient()`
+constructs a `RealtimeClient` unconditionally and realtime-js requires a global
+`WebSocket`. None of these scripts open a channel, but the constructor throws at
+import time. This had already been hit and fixed **four times, four different
+ways** — `send-notification-email.js`, `catalog-crawl.mjs`, `sitemap.js`,
+`seedCuratedCatalog.mjs` — before anyone put the fix somewhere reusable. All ten
+scripts now import `createServiceClient` from
+`batch-scripts/_shared/supabaseClient.mjs`; no raw `createClient()` remains in
+`batch-scripts/` or `scripts/`. It detects the capability
+(`typeof globalThis.WebSocket === 'function'`) rather than the Node version, so
+bumping `node-version` in the workflows is explicitly *not* the fix — that would
+hide it in CI while leaving local Node 20 runs broken.
+
+## The refactor underneath
+
+`Wishlist.jsx` and `Library.jsx` held byte-identical filter logic. Extracted to
+`src/lib/useShelfFilters.js` + `src/components/ShelfFilters.jsx` as a separate,
+behaviour-neutral commit first (16 insertions, 182 deletions across the two
+views; every added line an import, a comment or a call site), then the new
+filters were added on top. Verifying a refactor and reviewing a feature at the
+same time is how a silent change in filtering ships.
+
+## Design decisions worth keeping
+
+**Nulls fail visibly or pass — never silently.** `pp`, `c`, `p` and `ag` are all
+sparse. A naive `pp <= 300` drops every book with no page count, so the shelf
+looks broken or, worse, wrong without looking broken. One "include books the
+Oracle hasn't measured yet" checkbox governs all four filters and carries a live
+count; `unmeasuredCount` is asserted to equal exactly the delta between
+filtering with it on and off, so there is no third, silent bucket.
+
+**Filters self-hide below 10% coverage / 5 books**, measured against the
+unfiltered shelf so controls don't flicker as the reader narrows. Gender
+coverage uses `agChecked`, not `ag` — `ag` collapses `'unknown'` and
+never-checked into `undefined`, so a shelf the Oracle has honestly answered
+"no reliable signal" for would look identical to one it has never seen.
+
+**Prose and depth are multi-select, not a maximum.** Appetite is not monotonic:
+"nothing heavy tonight" is 1-2, "challenge me" is 4-5, and a ceiling only serves
+the first.
+
+**`b.p` is depth; `b.pp` is pages.** One character apart and adjacent in
+`bookRowToClient`. Explicitly asserted in both directions.
+
+**Advanced filters persist; search does not.** A saved query hiding most of a
+shelf on the next visit is the hardest version of this bug to notice.
+
+## Also in this release: the pre-mount flash
+
+`index.html`'s `.pre-mount` block is the homepage's SEO floor (v0.61.2) and is
+replaced when React mounts — so it flashed on every load, worst of all returning
+from Google SSO, where `redirectTo: window.location.origin` lands the OAuth
+return on `/` and React must boot *and* exchange the `?code=` before it can
+replace anything.
+
+It is now rendered but not painted for 900ms (CSS opacity delay), with the dark
+canvas moved to `html/body` so the delay doesn't trade a copy flash for a white
+one, and a decorative ornament shown immediately. A blocking inline script
+removes the block outright when the URL carries OAuth params or a
+`sb-*-auth-token` key exists in `localStorage` — a signed-in reader never sees
+landing copy at all.
+
+**No SEO impact.** Never `display:none`, never clipped, never off-screen; the
+raw HTML Googlebot indexes is byte-identical. The removal path triggers only on
+signals a crawler does not have. The `<!--PREMOUNT-->` markers still match
+`og-prerender.js`'s regex — verified, since breaking that would have silently
+killed bot prerendering.
+
+## Files
+
+- `src/lib/useShelfFilters.js`, `src/components/ShelfFilters.jsx` — new
+- `src/styles/components/_shelf-filters.scss` — new, `@use`d from `main.scss`
+- `src/views/Wishlist.jsx`, `src/views/Library.jsx` — migrated; empty state now
+  names the active filters instead of "Try clearing your filters"
+- `src/i18n/en.json`, `es.json` — new `shelfFilters.*` block (20 keys each)
+- `index.html` — pre-mount delay + auth-aware removal
+- `batch-scripts/_shared/supabaseClient.mjs` — new; all 10 scripts migrated
+- `batch-scripts/manual/authorGenderBackfill.mjs` — new
+- `batch-scripts/manual/oracleBatch.mjs` — gender, paging, exact count, source guard
+- `supabase/legacy/oracle_eligibility_audit.sql`, `docs/shelf-filters-v1-spec.md` — new
+
+## Open follow-ups
+
+- The `unmeasured` pill on rows admitted by the checkbox: CSS class
+  (`.lv-row__unmeasured`) exists, row markup not yet wired.
+- ES non-binary label is `Autoría no binaria`. There is no existing `-es`
+  inclusive form anywhere in `es.json`, so this fits the sibling
+  `Autoría` / `Autoría mixta` options rather than introducing a convention.
+- `package.json` still reads `0.2.0` and `public/app-version.json` still reads
+  `0.59`. Both predate this release and are tracked separately.
+
+---
 
 # Update Notes — v0.61 → v0.61.2: the homepage becomes indexable
 

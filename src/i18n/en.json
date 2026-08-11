@@ -259,6 +259,28 @@
     "remove": "Remove",
     "pageTitle": "My <em class=\"accent\">Wishlist</em>"
   },
+  "shelfFilters": {
+    "more": "More filters",
+    "fewer": "Fewer filters",
+    "clear": "Clear advanced filters",
+    "pages": "Pages",
+    "anyPages": "— Any length —",
+    "pagesUnder": "Under {n} pages",
+    "pagesOver": "{n}+ pages",
+    "complexity": "Prose",
+    "depth": "Depth",
+    "scaleLow": "approachable",
+    "scaleHigh": "challenging",
+    "author": "Author",
+    "anyAuthor": "— Any author —",
+    "author_female": "Women authors",
+    "author_male": "Men authors",
+    "author_nonbinary": "Non-binary authors",
+    "author_mixed": "Mixed authorship",
+    "includeUnmeasured": "Include books the Oracle hasn't measured yet",
+    "unmeasured": "unmeasured",
+    "noMatchFilters": "Your filters: {list}"
+  },
   "library": {
     "eyebrow": "Library",
     "subtitle": "{count} books across {genres} genre.",

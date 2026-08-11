@@ -1,0 +1,204 @@
+@use '../tokens' as tokens;
+
+// Advanced shelf filters — the disclosure panel below the Wishlist/Library
+// toolbar. v0.62. See docs/shelf-filters-v1-spec.md.
+//
+// Tokens only. No literal rgba parchment values: light mode is entirely
+// token-driven and a hardcoded colour here breaks it silently in one theme
+// while looking correct in the other.
+
+.sf-toggle {
+  white-space: nowrap;
+
+  &.is-active {
+    border-color: var(--ro-gold);
+    color: var(--ro-gold-text);
+  }
+}
+
+// Always rendered when any advanced filter is active, never only on hover or
+// focus. A panel that is quietly removing books has to say so from across the
+// room — this count is the only thing standing between the reader and a shelf
+// that looks emptier than it is.
+.sf-toggle__count {
+  margin-left: 4px;
+  font-family: var(--ro-font-mono);
+  color: var(--ro-gold);
+}
+
+.sf-panel {
+  width: 100%;
+  margin-top: var(--ro-space-3);
+  padding: var(--ro-space-4);
+  background: var(--ro-surface-2);
+  border: 1px solid var(--ro-border);
+  border-radius: var(--ro-radius-md);
+}
+
+.sf-panel__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--ro-space-4);
+
+  @include tokens.ro-down(tablet) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.sf-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+
+  .select {
+    width: 100%;
+    min-width: 0;
+  }
+}
+
+.sf-field__label {
+  @include tokens.ro-type(overline);
+  font-size: 11px;
+  color: var(--ro-muted);
+}
+
+.sf-field__scale {
+  font-family: var(--ro-font-mono);
+  font-size: 10px;
+  letter-spacing: .08em;
+  color: var(--ro-dim);
+}
+
+.sf-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.sf-chip {
+  min-width: 34px;
+  // 32px floor: these are the smallest tap targets on the shelf and they sit
+  // adjacent to each other, so undersizing them makes 3 and 4 near-impossible
+  // to hit apart on a phone.
+  min-height: 32px;
+  padding: 0 10px;
+  font-family: var(--ro-font-mono);
+  font-size: 13px;
+  color: var(--ro-muted);
+  background: transparent;
+  border: 1px solid var(--ro-border);
+  border-radius: var(--ro-radius-pill);
+  cursor: pointer;
+  transition: border-color 120ms ease, color 120ms ease;
+
+  &:hover {
+    border-color: var(--ro-border-strong);
+    color: var(--ro-text);
+  }
+
+  &.is-on {
+    border-color: var(--ro-gold);
+    color: var(--ro-gold-text);
+  }
+}
+
+.sf-panel__foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ro-space-3);
+  margin-top: var(--ro-space-4);
+  padding-top: var(--ro-space-3);
+  border-top: 1px solid var(--ro-border);
+}
+
+// The unmeasured toggle.
+//
+// `accent-color` was the first attempt and it is not enough here: it tints the
+// browser's own checkbox but leaves its shape, border and focus ring native, so
+// the one control in the panel that changes what the shelf contains looked like
+// a system widget dropped into a dark-academia surface.
+//
+// The input keeps existing — real checkbox, real keyboard behaviour, real
+// focus — but is made invisible and the .sf-unrated__box beside it carries the
+// appearance. Nothing here is reimplemented; only repainted.
+.sf-unrated {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--ro-text-2);
+  cursor: pointer;
+  user-select: none;
+
+  &:hover .sf-unrated__box {
+    border-color: var(--ro-border-strong);
+  }
+}
+
+.sf-unrated__input {
+  // Not display:none and not visibility:hidden — either removes it from the
+  // focus order, which would make the checkbox unreachable by keyboard.
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  margin: 0;
+  pointer-events: none;
+}
+
+.sf-unrated__box {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  font-size: 11px;
+  line-height: 1;
+  color: transparent;
+  background: var(--ro-surface);
+  border: 1px solid var(--ro-border);
+  border-radius: var(--ro-radius-sm);
+  transition: border-color 120ms ease, background-color 120ms ease, color 120ms ease;
+}
+
+.sf-unrated__input:checked ~ .sf-unrated__box {
+  color: var(--ro-gold-on);
+  background: var(--ro-gold);
+  border-color: var(--ro-gold);
+}
+
+// The ring the native control would have drawn for itself, moved onto the box.
+// :focus-visible rather than :focus so it appears for keyboard users and not on
+// every mouse click.
+.sf-unrated__input:focus-visible ~ .sf-unrated__box {
+  outline: 2px solid var(--ro-gold);
+  outline-offset: 2px;
+}
+
+.sf-unrated__text {
+  min-width: 0;
+}
+
+.sf-unrated__count {
+  font-family: var(--ro-font-mono);
+  color: var(--ro-dim);
+}
+
+// The marker on books that passed only because "include unmeasured" is on.
+// Without it the reader cannot tell which results actually satisfy the filter
+// and which are present on sufferance.
+.lv-row__unmeasured {
+  color: var(--ro-dim);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sf-chip,
+  .sf-unrated__box {
+    transition: none;
+  }
+}

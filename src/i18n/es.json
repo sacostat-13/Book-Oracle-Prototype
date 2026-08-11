@@ -259,6 +259,28 @@
     "remove": "Quitar",
     "pageTitle": "Mi <em class=\"accent\">lista de deseos</em>"
   },
+  "shelfFilters": {
+    "more": "Más filtros",
+    "fewer": "Menos filtros",
+    "clear": "Limpiar filtros avanzados",
+    "pages": "Páginas",
+    "anyPages": "— Cualquier extensión —",
+    "pagesUnder": "Menos de {n} páginas",
+    "pagesOver": "Más de {n} páginas",
+    "complexity": "Prosa",
+    "depth": "Profundidad",
+    "scaleLow": "accesible",
+    "scaleHigh": "exigente",
+    "author": "Autoría",
+    "anyAuthor": "— Cualquier autoría —",
+    "author_female": "Autoras",
+    "author_male": "Autores",
+    "author_nonbinary": "Autoría no binaria",
+    "author_mixed": "Autoría mixta",
+    "includeUnmeasured": "Incluir libros que el Oráculo todavía no midió",
+    "unmeasured": "sin medir",
+    "noMatchFilters": "Tus filtros: {list}"
+  },
   "library": {
     "eyebrow": "Biblioteca",
     "subtitle": "{count} libros en {genres} género.",

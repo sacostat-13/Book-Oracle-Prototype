@@ -16,9 +16,30 @@
 
 // The version label shown as "current" — keep in sync with package.json and
 // the README version line.
-export const CURRENT_VERSION = 'v0.61.2';
+export const CURRENT_VERSION = 'v0.62';
 
 export const RELEASES = [{
+    version: 'v0.62',
+    date: '2026-08-11',
+    titleEn: 'Filter your shelves by what an evening can hold',
+    titleEs: 'Filtrá tus estantes por lo que entra en una noche',
+    bodyEn: [
+      'Your Wishlist and Library have a new "More filters" panel. Narrow a shelf by length, by how demanding the prose is, by how demanding the themes are, and by who wrote the book — on their own or together.',
+      'Length is the one most people reach for. If you have four evenings and a reading goal, "under 300 pages" is a more useful question than "what do I feel like", and now you can ask it.',
+      'Books the Oracle has not measured yet are not quietly dropped. When a filter is on, the panel says how many books it cannot judge and offers to include them, so a shelf never looks emptier than it is without telling you why.',
+      'A filter only appears when the Oracle knows enough about your shelf for it to mean anything. Filtering by author is arriving as the Oracle works through the catalogue — it will show up on its own once there is enough to filter by.',
+      'Your filters are remembered between visits. Your search box is not — coming back to a shelf that is quietly hiding most of itself is not a welcome.',
+      'The site no longer flashes its front page at you while it loads, particularly on the way back from signing in with Google.',
+    ],
+    bodyEs: [
+      'Tu Lista de deseos y tu Biblioteca tienen un panel nuevo de "Más filtros". Podés achicar un estante por extensión, por qué tan exigente es la prosa, por qué tan exigentes son los temas, y por quién escribió el libro — solos o combinados.',
+      'La extensión es la que casi todos buscan primero. Si te quedan cuatro noches y una meta de lectura, "menos de 300 páginas" es una pregunta más útil que "qué tengo ganas de leer", y ahora podés hacerla.',
+      'Los libros que el Oráculo todavía no midió no desaparecen en silencio. Cuando hay un filtro activo, el panel te dice cuántos libros no puede juzgar y te ofrece incluirlos, así un estante nunca parece más vacío de lo que está sin decirte por qué.',
+      'Un filtro aparece solo cuando el Oráculo sabe lo suficiente de tu estante como para que signifique algo. El filtro por autoría va a ir apareciendo a medida que el Oráculo recorra el catálogo — se muestra solo cuando haya con qué filtrar.',
+      'Tus filtros se recuerdan entre visitas. Tu búsqueda no — volver a un estante que esconde en silencio casi todo lo que tiene no es una bienvenida.',
+      'El sitio ya no te muestra de golpe su portada mientras carga, sobre todo al volver de iniciar sesión con Google.',
+    ],
+  }, {
     version: 'v0.61.2',
     date: '2026-08-10',
     titleEn: 'The Oracle can be found',

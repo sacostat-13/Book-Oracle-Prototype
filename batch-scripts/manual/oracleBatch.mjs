@@ -126,34 +126,92 @@ async function fetchEligibleBooks() {
   //      is told (via `backfillOnly` in main()) to leave their existing
   //      genres/series/description untouched.
   // Excludes 'discovered' books — no one has added them yet
+  //
+  // v0.62: PAGED. This select previously had no .range(), so PostgREST capped
+  // it at its default 1000 rows. A manual run reported "1000 found" and that
+  // number was the cap, not a count — the true backlog was invisible above it
+  // and no log line said so. Draining oldest-first meant the script still made
+  // progress, so this looked like a plausible figure for months.
+  //
+  // See supabase/legacy/oracle_eligibility_audit.sql for the SQL that reports
+  // the real number.
+  const ELIGIBLE = 'status.in.(unreviewed,incomplete),and(status.eq.oracle_categorized,or(complexity.is.null,depth.is.null))';
+
+  // Exact count first, separately from the rows. Reporting "N found" from the
+  // length of a capped page is what made the old number a lie; with --limit set
+  // we deliberately stop fetching early, so row count can never be the honest
+  // answer to "how big is the backlog". Ask the database.
   const {
-    data,
-    error
+    count: eligibleCount,
+    error: countError
   } = await supabase
     .from('books')
-    .select(`
-      id,
-      title,
-      author,
-      description,
-      pages,
-      status,
-      complexity,
-      depth,
-      series_id,
-      position_in_series,
-      series:series_id ( name )
-    `)
-    .or('status.in.(unreviewed,incomplete),and(status.eq.oracle_categorized,or(complexity.is.null,depth.is.null))')
-    .order('created_at', {
-      ascending: true
-    });
+    .select('id', {
+      count: 'exact',
+      head: true
+    })
+    .or(ELIGIBLE);
 
-  if (error) {
-    console.error('Failed to fetch books:', error.message);
+  if (countError) {
+    console.error('Failed to count eligible books:', countError.message);
     process.exit(1);
   }
-  return data || [];
+
+  // Never page past what --limit will keep.
+  const wanted = LIMIT ? Math.min(LIMIT, eligibleCount ?? LIMIT) : (eligibleCount ?? 0);
+  const PAGE_SIZE = Math.min(1000, Math.max(wanted, 1));
+  const rows = [];
+  let from = 0;
+
+  for (;;) {
+    const {
+      data,
+      error
+    } = await supabase
+      .from('books')
+      .select(`
+        id,
+        title,
+        author,
+        description,
+        pages,
+        status,
+        complexity,
+        depth,
+        author_gender_source,
+        series_id,
+        position_in_series,
+        series:series_id ( name )
+      `)
+      .or(ELIGIBLE)
+      // Ordering by created_at ALONE is not safe to paginate: the column is not
+      // unique, and rows tying on the page boundary can be returned twice or
+      // skipped entirely depending on how Postgres breaks the tie between
+      // queries. id is the unique tiebreaker. created_at stays the primary key
+      // of the sort because oldest-first is the intended drain order.
+      .order('created_at', {
+        ascending: true
+      })
+      .order('id', {
+        ascending: true
+      })
+      .range(from, from + PAGE_SIZE - 1);
+
+    if (error) {
+      console.error('Failed to fetch books:', error.message);
+      process.exit(1);
+    }
+
+    rows.push(...(data || []));
+    if (!data || data.length < PAGE_SIZE) break;
+    if (rows.length >= wanted) break;
+
+    from += PAGE_SIZE;
+  }
+
+  // The caller prints the count, so hand back both. `eligible` is the real
+  // backlog; `rows` is only what this run intends to look at.
+  return { rows, eligible: eligibleCount ?? rows.length };
 }
 
 async function fetchExistingGenres() {
@@ -370,8 +428,21 @@ async function writeEnrichment(book, genreIds, seriesData, description, complexi
   // DataContext.jsx). getBooksNeedingOracle() reads it via `agChecked`, so
   // without the stamp every honest 'unknown' looks unprocessed forever and gets
   // re-billed on every subsequent run.
-  if (authorGender != null) {
+  //
+  // author_gender_source records HOW we know. The column is constrained to
+  // 'oracle_inferred' | 'verified' | 'self_identified'; this path is always the
+  // first. Without it every value looks equally authoritative, so a gender you
+  // later confirm or correct by hand is indistinguishable from a model guess —
+  // and the next bulk pass has no way to know it must not overwrite it.
+  //
+  // A gender confirmed by hand or stated by the author outranks anything the
+  // model infers, and must survive every subsequent bulk run. This guard is the
+  // only thing enforcing that — the DB constraint validates the value, not the
+  // precedence.
+  const HUMAN_SOURCES = ['verified', 'self_identified'];
+  if (authorGender != null && !HUMAN_SOURCES.includes(book.author_gender_source)) {
     patch.author_gender = authorGender;
+    patch.author_gender_source = 'oracle_inferred';
     patch.author_gender_checked_at = new Date().toISOString();
   }
 
@@ -416,8 +487,18 @@ async function main() {
 
   // Fetch
   process.stdout.write('  Fetching eligible books... ');
-  let books = await fetchEligibleBooks();
-  console.log(`${books.length} found`);
+  const {
+    rows,
+    eligible
+  } = await fetchEligibleBooks();
+  let books = rows;
+  // `eligible` is an exact COUNT from the database, not the length of a page.
+  // The old message printed rows.length, which PostgREST capped at 1000 — so a
+  // backlog of any size reported as exactly "1000 found".
+  console.log(`${eligible} eligible`);
+  if (books.length < eligible) {
+    console.log(`  Fetched ${books.length} of them this run.`);
+  }
 
   const backfillCount = books.filter((b) => b.status === 'oracle_categorized').length;
   if (backfillCount > 0) {

@@ -132,12 +132,81 @@
         /* Styling for the pre-mount fallback below. Deliberately inline and
            tiny: it has to be correct before any stylesheet arrives, or the
            first paint is unstyled text on white. */
+
+        /* v0.62: the canvas moves to html/body so it is painted the instant the
+           first bytes arrive, independent of .pre-mount's own opacity. Without
+           this, delaying the fallback's reveal (below) would have traded a
+           flash of marketing copy for a flash of white. */
+        html,
+        body {
+            margin: 0;
+            background: #1a1410;
+            color: #e8e0d4;
+        }
+
+        /* Shown immediately, replaced by React along with everything else in
+           #root. Decorative only — aria-hidden, and it says nothing the page
+           does not. This is what a reader sees during a normal load now. */
+        .pre-boot {
+            position: fixed;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Instrument Serif', 'EB Garamond', Georgia, serif;
+            font-size: 2.5rem;
+            color: #c9a227;
+            pointer-events: none;
+            animation: pre-boot-pulse 1.8s ease-in-out infinite,
+                       pre-boot-out 200ms linear 900ms forwards;
+        }
+
+        /* No .pre-mount to hand over to (see the inline script below), so the
+           ornament stays until React mounts rather than fading into nothing. */
+        html.booting-app .pre-boot {
+            animation: pre-boot-pulse 1.8s ease-in-out infinite;
+        }
+
+        @keyframes pre-boot-pulse {
+            0%, 100% { opacity: .45; }
+            50%      { opacity: 1; }
+        }
+
+        @keyframes pre-boot-out {
+            to { opacity: 0; }
+        }
+
+        @keyframes pre-mount-in {
+            to { opacity: 1; }
+        }
+
         #root>.pre-mount {
             min-height: 100vh;
             margin: 0;
             padding: 12vh 6vw;
             box-sizing: border-box;
-            background: #1a1410;
+
+            /* v0.62 — THE FIX FOR THE LOAD FLASH.
+               This block is real body copy, and React replaces it on mount. On
+               a normal load that happens in a few hundred ms, so the reader got
+               a burst of marketing copy and then the app: it read as a glitch.
+               It was worst returning from Google SSO, because redirectTo is
+               window.location.origin — the OAuth return lands on '/', the one
+               route this block exists for, and React has to boot AND exchange
+               the ?code= before it can replace anything.
+
+               So: still rendered, still in the DOM, just not painted for the
+               first 900ms. Mount before that and it is never seen. Mount after
+               and it fades in as a deliberate slow-load state rather than a
+               flicker.
+
+               This is NOT hidden content. It is never display:none, never
+               clipped, never off-screen, and the raw HTML that Google indexes
+               is byte-identical to before — the indexing pass reads the markup,
+               not the animation. A CSS delay changes what a human sees in the
+               first second, and nothing else. */
+            opacity: 0;
+            animation: pre-mount-in 220ms ease-out 900ms forwards;
             color: #e8e0d4;
             font-family: 'Instrument Serif', 'EB Garamond', Georgia, serif;
         }
@@ -171,6 +240,24 @@
             text-transform: uppercase;
             color: #c9a227;
         }
+
+        /* A pulsing ornament is decoration; a delayed reveal is not — removing
+           the delay here would restore the flash this change exists to fix. So
+           the pulse stops and the fade shortens, but the 900ms wait stands. */
+        @media (prefers-reduced-motion: reduce) {
+            .pre-boot {
+                animation: pre-boot-out 1ms linear 900ms forwards;
+            }
+
+            html.booting-app .pre-boot {
+                animation: none;
+                opacity: .7;
+            }
+
+            #root>.pre-mount {
+                animation: pre-mount-in 1ms linear 900ms forwards;
+            }
+        }
     </style>
 </head>
 
@@ -186,6 +273,7 @@
          This is not cloaking: it is the same markup for every visitor, human or
          crawler, and it says the same thing the rendered page says. -->
     <div id="root">
+        <div class="pre-boot" aria-hidden="true">❦</div>
         <!--PREMOUNT-->
         <div class="pre-mount">
             <p class="eyebrow">A reading companion</p>
@@ -207,6 +295,53 @@
         </div>
         <!--/PREMOUNT-->
     </div>
+
+    <!-- v0.62: a reader who is already signed in, or who is mid-OAuth, should
+         never see the landing copy at all — not delayed, not faded, not at all.
+         Waiting for React to work that out is what produced the flash, because
+         the answer only arrives after the bundle has parsed, the Supabase
+         client has initialised and (on an SSO return) a token exchange has gone
+         to the network and back. The signal itself is available synchronously
+         from localStorage and the URL, before first paint.
+
+         Blocking and inline on purpose: deferring it would let the paint it
+         exists to prevent happen first.
+
+         SEO impact: none. This removes markup only when a Supabase session key
+         is present in localStorage or the URL carries OAuth parameters. A
+         crawler has neither, so what Googlebot fetches and renders is exactly
+         what it saw before. -->
+    <script>
+        (function () {
+            try {
+                var isAuthReturn =
+                    /[?&](code|error|error_description)=/.test(location.search) ||
+                    /(access_token|refresh_token|error)=/.test(location.hash);
+
+                // supabase-js persists under 'sb-<project-ref>-auth-token'. Match
+                // the shape rather than hardcoding the ref, so rotating projects
+                // or adding a second one does not silently disable this.
+                var signedIn = false;
+                for (var i = 0; i < localStorage.length; i++) {
+                    var k = localStorage.key(i);
+                    if (k && k.slice(0, 3) === 'sb-' && k.indexOf('-auth-token') !== -1) {
+                        signedIn = true;
+                        break;
+                    }
+                }
+
+                if (isAuthReturn || signedIn) {
+                    var el = document.querySelector('#root > .pre-mount');
+                    if (el && el.parentNode) el.parentNode.removeChild(el);
+                    document.documentElement.className += ' booting-app';
+                }
+            } catch (e) {
+                // Private mode can throw on localStorage. Falling through leaves
+                // the 900ms delayed reveal, which is still an improvement.
+            }
+        })();
+    </script>
+
     <script type="module" src="/src/main.jsx"></script>
 </body>
 
