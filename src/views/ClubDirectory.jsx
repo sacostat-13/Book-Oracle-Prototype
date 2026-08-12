@@ -230,9 +230,9 @@ export default function ClubDirectory() {
     <div className="directory-page">
       <div className="breadcrumb"><a onClick={() => go('book-clubs')}>{t('clubs.createBreadcrumb')}</a> · {t('clubs.directory.breadcrumb')}</div>
 
-      <div className="page-header">
-        <div className="page-eyebrow">{t('clubs.directory.eyebrow')}</div>
-        <h1 className="page-title">{tNode('clubs.directory.pageTitle')}</h1>
+      <div className="page-head">
+        <div className="page-head__eyebrow">{t('clubs.directory.eyebrow')}</div>
+        <h1 className="page-head__title">{tNode('clubs.directory.pageTitle')}</h1>
         <p className="clubs-empty-text">{t('clubs.directory.subtitle')}</p>
       </div>
 

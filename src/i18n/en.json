@@ -51,7 +51,8 @@
     "plans": "Reading Plans",
     "social": "Social",
     "parchmentMode": "Parchment",
-    "stacks": "The Stacks"
+    "stacks": "The Stacks",
+    "dashboard": "Dashboard"
   },
   "signIn": {
     "eyebrow": "Welcome",
@@ -66,7 +67,42 @@
     "checkInboxTitle": "Check your inbox",
     "checkInboxText": "We sent a sign-in link to {email}. Open it on this device to continue.",
     "emailErrorGeneric": "Couldn't send that link — check the address and try again.",
-    "useAnotherEmail": "Use a different email"
+    "useAnotherEmail": "Use a different email",
+    "tabSignIn": "Sign in",
+    "tabCreate": "Create account",
+    "createAccount": "Create my account",
+    "signingIn": "Signing in…",
+    "creating": "Creating…",
+    "passwordPlaceholder": "Password",
+    "confirmPlaceholder": "Confirm password",
+    "newPasswordPlaceholder": "New password",
+    "passwordHint": "At least {min} characters.",
+    "forgotLink": "Forgot your password?",
+    "forgotTitle": "Reset your password",
+    "forgotDesc": "Tell us the address on your account and we'll send a link to set a new password.",
+    "sendReset": "Send reset link",
+    "useMagicLink": "Email me a sign-in link instead",
+    "magicDesc": "We'll send a one-time link. No password needed — useful if you signed up with Google.",
+    "backToSignIn": "Back to sign in",
+    "checkInboxReset": "If {email} has an account, a reset link is on its way. Open it on this device to continue.",
+    "checkInboxSignup": "We sent a confirmation link to {email}. Open it to finish setting up your account.",
+    "resetTitle": "Choose a new password",
+    "resetDesc": "You're signed in from the link in your email. Set a new password to finish.",
+    "savePassword": "Save password",
+    "saving": "Saving…",
+    "cancelReset": "This wasn't me — sign out",
+    "errorBadCredentials": "That email and password don't match an account.",
+    "errorUnconfirmed": "Confirm your email address first — check your inbox for the link.",
+    "errorAlreadyRegistered": "There's already an account with that address. Try signing in, or reset your password.",
+    "errorPasswordShort": "Passwords need at least {min} characters.",
+    "errorPasswordMismatch": "Those two passwords don't match.",
+    "errorPasswordRejected": "That password was rejected — use at least {min} characters and try again.",
+    "errorRateLimited": "Too many attempts. Wait a minute and try again.",
+    "errorGeneric": "Something went wrong. Try again in a moment.",
+    "googleNudge": "That looks like a Google address.",
+    "googleNudgeAction": "Use Google instead — it's one tap",
+    "maybeExistingTitle": "You may already have an account",
+    "maybeExistingText": "If {email} is new here, a confirmation link is on its way. If it already has an account, nothing was sent — sign in instead, reset your password, or continue with Google if that's how you signed up."
   },
   "dashboard": {
     "eyebrow": "Your Library",
@@ -380,7 +416,7 @@
     "noActivePlan": "No active plan",
     "noActivePlanText": "Create one from the dashboard.",
     "createPlan": "Create a plan",
-    "planBy": "Reading plan by ",
+    "planBy": "Reading plan by {name}",
     "savePlan": "Save this plan →",
     "openSeries": "Open Series ↗",
     "addAllToQueue": "Add all to Read Next",
@@ -435,7 +471,7 @@
     "removeFromList": "Remove",
     "reorder": "Drag to reorder",
     "saveToMyLists": "↗ Save to my lists",
-    "curatedBy": "Curated by ",
+    "curatedBy": "Curated by {name}",
     "viewOnly": "View →",
     "notFound": "Not found",
     "notFoundText": "This list may be private or no longer exist.",
@@ -455,7 +491,8 @@
     "pageTitle": "Curated <em class=\"accent\">Lists</em>",
     "listsSubtitle": "Reading lists you've curated — thematic shelves, gift guides, deep dives.",
     "moreBooks": "+{count} more",
-    "myListsEyebrow": "My Lists"
+    "myListsEyebrow": "My Lists",
+    "fromList": "List"
   },
   "bookPage": {
     "loading": "Loading…",
@@ -494,7 +531,8 @@
     "yourProgress": "Your progress",
     "yourNotes": "Your notes",
     "writeReview": "Write a review",
-    "readAgain": "↻ Read again"
+    "readAgain": "↻ Read again",
+    "match": "match"
   },
   "seriesPage": {
     "breadcrumb": "Back",
@@ -546,7 +584,7 @@
     "importGoodreads": "Import Goodreads CSV",
     "importing": "Importing…",
     "resetAll": "Reset everything",
-    "confirmReset": "This will delete your entire local library, wishlist, and reading history. Are you sure?",
+    "confirmReset": "This erases your library, wishlist, reading plans and lists on this account. It cannot be undone. Continue?",
     "readingLevel": "Reading level",
     "levelNames": {
       "1": "Casual",
@@ -660,7 +698,14 @@
     "avatarSaveFailed": "Could not save your avatar. Try again.",
     "avatarStandardSet": "Standard set",
     "avatarGenreSet": "Genre set",
-    "avatarOutline": "outline"
+    "avatarOutline": "outline",
+    "labelPassword": "Password",
+    "passwordHintExisting": "Change the password you use to sign in.",
+    "passwordHintOauth": "Set a password so you can sign in without Google or a link.",
+    "passwordMasked": "••••••••",
+    "setPassword": "Set a password",
+    "changePassword": "Change password",
+    "passwordSaved": "Password updated."
   },
   "onboarding": {
     "step1Eyebrow": "Step 2 of 6 · Reader profile",
@@ -1228,7 +1273,7 @@
     "joinedText": "Taking you to the club…",
     "invitedEyebrow": "You've been invited",
     "joinBtn": "Join club ❦",
-    "signInToJoin": "Sign in with Google to join",
+    "signInToJoin": "Sign in to join",
     "needAccount": "You need an account to join a book club.",
     "joinError": "Could not join — the link may have expired.",
     "invalidPageTitle": "Invalid <em class=\"accent\">invitation</em>",
@@ -1270,7 +1315,9 @@
     "books": "books",
     "bookSingular": "1 book",
     "ornamentEmpty": "❦",
-    "more": "more"
+    "more": "more",
+    "goHome": "Go home",
+    "legal": "Legal"
   },
   "about": {
     "breadcrumb": "Dashboard",

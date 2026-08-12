@@ -48,7 +48,12 @@ export default function Wishlist({ onOpenBook }) {
   const wl = state.wishlist;
   const { genresByBookId } = state;
 
-  const primaryGenreOf = (b) => getPrimaryGenre(b, genresByBookId[b.bookId], 'Uncategorized');
+  // useCallback so the grouping memo below can depend on it honestly rather
+  // than on `genresByBookId` as a stand-in for it.
+  const primaryGenreOf = useCallback(
+    (b) => getPrimaryGenre(b, genresByBookId[b.bookId], 'Uncategorized'),
+    [genresByBookId]
+  );
 
   // v0.62: filter state, options and the filtered result all live in
   // useShelfFilters now — Library.jsx held an identical copy of what used to be
@@ -75,7 +80,7 @@ export default function Wishlist({ onOpenBook }) {
       g[genre].push(b);
     }
     return g;
-  }, [filtered, genresByBookId]);
+  }, [filtered, primaryGenreOf]);
 
   const allGenreKeys = useMemo(() => Object.keys(grouped).sort(), [grouped]);
 

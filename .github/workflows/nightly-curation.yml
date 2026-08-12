@@ -170,7 +170,20 @@ jobs:
         run: |
           set -uo pipefail
 
-          num() { local v; v=$(grep -oP "$2" "$1" 2>/dev/null | tail -1); echo "${v:-0}"; }
+          # Every value written to $GITHUB_OUTPUT must be a single line. A
+          # multi-line value makes the runner read line 2 as a new `key=value`
+          # pair and fail the step with `Invalid format '<line 2>'` — which is
+          # exactly what `grep -c ... || echo 0` produced below: grep already
+          # prints "0" before exiting 1, so the `|| echo 0` appended a SECOND
+          # "0" and the output file got a bare `0` line of its own. It also put
+          # a stray empty row in the summary table. Everything is squeezed to
+          # one line here so no future pattern can reintroduce it.
+          one() { tr -d '\r' | tr '\n' ' ' | awk '{$1=$1};1'; }
+          num() {
+            local v
+            v=$(grep -oP "$2" "$1" 2>/dev/null | tail -1 | one)
+            echo "${v:-0}"
+          }
 
           DESCS=$(num metadata.log '(?<=descriptions=)[0-9]+')
           GENRES=$(num metadata.log '(?<=genres=)[0-9]+')
@@ -178,15 +191,21 @@ jobs:
 
           PROCESSED=$(num curate.log '(?<=Processed:)\s*[0-9]+' | tr -d ' ')
           FAILED=$(num curate.log '(?<=Failed:)\s*[0-9]+' | tr -d ' ')
-          COST=$(grep -oP '(?<=Actual cost: ~\$)[0-9.]+' curate.log 2>/dev/null | tail -1)
+          SKIPPED=$(num metadata.log '(?<=skippedExhausted=)[0-9]+')
+          COST=$(grep -oP '(?<=Actual cost: ~\$)[0-9.]+' curate.log 2>/dev/null | tail -1 | one)
           COST=${COST:-0.0000}
 
           # Per-batch failures carry their reason on the line; collect them so a
           # recurring error is visible in the summary without downloading logs.
-          BATCH_ERRORS=$(grep -c '^FAILED:\|FAILED: ' curate.log 2>/dev/null || echo 0)
+          # `grep -c` prints a count and exits 1 when that count is zero, so the
+          # fallback must NOT print anything of its own — see the note on num().
+          BATCH_ERRORS=$(grep -c 'FAILED:' curate.log 2>/dev/null || true)
+          BATCH_ERRORS=$(printf '%s' "${BATCH_ERRORS:-0}" | one)
+          BATCH_ERRORS=${BATCH_ERRORS:-0}
 
-          for k in DESCS GENRES NOTHING PROCESSED FAILED COST BATCH_ERRORS; do
-            echo "${k,,}=${!k}" >> "$GITHUB_OUTPUT"
+          for k in DESCS GENRES NOTHING SKIPPED PROCESSED FAILED COST BATCH_ERRORS; do
+            v=$(printf '%s' "${!k}" | one)
+            echo "${k,,}=${v:-0}" >> "$GITHUB_OUTPUT"
           done
 
           # Cost per book actually enriched — the number that tells you whether
@@ -210,7 +229,8 @@ jobs:
             echo "| Failed batches | $BATCH_ERRORS |"
             echo "| Descriptions filled (free) | $DESCS |"
             echo "| Genres filled (free) | $GENRES |"
-            echo "| Looked up, nothing found | $NOTHING |"
+            echo "| Looked up, nothing found (new) | $NOTHING |"
+            echo "| Skipped — already exhausted | $SKIPPED |"
             echo ""
             echo "| Cost | USD |"
             echo "| --- | ---: |"

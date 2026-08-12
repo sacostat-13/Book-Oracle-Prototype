@@ -73,6 +73,41 @@ const DELAY_MS = Number.parseInt(argValue('--delay', ''), 10) || 400;
 // rather than anything worth flipping a card to read.
 const MIN_DESCRIPTION_CHARS = 40;
 
+// ── Not asking the same question every night ─────────────────────────────────
+//
+// A book none of the three sources can answer used to be re-queried on every
+// run, forever. The 2026-08-12 run reported nothingFound=186 — 186 books × 3
+// HTTP calls × a 400ms delay, all of it guaranteed to produce nothing, and all
+// of it eating the --limit budget that should go to books the sources CAN
+// answer. The queue could never drain because its head was permanently
+// occupied.
+//
+// Backoff rather than a tombstone. Open Library in particular gains records
+// constantly, so a book with nothing today may have a description in three
+// months; a permanent "dead" flag would need clearing by hand and never would
+// be. Time heals this on its own.
+//
+// The interval widens with each consecutive empty result. A book that has come
+// back empty once might just have had a bad title match; one that has come back
+// empty six times is not in these sources under the title we hold.
+const RETRY_DAYS = [1, 7, 30, 60, 90];      // by attempt count, then capped
+const MAX_ATTEMPTS = 6;                      // at/above this, stop asking entirely
+
+function retryDueAt(attempts) {
+  const days = RETRY_DAYS[Math.min(attempts, RETRY_DAYS.length - 1)];
+  return days * 24 * 60 * 60 * 1000;
+}
+
+// Is this book due for another look? Never-checked books always are.
+function isDue(book, now) {
+  const attempts = book.metadata_attempts ?? 0;
+  if (attempts >= MAX_ATTEMPTS) return false;
+  if (!book.metadata_checked_at) return true;
+  const last = Date.parse(book.metadata_checked_at);
+  if (Number.isNaN(last)) return true;
+  return now - last >= retryDueAt(attempts);
+}
+
 // -- Env ----------------------------------------------------------------------
 const envText = readFileSync(join(__dirname, '..', '..', '.env.local'), 'utf8');
 const env = Object.fromEntries(
@@ -526,9 +561,17 @@ async function main() {
   // coverBackfill's job and should run first.
   let query = supabase
     .from('books')
-    .select('id, title, author, description, genre')
+    .select('id, title, author, description, genre, metadata_checked_at, metadata_attempts')
     .not('cover_url', 'is', null)
     .neq('status', 'flagged')
+    // Exhausted books are excluded server-side so they never occupy a row of
+    // the overshoot window. Without this the filter below would still skip
+    // them, but only after they had already crowded out the books we want:
+    // `.limit(LIMIT * 4)` would come back full of the same 186 dead entries and
+    // the run would process almost nothing.
+    .lt('metadata_attempts', MAX_ATTEMPTS)
+    // Oldest check first, nulls (never checked) ahead of everything.
+    .order('metadata_checked_at', { ascending: true, nullsFirst: true })
     .order('created_at', { ascending: true });
 
   if (LIMIT) query = query.limit(LIMIT * 4); // overshoot: many rows won't need work
@@ -539,13 +582,26 @@ async function main() {
     process.exit(1);
   }
 
+  const now = Date.now();
+  let skippedExhausted = 0;
+
   const needsWork = (rows || []).filter((b) => {
     const missingDesc = !b.description || b.description.trim().length < MIN_DESCRIPTION_CHARS;
     const missingGenre = !b.genre || b.genre === 'Imported' || b.genre === 'Uncategorized';
-    return (WANT_DESC && missingDesc) || (WANT_GENRE && missingGenre);
+    if (!((WANT_DESC && missingDesc) || (WANT_GENRE && missingGenre))) return false;
+    // Wants work, but we asked recently and got nothing. Asking again today
+    // would produce the same nothing.
+    if (!isDue(b, now)) {
+      skippedExhausted++;
+      return false;
+    }
+    return true;
   }).slice(0, LIMIT || undefined);
 
-  console.log(`[metadataBackfill] ${needsWork.length} book(s) to process\n`);
+  console.log(
+    `[metadataBackfill] ${needsWork.length} book(s) to process` +
+    `${skippedExhausted ? ` (${skippedExhausted} skipped — checked recently, nothing found)` : ''}\n`
+  );
 
   let descFilled = 0;
   let genreFilled = 0;
@@ -582,13 +638,41 @@ async function main() {
 
     if (Object.keys(patch).length === 0) {
       untouched++;
-      process.stdout.write('    nothing found\n');
+      const attempts = (book.metadata_attempts ?? 0) + 1;
+      // Stamp the dead end so tonight's three wasted requests are the last ones
+      // for a while. This is the whole point of the change: without the write,
+      // the next run re-selects this book on identical criteria.
+      if (!DRY_RUN) {
+        const { error: markErr } = await supabase
+          .from('books')
+          .update({ metadata_checked_at: new Date().toISOString(), metadata_attempts: attempts })
+          .eq('id', book.id);
+        if (markErr) vlog(`could not record lookup attempt: ${markErr.message}`);
+      }
+      const next = attempts >= MAX_ATTEMPTS
+        ? 'no further attempts'
+        : `retry in ${RETRY_DAYS[Math.min(attempts, RETRY_DAYS.length - 1)]}d`;
+      process.stdout.write(`    nothing found (attempt ${attempts}, ${next})\n`);
       continue;
     }
 
+    // Progress was made, so this book is not a dead end. Clear the counter
+    // rather than leaving it: a book that got a description today but still
+    // wants a genre should be tried again on the next pass at full frequency.
+    if (book.metadata_attempts || book.metadata_checked_at) {
+      patch.metadata_attempts = 0;
+      patch.metadata_checked_at = null;
+    }
+
+    // The retry bookkeeping is not content; showing it in the per-book line
+    // would make every row read as if two extra fields had been filled in.
+    const shown = Object.keys(patch)
+      .filter((k) => k !== 'metadata_attempts' && k !== 'metadata_checked_at')
+      .join(', ');
+
     if (DRY_RUN) {
       process.stdout.write(
-        `    WOULD SET ${Object.keys(patch).join(', ')}` +
+        `    WOULD SET ${shown}` +
         `${patch.genre ? ` (genre=${patch.genre})` : ''}` +
         `${descriptionFrom ? ` (desc from ${descriptionFrom})` : ''}\n`
       );
@@ -599,7 +683,7 @@ async function main() {
         continue;
       }
       process.stdout.write(
-        `    set ${Object.keys(patch).join(', ')}` +
+        `    set ${shown}` +
         `${patch.genre ? ` (genre=${patch.genre})` : ''}\n`
       );
     }
@@ -623,9 +707,15 @@ async function main() {
     writeFileSync(join(__dirname, '..', 'output', 'genre-unmatched.csv'), csv);
   }
 
+  // nothingFound is now "asked today and got nothing", not "cannot be filled".
+  // skippedExhausted is the standing dead set — it should climb for a few nights
+  // and then stop, and nothingFound should fall towards zero. If nothingFound
+  // stays flat while skippedExhausted stays at zero, the retry stamp is not
+  // being written and the loop below is worth a look.
   console.log(
     `\n[metadataBackfill] descriptions=${descFilled} genres=${genreFilled} ` +
-    `unmatchedGenre=${unmatched.length} nothingFound=${untouched}` +
+    `unmatchedGenre=${unmatched.length} nothingFound=${untouched} ` +
+    `skippedExhausted=${skippedExhausted}` +
     `${DRY_RUN ? ' (DRY RUN — nothing written)' : ''}`
   );
 }

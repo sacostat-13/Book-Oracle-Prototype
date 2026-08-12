@@ -56,7 +56,20 @@ export default function OracleCategories({ onOpenBook }) {
 
   // v0.15: build genre options from Oracle genresByBookId first,
   // falling back to b.g for books not yet categorized.
-  const sourceGenres = useMemo(() => {
+  //
+  // Deriving the list from the SOURCE is right for the two catalog modes and
+  // wrong for AI. Wishlist and Vault can only ever hand back a book they hold,
+  // so offering a genre with nothing behind it would just produce "Nothing left
+  // to draw in that genre". AI mode has no such constraint — its own tab says
+  // "may go beyond catalogs" — but it was being fed `sourceBooks = ALL_BOOKS`,
+  // the ~280-title bundled catalog, so the dropdown showed only the handful of
+  // genres that bundle happens to cover. That is the reported bug: genres that
+  // exist in public.genres, are offered at onboarding, and are perfectly
+  // askable of Claude were simply missing from the picker.
+  //
+  // So: AI mode gets the full canonical taxonomy, the catalog modes keep the
+  // source-derived list.
+  const catalogGenres = useMemo(() => {
     const seen = new Map(); // normalizedName → display name
     for (const b of sourceBooks) {
       const genres = genresByBookId[b.bookId] || [];
@@ -74,6 +87,23 @@ export default function OracleCategories({ onOpenBook }) {
       .map(([norm, name]) => ({ norm, name }))
       .sort((a, b) => a.name.localeCompare(b.name));
   }, [sourceBooks, genresByBookId]);
+
+  // The same list Onboarding, Profile and PlanCreate offer, so a reader who
+  // picked "Folk Horror" as a favourite genre can also ask the Oracle for one.
+  // Falls back to the catalog-derived list when the taxonomy has not loaded —
+  // an empty picker is worse than a short one.
+  const taxonomyGenres = useMemo(() => {
+    const rows = state.genres || [];
+    if (rows.length === 0) return null;
+    return rows
+      .map((g) => ({
+        norm: g.normalizedName || g.name.toLowerCase().replace(/[^a-z0-9]/g, ''),
+        name: g.name,
+      }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [state.genres]);
+
+  const sourceGenres = (mode === 'ai' && taxonomyGenres) ? taxonomyGenres : catalogGenres;
 
   function setMode(newMode) {
     if (newMode === mode) return;
@@ -186,19 +216,37 @@ Return ONLY valid JSON in this format:
       }
 
       if (!books || books.length === 0) {
-        // Fall back to Vault first, then wishlist
+        // Fall back to Vault first, then wishlist.
+        //
+        // The genre filter is dropped if it empties the fallback. Since the AI
+        // picker now offers the whole taxonomy rather than only what the
+        // bundled catalog covers, a reader can legitimately ask for a genre no
+        // local book carries — and then this branch, which exists to salvage a
+        // failed call, would salvage nothing and show an empty grid under a
+        // toast promising a fallback.
         const v = vault || (await loadVault());
-        const vaultPool = v.filter(bookMatchesGenre).filter((b) => !inUse.has(bookKey(b)));
+        const drawFrom = (rows) => {
+          const shuffled = [...rows].sort(() => Math.random() - 0.5);
+          setDraw(withLocalMatch(shuffled.slice(0, Math.min(3, shuffled.length))));
+        };
+        const usable = (rows) => rows.filter((b) => !inUse.has(bookKey(b)));
+
+        const vaultPool = usable(v.filter(bookMatchesGenre));
+        const wishPool = usable(state.wishlist.filter(bookMatchesGenre));
+
         if (vaultPool.length > 0) {
           showToast("Couldn't reach the AI. Drawing from the Vault instead.", true);
-          const shuffled = [...vaultPool].sort(() => Math.random() - 0.5);
-          setDraw(withLocalMatch(shuffled.slice(0, Math.min(3, shuffled.length))));
-        } else {
+          drawFrom(vaultPool);
+        } else if (wishPool.length > 0) {
           showToast("Couldn't reach the AI. Falling back to your wishlist.", true);
-          const pool = state.wishlist.filter(bookMatchesGenre);
-          const available = pool.filter((b) => !inUse.has(bookKey(b)));
-          const shuffled = [...available].sort(() => Math.random() - 0.5);
-          setDraw(withLocalMatch(shuffled.slice(0, Math.min(3, shuffled.length))));
+          drawFrom(wishPool);
+        } else {
+          const anyVault = usable(v);
+          showToast(
+            "Couldn't reach the AI, and nothing local matches that genre. Drawing from the Vault instead.",
+            true
+          );
+          drawFrom(anyVault.length > 0 ? anyVault : usable(state.wishlist));
         }
       } else {
         setDraw(books);

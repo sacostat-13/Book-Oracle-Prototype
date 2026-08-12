@@ -591,6 +591,21 @@
   }
 }
 
+// Cover thumbnail in a row. Added for the public list view (v0.46), which
+// previously drew its own <img> with hardcoded colours; sized to sit against
+// the 38px numeral without dominating the row.
+.lv-row__cover {
+  width: 44px;
+  flex-shrink: 0;
+  aspect-ratio: 2 / 3;
+  border-radius: 3px;
+  overflow: hidden;
+  box-shadow: var(--ro-shadow-sm, 0 2px 8px rgb(0 0 0 / .35));
+
+  > * { width: 100%; height: 100%; }
+  img { width: 100%; height: 100%; object-fit: cover; display: block; }
+}
+
 .lv-row__checkbox {
   font-size: 14px;
   color: var(--ro-gold);

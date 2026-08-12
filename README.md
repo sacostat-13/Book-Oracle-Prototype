@@ -4,7 +4,7 @@ A reading companion — wishlist, library, reading plans, book clubs, and an AI-
 for book discovery. Built with React + Vite + SCSS, backed by Supabase for auth
 and cross-device sync, and Netlify Functions for API proxying.
 
-> Current version: **v0.62.2** — see [Releases](#releases) below for changelog.
+> Current version: **v0.62.3** — see [Releases](#releases) below for changelog.
 > Upgrading from an earlier version? Check the matching `MIGRATION_*.md` / `UPDATE_*.md`.
 
 ---
@@ -332,6 +332,231 @@ and forward requests. Locally you need `netlify dev` to make them work.
 ---
 
 ## Releases
+
+# Update Notes — v0.62.2 → v0.62.3: password auth, and a stylesheet that had drifted away from the markup
+
+**Migrations required:** one — `supabase/migrations/20260812120000_metadata_lookup_tracking.sql`
+(adds `books.metadata_checked_at` + `books.metadata_attempts`). No new dependencies.
+No `public/app-version.json` bump: nothing here invalidates a cached client.
+
+**Supabase config:** email/password sign-in must be enabled under
+**Authentication → Providers → Email**. The client's `MIN_PASSWORD_LENGTH`
+(`src/lib/AuthContext.jsx`) is a mirror of the server minimum, not a
+replacement — change both together.
+
+---
+
+## 1. Email + password authentication
+
+Readers reported that a magic link is a poor *only* option: it costs an inbox
+round-trip every time, breaks when opened on a different device from the one
+that asked, and is unfamiliar enough that some people assume the form failed.
+
+`AuthContext` gains `signInWithPassword`, `signUpWithPassword`,
+`sendPasswordReset` and `setPassword`, plus a `recoveringPassword` flag raised
+by the `PASSWORD_RECOVERY` event. The flag lives in context rather than being
+derived from the URL because the Supabase client consumes and clears the hash
+fragment before any component mounts.
+
+`SignInGate` becomes four modes — `signin` / `signup` / `magic` / `forgot` —
+with Sign in and Create account as visible tabs. Google is untouched; the magic
+link is demoted to a secondary option and deliberately kept, since it is the
+only route in for an account created through Google that never set a password.
+
+New `PasswordResetGate` (`src/components/PasswordResetGate.jsx`) is checked in
+`App.jsx` **before** the public-route branch and before the auth gate. A
+recovery link can land on any URL, and letting a public route render first would
+swallow the one moment available to ask for the new password.
+
+New `PasswordSection` in Profile → Account, so accounts created through Google or
+a magic link can adopt a password without signing out. No "current password"
+prompt: `updateUser` authenticates with the live session, and asking an OAuth
+user for a password they do not have is theatre.
+
+### The silent-signup case
+
+Signing up with an address that already has an account returned success and sent
+no mail. That is Supabase's email-enumeration protection working as designed —
+the response is fabricated so the signup form cannot be used to discover who has
+an account. The tell is `data.user.identities.length === 0`; a genuinely new user
+always comes back with one identity.
+
+Detected now, with copy that is true whether or not the address exists and that
+offers reset-password and Google as exits. **Do not "fix" this by reporting
+"that address is taken"** — that is precisely the disclosure the protection
+exists to prevent.
+
+### Gmail nudge
+
+A `gmail.com` / `googlemail.com` address on the Create account tab surfaces an
+inline suggestion to use Google instead. Scoped to those two domains only:
+Workspace domains are indistinguishable from any other custom domain client-side,
+so nudging them would misfire as often as it helps. Suggestion, never a redirect.
+
+## 2. The public list view, and a class-name drift problem behind it
+
+`ListView.jsx` was reported as "styling from before the redesign". It was not
+old styling — it was **no** styling. `page-header`, `page-eyebrow`, `page-title`,
+`list-item`, `li-num`, `li-content`, `li-title`, `li-author`, `li-actions` and
+`level-pill` had zero definitions between them anywhere in `src/styles/`. The
+markup was correct and rendering at browser defaults.
+
+Ported to the current vocabulary (`ls-page-head`, `lv-list` / `lv-row`,
+`BookCover`, `BookLoader`, `lv-empty`), and the plan branch to PlanView's
+`plan-month-card`. The hand-rolled `CoverImg` is gone — it hardcoded
+`rgba(233,217,182,.5)`, against the standing token rule.
+
+Books are clickable for signed-out visitors. The action was wrapped in
+`{user && …}`, but `book-page` has been a public route since v0.39; the gate was
+a leftover. Whole row, keyboard-accessible, same-tab (popup blockers eat
+`window.open` on shared links).
+
+**This was not isolated.** An audit found the same three dead header classes in
+nine more views, and ~40 other unstyled class names. Fixed here: the nine
+headers, the global `.toast` (every confirmation and error in the app was an
+unstyled block in normal flow), `.quota-badge` and friends, and `.sign-in-legal`.
+The remainder is triaged in `docs/DEAD_CLASS_AUDIT_v0.62.3.md`, along with the
+resolver method — note that checking compiled CSS alone produces false positives
+on declaration-less parent selectors.
+
+## 3. i18n integrity
+
+Eleven keys referenced in code did not exist, each rendering its own key string
+to the reader. Most were the wrong *section* rather than missing copy:
+`library.goodreadsHelp` → `profile.goodreadsHelp`, `library.targetLibrary` →
+`bulkImport.targetLibrary`, `clubs.titleAccent` → `nav.bookClubs`, and so on.
+Genuinely added: `bookPage.match`, `common.goHome`, `nav.dashboard`,
+`profile.confirmReset`, `common.legal`.
+
+Three related failures worth remembering, all the same root cause — **`t()` runs
+`String()` over its vars and strips HTML, so passing a React element renders
+`[object Object]`; use `tNode()`**:
+
+- `lists.curatedBy` / `plans.planBy` had no `{name}` placeholder *and* were being
+  passed a `<strong>` through `t()`. The curator's name never rendered on any
+  shared list.
+- `JoinClub` called `invalidTitle` / `joinedTitle` / `previewTitle`, which do not
+  exist. The correct keys were already in both catalogs with markup and
+  placeholders.
+- `About`'s `<h1>` used `about.eyebrow` as its template, which has no `{accent}`
+  placeholder. The heading rendered as the bare word "About".
+
+Full EN/ES parity verified across the whole catalog, including 13 dynamic
+template-literal families (``t(`shelfFilters.author_${g}`)`` and similar).
+
+## 4. Nightly curation
+
+**The workflow error.** `Report books, errors and cost` failed with
+`Invalid format '0'`. Cause:
+
+```bash
+BATCH_ERRORS=$(grep -c 'FAILED:' curate.log || echo 0)
+```
+
+`grep -c` prints `0` **and** exits 1 when there are no matches, so `|| echo 0`
+appended a second one. The two-line value made the runner read line 2 as a new
+`key=value` pair. It was also the stray empty row in the job summary table.
+Every value written to `$GITHUB_OUTPUT` is now squeezed to one line.
+
+**The 186 re-queried books.** `metadataBackfill.mjs` had no memory of failure, so
+a book none of the three free sources could answer was re-queried every night
+forever — three HTTP calls plus delays each, consuming the `--limit` budget that
+should go to books the sources *can* answer. The queue could never drain because
+its head was permanently occupied.
+
+New columns record the dead end, with backoff at 1 / 7 / 30 / 60 / 90 days and a
+stop at six consecutive failures. Counters reset on any success. Deliberately
+**not** a permanent `dead` flag: Open Library gains records constantly, and a
+tombstone would need clearing by hand and never would be. Exhausted books are
+excluded server-side via `.lt('metadata_attempts', MAX_ATTEMPTS)`, not just
+filtered client-side — otherwise they still fill the `LIMIT * 4` overshoot
+window. New `skippedExhausted` counter in the summary: expect it to climb for a
+few nights then flatten while `nothingFound` falls toward zero.
+
+## 5. Oracle fixes
+
+**AI Recommends genre list.** The picker was fed `sourceBooks`, which in AI mode
+is `ALL_BOOKS` — the ~280-title bundled catalog — so it offered only the genres
+that bundle happens to cover. AI mode now uses the full `public.genres` taxonomy;
+Wishlist and Vault keep the source-derived list, since they can only return a
+book they hold. The AI-failure fallback drops the genre filter when it would
+otherwise empty the pool, which is now reachable for taxonomy-only genres.
+
+**"You might also like".** The candidate pool was
+`wishlist + library + readNext`, and `library` *is* the read shelf, so a reader
+with a large library got recommendations made largely of books they had
+finished. Read books are excluded on `BookPage` and in `BookModal`'s strip.
+
+## 6. Lint — and why there wasn't any
+
+This release shipped, and then immediately un-shipped, a `useMemo` placed below
+an early return in `BookPage` and `BookModal`. React matches hooks by call
+order, so the hook ran on some renders and not others, and every book page threw
+`Rendered more hooks than during the previous render`.
+
+The build was green throughout. Vite has no opinion on hook placement, and the
+repo had **no linter at all** — nothing between writing that line and a reader
+hitting it would ever have objected.
+
+Added `eslint.config.mjs` with exactly two rules: `rules-of-hooks` at error and
+`exhaustive-deps` at warn. Deliberately minimal, and it should stay that way —
+this is not a formatting pass, and a config that emits a hundred cosmetic errors
+is a config that gets ignored and then deleted.
+
+Its first run found a third instance nobody had reported: `useSelection` in
+`ListDetail`, below the `!list` guard, latent since selection mode was added.
+The lists array is normally already in state when that view mounts, which is
+what kept it hidden.
+
+```bash
+npm install     # pulls eslint + eslint-plugin-react-hooks
+npm run lint
+```
+
+### The 15 warnings the first run produced
+
+Cleared rather than tolerated — a baseline of "15 warnings, all fine" is one
+nobody reads, and the next real one hides in it. Four of them were genuine:
+
+- **`BookLoader`** read `threadRef.current` in an unmount cleanup. React detaches
+  DOM refs before passive-effect cleanups run, so that ref can be null exactly
+  when it is wanted. The existing `if (!el) return` masked it. Both refs are now
+  captured in the effect body while the node is still attached.
+- **`NavSearch`** declared `collectionStatus` as a plain function, rebuilt every
+  render, and `search` listed the shelves it closes over but not the function
+  itself. The badge was correct by coincidence, not by construction. Now
+  `useCallback` on the same inputs, and `search`'s deps narrowed to the two
+  memoised values it actually reads.
+- **`Library` / `Wishlist`** grouped by `primaryGenreOf` while depending on
+  `genresByBookId` as a stand-in for it. Same fix.
+- **`OracleQuotaContext`** listed `[user?.id]` on three hooks whose bodies read
+  `user`. The dependency was the *correct* one — AuthContext deliberately holds
+  the previous `user` reference through a token refresh — so the code now
+  destructures `userId` and says so, rather than suppressing the warning.
+
+Four are deliberate and now carry an `eslint-disable` naming the reason:
+`BookPage`'s resolution effect (`upsertDiscoveredBook` is rebuilt every provider
+render, and this effect *writes* — the loop would be a write loop), `JoinClub`
+and `ListView` (`t` changes identity on a language toggle; re-running would fire
+`join_club_by_token` twice / refetch the list), and `SeriesPage` (the shelves are
+read once to pick an author for Wikipedia).
+
+Three were artifacts of a two-rule config reporting `eslint-disable` directives
+aimed at rules it does not enable — see the note in `eslint.config.mjs`. Two
+genuinely-stale directives were deleted.
+
+Current state: **0 errors, 0 warnings across 152 files.** Keep it there; that is
+the only reason the tool is worth running.
+
+## 7. List search performance
+
+`AddBookPicker` rebuilt its pool in the render body on every keystroke, with
+`findIndex` inside `filter` — O(n²), over a million `bookKey()` calls at ~1,200
+books, before the search filter started. `Set` dedupe, `useMemo`, and one
+precomputed lowercase haystack per book. No debounce needed once the
+per-keystroke work is linear.
+
+---
 
 # Update Notes — v0.62 → v0.62.2: the URL follows the view
 

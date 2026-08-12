@@ -126,13 +126,13 @@ export default function Onboarding() {
       const text = await file.text();
       const books = parseGoodreadsCSV(text);
       if (books.length === 0) {
-        showToast(t('library.goodreadsHelp'), true);
+        showToast(t('profile.goodreadsHelp'), true);
         return;
       }
       setGoodreadsBooks(books);
-      showToast(t('bulkImport.added', { count: books.length, target: t('library.targetLibrary') }));
+      showToast(t('bulkImport.added', { count: books.length, target: t('bulkImport.targetLibrary') }));
     } catch {
-      showToast(t('library.goodreadsHelp'), true);
+      showToast(t('profile.goodreadsHelp'), true);
     }
   }
 
@@ -404,7 +404,7 @@ export default function Onboarding() {
               </div>
             </div>
             <div className="upload-help">
-              <strong>{t('onboarding.uploadHowTo')}</strong> {t('library.goodreadsHelp')}<br />
+              <strong>{t('onboarding.uploadHowTo')}</strong> {t('profile.goodreadsHelp')}<br />
               {tNode('onboarding.uploadNoFile', {
                 link: <a href="#" onClick={(e) => { e.preventDefault(); setStep(6); }}>{t('onboarding.skipStep')}</a>
               })}

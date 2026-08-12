@@ -16,14 +16,12 @@ export default function ReadNext({ onOpenBook }) {
 
   return (
     <>
-      <div className='page-head'>
+      <div className="page-head">
         <div className="page-head__eyebrow">
           <a onClick={() => go('dashboard')}>{t('readNext.breadcrumb')}</a> · {t('readNext.eyebrow')}
         </div>
-        <div className="page-header">
-          <h1 className="page-head__title">{tNode('readNext.pageTitle')}</h1>
-          <p className="page-head__lead">{queue.length === 1 ? t('readNext.subtitleOne') : t('readNext.subtitle', { count: queue.length })}</p>
-        </div>
+        <h1 className="page-head__title">{tNode('readNext.pageTitle')}</h1>
+        <p className="page-head__lead">{queue.length === 1 ? t('readNext.subtitleOne') : t('readNext.subtitle', { count: queue.length })}</p>
       </div>
 
       {queue.length === 0 ? (

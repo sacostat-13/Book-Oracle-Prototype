@@ -283,9 +283,15 @@ export default function BookLoader({ text, fullHeight = false }) {
   // a small spark marks the resolution. Skipped for very short waits and, via
   // burst() itself, under prefers-reduced-motion.
   useEffect(() => {
+    // Both refs are read in the CLEANUP, which runs at unmount — by which point
+    // React has already detached the DOM ref, so `threadRef.current` can be
+    // null exactly when we want it. Captured here, while the effect body runs
+    // and the node is still attached. `mountedAt` never changes after mount, so
+    // capturing it is free.
+    const mountedAt = mountedAtRef.current;
+    const el = threadRef.current;
     return () => {
-      if (Date.now() - mountedAtRef.current < 1500) return;
-      const el = threadRef.current;
+      if (Date.now() - mountedAt < 1500) return;
       if (!el) return;
       const r = el.getBoundingClientRect();
       if (!r.width || r.top < 0 || r.top > window.innerHeight) return;

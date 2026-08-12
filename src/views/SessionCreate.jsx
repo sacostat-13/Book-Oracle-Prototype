@@ -91,9 +91,9 @@ export default function SessionCreate() {
         {club && <> · <a onClick={() => go('book-club-detail', { clubId })}>{club.name}</a></>}
         {' · '}{t('sessions.breadcrumbNew')}
       </div>
-      <div className="page-header">
-        <div className="page-eyebrow">{club?.name || t('clubs.titleAccent')}</div>
-        <h1 className="page-title">{tNode('sessions.createPageTitle')}</h1>
+      <div className="page-head">
+        <div className="page-head__eyebrow">{club?.name || t('nav.bookClubs')}</div>
+        <h1 className="page-head__title">{tNode('sessions.createPageTitle')}</h1>
       </div>
 
       <div className="session-form">

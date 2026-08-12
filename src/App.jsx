@@ -17,6 +17,7 @@ import ShareMomentModal from './components/ShareMomentModal';
 import ImportProgressToast from './components/ImportProgressToast';
 import OracleGateDialog from './components/OracleGateDialog';
 import SignInGate from './components/SignInGate';
+import PasswordResetGate from './components/PasswordResetGate';
 
 import Onboarding from './views/Onboarding';
 import Stacks from './views/Stacks';
@@ -61,7 +62,7 @@ import Footer from './components/Footer';
 export default function App() {
   const { state, loading } = useData();
   const { route, go } = useRouter();
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, recoveringPassword } = useAuth();
   const t = useT();
 
   // v0.55.4: bump to re-read the DEV onboarding-replay session flag (see effect below).
@@ -173,6 +174,21 @@ export default function App() {
   // render the wrong book after any second search (fixed in v0.62.2).
   const previewBookRef = useRef(null);
   function setPreviewBook(book) { previewBookRef.current = book; }
+
+  // ── Password recovery ───────────────────────────────────────────────────────
+  // Checked before the public-route branch and before the auth gate, because a
+  // recovery link can land on ANY url — whatever the reader had open when they
+  // asked for the reset, or whatever Supabase's Site URL points at. Letting a
+  // public route render first would swallow the one moment we have to ask for
+  // the new password, and the recovery session is short-lived.
+  if (recoveringPassword) {
+    return (
+      <div className="app">
+        <PasswordResetGate />
+        <Toast />
+      </div>
+    );
+  }
 
   // ── Public routes — render immediately, no auth or data required ────────────
   // These pages read content from the URL snapshot and progressively enhance

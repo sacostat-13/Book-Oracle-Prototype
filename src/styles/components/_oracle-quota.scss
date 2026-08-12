@@ -9,6 +9,53 @@
 // parchment rgba, which breaks light mode.
 
 // ══════════════════════════════════════════════════════════════════════════════
+// Quota badge (v0.62.3)
+//
+// `OracleQuotaBadge` shipped with `.quota-badge`, `.quota-dot` and
+// `.quota-count` in its markup and none of them in any stylesheet, so the
+// remaining-calls indicator rendered as three bare inline spans — the dot
+// invisible, the count run together with whatever sat beside it. It appears on
+// every Oracle surface, which is exactly where a reader most wants to know
+// what a call will cost them.
+
+.quota-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 4px 10px;
+  border: 1px solid var(--ro-border-strong);
+  border-radius: var(--ro-radius-pill, 999px);
+  background: var(--ro-surface-2);
+  white-space: nowrap;
+  vertical-align: middle;
+
+  // Empty quota is a state worth noticing, but this is an ambient indicator,
+  // not an alert — it warms to the error colour rather than shouting.
+  &--low {
+    border-color: var(--ro-error);
+
+    .quota-dot { background: var(--ro-error); }
+    .quota-count { color: var(--ro-error); }
+  }
+}
+
+.quota-dot {
+  width: 6px;
+  height: 6px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--ro-gold);
+}
+
+.quota-count {
+  font-family: var(--ro-font-mono);
+  font-size: 11px;
+  letter-spacing: .06em;
+  line-height: 1;
+  color: var(--ro-muted);
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
 // Confirmation dialog
 // ══════════════════════════════════════════════════════════════════════════════
 

@@ -45,16 +45,14 @@ export default function CurrentlyReading({ onOpenBook }) {
         <div className="page-head__eyebrow">
           <a onClick={() => go('dashboard')}>{t('currentlyReading.breadcrumb')}</a> · {t('currentlyReading.eyebrow')}
         </div>
-        <div className="page-header">
-          <h1 className="page-head__title">{tNode('currentlyReading.pageTitle')}</h1>
-          <p className="page-head__lead">
-            {currentlyReading.length === 0
-              ? t('currentlyReading.subtitleEmpty')
-              : currentlyReading.length === 1
-                ? t('currentlyReading.subtitleOne')
-                : t('currentlyReading.subtitleMany', { count: currentlyReading.length })}
-          </p>
-        </div>
+        <h1 className="page-head__title">{tNode('currentlyReading.pageTitle')}</h1>
+        <p className="page-head__lead">
+          {currentlyReading.length === 0
+            ? t('currentlyReading.subtitleEmpty')
+            : currentlyReading.length === 1
+              ? t('currentlyReading.subtitleOne')
+              : t('currentlyReading.subtitleMany', { count: currentlyReading.length })}
+        </p>
       </div>
 
       {currentlyReading.length === 0 ? (

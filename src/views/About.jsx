@@ -91,10 +91,14 @@ export default function About() {
         <div className="page-head__eyebrow">
           <a onClick={() => go('dashboard')}>{t('about.breadcrumb')}</a> · {t('about.eyebrow')}
         </div>
+        {/* Was `t('about.eyebrow', { accent: … })`, which was wrong three ways:
+            it used the eyebrow string ("About") as the title template, that
+            string has no {accent} placeholder so the value was dropped, and
+            `t()` stringifies element vars anyway. The heading rendered as the
+            bare word "About". `about.pageTitle` already carries the full
+            phrase with its own <em class="accent"> markup. */}
         <h1 className="page-head__title">
-          {t('about.eyebrow', {
-            accent: <span className="accent">{t('about.titleAccent')}</span>,
-          })}
+          {tNode('about.pageTitle')}
         </h1>
         <p className="page-head__lead">{t('about.subtitle')}</p>
       </div>

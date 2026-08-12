@@ -1,0 +1,70 @@
+// _toast.scss — v0.62.3
+//
+// The global toast had no stylesheet at all.
+//
+// `Toast.jsx` has always rendered `<div class="toast show [error]">`, and none
+// of those three class names resolved to a single declaration anywhere in
+// src/styles. Every confirmation and every error in the app — "Added to your
+// wishlist", "Couldn't reach the AI", the Goodreads import result — was landing
+// as an unstyled block of text pushed into normal document flow at the top of
+// whatever page you were on. It was the most-seen component in the product and
+// the least styled.
+//
+// Modelled on `.import-toast` in components/_onboarding.scss, which is the one
+// toast that WAS styled, so the two read as the same object: fixed to the
+// bottom of the viewport, surface background, strong border, clear of the
+// mobile tab bar.
+
+@use '../tokens';
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 20px;
+  z-index: 220; // above .import-toast (210) — this one is transient
+  width: calc(100% - 32px);
+  max-width: 460px;
+  padding: 13px 16px;
+  border: 1px solid var(--ro-border-strong);
+  border-radius: 14px;
+  background: var(--ro-surface);
+  box-shadow: var(--ro-shadow);
+  color: var(--ro-text);
+  font-family: var(--ro-font-body);
+  font-size: 14px;
+  line-height: 1.45;
+  text-align: center;
+
+  // Hidden by default so the entrance is animated rather than instant. The
+  // component unmounts entirely when there is no message, so this only matters
+  // for the frame between mount and `.show`.
+  opacity: 0;
+  transform: translate(-50%, 12px);
+  transition: opacity .18s ease, transform .18s ease;
+  pointer-events: none;
+
+  // Clear of the mobile tab bar, same offset .import-toast uses.
+  @media (max-width: 900px) {
+    bottom: calc(var(--ro-tabbar-h, 60px) + 14px);
+  }
+
+  &.show {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+
+  // Errors are semantic, not decorative — they take `--ro-error` from the
+  // status palette, which is themed per mode, rather than a one-off red.
+  &.error {
+    border-color: var(--ro-error);
+    color: var(--ro-error);
+  }
+}
+
+// Respect a reduced-motion preference: appear, but do not slide.
+@media (prefers-reduced-motion: reduce) {
+  .toast {
+    transition: opacity .12s ease;
+    transform: translate(-50%, 0);
+  }
+}

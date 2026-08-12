@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useData } from '../lib/DataContext';
 import { useRouter } from '../lib/RouterContext';
 import ReportBookForm from './ReportBookForm';
@@ -14,8 +14,14 @@ import BookCover from './BookCover';
 import RatingModal from './RatingModal';
 import CategoryAutocomplete from './CategoryAutocomplete';
 
-function computeSimilarBooks(book, limit = 4) {
-  const candidates = ALL_BOOKS.filter((c) => bookKey(c) !== bookKey(book));
+// `exclude` holds the reader's finished books. Same rule as BookPage's
+// computeSimilar: a recommendation strip that offers books already on the read
+// shelf is answering the wrong question. ALL_BOOKS is the bundled catalog, so
+// the overlap with a reader's library is large and this happened often.
+function computeSimilarBooks(book, limit = 4, exclude) {
+  const candidates = ALL_BOOKS
+    .filter((c) => bookKey(c) !== bookKey(book))
+    .filter((c) => !exclude || !exclude.has(bookKey(c)));
   const scored = candidates
     .map((c) => {
       let score = 0;
@@ -155,6 +161,18 @@ export default function BookModal({ book, onClose, onOpenBook }) {
     return () => window.removeEventListener('keydown', onKey);
   }, [onClose, ratingEditorOpen]);
 
+  // Keys of every book already read, used to keep finished books out of the
+  // "You might also like" strip further down.
+  //
+  // MUST STAY ABOVE `if (!book) return null`. React matches hooks by call
+  // order, so a hook after an early return runs on some renders and not others
+  // — which throws "Rendered more hooks than during the previous render" the
+  // first time `book` goes from null to set.
+  const readKeys = useMemo(
+    () => new Set((state.library || []).map(bookKey)),
+    [state.library]
+  );
+
   if (!book) return null;
 
   const enriched = findBookByTitle(book.t, state.wishlist) || book;
@@ -176,7 +194,9 @@ export default function BookModal({ book, onClose, onOpenBook }) {
   const inLib = state.library.some((b) => bookKey(b) === k);
   const inNext = state.readNext.some((b) => bookKey(b) === k);
   const inWish = state.wishlist.some((b) => bookKey(b) === k);
-  const similar = computeSimilarBooks(display, 4);
+  // `readKeys` is memoised above the `if (!book) return null` guard — see the
+  // note there. It cannot live here.
+  const similar = computeSimilarBooks(display, 4, readKeys);
 
   const libraryRow = inLib
     ? state.library.find((b) => bookKey(b) === k)

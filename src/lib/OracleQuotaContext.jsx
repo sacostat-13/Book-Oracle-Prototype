@@ -24,6 +24,16 @@ const FREE_LIMIT = 5;
 
 export function OracleQuotaProvider({ children }) {
   const { user } = useAuth();
+  // The id, not the object.
+  //
+  // Everything below keys off the signed-in user's id and nothing else, and
+  // AuthContext deliberately preserves the previous `user` REFERENCE when only
+  // the token rotates (see the note there) — so depending on `user` would be
+  // both wider than needed and, on a token refresh, misleading. Pulling the id
+  // out lets the dependency arrays say exactly what they mean instead of
+  // carrying `user?.id` while the bodies read `user`, which is what made
+  // exhaustive-deps complain here three times over.
+  const userId = user?.id ?? null;
   const [quota, setQuota]     = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -48,10 +58,10 @@ export function OracleQuotaProvider({ children }) {
                                                     // at someone who has it.
 
   const refresh = useCallback(async () => {
-    if (!user) { setQuota(null); setLoading(false); return; }
+    if (!userId) { setQuota(null); setLoading(false); return; }
     setLoading(true);
     try {
-      const { data, error } = await supabase.rpc('get_oracle_quota', { p_user_id: user.id });
+      const { data, error } = await supabase.rpc('get_oracle_quota', { p_user_id: userId });
       if (error) { console.error('get_oracle_quota error:', error); setLoading(false); return; }
       // v0.43.1: clamp remaining at 0. After a Pro→Free downgrade calls_used
       // can exceed the free limit mid-period, which makes the raw
@@ -83,7 +93,7 @@ export function OracleQuotaProvider({ children }) {
     } finally {
       setLoading(false);
     }
-  }, [user?.id]);
+  }, [userId]);
 
   useEffect(() => { refresh(); }, [refresh]);
 
@@ -93,12 +103,12 @@ export function OracleQuotaProvider({ children }) {
   // it has no business carrying UI state.
   useEffect(() => {
     let cancelled = false;
-    if (!user) { setIntroSeen(true); return; }
+    if (!userId) { setIntroSeen(true); return; }
     (async () => {
       const { data, error } = await supabase
         .from('profiles')
         .select('oracle_intro_seen_at')
-        .eq('id', user.id)
+        .eq('id', userId)
         .maybeSingle();
       if (cancelled) return;
       // On error, treat it as seen. Failing open here shows a dialog to
@@ -108,17 +118,17 @@ export function OracleQuotaProvider({ children }) {
       setIntroSeen(!!data?.oracle_intro_seen_at);
     })();
     return () => { cancelled = true; };
-  }, [user?.id]);
+  }, [userId]);
 
   const markIntroSeen = useCallback(async () => {
     setIntroSeen(true); // optimistic: the user has read it either way
-    if (!user) return;
+    if (!userId) return;
     const { error } = await supabase
       .from('profiles')
       .update({ oracle_intro_seen_at: new Date().toISOString() })
-      .eq('id', user.id);
+      .eq('id', userId);
     if (error) console.error('markIntroSeen error:', error);
-  }, [user?.id]);
+  }, [userId]);
 
   // ── The gate ───────────────────────────────────────────────────────────────
   // Resolves true to proceed, false to abort. Deliberately quiet in the cases

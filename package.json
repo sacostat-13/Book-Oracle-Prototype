@@ -16,7 +16,8 @@
     "list:db": "npx supabase migration list",
     "dump:db": "npx supabase db dump -f supabase/dump/schema.sql",
     "dump:data": "npx supabase db dump --data-only -f supabase/dump/data.sql",
-    "reset:db": "npx supabase db reset"
+    "reset:db": "npx supabase db reset",
+    "lint": "eslint src"
   },
   "dependencies": {
     "@gsap/react": "^2.1.2",
@@ -32,11 +33,13 @@
     "ws": "^8.21.0"
   },
   "devDependencies": {
-    "supabase": "^2.22.6",
     "@vitejs/plugin-react": "^4.3.1",
+    "eslint": "^9.13.0",
+    "eslint-plugin-react-hooks": "^5.0.0",
     "jpeg-js": "^0.4.4",
     "pngjs": "^7.0.0",
     "sass": "^1.77.0",
+    "supabase": "^2.22.6",
     "vite": "^5.3.0",
     "vite-plugin-pwa": "^0.20.0",
     "workbox-window": "^7.0.0"

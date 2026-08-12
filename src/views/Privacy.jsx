@@ -20,8 +20,8 @@ export default function Privacy() {
   return (
     <>
       <div className="breadcrumb"><a onClick={() => go('about')}>{t('nav.about')}</a> · {t('privacy.breadcrumbs')}</div>
-      <div className="page-header">
-        <div className="page-eyebrow">Legal</div>
+      <div className="page-head">
+        <div className="page-head__eyebrow">{t('common.legal')}</div>
         <h1 className="page-head__title">{tNode('privacy.title')}</h1>
         <p className="page-head__lead">{t('privacy.lastUpdated')}</p>
       </div>

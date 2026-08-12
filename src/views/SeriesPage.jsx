@@ -66,6 +66,11 @@ export default function SeriesPage() {
     }).catch(() => {});
 
     return () => { cancelled = true; };
+    // The three shelves are read once, only to find an author to hand to
+    // Wikipedia. Listing them would re-fetch the series and its description
+    // every time any book anywhere in the collection changed — a network call
+    // per shelf mutation, to arrive at the same answer.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [seriesName]);
 
   // ── Build merged ordered entry list ────────────────────────────────────────

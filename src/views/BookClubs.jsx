@@ -17,9 +17,9 @@ export default function BookClubs() {
 
   return (
     <>
-      <div className="page-header">
-        <div className="page-eyebrow">{t('clubs.eyebrow')}</div>
-        <h1 className="page-title">{tNode('clubs.pageTitle')}</h1>
+      <div className="page-head">
+        <div className="page-head__eyebrow">{t('clubs.eyebrow')}</div>
+        <h1 className="page-head__title">{tNode('clubs.pageTitle')}</h1>
         <p className="clubs-empty-text">
           {t('clubs.subtitle')}
         </p>

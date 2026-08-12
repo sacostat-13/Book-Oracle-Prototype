@@ -3,7 +3,7 @@
 // Shares data-fetching logic with BookModal but renders as a full page
 // with more room for description, series, and genre detail.
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useData } from '../lib/DataContext';
 import { useRouter } from '../lib/RouterContext';
 import { useT } from '../lib/I18nContext';
@@ -28,7 +28,20 @@ import { bookShareUrl } from '../lib/shareService';
 
 // ─── Similar books ────────────────────────────────────────────────────────────
 
-function computeSimilar(display, genresByBookId, pool, limit = 12) {
+// `exclude` is a Set of bookKeys that must never be offered — in practice the
+// reader's finished books.
+//
+// The pool used to be wishlist + library + readNext, and `library` IS the read
+// shelf, so a reader with a large library got a "You might also like" made
+// almost entirely of books they had already read. The section reads as a
+// discovery surface; recommending a finished book is not a weak recommendation,
+// it is the wrong kind of answer, and it makes the Oracle look like it has not
+// been paying attention.
+//
+// Filtered rather than removed from the pool at the call site so the reason
+// travels with the code, and so read books stay available to any future scoring
+// signal that wants them as evidence without becoming candidates themselves.
+function computeSimilar(display, genresByBookId, pool, limit = 12, exclude) {
   // Build genre ID set for the current book
   const thisGenreIds = new Set(
     (genresByBookId?.[display.bookId] || []).map(g => g.genreId)
@@ -40,6 +53,7 @@ function computeSimilar(display, genresByBookId, pool, limit = 12) {
 
   const scored = pool
     .filter(b => bookKey(b) !== thisKey)
+    .filter(b => !exclude || !exclude.has(bookKey(b)))
     .map(b => {
       let score = 0;
 
@@ -259,6 +273,12 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
     } else {
       setNotFound(true);
     }
+    // `upsertDiscoveredBook` is intentionally absent. It comes from
+    // DataContext and is rebuilt on every provider render, so listing it here
+    // would re-run this resolution effect continuously — and the effect writes
+    // a discovered book back to the catalog, so the loop would be a write loop,
+    // not just a wasted render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bookKey_, route.params, previewBookRef, state.wishlist, state.library, state.readNext, snapshotBook]);
 
   // Enrichment:
@@ -367,8 +387,21 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
       if (!cancelled && d) setSeriesDescription(d);
     });
     return () => { cancelled = true; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [seriesNameForEffect, authorForEffect]);
+
+  // Keys of every book already read, used to keep finished books out of
+  // "You might also like" further down.
+  //
+  // MUST STAY ABOVE THE EARLY RETURNS BELOW. This component bails out three
+  // times before it renders — `notFound`, the snapshot-only path, and `!book` —
+  // so a hook placed after them runs on some renders and not others, and React
+  // matches hooks positionally. Put it down beside the code that uses it and
+  // the page throws "Rendered more hooks than during the previous render" the
+  // moment a book resolves after an early return.
+  const readKeys = useMemo(
+    () => new Set((state.library || []).map(bookKey)),
+    [state.library]
+  );
 
   if (notFound) {
     return (
@@ -499,9 +532,14 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
     ? oracleGenres
     : (display.g ? [{ name: display.g, description: null }] : []);
 
-  // Similar books — scored by Oracle genre overlap, author, complexity, length
+  // Similar books — scored by Oracle genre overlap, author, complexity, length.
+  // `state.library` is the read shelf; it stays in the pool so nothing else
+  // changes, but every key in it is excluded from the results.
+  //
+  // `readKeys` is memoised further up, above the early returns — see the note
+  // there. It cannot live here.
   const allBooks = [...state.wishlist, ...state.library, ...state.readNext];
-  const similar = computeSimilar(display, state.genresByBookId, allBooks);
+  const similar = computeSimilar(display, state.genresByBookId, allBooks, 12, readKeys);
 
   // Series block — same logic as BookModal
   let seriesBlock = null;

@@ -103,14 +103,20 @@ export default function NavSearch({ onPreviewBook }) {
     ...state.readNext,
   ], [state.wishlist, state.library, state.readNext]);
 
-  // Collection status label for a book
-  function collectionStatus(b) {
+  // Collection status label for a book.
+  //
+  // Memoised on the same inputs it reads. As a plain function declaration it
+  // was rebuilt on every render, so `search` below — which lists the shelves as
+  // deps but not this — captured whichever copy existed when the callback was
+  // last rebuilt. The deps happened to line up, so the badge was right; it was
+  // right by coincidence, not by construction.
+  const collectionStatus = useCallback((b) => {
     const k = bookKey(b);
     if (state.library.some((x) => bookKey(x) === k)) return t('navSearch.statusRead');
     if (state.readNext.some((x) => bookKey(x) === k)) return t('navSearch.statusQueued');
     if (state.wishlist.some((x) => bookKey(x) === k)) return t('navSearch.statusWishlist');
     return null;
-  }
+  }, [state.library, state.readNext, state.wishlist, t]);
 
   const search = useCallback(async (q) => {
     if (q.length < MIN_QUERY_LEN) {
@@ -206,7 +212,11 @@ export default function NavSearch({ onPreviewBook }) {
 
     setResults([...localHits, ...newHits]);
     setLoading(false);
-  }, [collectionBooks, state.library, state.readNext, state.wishlist, t]);
+    // Narrowed to the two memoised values this actually reads. The three
+    // shelves and `t` were all listed here directly, but `collectionBooks` and
+    // `collectionStatus` are each memoised on exactly those inputs — naming
+    // them twice only rebuilt this callback twice for a single change.
+  }, [collectionBooks, collectionStatus]);
 
   // Debounce input changes
   useEffect(() => {

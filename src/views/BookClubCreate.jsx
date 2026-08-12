@@ -58,9 +58,9 @@ export default function BookClubCreate() {
       <div className="breadcrumb">
         <a onClick={() => go('book-clubs')}>{t('clubs.createBreadcrumb')}</a> · {t('clubs.createNewBreadcrumb')}
       </div>
-      <div className="page-header">
-        <div className="page-eyebrow">{t('clubs.createEyebrow')}</div>
-        <h1 className="page-title">{tNode('clubs.createPageTitle')}</h1>
+      <div className="page-head">
+        <div className="page-head__eyebrow">{t('clubs.createEyebrow')}</div>
+        <h1 className="page-head__title">{tNode('clubs.createPageTitle')}</h1>
         <p className="club-form__desc">
           {t('clubs.createSubtitle')}
         </p>

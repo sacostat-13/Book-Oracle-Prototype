@@ -587,6 +587,115 @@
   }
 }
 
+// ── Sign-in — password mode (v0.46) ──────────────────────────────────────────
+// Two tabs rather than a link, so "I already have an account" and "I don't" are
+// both visible before the reader starts typing.
+.sign-in-tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 16px;
+  padding: 4px;
+  border: 1px solid var(--ro-border);
+  border-radius: 12px;
+  background: var(--ro-surface-2);
+}
+
+.sign-in-tab {
+  flex: 1;
+  padding: 9px 10px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--ro-muted);
+  font-family: var(--ro-font-mono);
+  font-size: 11px;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background .15s ease, color .15s ease;
+
+  &:hover { color: var(--ro-text); }
+
+  &.active {
+    background: var(--ro-surface);
+    border: 1px solid var(--ro-border-strong);
+    color: var(--ro-gold-text);
+  }
+}
+
+// Privacy · Terms · Refund row at the foot of the sign-in card. Present in the
+// markup since v0.39, never styled — the three links stacked as block-level
+// buttons with the separators orphaned between them. First screen a new reader
+// sees, so worth getting right.
+.sign-in-legal {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--ro-border);
+
+  .btn-text {
+    font-size: 11px;
+    color: var(--ro-muted);
+
+    &:hover { color: var(--ro-gold-text); }
+  }
+}
+
+.sign-in-legal__sep {
+  color: var(--ro-border-strong);
+  font-size: 11px;
+  line-height: 1;
+}
+
+// "That looks like a Google address." Appears inline under the email field
+// while creating an account. Low-contrast on purpose — it is a suggestion the
+// reader is free to ignore, and it must not read as a validation error.
+.sign-in-nudge {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px;
+  padding: 10px 12px;
+  border: 1px dashed var(--ro-border-strong);
+  border-radius: 10px;
+  background: var(--ro-surface-2);
+  text-align: left;
+}
+
+.sign-in-nudge__text {
+  font-family: var(--ro-font-body);
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--ro-muted);
+}
+
+.sign-in-hint {
+  font-family: var(--ro-font-mono);
+  font-size: 11px;
+  letter-spacing: .04em;
+  color: var(--ro-muted);
+  text-align: left;
+}
+
+// "Forgot your password?" / "Email me a link instead". Secondary by design —
+// the password form above is the path almost everyone should take.
+.sign-in-alt {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 14px;
+  font-size: 12px;
+
+  .btn-text { color: var(--ro-muted); }
+  .btn-text:hover { color: var(--ro-gold-text); }
+}
+
 // ── Bulk-import: pointer to the Goodreads import on Profile (v0.59) ──────────
 .bulk-moved-note {
   margin-top: 18px;

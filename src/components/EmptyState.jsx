@@ -16,7 +16,7 @@
 //   <EmptyState
 //     ornament="❦"
 //     title={t('lists.emptyTitle')}
-//     body={t('lists.emptyBody')}          // one sentence: what this is FOR
+//     body={t('lists.emptyText')}          // one sentence: what this is FOR
 //     action={{ label: t('lists.emptyCta'), onClick: () => setCreating(true) }}
 //   />
 //

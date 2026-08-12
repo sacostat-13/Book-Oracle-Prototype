@@ -1,7 +1,7 @@
 // src/views/ListDetail.jsx — v0.27
 // Single list — cover grid view matching Library/Wishlist aesthetic.
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useData } from '../lib/DataContext';
 import { useRouter } from '../lib/RouterContext';
 import { useT, useI18n } from '../lib/I18nContext';
@@ -19,15 +19,47 @@ function AddBookPicker({ list, onClose }) {
   const [query, setQuery] = useState('');
   const [adding, setAdding] = useState(null);
 
-  const listBookIds = new Set((list.books || []).map(b => b.bookId));
+  // v0.46 — why this used to lag on every keystroke.
+  //
+  // `pool` was built inline in the render body, so all of this ran again on
+  // every character typed:
+  //
+  //   [...wishlist, ...library, ...readNext]
+  //     .filter((b, i, arr) => arr.findIndex(...) === i)   ← O(n²)
+  //
+  // findIndex inside filter is a linear scan per element. At ~1,200 books
+  // across the three shelves that is over a million bookKey() calls — each of
+  // which builds a string — before the search filter had even started, and
+  // then the filter lowercased every title and author again from scratch.
+  // React re-rendered the modal synchronously on each keystroke, so the typing
+  // itself stalled.
+  //
+  // Three changes: dedupe with a Set instead of findIndex (O(n)), memoise the
+  // pool so it survives keystrokes, and precompute the lowercase haystack once
+  // per book rather than once per book per keystroke.
+  const listBookIds = useMemo(
+    () => new Set((list.books || []).map(b => b.bookId)),
+    [list.books]
+  );
 
-  const pool = [...state.wishlist, ...state.library, ...state.readNext]
-    .filter((b, i, arr) => arr.findIndex(x => bookKey(x) === bookKey(b)) === i)
-    .filter(b => !listBookIds.has(b.bookId));
+  const pool = useMemo(() => {
+    const seen = new Set();
+    const out = [];
+    for (const b of [...state.wishlist, ...state.library, ...state.readNext]) {
+      const k = bookKey(b);
+      if (seen.has(k)) continue;
+      seen.add(k);
+      if (listBookIds.has(b.bookId)) continue;
+      out.push({ book: b, haystack: `${b.t || ''}\n${b.a || ''}`.toLowerCase() });
+    }
+    return out;
+  }, [state.wishlist, state.library, state.readNext, listBookIds]);
 
-  const candidates = query.trim()
-    ? pool.filter(b => b.t?.toLowerCase().includes(query.toLowerCase()) || b.a?.toLowerCase().includes(query.toLowerCase())).slice(0, 24)
-    : pool.slice(0, 24);
+  const candidates = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    const rows = q ? pool.filter(p => p.haystack.includes(q)) : pool;
+    return rows.slice(0, 24).map(p => p.book);
+  }, [pool, query]);
 
   async function add(book) {
     setAdding(book.bookId);
@@ -93,6 +125,16 @@ export default function ListDetail() {
   const list = (state.lists || []).find(l => l.id === listId);
   const { genresByBookId } = state;
 
+  // Both of these must be computed BEFORE the `!list` early return, because
+  // useSelection is a hook and React matches hooks by call order. Sitting below
+  // the guard, it ran on some renders and not others: open a list, navigate to
+  // one that is missing or not yet loaded, and the component throws "Rendered
+  // fewer hooks than expected". Latent since the selection mode was added — the
+  // lists array is usually already in state by the time this view mounts, which
+  // is what kept it hidden.
+  const books = list?.books || [];
+  const sel = useSelection(books);
+
   if (!list) return (
     <div className="lv-empty">
       <div className="lv-empty-icon">❦</div>
@@ -102,9 +144,6 @@ export default function ListDetail() {
       </button>
     </div>
   );
-
-  const books = list.books || [];
-  const sel = useSelection(books);
 
   async function togglePublic() {
     await updateList(list.id, { is_public: !list.is_public });

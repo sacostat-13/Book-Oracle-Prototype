@@ -51,7 +51,8 @@
     "plans": "Planes de lectura",
     "social": "Social",
     "parchmentMode": "Pergamino",
-    "stacks": "Los Estantes"
+    "stacks": "Los Estantes",
+    "dashboard": "Inicio"
   },
   "signIn": {
     "eyebrow": "Bienvenida",
@@ -66,7 +67,42 @@
     "checkInboxTitle": "Revisá tu correo",
     "checkInboxText": "Te enviamos un link de acceso a {email}. Abrilo desde este dispositivo para continuar.",
     "emailErrorGeneric": "No pudimos enviar el link — revisá la dirección e intentá de nuevo.",
-    "useAnotherEmail": "Usar otro correo"
+    "useAnotherEmail": "Usar otro correo",
+    "tabSignIn": "Entrar",
+    "tabCreate": "Crear cuenta",
+    "createAccount": "Crear mi cuenta",
+    "signingIn": "Entrando…",
+    "creating": "Creando…",
+    "passwordPlaceholder": "Contraseña",
+    "confirmPlaceholder": "Confirmá la contraseña",
+    "newPasswordPlaceholder": "Contraseña nueva",
+    "passwordHint": "Mínimo {min} caracteres.",
+    "forgotLink": "¿Olvidaste tu contraseña?",
+    "forgotTitle": "Restablecer tu contraseña",
+    "forgotDesc": "Decinos el correo de tu cuenta y te mandamos un link para elegir una contraseña nueva.",
+    "sendReset": "Enviar link",
+    "useMagicLink": "Mejor mandame un link de acceso",
+    "magicDesc": "Te mandamos un link de un solo uso. Sin contraseña — útil si entraste con Google.",
+    "backToSignIn": "Volver a entrar",
+    "checkInboxReset": "Si {email} tiene una cuenta, el link ya está en camino. Abrilo desde este dispositivo para continuar.",
+    "checkInboxSignup": "Te enviamos un link de confirmación a {email}. Abrilo para terminar de crear tu cuenta.",
+    "resetTitle": "Elegí una contraseña nueva",
+    "resetDesc": "Entraste desde el link de tu correo. Elegí una contraseña nueva para terminar.",
+    "savePassword": "Guardar contraseña",
+    "saving": "Guardando…",
+    "cancelReset": "No fui yo — cerrar sesión",
+    "errorBadCredentials": "Ese correo y esa contraseña no coinciden con ninguna cuenta.",
+    "errorUnconfirmed": "Confirmá tu correo primero — buscá el link en tu bandeja.",
+    "errorAlreadyRegistered": "Ya existe una cuenta con ese correo. Probá entrar, o restablecé la contraseña.",
+    "errorPasswordShort": "La contraseña necesita al menos {min} caracteres.",
+    "errorPasswordMismatch": "Las dos contraseñas no coinciden.",
+    "errorPasswordRejected": "Esa contraseña fue rechazada — usá al menos {min} caracteres e intentá de nuevo.",
+    "errorRateLimited": "Demasiados intentos. Esperá un minuto e intentá de nuevo.",
+    "errorGeneric": "Algo salió mal. Intentá de nuevo en un momento.",
+    "googleNudge": "Parece una dirección de Google.",
+    "googleNudgeAction": "Mejor usá Google — es un solo toque",
+    "maybeExistingTitle": "Puede que ya tengas una cuenta",
+    "maybeExistingText": "Si {email} es nuevo acá, el link de confirmación ya está en camino. Si ya tiene una cuenta, no enviamos nada — entrá directamente, restablecé tu contraseña, o continuá con Google si así te registraste."
   },
   "dashboard": {
     "eyebrow": "Tu Biblioteca",
@@ -380,7 +416,7 @@
     "noActivePlan": "Sin plan activo",
     "noActivePlanText": "Creá uno desde el panel principal.",
     "createPlan": "Crear un plan",
-    "planBy": "Plan de lectura de ",
+    "planBy": "Plan de lectura de {name}",
     "savePlan": "Guardar este plan →",
     "openSeries": "Abrir saga ↗",
     "addAllToQueue": "Agregar todo a la cola",
@@ -435,7 +471,7 @@
     "removeFromList": "Quitar",
     "reorder": "Arrastrá para reordenar",
     "saveToMyLists": "↗ Guardar en mis listas",
-    "curatedBy": "Curada por ",
+    "curatedBy": "Curada por {name}",
     "viewOnly": "Ver →",
     "notFound": "No encontrado",
     "notFoundText": "Esta lista puede ser privada o ya no existir.",
@@ -455,7 +491,8 @@
     "pageTitle": "Listas <em class=\"accent\">curadas</em>",
     "listsSubtitle": "Listas de lectura que curaste — estanterías temáticas, guías de regalo, inmersiones profundas.",
     "moreBooks": "+{count} más",
-    "myListsEyebrow": "Mis Listas"
+    "myListsEyebrow": "Mis Listas",
+    "fromList": "Lista"
   },
   "bookPage": {
     "loading": "Cargando…",
@@ -494,7 +531,8 @@
     "yourProgress": "Tu progreso",
     "yourNotes": "Tus notas",
     "writeReview": "Escribí una reseña",
-    "readAgain": "↻ Leer de nuevo"
+    "readAgain": "↻ Leer de nuevo",
+    "match": "de afinidad"
   },
   "seriesPage": {
     "breadcrumb": "Volver",
@@ -546,7 +584,7 @@
     "importGoodreads": "Importar CSV de Goodreads",
     "importing": "Importando…",
     "resetAll": "Reiniciar todo",
-    "confirmReset": "Esto eliminará tu biblioteca completa, lista y historial de lectura locales. ¿Estás segura?",
+    "confirmReset": "Esto borra tu biblioteca, tu lista, tus planes de lectura y tus listas en esta cuenta. No se puede deshacer. ¿Continuar?",
     "readingLevel": "Nivel de lectura",
     "levelNames": {
       "1": "Lectora casual",
@@ -660,7 +698,14 @@
     "avatarSaveFailed": "No se pudo guardar tu avatar. Probá de nuevo.",
     "avatarStandardSet": "Set estándar",
     "avatarGenreSet": "Set de géneros",
-    "avatarOutline": "contorno"
+    "avatarOutline": "contorno",
+    "labelPassword": "Contraseña",
+    "passwordHintExisting": "Cambiá la contraseña con la que entrás.",
+    "passwordHintOauth": "Elegí una contraseña para entrar sin Google ni link.",
+    "passwordMasked": "••••••••",
+    "setPassword": "Elegir contraseña",
+    "changePassword": "Cambiar contraseña",
+    "passwordSaved": "Contraseña actualizada."
   },
   "onboarding": {
     "step1Eyebrow": "Paso 2 de 6 · Perfil lector",
@@ -1228,7 +1273,7 @@
     "joinedText": "Llevándote al club…",
     "invitedEyebrow": "Tenés una invitación",
     "joinBtn": "Unirse al club ❦",
-    "signInToJoin": "Entrá con Google para unirte",
+    "signInToJoin": "Entrá para unirte",
     "needAccount": "Necesitás una cuenta para unirte a un club de lectura.",
     "joinError": "No se pudo unir — el enlace puede haber expirado.",
     "invalidPageTitle": "Invitación <em class=\"accent\">inválida</em>",
@@ -1270,7 +1315,9 @@
     "books": "libros",
     "bookSingular": "1 libro",
     "ornamentEmpty": "❦",
-    "more": "más"
+    "more": "más",
+    "goHome": "Ir al inicio",
+    "legal": "Legal"
   },
   "about": {
     "breadcrumb": "Inicio",

@@ -30,7 +30,7 @@ export function usePagedList(items, resetKey, { pageSize = DEFAULT_PAGE_SIZE } =
   // the filter actually changing, which would snap the user back to the top.
   useEffect(() => {
     setPage(1);
-  }, [resetKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [resetKey]);
 
   const visible = useMemo(
     () => items.slice(0, page * pageSize),

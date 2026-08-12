@@ -16,9 +16,30 @@
 
 // The version label shown as "current" — keep in sync with package.json and
 // the README version line.
-export const CURRENT_VERSION = 'v0.62.2';
+export const CURRENT_VERSION = 'v0.62.3';
 
 export const RELEASES = [{
+    version: 'v0.62.3',
+    date: '2026-08-12',
+    titleEn: 'A password, and a shared list that looks like the rest of the site',
+    titleEs: 'Una contraseña, y una lista compartida que se ve como el resto del sitio',
+    bodyEn: [
+      'You can sign in with an email and a password now. The magic link is still there if you want it, and Google is unchanged — but a link in your inbox was never much use as the only option, and several of you said so. If you already have an account, you can set a password from Profile \u2192 Account without signing out first.',
+      'Forgot your password, and a proper screen for choosing a new one when you follow the reset link.',
+      'Signing up with an address that already has an account used to promise a confirmation email that never arrived. It now tells you what is actually going on and offers you a way in. And if you type a Gmail address while creating an account, the Oracle will mention that Google is one tap.',
+      'A public list opened by someone who is not signed in now looks the way the rest of the site looks, and the books on it can be opened. Before, the page was unstyled and the books were not clickable unless you had an account \u2014 which is the opposite of what a shared link is for. The curator\u2019s name now appears too, instead of the word "by" on its own.',
+      'The same unstyled headers on Book Clubs, Currently Reading, Read Next and the legal pages have been put right, and the little toast that confirms what you just did finally has a shape.',
+      'Under the hood: the Oracle\u2019s nightly catalogue work no longer asks the same unanswerable questions every night, so it spends its time on books it can actually improve. The genre list on AI recommendations now offers every genre, not only the ones already in the bundled catalogue. And a book you have already read will stop turning up under "You might also like".',
+    ],
+    bodyEs: [
+      'Ya pod\u00e9s entrar con un correo y una contrase\u00f1a. El link m\u00e1gico sigue estando si lo prefer\u00eds, y Google no cambi\u00f3 \u2014 pero un link en la bandeja de entrada nunca sirvi\u00f3 demasiado como \u00fanica opci\u00f3n, y varios nos lo dijeron. Si ya ten\u00e9s cuenta, pod\u00e9s elegir una contrase\u00f1a desde Perfil \u2192 Cuenta sin cerrar sesi\u00f3n.',
+      'Agregamos "olvid\u00e9 mi contrase\u00f1a", y una pantalla como corresponde para elegir una nueva cuando segu\u00eds el link.',
+      'Registrarse con un correo que ya ten\u00eda cuenta promet\u00eda un mail de confirmaci\u00f3n que nunca llegaba. Ahora te dice qu\u00e9 est\u00e1 pasando de verdad y te ofrece por d\u00f3nde entrar. Y si escrib\u00eds una direcci\u00f3n de Gmail al crear una cuenta, el Or\u00e1culo te comenta que con Google es un solo toque.',
+      'Una lista p\u00fablica abierta por alguien sin sesi\u00f3n ahora se ve como el resto del sitio, y los libros se pueden abrir. Antes la p\u00e1gina no ten\u00eda estilos y los libros no se pod\u00edan tocar salvo que tuvieras cuenta \u2014 justo lo contrario de para qu\u00e9 sirve un link compartido. El nombre de quien la cur\u00f3 tambi\u00e9n aparece, en vez de un "por" solo.',
+      'Los mismos encabezados sin estilo en Clubs, Leyendo ahora, Por leer y las p\u00e1ginas legales quedaron arreglados, y el cartelito que confirma lo que acab\u00e1s de hacer por fin tiene forma.',
+      'Por dentro: el trabajo nocturno del Or\u00e1culo sobre el cat\u00e1logo ya no repite todas las noches las mismas preguntas sin respuesta, as\u00ed que dedica el tiempo a libros que s\u00ed puede mejorar. La lista de g\u00e9neros en las recomendaciones con IA ahora ofrece todos los g\u00e9neros, no solo los del cat\u00e1logo incluido. Y un libro que ya le\u00edste deja de aparecer en "Tambi\u00e9n te puede gustar".',
+    ],
+  }, {
     version: 'v0.62.2',
     date: '2026-08-11',
     titleEn: 'Books found through search now have an address',
