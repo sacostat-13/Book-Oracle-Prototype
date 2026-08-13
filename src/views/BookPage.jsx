@@ -188,11 +188,6 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
   // v0.63.2b: genre links for a book that is on NO shelf. See the effect below.
   const [pageGenres, setPageGenres] = useState(null);
   const [pageGenresLoading, setPageGenresLoading] = useState(false);
-  // v0.63.3c: which book key the preview branch has already handled. A ref, not
-  // state, so recording it cannot itself cause a render. Belt to the useMemo's
-  // braces — even if some other dependency turns out to be unstable, the branch
-  // writes at most once per book.
-  const previewAppliedRef = useRef(null);
 
   // v0.39: SEO/share title+description once the book resolves. Deliberately
   // NOT set in App.jsx's generic route-title effect (see App.jsx) — this is
@@ -247,10 +242,6 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
   }, [snapParam]);
 
   // Resolve book: preview (from search) or collection lookup
-  // Moving to a different book must clear the once-per-book guard, or a Back
-  // navigation to a previously-previewed book would render it un-enriched.
-  useEffect(() => { previewAppliedRef.current = null; }, [bookKey_]);
-
   useEffect(() => {
     const isPreview = route.params?.preview === 'true';
     const previewBook = previewBookRef?.current;
@@ -276,61 +267,16 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
       !!previewBook && (!bookKey_ || bookKey(previewBook) === bookKey_);
 
     if (isPreview && previewIsThisBook) {
-      // v0.63.3c: at most once per book. Without this guard, any unstable
-      // dependency re-runs the branch, and the branch WRITES — an upsert, a
-      // lookup and a setBook per run. That is what took production down: the
-      // work below is not idempotent in cost even though it is in effect.
-      const previewKey = bookKey(previewBook);
-      if (previewAppliedRef.current === previewKey) return;
-      previewAppliedRef.current = previewKey;
-
       // Paint immediately from the search result — it has the title, author and
       // cover, and waiting on a round trip to show those would be a regression.
+      //
+      // `previewBook` is a stable ref object, so a repeat call here is a no-op:
+      // React bails out of a state update that is Object.is equal. That is what
+      // kept this effect harmless for a year despite its unstable dependencies,
+      // and it is why enriching the book MUST NOT happen here — see the
+      // dedicated effect below.
       setBook(previewBook);
-
-      // v0.63.3b — WHY THIS THEN GOES TO THE DATABASE.
-      //
-      // `previewBook` came from Hardcover or Google Books. Those sources know
-      // nothing about this catalogue: no `bookId`, and no `g`, because `g` is
-      // OUR taxonomy's genre and they have never heard of it.
-      //
-      // So a book opened from search had no genre to show and no id to look one
-      // up with. The v0.63.3 fix below — query book_genres_view when the shelves
-      // cannot answer — is keyed on `book.bookId` and therefore did nothing on
-      // this path at all. That is why "Cleat Cute" stayed blank after the fix:
-      // it has a genre and links in the catalogue, and the page had no way to
-      // reach either.
-      //
-      // Upsert first so the row exists, then resolve it by share key. Guests
-      // never upsert, but the lookup still finds anything already catalogued,
-      // so a signed-out reader gets the genres too.
-      let cancelled = false;
-      (async () => {
-        try {
-          await upsertDiscoveredBook?.(previewBook);
-        } catch (_) { /* discovery is best-effort; the lookup below still runs */ }
-        if (cancelled) return;
-
-        const row = await lookUpByShareKey(bookKey(previewBook));
-        if (cancelled || !row) return;
-
-        // The catalogue wins for the two fields it alone can know; the search
-        // result keeps everything else, since it is usually richer on covers
-        // and descriptions than a sparsely-populated `books` row.
-        setBook((prev) => (prev ? {
-          ...prev,
-          bookId: row.bookId,
-          g: row.g ?? prev.g,
-          c: prev.c ?? row.c,
-          p: prev.p ?? row.p,
-          pp: prev.pp ?? row.pp,
-          d: prev.d ?? row.d,
-          isbn: prev.isbn ?? row.isbn,
-          status: row.status ?? prev.status,
-        } : prev));
-      })();
-
-      return () => { cancelled = true; };
+      return;
     }
     // Falls through on a stale ref: the collection lookup below, then the URL
     // snapshot. Both key off bookKey_, which preview URLs now always carry.
@@ -385,6 +331,69 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
     // not just a wasted render.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bookKey_, route.params, previewBookRef, state.wishlist, state.library, state.readNext, snapshotBook]);
+
+  // v0.63.3d — ENRICHING A SEARCH RESULT, IN ITS OWN EFFECT.
+  //
+  // Three attempts at this, and the shape is the lesson.
+  //
+  //   b) put the upsert + lookup inside the resolution effect. That effect has
+  //      object-identity-unstable dependencies, so it re-ran constantly; writing
+  //      newly-built state from inside it turned that into an unbounded write
+  //      loop against production.
+  //   c) guard it with a once-per-book ref. That stopped the loop and broke the
+  //      feature: the effect still re-ran, React ran the previous run's CLEANUP
+  //      first (`cancelled = true`, discarding the in-flight lookup), and the
+  //      guard then refused to start another. The request went out, its result
+  //      was thrown away, and nothing retried. No error, no genres — which is
+  //      exactly what "nothing is loading and no console errors" looks like.
+  //
+  // The actual fix is not a guard, it is a dependency. This effect depends on
+  // ONE PRIMITIVE: the key of a book that still needs enriching, or null. It is
+  // stable across unrelated re-renders, so nothing cancels it mid-flight; and it
+  // becomes null the moment `bookId` lands, so it cannot re-fire. The loop is
+  // closed by the data flow rather than by a flag defending against it.
+  const needsEnrichKey = (
+    route.params?.preview === 'true' && book && !book.bookId && book.t
+  ) ? bookKey(book) : null;
+
+  useEffect(() => {
+    if (!needsEnrichKey) return;
+
+    let cancelled = false;
+    (async () => {
+      // Best-effort: creates the catalogue row if this book is new. Guests skip
+      // it entirely, and the lookup below still finds anything already there.
+      try {
+        await upsertDiscoveredBook?.(previewBookRef?.current || book);
+      } catch (_) { /* the lookup is the part that matters */ }
+      if (cancelled) return;
+
+      const row = await lookUpByShareKey(needsEnrichKey);
+      if (cancelled || !row) return;
+
+      // The catalogue wins for the two fields only it can know — bookId, and
+      // `g`, which is OUR taxonomy and which Hardcover has never heard of. The
+      // search result keeps everything else: it is usually richer on covers and
+      // descriptions than a sparsely-populated `books` row.
+      setBook((prev) => (prev ? {
+        ...prev,
+        bookId: row.bookId,
+        g: row.g ?? prev.g,
+        c: prev.c ?? row.c,
+        p: prev.p ?? row.p,
+        pp: prev.pp ?? row.pp,
+        d: prev.d ?? row.d,
+        isbn: prev.isbn ?? row.isbn,
+        status: row.status ?? prev.status,
+      } : prev));
+    })();
+
+    return () => { cancelled = true; };
+    // `book` and `upsertDiscoveredBook` are deliberately absent. `book` changes
+    // identity on every enrichment — listing it would restore the loop — and
+    // needsEnrichKey already encodes the only thing about it that matters here.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [needsEnrichKey]);
 
   // Depend on the boolean, not on state.genresByBookId — that object is rebuilt
   // on every shelf load, and depending on its identity would re-run the fetch
