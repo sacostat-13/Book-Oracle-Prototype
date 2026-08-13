@@ -86,6 +86,31 @@
 // The zoom steps are sized so card width ≤ viewport − overlay pad (24) −
 // modal pad (32): .58→313px fits 375px phones, .52→281px fits 360px,
 // .46→248px fits 320px (SE).
+// Stack the three actions full-width. Sits at `tablet` (<768px) rather than
+// `mobile` (<640px) on purpose: this modal carries THREE actions, and in
+// Spanish they read "Ahora no · Compartir enlace · Compartir imagen" — about a
+// third wider than the English the 640px value was chosen against. Between 640
+// and 768 the row fitted in English and clipped in Spanish, which is how it
+// shipped. The wrap on .modal__actions is the safety net; this is the layout
+// that should actually happen.
+//
+// column-reverse keeps DOM and focus order (dismiss → link → image) while
+// rendering the primary action on top and the dismiss at the bottom, where it
+// belongs on a narrow screen.
+@include tokens.ro-down(tablet) {
+  .share-moment-modal .modal__actions {
+    flex-direction: column-reverse;
+    align-items: stretch;
+    gap: 10px;
+    padding: 16px 0 0;
+
+    button {
+      width: 100%;
+      min-height: 44px; // comfortable tap target
+    }
+  }
+}
+
 @include tokens.ro-down(mobile) {
   .rating-modal-overlay:has(.share-moment-modal) { padding: 12px; }
 
@@ -113,21 +138,6 @@
     .share-moment-modal__card-scale {
       zoom: 0.46;
       @supports not (zoom: 1) { transform: scale(0.46); }
-    }
-  }
-
-  // Stack the actions full-width; column-reverse keeps DOM/focus order
-  // (dismiss → link → image) while rendering the primary action on top and
-  // "Not now" at the bottom, where a dismiss belongs on a phone.
-  .share-moment-modal .modal__actions {
-    flex-direction: column-reverse;
-    align-items: stretch;
-    gap: 10px;
-    padding: 16px 0 0;
-
-    button {
-      width: 100%;
-      min-height: 44px; // comfortable tap target
     }
   }
 }

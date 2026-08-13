@@ -82,4 +82,31 @@
     color: var(--ro-gold-on);
     border-color: var(--ro-gold);
   }
+
+  // v0.63: placeholder shown while book_genres links are still in flight.
+  // Holds the row's height so the title beneath it does not jump when the
+  // real chips land. Two fixed widths rather than a measured one — we do not
+  // know how many genres are coming, and guessing wider looks like a promise.
+  &--skeleton {
+    cursor: default;
+    pointer-events: none;
+    width: 92px;
+    height: 37px; // 13px line + 10px padding top/bottom + 1px borders
+    border-color: var(--ro-border);
+    background: var(--ro-field);
+    opacity: .5;
+    animation: ro-chip-pulse 1.4s ease-in-out infinite;
+
+    &:nth-child(2) { width: 68px; animation-delay: .2s; }
+    &:hover { border-color: var(--ro-border); }
+  }
+}
+
+@keyframes ro-chip-pulse {
+  0%, 100% { opacity: .32; }
+  50%      { opacity: .6; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chip--skeleton { animation: none; }
 }

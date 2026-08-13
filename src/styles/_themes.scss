@@ -95,6 +95,22 @@
   --ro-tab-bg: rgba(251, 246, 233, 0.92);
 }
 
+/* ---- Native control colour scheme -------------------------
+   The one lever CSS has over browser-drawn UI. A date input's
+   POPUP CALENDAR is painted by the browser, not the page: no
+   selector reaches inside it, so without this it renders as a
+   white Chrome calendar hanging off a dark-wine field — which
+   is what "the date picker is completely unstyled" actually
+   was. `color-scheme` also fixes the picker glyph, the caret,
+   scrollbars, and any remaining native <select> popups.
+
+   Hung off data-theme on <html> (set by ThemeContext) rather
+   than the body class, because color-scheme is inherited from
+   the root element and needs to be there to reach the
+   scrollbars and the UA canvas.                             */
+html[data-theme='dark']  { color-scheme: dark; }
+html[data-theme='light'] { color-scheme: light; }
+
 /* ---- Spacing (8pt) & radius — theme-independent ---- */
 :root {
   --ro-space-1: 4px;

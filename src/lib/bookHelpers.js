@@ -12,6 +12,44 @@ export const ALL_BOOKS = BOOKS_DATA.filter((b) => {
 
 export const GENRES = [...new Set(ALL_BOOKS.map((b) => b.g))].sort();
 
+// v0.63. What to SHOW when the catalogue has no author.
+//
+// The counterpart to storableAuthor() in DataContext: that one keeps the
+// placeholder out of the database, this one keeps it on the screen. Splitting
+// the two is the point — 'Unknown author' is a fine thing to read and a
+// terrible thing to store, because author is half of compute_book_key and the
+// placeholder silently forks a book into two catalogue rows.
+//
+// Without this, a null author renders as an empty line in BookCard and, worse,
+// interpolates as the literal string "null" in the document title
+// (`${book.t} by ${book.a}`) and the share title.
+export const UNKNOWN_AUTHOR = 'Unknown author';
+
+// The write-side counterpart. Lives here rather than in DataContext because
+// upsert_book has THREE callers across two files (upsertBookOnServer,
+// upsertDiscoveredBook, topUpIsbn) and a sanitiser that only one of them uses
+// is not a sanitiser. Author is half of compute_book_key; a placeholder stored
+// there forks the book.
+export const AUTHOR_PLACEHOLDERS = new Set([
+  'unknown author',
+  'unknown',
+  'author unknown',
+  'anonymous',
+  'n/a',
+  '-',
+]);
+
+export function storableAuthor(a) {
+  const trimmed = (a || '').trim();
+  if (!trimmed) return null;
+  return AUTHOR_PLACEHOLDERS.has(trimmed.toLowerCase()) ? null : trimmed;
+}
+
+export function displayAuthor(b) {
+  const a = (b?.a || '').trim();
+  return a || UNKNOWN_AUTHOR;
+}
+
 export function bookKey(b) {
   return (
     (b.t || '').toLowerCase().replace(/[^a-z0-9]/g, '') +

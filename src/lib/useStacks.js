@@ -77,6 +77,16 @@ function rowToCard(r) {
 
 // Parenthetical-insensitive key. "The Well of Ascension (Mistborn, #2)" and
 // "The Well of Ascension" produce the same value.
+// ISBN-10 and ISBN-13 for one edition are different strings, and providers
+// return them with hyphens, spaces, or a trailing 'X' check digit in either
+// case. Strip to comparable form; return null for anything that is not a
+// plausible ISBN so a stray empty string cannot match another stray empty
+// string and hide an unrelated book.
+function normalizeIsbn(raw) {
+  const s = String(raw || '').replace(/[^0-9Xx]/g, '').toUpperCase();
+  return (s.length === 10 || s.length === 13) ? s : null;
+}
+
 function editionKey(b) {
   return bookKey({ t: cleanTitle(b.t || ''), a: b.a });
 }
@@ -127,22 +137,27 @@ export function useStacks({ favoriteGenres = [], owned = [], ready = true }) {
   const ownedKeysRef = useRef(new Set());
   const ownedEditionsRef = useRef(new Set());
   const ownedLooseRef = useRef(new Set());
+  const ownedIsbnsRef = useRef(new Set());
 
   useEffect(() => {
     const ids = new Set();
     const keys = new Set();
     const editions = new Set();
     const loose = new Set();
+    const isbns = new Set();
     for (const b of owned) {
       if (b?.bookId) ids.add(b.bookId);
       keys.add(bookKey(b));
       editions.add(editionKey(b));
       loose.add(authorLooseKey(b));
+      const isbn = normalizeIsbn(b?.isbn);
+      if (isbn) isbns.add(isbn);
     }
     ownedIdsRef.current = ids;
     ownedKeysRef.current = keys;
     ownedEditionsRef.current = editions;
     ownedLooseRef.current = loose;
+    ownedIsbnsRef.current = isbns;
     // Drives the building-vs-browsing decision in queryWindow. Counted from
     // `owned` rather than state.library alone so a reader who has been adding
     // to the wishlist counts as building a library — which is what they are
@@ -150,8 +165,28 @@ export function useStacks({ favoriteGenres = [], owned = [], ready = true }) {
     ownedCountRef.current = owned.length;
   }, [owned]);
 
-  // Four keys, loosest last. Any one matching means the reader already has it.
+  // Five keys, loosest last. Any one matching means the reader already has it.
+  //
+  // v0.63: ISBN added, and it goes FIRST because it is the only one of the five
+  // that is a fact rather than an inference. The other four all fold the author
+  // into the comparison, so they all miss together whenever two rows disagree
+  // about who wrote the book — and the catalogue holds 17 pairs that share an
+  // ISBN while disagreeing on title or author:
+  //
+  //   "La librería de las ilusiones" / Newton      \  same ISBN,
+  //   "La librería de las ilusiones" / So Seo-rim  /  9788410359161
+  //
+  // A reader who had finished one of those was shown the other on the wall,
+  // because bookId, bookKey, editionKey and authorLooseKey each compared an
+  // author string to a different author string and correctly concluded they
+  // were different books. They are not.
+  //
+  // This masks the symptom; it does not merge the rows. Deliberately so — an
+  // ISBN in this catalogue is not always right (two of those 17 pairs are
+  // genuinely different works that collided on a bad ISBN), and hiding a card
+  // is a cheap, reversible mistake where merging two book rows is not.
   const isOwned = useCallback((card) => (
+    (normalizeIsbn(card.isbn) && ownedIsbnsRef.current.has(normalizeIsbn(card.isbn))) ||
     (card.bookId && ownedIdsRef.current.has(card.bookId)) ||
     ownedKeysRef.current.has(bookKey(card)) ||
     ownedEditionsRef.current.has(editionKey(card)) ||

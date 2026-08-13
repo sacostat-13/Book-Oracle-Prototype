@@ -177,6 +177,25 @@ jobs:
       - name: Backfill descriptions and genres
         run: node batch-scripts/scheduled/metadataBackfill.mjs --target both ${{ steps.args.outputs.limit }} | tee metadata.log
 
+      # 4b. Re-apply the genre rules to everything already fetched. FREE and
+      #     OFFLINE — no network at all, seconds rather than hours — so it does
+      #     not touch the "the schedule spends nothing" premise this file is
+      #     built on.
+      #
+      #     regenreCatalog is otherwise manual by design, and the --fetch and
+      #     --report phases stay that way: --fetch is hours of HTTP and --report
+      #     is a decision aid. But --apply is pure computation over subjects
+      #     already stored on the row, and leaving it manual meant that editing
+      #     _shared/genreRules.mjs improved nothing until somebody remembered to
+      #     run it by hand. A rule change should reach the catalogue on its own.
+      #
+      #     --replace is deliberately NOT passed. Without it this only adds
+      #     links; with it, it would clear previous machine assignments first,
+      #     which is a destructive re-write and belongs in a run someone is
+      #     watching.
+      - name: Re-apply genre rules to stored subjects (free, offline)
+        run: node batch-scripts/manual/regenreCatalog.mjs --apply | tee regenre.log
+
       # 5. Claude — MANUAL ONLY. Never runs on the schedule; only when someone types a
       #    number into curate_limit, which makes the spend an explicit, bounded decision.
       #    Produces proposals in a CSV; applying them is still a separate --apply-titles
@@ -247,7 +266,7 @@ jobs:
             # Report every expected log, including the ones that are missing or
             # empty. `continue`-ing past an absent file is what made a silent
             # failure look identical to a step that had nothing to say.
-            for f in backfill fallback covers metadata curate; do
+            for f in backfill fallback covers metadata regenre curate; do
               if [ ! -f "$f.log" ]; then
                 # curate is dispatch-only, so its absence is normal.
                 [ "$f" = "curate" ] && continue

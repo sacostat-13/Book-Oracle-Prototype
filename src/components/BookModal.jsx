@@ -3,7 +3,7 @@ import { useData } from '../lib/DataContext';
 import { useRouter } from '../lib/RouterContext';
 import ReportBookForm from './ReportBookForm';
 import { useT } from '../lib/I18nContext';
-import { ALL_BOOKS, bookKey, findBookByTitle } from '../lib/bookHelpers';
+import { ALL_BOOKS, bookKey, findBookByTitle, displayAuthor } from '../lib/bookHelpers';
 import { enrichBookFromOpenLibrary, fetchSeriesBooks } from '../lib/enrichmentService';
 import { lookupByTitle } from '../lib/bookLookup';
 import { hardcoverGetBook } from '../lib/hardcoverService';
@@ -13,6 +13,7 @@ import { fetchSeriesDescriptionFromWikipedia } from '../lib/seriesService';
 import BookCover from './BookCover';
 import RatingModal from './RatingModal';
 import CategoryAutocomplete from './CategoryAutocomplete';
+import { resolveGenres } from '../lib/genreDisplay';
 
 // `exclude` holds the reader's finished books. Same rule as BookPage's
 // computeSimilar: a recommendation strip that offers books already on the read
@@ -48,7 +49,8 @@ export default function BookModal({ book, onClose, onOpenBook }) {
     updateReadBook,
     // v0.12
     getCategoriesForBook,
-    removeCategoryFromBook
+    removeCategoryFromBook,
+    loading,
   } = useData();
   const { go } = useRouter();
   const t = useT();
@@ -326,10 +328,19 @@ export default function BookModal({ book, onClose, onOpenBook }) {
           </div>
           <div className="bp-info">
             {(() => {
-              const oracleGenres = state.genresByBookId?.[display.bookId];
-              const genres = (oracleGenres && oracleGenres.length > 0)
-                ? oracleGenres
-                : (display.g ? [{ name: display.g, description: null }] : []);
+              // v0.63: see src/lib/genreDisplay.js. The old inline fallback
+              // painted the legacy scalar genre on open and swapped in the real
+              // set a moment later, which in a modal is especially jarring
+              // because the reader is looking straight at it.
+              const { genres, pending } = resolveGenres(state, loading, display);
+              if (pending) {
+                return (
+                  <div className="bp-meta bp-meta--pending" aria-hidden="true">
+                    <span className="chip chip--skeleton" />
+                    <span className="chip chip--skeleton" />
+                  </div>
+                );
+              }
               if (genres.length === 0) return null;
               return (
                 <div className="bp-meta">
@@ -342,7 +353,7 @@ export default function BookModal({ book, onClose, onOpenBook }) {
               );
             })()}
             <h2 className="bp-title">{display.t}</h2>
-            <div className="bp-author">{display.a}</div>
+            <div className="bp-author">{displayAuthor(display)}</div>
             <button
               className="btn-text"
               onClick={() => { onClose(); go('book-page', { bookKey: k, from: 'wishlist', fromLabel: t('bookModal.fromWishlist') }); }}

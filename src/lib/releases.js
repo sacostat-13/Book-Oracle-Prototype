@@ -16,9 +16,32 @@
 
 // The version label shown as "current" — keep in sync with package.json and
 // the README version line.
-export const CURRENT_VERSION = 'v0.63';
+export const CURRENT_VERSION = 'v0.63.2';
 
 export const RELEASES = [{
+    version: 'v0.63.2',
+    date: '2026-08-13',
+    titleEn: 'Every genre at once, and a few things that were failing quietly',
+    titleEs: 'Todos los géneros de una, y algunas cosas que fallaban en silencio',
+    bodyEn: [
+      'A book page used to show one genre and then think about it — the rest appeared a moment later, which made it look like the book had changed its mind. All of them arrive together now.',
+      'Asking the Oracle for a recommendation by genre could fail outright if you had a large wishlist, because every title you had ever saved was being sent along with the question. It no longer is, and the Oracle still never suggests something already on your shelves.',
+      'The genre picker on Oracle recommendations is searchable. With well over a hundred genres, a list you had to scroll was the wrong shape — and on some screens it opened at the top of the window, nowhere near the field it belonged to.',
+      'Date fields — the one for when you finished a book, the ones on Book Club sessions — now look like the rest of the site instead of whatever your browser felt like drawing.',
+      'Marking a book as read when you already had it used to do nothing at all: no message, no error, no celebration. It now says so.',
+      'A book you have already finished will stop reappearing in The Stacks because the catalogue held a second copy of it under a slightly different author.',
+      'In Spanish, the buttons on the share card could run off the edge of the window and take "Ahora no" with them.',
+    ],
+    bodyEs: [
+      'Una página de libro mostraba un género y después se lo pensaba — el resto aparecía un momento más tarde, y parecía que el libro hubiera cambiado de opinión. Ahora llegan todos juntos.',
+      'Pedirle al Oráculo una recomendación por género podía fallar directamente si tenías una lista de deseos grande, porque cada título que habías guardado alguna vez viajaba junto con la pregunta. Ya no, y el Oráculo sigue sin sugerirte nada que ya tengas en tus estantes.',
+      'El selector de género de las recomendaciones ahora se busca escribiendo. Con más de cien géneros, una lista para scrollear era la forma equivocada — y en algunas pantallas se abría arriba de todo, lejos del campo al que pertenecía.',
+      'Los campos de fecha — el de cuándo terminaste un libro, los de las sesiones de los Clubs — ahora se ven como el resto del sitio y no como lo que tu navegador tuviera ganas de dibujar.',
+      'Marcar como leído un libro que ya tenías no hacía absolutamente nada: ni aviso, ni error, ni celebración. Ahora te lo dice.',
+      'Un libro que ya terminaste va a dejar de reaparecer en los Estantes porque el catálogo guardaba una segunda copia con el autor apenas distinto.',
+      'En español, los botones de la tarjeta para compartir podían irse del borde de la ventana y llevarse «Ahora no» con ellos.',
+    ],
+  }, {
     version: 'v0.63',
     date: '2026-08-12',
     titleEn: 'Curated Lists, and books that finally admit to being more than one thing',

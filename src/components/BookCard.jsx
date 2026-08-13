@@ -1,10 +1,12 @@
 import { useData } from '../lib/DataContext';
 import { useT } from '../lib/I18nContext';
 import { bookKey } from '../lib/bookHelpers';
+import { displayAuthor } from '../lib/bookHelpers';
+import { resolveGenreNames } from '../lib/genreDisplay';
 import BookCover from './BookCover';
 
 export default function BookCard({ book, reason, onClick }) {
-  const { state, addToReadNext } = useData();
+  const { state, loading, addToReadNext } = useData();
   const t = useT();
   const k = bookKey(book);
   const inLib = state.library.some((b) => bookKey(b) === k);
@@ -14,10 +16,11 @@ export default function BookCard({ book, reason, onClick }) {
   const btnClass = disabled ? 'btn-secondary' : 'btn-primary';
 
   // v0.15: show all Oracle genres as pills; fall back to b.g if not yet categorized.
-  const oracleGenres = state.genresByBookId?.[book.bookId];
-  const genreLabels = (oracleGenres && oracleGenres.length > 0)
-    ? oracleGenres.map((g) => g.name)
-    : (book.g ? [book.g] : []);
+  // v0.63: routed through resolveGenres so a card in a grid does not render the
+  // legacy single genre for a beat before the real set arrives. Cards are dense
+  // enough that a skeleton is noisier than a brief blank, so `pending` renders
+  // nothing here rather than placeholders.
+  const { names: genreLabels, pending: genresPending } = resolveGenreNames(state, loading, book);
   const isVerified = book.status === 'verified' || book.status === 'oracle_categorized';
 
   return (
@@ -40,7 +43,7 @@ export default function BookCard({ book, reason, onClick }) {
               )}
             </div>
           </div>
-          <div className="book-card__author">{book.a}</div>
+          <div className="book-card__author">{displayAuthor(book)}</div>
 
           {/* Action up front — the whole point of a recommendation card is
               the one thing you can do with it. */}

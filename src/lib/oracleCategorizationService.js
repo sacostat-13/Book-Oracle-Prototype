@@ -55,6 +55,7 @@ import {
 // browser at all — that is the guarantee, and a lingering import of callClaude
 // would quietly undermine it.
 import { hardcoverSearch } from './hardcoverService';
+import { storableAuthor } from './bookHelpers';
 
 // v0.57: lowered 10 → 5. Each batch is ONE synchronous Anthropic call inside
 // the claude.js Netlify function, which has a hard 30s ceiling. The call's
@@ -155,7 +156,9 @@ async function topUpIsbn(book) {
   if (!hit?.isbn) return;
   await supabase.rpc('upsert_book', {
     _title: book.t,
-    _author: book.a || null,
+    // v0.63: third caller of upsert_book. Same reason as the other two — a
+    // display placeholder in the author column forks the book.
+    _author: storableAuthor(book.a),
     _isbn: hit.isbn,
     _hardcover_id: hit.hardcoverId || null,
   });

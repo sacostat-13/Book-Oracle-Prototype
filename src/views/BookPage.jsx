@@ -5,10 +5,11 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useData } from '../lib/DataContext';
+import { resolveGenres } from '../lib/genreDisplay';
 import { useRouter } from '../lib/RouterContext';
 import { useT } from '../lib/I18nContext';
 import { useDocumentMeta } from '../lib/useDocumentMeta';
-import { bookKey, findBookByTitle, openBookTab, buildBookPageParams } from '../lib/bookHelpers';
+import { bookKey, findBookByTitle, openBookTab, buildBookPageParams, displayAuthor } from '../lib/bookHelpers';
 import { enrichBookFromOpenLibrary, fetchSeriesBooks } from '../lib/enrichmentService';
 import { hardcoverGetBook } from '../lib/hardcoverService';
 import { fetchCoverURL } from '../lib/coverService';
@@ -116,7 +117,7 @@ function SimilarBooks({ similar }) {
             )}
             <div>
               <div className="bp-similar-title">{b.t?.length > 34 ? b.t.slice(0, 33) + '…' : b.t}</div>
-              <div className="bp-similar-author">{b.a}</div>
+              <div className="bp-similar-author">{displayAuthor(b)}</div>
             </div>
           </div>
         ))}
@@ -169,6 +170,7 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
     memoriesForBook,
     deleteReadingMemory,
     dismissCoachmark,
+    loading,
   } = useData();
   const { route, go } = useRouter();
   const t = useT();
@@ -185,7 +187,7 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
   // NOT set in App.jsx's generic route-title effect (see App.jsx) — this is
   // the only place this page's title/description gets set.
   useDocumentMeta({
-    title: book ? `${book.t} by ${book.a} — The Books Oracle` : 'Book — The Books Oracle',
+    title: book ? `${book.t} by ${displayAuthor(book)} — The Books Oracle` : 'Book — The Books Oracle',
     description: book?.d ? book.d.slice(0, 200) : undefined,
     image: book?.coverUrl || undefined,
   });
@@ -527,10 +529,11 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
     finally { setPendingRemoveId(null); }
   }
 
-  const oracleGenres = state.genresByBookId?.[display.bookId];
-  const genres = (oracleGenres && oracleGenres.length > 0)
-    ? oracleGenres
-    : (display.g ? [{ name: display.g, description: null }] : []);
+  // v0.63: was `oracleGenres?.length ? oracleGenres : [{name: display.g}]`,
+  // which rendered the single legacy scalar on every first paint because
+  // genresByBookId starts empty — one chip, then the rest arriving visibly
+  // later. resolveGenres tells us whether the blank is "loading" or "settled".
+  const { genres, pending: genresPending } = resolveGenres(state, loading, display);
 
   // Similar books — scored by Oracle genre overlap, author, complexity, length.
   // `state.library` is the read shelf; it stays in the pool so nothing else
@@ -627,7 +630,15 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
         </div>
 
         <div className="bp-info">
-          {genres.length > 0 && (
+          {/* Reserve the row while links are in flight rather than filling it
+              with the legacy scalar we are about to replace. Same height, so
+              the title below does not jump when the chips land. */}
+          {genresPending ? (
+            <div className="bp-meta bp-meta--pending" aria-hidden="true">
+              <span className="chip chip--skeleton" />
+              <span className="chip chip--skeleton" />
+            </div>
+          ) : genres.length > 0 && (
             <div className="bp-meta">
               {genres.map((g) => (
                 <span key={g.name} className="chip" title={g.description || undefined}>
@@ -638,7 +649,7 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
           )}
 
           <h1 className="bp-title">{display.t}</h1>
-          <div className="bp-author">{display.a}</div>
+          <div className="bp-author">{displayAuthor(display)}</div>
 
           {/* Meta pills — .level-pill doesn't exist in the DS; the correct
               class is .bp-pill, with modifiers matching what's actually
@@ -1087,7 +1098,7 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
       {/* v0.43: page-share modal */}
       {shareOpen && (
         <ShareModal
-          title={display.a ? `${display.t} — ${display.a}` : display.t}
+          title={display.a ? `${display.t} — ${display.a}` : display.t} /* intentionally bare: a share title should not advertise a gap */
           text={t('share.text.bookPage', { title: display.t, author: display.a || '' })}
           url={bookShareUrl(display)}
           onClose={() => setShareOpen(false)}

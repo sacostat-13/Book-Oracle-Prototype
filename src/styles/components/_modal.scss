@@ -59,6 +59,17 @@
 }
 .modal__actions {
   display: flex;
+  // v0.63. Without this the row cannot wrap, and because it is justified to
+  // flex-end the overflow goes off the LEFT edge — the first button in the DOM
+  // is the one that disappears. That is invariably the dismiss ("Not now" /
+  // "Ahora no"), so the reader loses the one action that costs nothing.
+  //
+  // It surfaced in Spanish first and that is not a coincidence: "Compartir
+  // enlace" + "Compartir imagen" + "Ahora no" is roughly a third wider than
+  // the English it was laid out against. Any modal with three actions is one
+  // translation away from the same bug, so the fix belongs here rather than on
+  // the one modal that happened to report it.
+  flex-wrap: wrap;
   gap: var(--ro-space-3);
   padding: 22px 26px;
   border-top: 1px solid var(--ro-border);

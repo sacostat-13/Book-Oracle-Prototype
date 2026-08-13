@@ -6,7 +6,7 @@ import { createContext, useContext, useEffect, useState, useCallback, useRef } f
 import { supabase } from './supabase';
 import { fetchAllRows } from './supabasePaging';
 import { useAuth } from './AuthContext';
-import { ALL_BOOKS, bookKey } from './bookHelpers';
+import { ALL_BOOKS, bookKey, storableAuthor } from './bookHelpers';
 import { computeCompletionMoments } from './shareMoments';
 import {
   entryFromMoment,
@@ -220,7 +220,11 @@ function bookRowToClient(b, extra = {}) {
     : undefined;
   return {
     t: b.title,
-    a: b.author,
+    // v0.63: '' rather than the raw null. A null author is correct in the
+    // database but interpolates as the string "null" in every template literal
+    // that builds a title — see displayAuthor() in bookHelpers for what is
+    // actually rendered.
+    a: b.author || '',
     g: b.genre || undefined,
     // v0.55: author gender for the "books by women" accomplishment. NOT a
     // genre — deliberately a separate column/field so it never touches the
@@ -886,7 +890,17 @@ export function DataProvider({ children }) {
           ? 'openlibrary'
           : book.fromGoodreads
             ? 'goodreads_import'
-            : source;
+            // v0.63: a book that arrived from an Oracle recommendation was
+            // being written to `books.source` as 'user_manual', because this
+            // chain only ever knew about the three lookup providers. The
+            // provenance was already known — `read_books.source` is set to
+            // 'oracle' a few hundred lines below from the same predicate — so
+            // the catalogue and the shelf were disagreeing about where the same
+            // book came from. `books.source` is free text with no CHECK, so
+            // 'oracle' is safe to write.
+            : isOracleSuggested(book)
+              ? 'oracle'
+              : source;
       // v0.15: derive review status from client signals. needsReview is set
       // by bookLookup when all APIs missed (low-confidence add). Curated seed
       // path passes source='curated', which we promote to status='verified' +
@@ -901,7 +915,24 @@ export function DataProvider({ children }) {
         : null;
       const args = {
         _title: book.t,
-        _author: book.a || null,
+        // v0.63 — THIS IS THE DUPLICATE-ROW BUG.
+        //
+        // "Unknown author" is a DISPLAY placeholder. bookLookup, hardcoverService
+        // and googleBooksService all fall back to it when a provider returns no
+        // author (six call sites), which is fine on screen and wrong in the
+        // database — it was being stored as though it were a person's name.
+        //
+        // Book identity is compute_book_key(title, author), so the placeholder
+        // does not merely look untidy, it FORKS THE BOOK. "Like Water for
+        // Chocolate" + "Laura Esquivel" and "Like Water for Chocolate" +
+        // "Unknown author" are two rows with two ids, two sets of genre links
+        // and two shelf lives, for one novel — with the same ISBN on both.
+        //
+        // Sanitising here rather than at the six call sites is deliberate: the
+        // placeholder is still wanted on screen, and this is the single point
+        // where a book crosses from the client into the catalogue. Nothing the
+        // reader sees changes; only what is persisted.
+        _author: storableAuthor(book.a),
         _isbn: book.isbn || null,
         _hardcover_id: book.hardcoverId || null,
         _series_name: book.s?.name || null,
@@ -991,7 +1022,22 @@ export function DataProvider({ children }) {
         : 'user_manual';
       await supabase.rpc('upsert_book', {
         _title: book.t,
-        _author: book.a || null,
+        // v0.63 — the SECOND write path into `books`, and the one that actually
+        // produced the reported duplicate.
+        //
+        // upsertBookOnServer is not the only caller of upsert_book; this
+        // function calls the RPC directly, so the storableAuthor() sanitising
+        // added there did not apply here. Viewing a book page from search
+        // silently upserts with status='discovered' (see NavSearch.jsx), and
+        // when the result came from Hardcover without an author,
+        // hardcoverService's 'Unknown author' display placeholder went straight
+        // into the key column.
+        //
+        // That is exactly the shape of the row in the report: source
+        // 'hardcover', status 'discovered', author 'Unknown author', same ISBN
+        // as the real row — created by looking at a search result, not by
+        // adding anything.
+        _author: storableAuthor(book.a),
         _isbn: book.isbn || null,
         _hardcover_id: book.hardcoverId || null,
         _series_name: book.s?.name || null,
@@ -1334,7 +1380,46 @@ export function DataProvider({ children }) {
   const markAsRead = useCallback(
     async (book, extra = {}, opts = {}) => {
       const k = bookKey(book);
-      if (state.library.some((b) => bookKey(b) === k)) return;
+
+      // v0.63 — this was a bare `return`, and it is the whole of the reported
+      // bug: "marked a book as read, it shows the Read label, it is not in the
+      // library, the share modal never appeared, and there were no errors."
+      //
+      // All four symptoms are this one line. The guard fires BEFORE any server
+      // write, so no read_books row is created; it returns undefined, so
+      // fireCompletionMoment never runs and no share modal opens; it shows no
+      // toast, so nothing is reported; and the Read label the reader sees is
+      // real — it is keyed on bookKey, and the OTHER row's library entry
+      // matches, which is precisely what tripped the guard.
+      //
+      // bookKey is normalised-title + the first 10 characters of the author, so
+      // two DIFFERENT rows in `books` collide whenever they agree on those.
+      // That is not hypothetical: compute_book_key on the server has the same
+      // shape and no subtitle handling, so a catalogue can hold several rows
+      // for one work ("Like Water for Chocolate" / "…: A Novel in Monthly
+      // Installments…"), and a reader who adds one and then the other lands
+      // here.
+      //
+      // Treating them as the same book is right — the reader thinks of it as
+      // one book and a second library entry would be wrong. Doing it in silence
+      // is not. Say so, and leave a breadcrumb when the collision is between
+      // two distinct catalogue rows, because that is a data defect worth
+      // finding rather than a reader repeating themselves.
+      const already = state.library.find((b) => bookKey(b) === k);
+      if (already) {
+        if (book.bookId && already.bookId && book.bookId !== already.bookId) {
+          console.warn(
+            '[markAsRead] two catalogue rows share a book key — treating as the ' +
+            'same book and not adding a second library entry.\n' +
+            `  incoming: ${book.bookId} "${book.t}" by ${book.a || '(no author)'}\n` +
+            `  in library: ${already.bookId} "${already.t}" by ${already.a || '(no author)'}\n` +
+            '  See docs/duplicate-books-diagnostic.sql to find every affected work.'
+          );
+        }
+        showToast(`"${already.t}" is already in your library`);
+        return null;
+      }
+
       const today = new Date().toISOString().slice(0, 10);
 
       const ratingRaw = extra.rating != null ? extra.rating : book.rating;

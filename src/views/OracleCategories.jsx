@@ -9,12 +9,72 @@ import { useOracleQuota } from '../lib/OracleQuotaContext';
 import { OracleQuotaBadge, OracleQuotaWall } from '../components/OracleQuotaBadge';
 import { useT, useI18n, langDirective } from '../lib/I18nContext';
 import BookCard from '../components/BookCard';
+import GenreSelect from '../components/GenreSelect';
 import { buildTasteProfile, describeTasteProfile, computeLocalMatch, MATCH_SCORING_INSTRUCTIONS } from '../lib/matchHelpers';
 
 // v0.15 phase 2.6: copy pass — "categories" → "genres" throughout.
 // The Temperament dropdown now draws from Oracle genres (genresByBookId)
 // for wishlist/vault modes, falling back to b.g for uncategorized books.
 // Route name (oracle-categories) is kept for URL stability.
+
+// v0.63 — prompt budget.
+//
+// claude.js rejects anything over MAX_PROMPT_CHARS (50_000) with a 413. The
+// rest of this prompt — taste profile, recent reads, wishlist sample — runs
+// about 2.5k characters, so 6k for the denylist sample leaves an order of
+// magnitude of headroom and still carries several hundred titles. Sized to be
+// obviously safe rather than maximally full: the list is a hint now, and
+// doubling it would not make the recommendations better.
+const EXCLUDE_CHAR_BUDGET = 6000;
+
+// Ask for more than we show, because client-side filtering removes some.
+// 8-for-3 survives the model returning five books the reader already owns,
+// which happens on a well-stocked shelf. Output tokens are cheap next to the
+// input we just stopped sending.
+const AI_DRAW_REQUEST = 8;
+const AI_DRAW_COUNT = 3;
+
+// Recency-first: a book added last week is far likelier to be re-suggested
+// than one read in 2011, so if the budget only fits part of the shelf it
+// should fit the part that matters. `known` arrives as
+// [...readNext, ...library, ...wishlist]; readNext is the most immediate
+// signal, so it is preserved at the head.
+function buildExcludeHint(known) {
+  const seen = new Set();
+  const parts = [];
+  let used = 0;
+
+  for (const b of known) {
+    const title = (b?.t || '').trim();
+    if (!title) continue;
+    const key = normalizeTitle(title);
+    if (seen.has(key)) continue;   // the old list shipped duplicates too
+    seen.add(key);
+
+    const piece = `"${title}"`;
+    const cost = piece.length + 2; // ", "
+    if (used + cost > EXCLUDE_CHAR_BUDGET) break;
+    parts.push(piece);
+    used += cost;
+  }
+
+  return parts.join(', ') || '(nothing yet)';
+}
+
+// Loose enough to catch edition/spacing/punctuation drift between what the
+// model returns and what is on the shelf, strict enough not to collapse
+// genuinely different books. Deliberately NOT exported: `bookKey` remains the
+// canonical identity everywhere else, and a second notion of "same book"
+// leaking out of this file is how identity bugs start.
+function normalizeTitle(t) {
+  return (t || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')   // strip accents: "Pedro Páramo" === "Pedro Paramo"
+    .replace(/\s*\([^)]*\)\s*$/, '')   // drop a trailing "(Series, #3)"
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
+}
 
 export default function OracleCategories({ onOpenBook }) {
   const { state, setOracleMode, showToast, vault, loadVault } = useData();
@@ -150,7 +210,35 @@ export default function OracleCategories({ onOpenBook }) {
       const profileLevel = state.profile.readingLevel || 3;
       const libContext = state.library.slice(-15).map((b) => `- ${b.t} by ${b.a}`).join('\n') || '(none)';
       const wishContext = state.wishlist.slice(0, 30).map((b) => `- ${b.t}`).join('\n') || '(none)';
-      const exclude = [...state.readNext, ...state.library, ...state.wishlist].map((b) => `"${b.t}"`).join(', ');
+
+      // v0.63 — THIS IS THE FIX FOR "Prompt too long" (413 from claude.js,
+      // MAX_PROMPT_CHARS = 50_000).
+      //
+      // The old line was:
+      //   [...readNext, ...library, ...wishlist].map(b => `"${b.t}"`).join(', ')
+      //
+      // Unbounded. A reader with a large wishlist — which is the whole point of
+      // the app, and which the v0.44 Vault upgrade actively encourages — sent
+      // every title they had ever touched on every draw. At ~1,500 titles that
+      // is ~45k characters of denylist wrapped around a ~2k prompt, and the
+      // function rejected it before Anthropic ever saw it. The reader with the
+      // richest taste profile was the one who could not use the feature.
+      //
+      // Two things were wrong, not one:
+      //
+      //   1. Size. Obvious in hindsight, invisible in testing, because it
+      //      degrades with library size rather than failing outright.
+      //   2. Method. A 1,500-item denylist does not reliably work even when it
+      //      fits. Attention over a comma-separated wall of titles is not exact
+      //      matching, and we were paying input tokens for a filter that we can
+      //      run locally, for free, with perfect accuracy.
+      //
+      // So the denylist becomes a HINT — a bounded sample that steers the model
+      // away from the obvious — and the real filtering moves client-side, after
+      // the response, where `bookKey` already gives us exact dedupe. We ask for
+      // more books than we need so that filtering has something to cut into.
+      const known = [...state.readNext, ...state.library, ...state.wishlist];
+      const exclude = buildExcludeHint(known);
 
       // Use the display name of the selected genre for the AI prompt
       const selectedGenreName = sourceGenres.find((g) => g.norm === genre)?.name;
@@ -158,7 +246,7 @@ export default function OracleCategories({ onOpenBook }) {
         ? 'Any genre that suits the reader.'
         : `Genre: ${selectedGenreName || genre}.`;
 
-      const prompt = `Recommend 3 books for a reader at reading level ${profileLevel}/5 (1=casual, 5=experimental).
+      const prompt = `Recommend ${AI_DRAW_REQUEST} books for a reader at reading level ${profileLevel}/5 (1=casual, 5=experimental).
 ${genreHint}
 
 Books they've read recently:
@@ -169,7 +257,7 @@ ${wishContext}
 
 ${describeTasteProfile(tasteProfile)}
 
-Do NOT recommend any book in this list (already known to them): ${exclude}
+Avoid recommending books they already know. Here is a sample of what is already on their shelves (not exhaustive): ${exclude}
 
 Return ONLY valid JSON in this format:
 {"books":[{"title":"...","author":"...","genre":"...","complexity":1-5,"depth":1-5,"description":"one-sentence description","match":0-100}]}`;
@@ -195,6 +283,13 @@ Return ONLY valid JSON in this format:
       if (response) {
         const parsed = parseJSONResponse(response);
         if (parsed?.books && Array.isArray(parsed.books)) {
+          // The denylist in the prompt is now a bounded sample, so the real
+          // guarantee that we never recommend a book the reader already has
+          // lives HERE — exact, local, free, and applied to the full set rather
+          // than to whatever fitted in the character budget.
+          const knownKeys = new Set(known.map(bookKey));
+          const knownTitles = new Set(known.map((b) => normalizeTitle(b.t)));
+
           books = parsed.books
             .map((b) => ({
               t: b.title, a: b.author,
@@ -203,7 +298,15 @@ Return ONLY valid JSON in this format:
               aiSuggested: true,
               match: Number.isFinite(b.match) ? Math.max(0, Math.min(100, Math.round(b.match))) : undefined,
             }))
-            .filter((b) => b.t && b.a);
+            .filter((b) => b.t && b.a)
+            // bookKey is title+author, so it misses the case where the model
+            // returns a different edition's author string for a book already on
+            // the shelf ("Jim  Butcher" vs "Jim Butcher"). Title alone is the
+            // safety net: a false positive costs one suggestion out of the
+            // AI_DRAW_REQUEST we asked for, a false negative shows the reader a
+            // book they have already read, which is the failure they notice.
+            .filter((b) => !knownKeys.has(bookKey(b)) && !knownTitles.has(normalizeTitle(b.t)))
+            .slice(0, AI_DRAW_COUNT);
 
           // v0.58 provenance. Inside the AI branch only: the Vault and
           // wishlist fallbacks below are local draws, and logging them would
@@ -305,12 +408,19 @@ Return ONLY valid JSON in this format:
       <section className="controls">
         <div className="field">
           <label>Temperament</label>
-          <select value={genre} onChange={(e) => setGenre(e.target.value)}>
-            <option value="all">— All books {sourceDesc} —</option>
-            {sourceGenres.map((g) => (
-              <option key={g.norm} value={g.norm}>☩ {g.name}</option>
-            ))}
-          </select>
+          {/* v0.63: was a native <select>. With the taxonomy at 136 entries the
+              browser drew its option list pinned to the top of the window,
+              detached from the field — an OS-level popup no CSS here could
+              reposition. GenreSelect is an ordinary anchored dropdown, and
+              being searchable is the larger win: 136 alphabetical options is
+              not a list anyone should have to scroll. */}
+          <GenreSelect
+            value={genre}
+            onChange={setGenre}
+            options={sourceGenres}
+            allLabel={`— All books ${sourceDesc} —`}
+            placeholder={t('oracle.categoriesSearchGenres')}
+          />
         </div>
         <button className="btn-primary" onClick={handleDraw} disabled={loading || (mode === 'ai' && quotaExhausted)}>
           {loading ? t('oracle.categoriesDrawing') : t('oracle.categoriesDraw')}

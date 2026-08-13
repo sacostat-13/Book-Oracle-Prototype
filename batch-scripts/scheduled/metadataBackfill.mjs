@@ -367,6 +367,44 @@ async function fetchMetadata(book, needDesc, needGenre) {
   return { description, descriptionFrom, subjects };
 }
 
+// v0.63. Which of these books already have at least one row in book_genres?
+//
+// PostgREST cannot express "books with no related rows" as a filter on the
+// parent table, so this asks the child table directly for the ids it knows
+// about and the caller treats absence as "no links". Chunked because a URL
+// carrying 2,500 UUIDs in an `in.()` will be rejected long before Postgres
+// sees it — the same 50-id chunking DataContext uses for the same table, for
+// the same reason.
+//
+// Cheap: one indexed lookup per 50 books, no network beyond Supabase, and it
+// runs once per invocation rather than once per book.
+const LINK_CHUNK = 50;
+
+async function fetchBooksWithGenreLinks(bookIds) {
+  const linked = new Set();
+  if (!bookIds || bookIds.length === 0) return linked;
+
+  for (let i = 0; i < bookIds.length; i += LINK_CHUNK) {
+    const chunk = bookIds.slice(i, i + LINK_CHUNK);
+    const { data, error } = await supabase
+      .from('book_genres')
+      .select('book_id')
+      .in('book_id', chunk);
+
+    if (error) {
+      // Failing open would mark every book as "already linked" and quietly
+      // restore exactly the bug this function exists to fix. Failing closed
+      // would re-infer genres for the whole catalogue. Neither is a decision
+      // this function should make silently, so say so and fail closed for this
+      // chunk only — the worst case is some redundant (idempotent) upserts.
+      console.warn(`[metadataBackfill] genre-link lookup failed for a chunk: ${error.message}`);
+      continue;
+    }
+    for (const row of data || []) linked.add(row.book_id);
+  }
+  return linked;
+}
+
 // Every genre this script can assign must exist in public.genres.
 //
 // The taxonomy is not fixed: Oracle categorisation creates genres on demand, so
@@ -418,13 +456,25 @@ async function main() {
   const { idByName: genreIdByName, parentByName } =
     WANT_GENRE ? await loadGenreCatalog() : { idByName: new Map(), parentByName: new Map() };
 
-  // Only books that can actually be shown. A book with no cover never reaches
-  // The Stacks, so its description is not what is stopping anyone — covers are
-  // coverBackfill's job and should run first.
+  // The cover gate. A book with no cover never reaches The Stacks, so its
+  // DESCRIPTION is not what is stopping anyone — covers are coverBackfill's job
+  // and should run first.
+  //
+  // v0.63: that reasoning is sound for descriptions and wrong for genres, and
+  // applying it to both is one of the reasons the genre-less backlog would not
+  // drain. Genre links feed shelf filters, the taste profile and Oracle
+  // matching — none of which need a cover, all of which work perfectly well on
+  // a book The Stacks will not show. With ~32% of the catalogue coverless, the
+  // gate was withholding genres from a third of the books indefinitely, and
+  // only coverBackfill (weekly, and itself gated) could ever release them.
+  //
+  // So the gate now applies only when descriptions are the point. On
+  // `--target genre` it is dropped entirely; on `--target both` it is dropped
+  // too, because a coverless book still legitimately wants its genres and the
+  // description half simply finds nothing to do.
   let query = supabase
     .from('books')
-    .select('id, title, author, description, genre, metadata_checked_at, metadata_attempts, subjects_fetched_at')
-    .not('cover_url', 'is', null)
+    .select('id, title, author, description, genre, cover_url, metadata_checked_at, metadata_attempts, subjects_fetched_at')
     .neq('status', 'flagged')
     // Exhausted books are excluded server-side so they never occupy a row of
     // the overshoot window. Without this the filter below would still skip
@@ -435,6 +485,9 @@ async function main() {
     // Oldest check first, nulls (never checked) ahead of everything.
     .order('metadata_checked_at', { ascending: true, nullsFirst: true })
     .order('created_at', { ascending: true });
+
+  // Description-only runs keep the original behaviour exactly.
+  if (!WANT_GENRE) query = query.not('cover_url', 'is', null);
 
   if (LIMIT) query = query.limit(LIMIT * 4); // overshoot: many rows won't need work
 
@@ -447,9 +500,31 @@ async function main() {
   const now = Date.now();
   let skippedExhausted = 0;
 
+  // v0.63 — THE OTHER HALF OF THE GENRE-BACKLOG FIX, and the subtler one.
+  //
+  // "Missing a genre" was decided from the scalar `books.genre` column. The app
+  // does not read that column: every surface reads `book_genres` (rolled up as
+  // genresByBookId), and CurationNotice counts a book as needing genres when it
+  // has ZERO ROWS THERE. So the script and the UI were measuring different
+  // things, and the gap between them was not hypothetical — until v0.63,
+  // nightly curation wrote its genre links to a column that does not exist
+  // (see manual/regenreCatalog.mjs), which failed silently while the scalar was
+  // written successfully. That produced a large cohort of books with
+  // `books.genre = 'Fantasy'` and no links at all: invisible in the UI, and
+  // skipped by this script on every single run, forever, because the scalar
+  // was populated.
+  //
+  // One query, before the filter, so a book is "missing genres" when the app
+  // would say so.
+  const linkedBookIds = await fetchBooksWithGenreLinks(
+    WANT_GENRE ? (rows || []).map((b) => b.id) : []
+  );
+  const missingGenreFor = (b) =>
+    !b.genre || b.genre === 'Imported' || b.genre === 'Uncategorized' || !linkedBookIds.has(b.id);
+
   const needsWork = (rows || []).filter((b) => {
     const missingDesc = !b.description || b.description.trim().length < MIN_DESCRIPTION_CHARS;
-    const missingGenre = !b.genre || b.genre === 'Imported' || b.genre === 'Uncategorized';
+    const missingGenre = missingGenreFor(b);
     if (!((WANT_DESC && missingDesc) || (WANT_GENRE && missingGenre))) return false;
     // Wants work, but we asked recently and got nothing. Asking again today
     // would produce the same nothing.
@@ -475,8 +550,7 @@ async function main() {
     const book = needsWork[i];
     const needDesc = WANT_DESC &&
       (!book.description || book.description.trim().length < MIN_DESCRIPTION_CHARS);
-    const needGenre = WANT_GENRE &&
-      (!book.genre || book.genre === 'Imported' || book.genre === 'Uncategorized');
+    const needGenre = WANT_GENRE && missingGenreFor(book);
 
     process.stdout.write(
       `[${i + 1}/${needsWork.length}] ${book.title} — ${book.author || 'unknown'}\n`
@@ -494,7 +568,14 @@ async function main() {
       genre = inferGenre(subjects);
       if (subjects.length) vlog(`genre scores: ${explainGenre(subjects).join(' | ') || '(no rule matched)'}`);
       if (genre) {
-        patch.genre = genre;
+        // v0.63: only (re)write the scalar when it is genuinely absent. A book
+        // selected purely because it had no LINKS may already carry a perfectly
+        // good scalar genre, possibly one the Oracle chose; silently replacing
+        // it with a rule-table inference would be a change nobody asked for and
+        // nobody would see happen. The links are what we came for.
+        const scalarMissing =
+          !book.genre || book.genre === 'Imported' || book.genre === 'Uncategorized';
+        if (scalarMissing) patch.genre = genre;
         // books.genre holds the single top pick because it is a scalar column
         // other code still reads; book_genres gets the full set.
         // Specifics first, then their umbrellas — withUmbrellas appends, so if
@@ -507,7 +588,14 @@ async function main() {
       }
     }
 
-    if (Object.keys(patch).length === 0) {
+    // v0.63: `patch` no longer tells the whole story. A book selected because
+    // it had no genre LINKS but did have a scalar genre produces an empty patch
+    // and yet has real work to do — writing the links. Treating that as
+    // "nothing found" would stamp a retry counter on it and skip the very thing
+    // we selected it for.
+    const hasLinkWork = extraGenres.length > 0;
+
+    if (Object.keys(patch).length === 0 && !hasLinkWork) {
       untouched++;
       const attempts = (book.metadata_attempts ?? 0) + 1;
       // Stamp the dead end so tonight's three wasted requests are the last ones
@@ -566,10 +654,13 @@ async function main() {
         `${descriptionFrom ? ` (desc from ${descriptionFrom})` : ''}\n`
       );
     } else {
-      const { error: upErr } = await supabase.from('books').update(patch).eq('id', book.id);
-      if (upErr) {
-        process.stdout.write(`    update failed: ${upErr.message}\n`);
-        continue;
+      // Skip the round-trip entirely when the only work is link work.
+      if (Object.keys(patch).length > 0) {
+        const { error: upErr } = await supabase.from('books').update(patch).eq('id', book.id);
+        if (upErr) {
+          process.stdout.write(`    update failed: ${upErr.message}\n`);
+          continue;
+        }
       }
 
       // Link the full genre set into book_genres — the many-to-many the app

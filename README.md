@@ -4,7 +4,7 @@ A reading companion — wishlist, library, reading plans, book clubs, and an AI-
 for book discovery. Built with React + Vite + SCSS, backed by Supabase for auth
 and cross-device sync, and Netlify Functions for API proxying.
 
-> Current version: **v0.63** — see [Releases](#releases) below for changelog.
+> Current version: **v0.63.2** — see [Releases](#releases) below for changelog.
 > Upgrading from an earlier version? Check the matching `MIGRATION_*.md` / `UPDATE_*.md`.
 
 ---
@@ -292,6 +292,44 @@ Everything works locally; nothing syncs. Book clubs require an account.
 
 ## Architecture notes
 
+### Book identity — why the key is not the ISBN
+
+`compute_book_key(title, author)` decides whether two rows are the same book.
+Author is the least reliable field in the catalogue, so the obvious question is
+whether ISBN should replace it. It should not, for three reasons:
+
+1. **Coverage.** A key that is NULL for part of the table cannot be the key.
+   Books published before 1970 have no ISBN at all, and the catalogue carries a
+   standing backlog of rows the free passes cannot resolve — that backlog is the
+   subject of the `catalog-review` issue `catalog-maintenance.yml` opens.
+2. **Granularity.** ISBN identifies an *edition*, not a *work*. Hardcover,
+   paperback, Kindle, translation and reissue each carry their own. The app is
+   about works — "have I read this?" not "have I read the 1993 Doubleday
+   printing?" — so keying on ISBN would fragment the catalogue considerably
+   worse than the current key does, not better.
+3. **Accuracy.** ISBNs in this catalogue are sometimes wrong. Of the 17
+   ISBN-sharing pairs found in v0.63.2, two are genuinely different works that
+   collided on a bad number.
+
+ISBN is therefore a *corroborating* signal, not an identity. It is used that way
+in `useStacks` (ownership) and should be used that way in `upsert_book` — as a
+secondary lookup when `normalized_key` misses, gated on the titles also matching,
+so a bad ISBN cannot merge two unrelated books. `books_isbn_idx` already exists
+for it.
+
+There is a better signal available and currently unused: `books.hardcover_id` is
+a *work-level* identifier from a source that has already done the disambiguation.
+`upsert_book` accepts it, stores it and coalesces it on update, but never
+searches by it, and there is no index on the column. The natural matching order
+is `hardcover_id` (exact, work-level) → ISBN + title corroboration (edition-level)
+→ `normalized_key` (fuzzy fallback).
+
+The full answer is the works/editions split that OpenLibrary and Hardcover both
+model, with reader shelves pointing at works. That is a large migration and is
+not obviously worth it before v1.0 — the layered matching above addresses the
+same failures for a fraction of the cost.
+
+
 **API proxies.** Hardcover and Anthropic both require server-side tokens.
 `netlify/functions/hardcover.js` and `netlify/functions/claude.js` hold the keys
 and forward requests. Locally you need `netlify dev` to make them work.
@@ -332,6 +370,148 @@ and forward requests. Locally you need `netlify dev` to make them work.
 ---
 
 ## Releases
+
+# Update Notes — v0.63 → v0.63.2: book identity, and four things failing in silence
+
+A patch release. No new features; seven fixes, of which four were failing without
+producing an error anywhere.
+
+## 1. Genre chips arriving in two waves
+
+`state.genresByBookId` initialises to `{}` and is filled by chunked
+`book_genres_view` queries. Three surfaces (BookPage, BookCard, BookModal) each
+carried their own copy of:
+
+```js
+const oracleGenres = state.genresByBookId?.[book.bookId];
+const genres = oracleGenres?.length ? oracleGenres : [{ name: book.g }];
+```
+
+which reads as "use the real genres, fall back to the legacy scalar" and behaves
+as "use the legacy scalar until the network catches up" — because on first paint
+every book misses the lookup. New `src/lib/genreDisplay.js` exposes
+`resolveGenres(state, loading, book)` returning a `pending` flag, so an empty
+map while loading is distinguishable from a book that genuinely has no links.
+
+`pending` is only true when the book is on a shelf the context actually hydrates
+(`genresByBookId` covers wishlist + library ids only). A Book Page opened from
+The Stacks would otherwise wait forever.
+
+## 2. "Prompt too long" on Oracle → Categories
+
+`OracleCategories.jsx` built its denylist as:
+
+```js
+[...readNext, ...library, ...wishlist].map(b => `"${b.t}"`).join(', ')
+```
+
+Unbounded. Measured against a 1,500-title shelf: 57,388 characters, against
+`MAX_PROMPT_CHARS = 50_000` in `claude.js`. It degrades with library size, so it
+was invisible in testing and only affected the readers with the richest profiles.
+
+Two things were wrong. The size, and the method — a 1,500-item denylist is not
+reliably honoured even when it fits, and we were paying input tokens for a filter
+that runs locally for free with perfect accuracy. The prompt now carries a
+bounded ~6k-character sample as a hint; exact dedupe happens client-side against
+`bookKey` plus an accent- and series-suffix-tolerant title match. The request
+asks for 8 and shows 3 so filtering has slack.
+
+## 3. Book identity — the substantive one
+
+Three reported symptoms turned out to be one root cause.
+
+`compute_book_key(title, author)` is a book's identity. The checked-in dump in
+`supabase/dump/schema.sql` is **stale** — production already runs the
+`dedupe_title_key`/`dedupe_author_key` version from `schema_v47_migration.sql`.
+Subtitle normalisation was never the problem.
+
+The problem was `'Unknown author'`. It is a *display* placeholder, substituted by
+`bookLookup.js`, `hardcoverService.js` and `googleBooksService.js` when a
+provider returns no author — six call sites — and it was being persisted into
+the key column. Since author is half the key, the placeholder forks one work
+into two catalogue rows.
+
+`upsert_book` has **three** callers, not one:
+
+| caller | file | previously |
+| --- | --- | --- |
+| `upsertBookOnServer` | DataContext.jsx | `_author: book.a \|\| null` |
+| `upsertDiscoveredBook` | DataContext.jsx | `_author: book.a \|\| null` |
+| `topUpIsbn` | oracleCategorizationService.js | `_author: book.a \|\| null` |
+
+All three now pass `storableAuthor()` from `bookHelpers.js`, which maps the six
+placeholder spellings to NULL. `displayAuthor()` is its counterpart and keeps
+the placeholder on screen — including in the document title, where a raw null
+interpolated as the literal string `"null"`.
+
+`upsertDiscoveredBook` is the one that produced the reported duplicate: viewing
+a book page from search silently upserts with `status='discovered'`, so the row
+was created by *looking at* a search result, not by adding anything.
+
+**Deploy ordering matters.** Nulling the author changes the key, so the ~29
+existing placeholder rows must be updated in the same window or the new client
+will miss them and insert twins. See `docs/placeholder-author-cleanup.sql` —
+pre-flight, transactional update, then `merge_books` for the known duplicate.
+Run the SQL *before* the deploy: that ordering fails soft.
+
+## 4. ISBN as an ownership signal
+
+`useStacks` ran four ownership checks — `bookId`, `bookKey`, `editionKey`,
+`authorLooseKey` — and every one folds the author into the comparison, so they
+all miss together when two rows disagree about who wrote the book. The catalogue
+holds 17 pairs sharing an ISBN while disagreeing on title or author.
+
+ISBN is now a fifth check and runs first: it is the only one of the five that is
+a fact rather than an inference. `normalizeIsbn` handles ISBN-10/13, hyphens and
+the `X` check digit, and returns null for anything implausible so two blank
+ISBNs cannot match.
+
+This masks the symptom without merging rows. Deliberate — two of those 17 pairs
+are different works that collided on a bad ISBN, and hiding a card is reversible
+where merging book rows is not. See "Book identity" in Architecture notes for
+why ISBN is not a candidate for the primary key.
+
+## 5. markAsRead failing silently
+
+```js
+if (state.library.some((b) => bookKey(b) === k)) return;
+```
+
+Before any server write, returning undefined, with no toast. So: no `read_books`
+row, no completion moment, no share modal, and no error — while the Read label,
+which is keyed on the same `bookKey`, correctly showed the *other* row's library
+entry. Four symptoms, one bare `return`. It now reports, and logs both ids when
+the collision is between two distinct catalogue rows.
+
+## 6. Genre backlog
+
+`metadataBackfill.mjs` decided "missing genre" from the scalar `books.genre`
+while the app reads `book_genres`. A row with a scalar genre and zero links was
+counted by `CurationNotice` and skipped by the script on every run, permanently.
+It now checks the join table. The cover gate applies to descriptions only —
+withholding genres from ~32% of the catalogue pending `coverBackfill` was the
+other reason the backlog would not drain.
+
+`catalog-maintenance.yml` gains a `regenreCatalog --apply` step. Free and
+offline, so the "the schedule spends nothing" premise holds; `--fetch` and
+`--replace` stay manual.
+
+## 7. UI
+
+- `.modal__actions` could not wrap and was justified to `flex-end`, so overflow
+  went off the *left* edge and took the dismiss button with it. Surfaced in
+  Spanish first — three actions are about a third wider than the English the
+  layout was built against. `flex-wrap` is now global; the share modal stacks
+  from 768px rather than 640px.
+- Date inputs: `color-scheme` is set per theme on `html[data-theme]`, which is
+  the only lever over the browser-drawn calendar popup. WebKit pseudo-elements
+  style the segments, separators and picker glyph; the glyph is masked rather
+  than a coloured data URI so it follows the theme tokens.
+- The genre picker on Oracle → Categories is a searchable anchored listbox
+  (`GenreSelect.jsx`). At 136 options the native `<select>` drew its popup
+  pinned to the top of the window — an OS-level list no CSS could reposition.
+
+---
 
 # Update Notes — v0.62.3 → v0.63: Curated Lists, and a genre system that had been silently broken
 
