@@ -3,7 +3,7 @@
 // Shares data-fetching logic with BookModal but renders as a full page
 // with more room for description, series, and genre detail.
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useData } from '../lib/DataContext';
 import { resolveGenres } from '../lib/genreDisplay';
 import { supabase } from '../lib/supabase';
@@ -19,6 +19,7 @@ import { lookupByTitle } from '../lib/bookLookup';
 import { purchaseLinks } from '../lib/purchaseLinks';
 import { fetchSeriesDescriptionFromWikipedia } from '../lib/seriesService';
 import BookCover from '../components/BookCover';
+import { BookPageSkeleton } from '../components/Skeleton';
 import ReportBookForm from '../components/ReportBookForm';
 import AddToListPicker from '../components/AddToListPicker';
 import RatingModal from '../components/RatingModal';
@@ -187,6 +188,11 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
   // v0.63.2b: genre links for a book that is on NO shelf. See the effect below.
   const [pageGenres, setPageGenres] = useState(null);
   const [pageGenresLoading, setPageGenresLoading] = useState(false);
+  // v0.63.3c: which book key the preview branch has already handled. A ref, not
+  // state, so recording it cannot itself cause a render. Belt to the useMemo's
+  // braces — even if some other dependency turns out to be unstable, the branch
+  // writes at most once per book.
+  const previewAppliedRef = useRef(null);
 
   // v0.39: SEO/share title+description once the book resolves. Deliberately
   // NOT set in App.jsx's generic route-title effect (see App.jsx) — this is
@@ -215,16 +221,36 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
   const [pendingRemoveId, setPendingRemoveId] = useState(null);
   const [shareOpen, setShareOpen] = useState(false); // v0.43
 
-  // Read snapshot from URL immediately — renders before DataContext loads
-  const snapshotBook = (() => {
+  // Read snapshot from URL immediately — renders before DataContext loads.
+  //
+  // v0.63.3c — useMemo, AND IT IS LOad-BEARING. This was a plain IIFE, so it
+  // produced a NEW OBJECT on every render, and it sits in the dependency array
+  // of the resolution effect below. That effect therefore re-ran on every
+  // render. Harmless while the effect only ever called `setBook(previewBook)`
+  // with a stable reference — React bails out of a state update that is Object.is
+  // equal, so the loop closed itself.
+  //
+  // v0.63.3b broke that. The preview branch began writing a NEWLY BUILT object
+  // (`setBook(prev => ({ ...prev, bookId, g }))`), so every run changed state,
+  // every state change re-rendered, every render rebuilt this object, and the
+  // effect ran again — calling upsert_book and book_genres_view each time. An
+  // unbounded write loop against production, from a one-line change to a
+  // dependency that had been unstable for a year without anyone noticing.
+  //
+  // Keyed on the raw param string, which is a primitive and actually stable.
+  const snapParam = route.params?.snap;
+  const snapshotBook = useMemo(() => {
     try {
-      const snap = route.params?.snap;
-      if (!snap) return null;
-      return JSON.parse(decodeURIComponent(atob(snap)));
+      if (!snapParam) return null;
+      return JSON.parse(decodeURIComponent(atob(snapParam)));
     } catch (_) { return null; }
-  })();
+  }, [snapParam]);
 
   // Resolve book: preview (from search) or collection lookup
+  // Moving to a different book must clear the once-per-book guard, or a Back
+  // navigation to a previously-previewed book would render it un-enriched.
+  useEffect(() => { previewAppliedRef.current = null; }, [bookKey_]);
+
   useEffect(() => {
     const isPreview = route.params?.preview === 'true';
     const previewBook = previewBookRef?.current;
@@ -250,6 +276,14 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
       !!previewBook && (!bookKey_ || bookKey(previewBook) === bookKey_);
 
     if (isPreview && previewIsThisBook) {
+      // v0.63.3c: at most once per book. Without this guard, any unstable
+      // dependency re-runs the branch, and the branch WRITES — an upsert, a
+      // lookup and a setBook per run. That is what took production down: the
+      // work below is not idempotent in cost even though it is in effect.
+      const previewKey = bookKey(previewBook);
+      if (previewAppliedRef.current === previewKey) return;
+      previewAppliedRef.current = previewKey;
+
       // Paint immediately from the search result — it has the title, author and
       // cover, and waiting on a round trip to show those would be a regression.
       setBook(previewBook);
@@ -533,12 +567,11 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
   // "not found" here — which is what happened before the lookup existed — tells
   // the reader the book does not exist while we are in the middle of finding it.
   if (lookingUp && !book) {
-    return (
-      <div className="lv-empty">
-        <div className="lv-empty-icon">❦</div>
-        <div className="lv-empty-text">{t('bookPage.loadingBook')}</div>
-      </div>
-    );
+    // v0.63.3c: a skeleton rather than a line of text. This is the shared-link
+    // landing case — the reader arrived from outside with no context at all, so
+    // showing the SHAPE of a book page is the difference between "loading" and
+    // "this site is broken".
+    return <BookPageSkeleton />;
   }
 
   if (notFound) {

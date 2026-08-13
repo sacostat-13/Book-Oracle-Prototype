@@ -220,3 +220,40 @@
   z-index: 90;
   box-shadow: 0 0 10px rgba(201, 162, 75, 0.8);
 }
+// ── Skeletons (v0.63.3) ───────────────────────────────────────────────────────
+// See src/components/Skeleton.jsx. One primitive, so the placeholder on a book
+// page and the one on a genre chip cannot drift apart.
+//
+// The pulse is opacity only. Animating a gradient position would draw the eye
+// to whatever is NOT ready yet, which is backwards.
+.skeleton {
+  display: block;
+  border-radius: var(--ro-radius-sm);
+  background: var(--ro-field);
+  opacity: .38;
+  animation: ro-skeleton-pulse 1.4s ease-in-out infinite;
+
+  // Heights match the real elements so nothing reflows when content lands.
+  &--text  { height: 15px; width: 100%; margin: 6px 0; }
+  &--title { height: 30px; width: 72%; margin: 10px 0; border-radius: var(--ro-radius-md); }
+  &--chip  { display: inline-block; height: 37px; width: 92px; border-radius: var(--ro-radius-pill); }
+  &--block { height: 120px; width: 100%; border-radius: var(--ro-radius-md); }
+
+  // 2:3 is the standard trade paperback ratio the covers are cropped to.
+  &--cover { width: 100%; aspect-ratio: 2 / 3; border-radius: var(--ro-radius-md); }
+}
+
+.skeleton-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+@keyframes ro-skeleton-pulse {
+  0%, 100% { opacity: .28; }
+  50%      { opacity: .5; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton { animation: none; }
+}
