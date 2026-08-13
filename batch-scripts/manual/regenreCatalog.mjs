@@ -54,6 +54,13 @@
 // selects books with no subjects yet, so an interrupted run costs nothing but
 // the book in flight. Do not be afraid to Ctrl-C it.
 //
+//   --only-missing    (--apply only) skip books that already have machine
+//                     assigned genre links. The fast path after a --fetch, when
+//                     nothing about the rules has changed. Do NOT use it after
+//                     editing genreRules.mjs — a rule correction has to be
+//                     re-derived against books that already have links, and
+//                     this flag skips precisely those.
+//
 //   --concurrency N   books in parallel, default 3, hard cap 6
 //   --delay MS        pause between sources, default 400
 //   --retry-empty     re-ask for every book the rules still cannot place, not
@@ -111,6 +118,13 @@ const REPLACE = args.includes('--replace');
 // subjects — the same planFor() --apply uses, so the two can never disagree
 // about what counts as placed.
 const RETRY_EMPTY = args.includes('--retry-empty') || args.includes('--retry-unplaced');
+// v0.63.3: --only-missing restricts --apply to books that currently have NO
+// machine-assigned genre links. Use after a --fetch, when the question is
+// "place the books that just gained subjects" and nothing about the RULES has
+// changed. It is NOT a substitute for a full pass after editing genreRules.mjs:
+// a rule correction has to be re-derived against books that already have links,
+// and this flag skips exactly those.
+const ONLY_MISSING = args.includes('--only-missing');
 
 function argValue(name, fallback) {
   const a = args.find((x) => x.startsWith(name));
@@ -160,16 +174,16 @@ const cleanAuthor = (a) => (a || '').split(/[,&]|\sand\s/i)[0].trim();
 // reporting "1000 eligible" when that was the cap and not a count; the same
 // mistake here would silently re-genre a third of the catalogue and call it
 // all of it.
-async function fetchAll(build, pageSize = 1000) {
+async function fetchAll(build, pageSize = 1000, applyLimit = true) {
   const out = [];
   for (let from = 0; ; from += pageSize) {
     const { data, error } = await build().range(from, from + pageSize - 1);
     if (error) { console.error('[regenre] query failed:', error.message); process.exit(1); }
     out.push(...(data || []));
     if (!data || data.length < pageSize) break;
-    if (LIMIT && out.length >= LIMIT) break;
+    if (applyLimit && LIMIT && out.length >= LIMIT) break;
   }
-  return LIMIT ? out.slice(0, LIMIT) : out;
+  return (applyLimit && LIMIT) ? out.slice(0, LIMIT) : out;
 }
 
 // ── Sources ──────────────────────────────────────────────────────────────────
@@ -327,20 +341,37 @@ async function phaseFetch() {
     // down to what the rules cannot place. Pulling source_subjects costs a
     // wider select, but it is one pass and it means the retry set is exactly
     // the set worth retrying.
+    // v0.63.3 — --limit APPLIES TO THE WORK, NOT THE SCAN.
+    //
+    // These two queries pass applyLimit=false deliberately. The retry set is
+    // built by SCANNING everything and then FILTERING to what the rules cannot
+    // place, so a limit on the scan is a limit on the wrong quantity:
+    // `--limit 200` read the 200 oldest rows, found 29 unplaceable among them,
+    // and retried 29 — while reporting nothing about the 200-row window it had
+    // silently imposed. The number the caller typed and the number of books
+    // touched had no relationship to each other.
+    //
+    // Limit the result instead, which is what anyone typing --limit means.
     const { parentByName } = await loadGenreCatalog();
     const fetched = await fetchAll(() => supabase.from('books')
       .select(cols + ', source_subjects')
       .not('subjects_fetched_at', 'is', null)
       .neq('status', 'flagged')
-      .order('created_at', { ascending: true }));
+      .order('created_at', { ascending: true }), 1000, false);
     const never = await fetchAll(() => supabase.from('books').select(cols)
       .is('subjects_fetched_at', null)
       .neq('status', 'flagged')
-      .order('created_at', { ascending: true }));
+      .order('created_at', { ascending: true }), 1000, false);
 
     const unplaceable = fetched.filter((bk) => planFor(bk, parentByName).full.length === 0);
-    books = [...never, ...unplaceable];
-    console.log(`[regenre] retry set: ${never.length} never fetched + ${unplaceable.length} the rules cannot place`);
+    const retrySet = [...never, ...unplaceable];
+    books = LIMIT ? retrySet.slice(0, LIMIT) : retrySet;
+    console.log(
+      `[regenre] retry set: ${never.length} never fetched + ${unplaceable.length} the rules cannot place` +
+      (LIMIT && retrySet.length > LIMIT
+        ? ` = ${retrySet.length}, taking the first ${LIMIT} (--limit)`
+        : '')
+    );
   } else {
     books = await fetchAll(() => supabase.from('books').select(cols)
       .is('subjects_fetched_at', null)
@@ -466,10 +497,18 @@ async function phaseApply() {
   // Dry-run projections, kept separate from the write counters above so the two
   // can never be confused for one another in the summary.
   let wouldAdd = 0, wouldRemove = 0, wouldKeep = 0, booksChanged = 0, booksLosing = 0;
+  // Real-run counters for the same idea: how much was actually touched.
+  let unchanged = 0, booksWritten = 0, scalarsWritten = 0, skippedHasLinks = 0;
   const changes = [];
   const unmatched = [];
 
   for (const book of books) {
+    const have = existingByBook.get(book.id) || new Set();
+
+    // v0.63.3: --only-missing. Cheapest possible skip — before planFor, which
+    // is the per-book cost in this loop.
+    if (ONLY_MISSING && have.size > 0) { skippedHasLinks++; continue; }
+
     const { subjects, full, top } = planFor(book, parentByName);
     if (full.length === 0) {
       unplaced++;
@@ -477,19 +516,27 @@ async function phaseApply() {
       continue;
     }
     placed++;
+
+    // The diff, computed once and used by BOTH paths. It used to exist only in
+    // the dry run; the write path re-upserted every link for every placed book
+    // regardless of whether anything had changed — 2,579 round trips to write
+    // the 44 links that were actually new. Same end state, ~98% less traffic.
+    const want   = new Set(full.map((n) => idByName.get(n)).filter(Boolean));
+    const add    = [...want].filter((id) => !have.has(id));
+    // Only --replace removes; without it a stale link simply survives, and
+    // saying otherwise would overstate what a plain --apply does.
+    const remove = REPLACE ? [...have].filter((id) => !want.has(id)) : [];
+    const keep   = [...want].filter((id) => have.has(id));
+    const scalarChanges = !!(top && top !== book.genre);
+
     if (VERBOSE) {
       process.stdout.write(`${book.title}\n`);
       vlog(full.join(', '));
       vlog(explainGenre(subjects).join(' | '));
+      if (!add.length && !remove.length && !scalarChanges) vlog('no change');
     }
+
     if (DRY_RUN) {
-      const want = new Set(full.map((n) => idByName.get(n)).filter(Boolean));
-      const have = existingByBook.get(book.id) || new Set();
-      const add    = [...want].filter((id) => !have.has(id));
-      // Only --replace removes; without it a stale link simply survives, and
-      // saying otherwise would overstate what a plain --apply does.
-      const remove = REPLACE ? [...have].filter((id) => !want.has(id)) : [];
-      const keep   = [...want].filter((id) => have.has(id));
 
       wouldAdd += add.length;
       wouldRemove += remove.length;
@@ -510,9 +557,19 @@ async function phaseApply() {
       continue;
     }
 
+    // Nothing to do. This is the common case by a wide margin — the shelves
+    // are already what the rules say — and skipping it is the whole
+    // optimisation: no delete, no upsert, no scalar update, no round trip.
+    if (!add.length && !remove.length && !scalarChanges) { unchanged++; continue; }
+
     // --replace clears only what a machine wrote. 'admin' and 'seed' links are
     // human judgements and survive untouched.
-    if (REPLACE) {
+    //
+    // Only when there is something to remove: firing the delete unconditionally
+    // meant every placed book paid for a clear-and-rewrite even when the result
+    // was byte-identical.
+    let rewriteAll = false;
+    if (REPLACE && remove.length) {
       const { error: delErr, count } = await supabase
         .from('book_genres')
         .delete({ count: 'exact' })
@@ -520,10 +577,18 @@ async function phaseApply() {
         .eq('assigned_by_source', 'oracle');
       if (delErr) { process.stdout.write(`  clear failed: ${delErr.message}\n`); continue; }
       cleared += count || 0;
+      // The delete took the kept links with it, so they have to go back.
+      rewriteAll = true;
     }
 
-    const links = full.map((n) => idByName.get(n)).filter(Boolean)
-      .map((genre_id) => ({ book_id: book.id, genre_id, assigned_by_source: 'oracle' }));
+    // Write only what is missing. After a --replace clear that is everything;
+    // otherwise it is the genuinely new links and nothing else.
+    const writeIds = rewriteAll
+      ? full.map((n) => idByName.get(n)).filter(Boolean)
+      : add;
+    const links = writeIds.map((genre_id) => ({
+      book_id: book.id, genre_id, assigned_by_source: 'oracle',
+    }));
     if (links.length) {
       // assigned_by_source, NOT source. Naming it wrong is how every genre link
       // from the nightly job failed silently for months.
@@ -533,9 +598,11 @@ async function phaseApply() {
       linked += links.length;
     }
     // books.genre keeps the single top pick — a scalar column other code reads.
-    if (top && top !== book.genre) {
+    if (scalarChanges) {
       await supabase.from('books').update({ genre: top }).eq('id', book.id);
+      scalarsWritten++;
     }
+    booksWritten++;
   }
 
   if (unmatched.length) {
@@ -583,6 +650,8 @@ async function phaseApply() {
 
   console.log(`\n[regenre] placed=${placed} unplaced=${unplaced} links=${linked}` +
     (REPLACE ? ` cleared=${cleared}` : '') +
+    ` booksWritten=${booksWritten} unchanged=${unchanged} scalars=${scalarsWritten}` +
+    (ONLY_MISSING ? ` skippedHasLinks=${skippedHasLinks}` : '') +
     (unmatched.length ? `\n[regenre] ${unmatched.length} book(s) -> output/regenre-unmatched.csv` : ''));
 }
 

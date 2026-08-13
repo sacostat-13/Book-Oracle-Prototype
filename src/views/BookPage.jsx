@@ -250,11 +250,53 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
       !!previewBook && (!bookKey_ || bookKey(previewBook) === bookKey_);
 
     if (isPreview && previewIsThisBook) {
+      // Paint immediately from the search result — it has the title, author and
+      // cover, and waiting on a round trip to show those would be a regression.
       setBook(previewBook);
-      // Silently upsert as discovered status - enriches catalog without
-      // adding to the user's collection (no wishlist_items row).
-      upsertDiscoveredBook?.(previewBook);
-      return;
+
+      // v0.63.3b — WHY THIS THEN GOES TO THE DATABASE.
+      //
+      // `previewBook` came from Hardcover or Google Books. Those sources know
+      // nothing about this catalogue: no `bookId`, and no `g`, because `g` is
+      // OUR taxonomy's genre and they have never heard of it.
+      //
+      // So a book opened from search had no genre to show and no id to look one
+      // up with. The v0.63.3 fix below — query book_genres_view when the shelves
+      // cannot answer — is keyed on `book.bookId` and therefore did nothing on
+      // this path at all. That is why "Cleat Cute" stayed blank after the fix:
+      // it has a genre and links in the catalogue, and the page had no way to
+      // reach either.
+      //
+      // Upsert first so the row exists, then resolve it by share key. Guests
+      // never upsert, but the lookup still finds anything already catalogued,
+      // so a signed-out reader gets the genres too.
+      let cancelled = false;
+      (async () => {
+        try {
+          await upsertDiscoveredBook?.(previewBook);
+        } catch (_) { /* discovery is best-effort; the lookup below still runs */ }
+        if (cancelled) return;
+
+        const row = await lookUpByShareKey(bookKey(previewBook));
+        if (cancelled || !row) return;
+
+        // The catalogue wins for the two fields it alone can know; the search
+        // result keeps everything else, since it is usually richer on covers
+        // and descriptions than a sparsely-populated `books` row.
+        setBook((prev) => (prev ? {
+          ...prev,
+          bookId: row.bookId,
+          g: row.g ?? prev.g,
+          c: prev.c ?? row.c,
+          p: prev.p ?? row.p,
+          pp: prev.pp ?? row.pp,
+          d: prev.d ?? row.d,
+          isbn: prev.isbn ?? row.isbn,
+          status: row.status ?? prev.status,
+        } : prev));
+      })();
+
+      return () => { cancelled = true; };
     }
     // Falls through on a stale ref: the collection lookup below, then the URL
     // snapshot. Both key off bookKey_, which preview URLs now always carry.
