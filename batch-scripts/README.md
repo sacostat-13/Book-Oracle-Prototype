@@ -59,6 +59,36 @@ does:
 - **`_shared/`** — code imported by the scripts. Not runnable; nothing here
   touches the network or the database on its own.
 
+## Genres
+
+`_shared/genreRules.mjs` is the one keyword table mapping source subjects onto
+the canonical taxonomy. Both `scheduled/metadataBackfill.mjs` and
+`manual/regenreCatalog.mjs` import it — two copies of one rule set is a bug that
+takes months to surface.
+
+Three things worth knowing before touching genre code:
+
+1. **The column is `assigned_by_source`, not `source`.** `oracleBatch` named it
+   wrong and PostgREST rejected every insert. Nothing checked the result, so not
+   one genre link was written for months while books were still being stamped
+   `oracle_categorized`. Always destructure `{ error }` from a `book_genres`
+   write.
+2. **Umbrellas come from `public.genres.parent_id`**, never from a map in JS. A
+   book gets the specific genre AND its parent, so the reader browsing "Horror"
+   and the reader browsing "Folk Horror" both find it.
+3. **Subjects are cached** on `books.source_subjects`. Edit the rules and re-run
+   `regenreCatalog --apply` — offline, seconds, no network. Only ever
+   `--fetch` for books that have never been looked up.
+
+Typical loop:
+
+```bash
+node batch-scripts/manual/regenreCatalog.mjs --report            # size the job
+node batch-scripts/manual/regenreCatalog.mjs --fetch             # once per book, slow
+node batch-scripts/manual/regenreCatalog.mjs --apply --dry-run --verbose
+node batch-scripts/manual/regenreCatalog.mjs --apply
+```
+
 Nothing billable belongs in `scheduled/`, whatever its schedule happens to be
 today. That is the whole point of the split — and it is why `oracleBatch.mjs`
 stays in `manual/` even though a workflow now runs it nightly. The folder

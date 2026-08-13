@@ -46,6 +46,12 @@ const ROUTE_DEFS = [
   { name: 'plan-create',        path: '/plans/new' },
   { name: 'plan-list',          path: '/plans' },
   { name: 'lists',              path: '/lists' },
+  // v0.63 — Curated Lists split into three. `lists` is the landing page (what
+  // you follow + a way in), `lists-mine` is the management view, and
+  // `lists-discover` is the public directory. Static paths are matched before
+  // dynamic ones, so neither of these can be swallowed by `/lists/:listId`.
+  { name: 'lists-mine',         path: '/lists/mine' },
+  { name: 'lists-discover',     path: '/lists/discover' },
   { name: 'friends',            path: '/friends' },
   { name: 'book-clubs',         path: '/clubs' },
   { name: 'club-directory',     path: '/clubs/discover' },

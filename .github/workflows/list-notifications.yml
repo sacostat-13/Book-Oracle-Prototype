@@ -1,0 +1,132 @@
+# Curated list digests — roll a day of list edits into one notification each.
+#
+# WHY THIS IS ITS OWN WORKFLOW
+#
+# It could have been a step on nightly-curation.yml, which already runs daily.
+# It is not, for the same reason nightly-curation was split out of
+# catalog-maintenance: that workflow's header says, at length, that it SPENDS
+# MONEY and is bounded three ways. This spends nothing — two RPC calls, no
+# external API, no model. Folding a free job into the billable one means the
+# next person reading either file has to work out which steps cost and which do
+# not. Two workflows, two honest descriptions.
+#
+# It also must not share nightly-curation's concurrency group. That group exists
+# because two jobs writing `books` rows would race. This writes `notifications`
+# and `list_change_log`, touches neither, and blocking it behind an hour of
+# catalog work would delay the digest for no reason.
+#
+# WHY DAILY AND NOT HOURLY
+#
+# The whole point of the rollup is that someone building a fifty-book list
+# generates one notification per follower, not fifty. Running hourly would give
+# them up to twenty-four, which is most of the way back to the problem.
+#
+# SECRETS (Settings → Secrets and variables → Actions):
+#   VITE_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
+
+name: Curated list digests
+
+on:
+  schedule:
+    # 16:00 UTC — 10:00 in Costa Rica. Mid-morning rather than overnight: this
+    # is a digest someone will act on, and it should land when they are awake.
+    - cron: '0 16 * * *'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Report what would be sent, claim nothing'
+        type: boolean
+        required: false
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  digest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    # Same reasoning as nightly-curation: without pipefail a script that dies on
+    # startup produces a green step and an empty log.
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - run: npm ci
+
+      - name: Compose .env.local from secrets
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          set -euo pipefail
+          for v in VITE_SUPABASE_URL SUPABASE_SERVICE_ROLE_KEY; do
+            if [ -z "${!v}" ]; then echo "::error::Missing required secret $v"; exit 1; fi
+          done
+          {
+            echo "VITE_SUPABASE_URL=$VITE_SUPABASE_URL"
+            echo "SUPABASE_SERVICE_ROLE_KEY=$SUPABASE_SERVICE_ROLE_KEY"
+          } > .env.local
+
+      - name: Roll up list changes into notifications
+        id: rollup
+        run: |
+          DRY=""
+          if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then DRY="--dry-run"; fi
+          node batch-scripts/scheduled/listNotifications.mjs $DRY | tee digest.log
+
+      - name: Report
+        if: always()
+        run: |
+          set -uo pipefail
+
+          # Single-line values only — a multi-line value makes the runner read
+          # line 2 as a new key=value pair and fail with `Invalid format`. That
+          # is exactly how the nightly curation summary broke in v0.62.3.
+          one() { tr -d '\r' | tr '\n' ' ' | awk '{$1=$1};1'; }
+          num() {
+            local v
+            v=$(grep -oP "$1" digest.log 2>/dev/null | tail -1 | one)
+            echo "${v:-0}"
+          }
+
+          SENT=$(num '(?<=notifications=)[0-9]+')
+          PRUNED=$(num '(?<=pruned=)[0-9]+')
+
+          {
+            echo "## Curated list digests"
+            echo ""
+            echo "| | Count |"
+            echo "| --- | ---: |"
+            echo "| Notifications sent | $SENT |"
+            echo "| Change-log rows pruned | $PRUNED |"
+            echo ""
+            if [ ! -s digest.log ]; then
+              echo "⚠️ No output — the script died before writing anything; check the step log."
+            else
+              echo "<details><summary>digest ($(wc -l < digest.log) lines)</summary>"
+              echo ""
+              echo '```'
+              tail -n 30 digest.log
+              echo '```'
+              echo "</details>"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: list-digest-log
+          path: digest.log
+          if-no-files-found: ignore
+          retention-days: 14

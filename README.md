@@ -4,7 +4,7 @@ A reading companion — wishlist, library, reading plans, book clubs, and an AI-
 for book discovery. Built with React + Vite + SCSS, backed by Supabase for auth
 and cross-device sync, and Netlify Functions for API proxying.
 
-> Current version: **v0.62.3** — see [Releases](#releases) below for changelog.
+> Current version: **v0.63** — see [Releases](#releases) below for changelog.
 > Upgrading from an earlier version? Check the matching `MIGRATION_*.md` / `UPDATE_*.md`.
 
 ---
@@ -332,6 +332,162 @@ and forward requests. Locally you need `netlify dev` to make them work.
 ---
 
 ## Releases
+
+# Update Notes — v0.62.3 → v0.63: Curated Lists, and a genre system that had been silently broken
+
+**Migrations required, in order:**
+
+1. `20260812150000_curated_lists.sql` — list genres/moods/followers, change log, RPCs
+2. `20260812210000_genre_taxonomy_consolidation.sql` — splits, merges, `genres.parent_id`
+3. `20260812230000_cache_source_subjects.sql` — `books.source_subjects`
+4. `20260812180000_genre_descriptions.sql` — 93 descriptions (order-independent)
+
+**New scheduled workflow:** `.github/workflows/list-notifications.yml`, daily at
+16:00 UTC. Needs `VITE_SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`, both of
+which already exist.
+
+**One-off data pass, already run:** `batch-scripts/manual/regenreCatalog.mjs`.
+
+---
+
+## 1. Curated Lists
+
+Three routes replace one. `/lists` is the hub (lists you follow, above your
+own), `/lists/mine` is the management view, `/lists/discover` is the directory.
+
+`lists-discover` is in `PUBLIC_ROUTES`. Unlike `search_public_clubs`,
+`search_public_lists` does **not** raise on a null `auth.uid()` — the premise of
+curated lists is that they get posted on social media, so the directory is a
+landing page as much as an internal one. Everything caller-specific degrades:
+`caller_follows` returns false and the Follow button opens the sign-in gate
+in place rather than navigating away and losing context.
+
+`list_followers` has no INSERT policy. Follows go exclusively through
+`follow_list()`, which enforces "public only" and "not your own" server-side.
+The UI must not be the only thing between a private list and a follower who
+cannot read it.
+
+**Notifications are rolled up daily, and that is not an optimisation.** Someone
+building a fifty-book list adds books one at a time; per-insert notification
+means fifty per follower for one afternoon, which teaches people to unfollow.
+Triggers append to `list_change_log`; `rollup_list_notifications()` claims the
+pending rows with `UPDATE … RETURNING` and aggregates what it claimed in one
+statement, so a change logged mid-run waits for the next run instead of being
+marked processed and lost.
+
+`notification_preferences->>'curated_lists'` is read with
+`coalesce(…, true)`. The key does not exist on rows predating the migration and
+defaulting those to off would make the feature look broken for every existing
+account.
+
+**Mobile.** `.chip` is `white-space: nowrap`, and at 11px mono with 0.12em
+tracking "JAPANESE & EAST ASIAN HORROR" measures ~254px against ~236px of room
+on a 320px screen. Combined with a flex item's default `min-width: auto` it
+pushed the whole create-list form out of the modal. Chips wrap below the mobile
+breakpoint, `min-width: 0` guards were added, and `.modal--scroll` pins the
+head and actions so the Create button is not below fifty chips. Applied to the
+Book Clubs filter modal too, which had the same defect since v0.40.
+
+## 2. THE GENRE BUG
+
+`oracleBatch.mjs` upserted into `book_genres` with `source: 'oracle'`. The
+column is `assigned_by_source`. PostgREST rejected every request and **the
+result was never checked**, so not one genre link was written by nightly
+curation for months — while the very next statement stamped each book
+`oracle_categorized`, so everything looked fine.
+
+The evidence was sitting in the data the whole time: `usage_count` is
+incremented by a trigger on `book_genres` INSERT, and 116 Oracle-created genres
+sat at exactly **0**. The genres were created — that upsert used correct column
+names — but no book was ever attached to any of them.
+
+Fixed, and the error is now thrown rather than swallowed. **When writing to
+`book_genres`, always destructure `{ error }`.** A genre write that fails must
+not be reported as a successful enrichment; that is the entire reason this
+survived so long.
+
+The free pass had a quieter version of the same problem: `rankGenres()` scored
+the whole taxonomy and `inferGenre()` threw away everything but the winner. It
+now links the full qualifying set.
+
+## 3. Taxonomy
+
+Five compounds split into halves that already existed as empty rows — Southern
+Gothic + American Gothic, Dark Fantasy + Epic Fantasy, Science Fiction +
+Speculative Fiction, Gothic + Haunted Houses, Climate Fiction + Eco-Fiction.
+Three zero-usage duplicates merged. Existing links were **remapped, never
+dropped**.
+
+`genres.parent_id` gives the umbrella hierarchy — 90 pairs, deliberately one
+level deep. Umbrellas are applied ALONGSIDE the specific genre, so a folk horror
+novel is on both shelves. **The hierarchy is read from the database, never from
+a map in JS** — a second copy would disagree within a month.
+
+Four retired genres owned bespoke card art covering 737 books. Their successors
+inherit those folders; `slug` is an asset path, not an identity. `booksData.js`
+had 51 entries on retired names, remapped.
+
+## 4. The re-genre pass
+
+`batch-scripts/manual/regenreCatalog.mjs`, three phases:
+
+```
+--report   where things stand, and what the Claude residue would cost
+--fetch    ask the sources, STORE subjects on the row   (slow, free, once)
+--apply    run rules against stored subjects            (seconds, offline)
+```
+
+**Fetching and inferring are separate on purpose.** As one step, improving a
+rule meant re-fetching 3,260 books over HTTP — hours per iteration, long enough
+that nobody iterates and the rules never improve. Split, the loop is: edit a
+rule, `--apply`, look, repeat. `books.source_subjects` is also the audit trail
+when a book lands somewhere surprising.
+
+Result: **53% → 77% placed**, most books now carrying two to five genres.
+
+Four things learned the hard way, all now encoded:
+
+- **Open Library inverts headings.** It writes `"Fiction, historical"`, never
+  `"Historical fiction"`, and every rule was in natural order. `subjectVariants()`
+  tests each subject in both forms — one fix for the whole class, rather than an
+  inverted twin for all 139 rules that the next person would half-forget.
+- **Title+author search fails on a third of a real catalogue** — null authors,
+  translated titles, unstripped subtitles. ISBN and `hardcover_id` were sitting
+  unused on every row. ISBN-first addressing rescued ~420 books.
+- **"Stored something" is not "stored something useful."** 339 books held
+  `["Fiction"]` — Google Books' coarsest category while the other two found
+  nothing. Neither null nor empty, so a retry filtering on emptiness skipped them
+  forever. `--retry-empty` now re-asks for anything the *rules cannot place*,
+  computed with the same `planFor()` `--apply` uses.
+- **Nationality and difficulty markers are not genres.** `"American fiction"`
+  is a shelving nationality; matching it put American Literature above Historical
+  Fiction. `"Reading Level-Grade 11"` is text difficulty, not audience; matching
+  it took Young Adult from 149 to 367 on an adult-heavy catalogue. Both reverted.
+  A wrong genre is worse than a missing one.
+
+`--apply` only ADDS. `--replace` clears `assigned_by_source = 'oracle'` links,
+which is exactly what the Oracle's own judgement calls produced — the report
+lists every shelf the rules cannot reproduce before you reach for it.
+
+## 5. Known state
+
+**~350 books carry no genre.** Safe: The Stacks shows every book with a cover
+and genres only shape the order, and BookPage falls back to `books.genre`. They
+are browsable, just not genre-seeded. Their sources returned nothing usable —
+mostly Spanish, German and French cataloguing vocabulary the rule table does not
+speak. A Claude pass over the residue is the remaining option, ~$5.
+
+**`books.genre` is a liability.** It is a scalar column holding one genre, and
+reading it in the Supabase editor is what makes a correctly multi-genred book
+look single-genred. `book_genres` is the real store and what the app reads.
+`supabase/genre_audit.sql` has queries for both. Retiring the scalar is worth
+doing once the residue is cleared.
+
+**`genres.usage_count` can drift.** Trigger-maintained, recomputed once by the
+taxonomy migration, nothing keeps it honest through bulk writes. Query 5 in
+`genre_audit.sql` detects it and carries the fix.
+
+---
 
 # Update Notes — v0.62.2 → v0.62.3: password auth, and a stylesheet that had drifted away from the markup
 

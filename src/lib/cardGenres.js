@@ -2,6 +2,11 @@
 // Normalized slugs (genres + moment-*) that have their framed card assets ready.
 // The app shows the framed card only for these; others fall back to the cover card.
 export const CARD_GENRES = [
+  // The generic fallback, used by every genre with no art of its own — see
+  // GENERIC_CARD_SLUG in cardResolve.js. Added here by hand so it works before
+  // the next generator run; public/cards/generic/ holds frame.png + art.png, so
+  // the generator picks it up on its own and this entry regenerates identically.
+  "generic",
   "arthurian",
   "biography",
   "bodyhorrortransgressive",

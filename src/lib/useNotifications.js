@@ -130,6 +130,18 @@ export function notificationLabel(n, t) {
       return t('notifications.discussionReply', { actor, question: data.question || '' });
     case 'announcement':
       return data.title || t('notifications.announcement');
+    case 'list_updated': {
+      // One notification summarises a whole day of edits (see
+      // rollup_list_notifications), so the copy has to cover "3 added",
+      // "2 removed", both at once, or a rename with no book changes.
+      const added = Number(data.added) || 0;
+      const removed = Number(data.removed) || 0;
+      const list = data.list_title || t('lists.curatedTitle');
+      if (added && removed) return t('notifications.listUpdatedBoth', { actor, list, added, removed });
+      if (added) return t('notifications.listUpdatedAdded', { actor, list, count: added });
+      if (removed) return t('notifications.listUpdatedRemoved', { actor, list, count: removed });
+      return t('notifications.listUpdatedEdited', { actor, list });
+    }
     default:
       return t('notifications.generic');
   }
@@ -153,6 +165,11 @@ export function notificationRoute(n) {
         : ['book-clubs', {}];
     case 'announcement':
       return ['about', {}];
+    case 'list_updated':
+      // Falls through to null when the list has since been deleted, which the
+      // bell panel already treats as "not clickable" rather than routing to a
+      // dead page.
+      return data.list_id ? ['list-view', { listId: data.list_id }] : null;
     default:
       return null;
   }

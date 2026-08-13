@@ -4,6 +4,7 @@ import { useAuth } from '../lib/AuthContext';
 import { useRouter } from '../lib/RouterContext';
 import { useT, useTNode } from '../lib/I18nContext';
 import { parseGoodreadsCSV } from '../lib/goodreadsImport';
+import { MOODS, moodTitleKey, moodSubKey } from '../lib/moods';
 import GoodreadsImportPanel from '../components/GoodreadsImportPanel';
 import OnboardingStacks from '../components/OnboardingStacks';
 import CornerBrackets from '../components/CornerBrackets';
@@ -13,7 +14,8 @@ import { validateUsername, checkUsernameAvailability } from '../lib/useFriends';
 
 // v0.38: fixed set of mood/intent chips for the "what are you looking for right now" step.
 // Multi-select, up to MOOD_MAX. IDs are stable — used as keys in profile.currentMood and in i18n lookups.
-const MOODS = ['comfort', 'challenge', 'escapism', 'mind-bending', 'character-driven', 'atmospheric', 'fast-paced', 'short-read'];
+// The list itself now lives in lib/moods.js; this was one of four copies.
+
 const MOOD_MAX = 3;
 const GENRE_MAX = 5;
 
@@ -99,8 +101,8 @@ export default function Onboarding() {
 
   const MOOD_CHOICES = MOODS.map((id) => ({
     id,
-    title: t(`onboarding.moods.${id}.title`),
-    sub: t(`onboarding.moods.${id}.sub`),
+    title: t(moodTitleKey(id)),
+    sub: t(moodSubKey(id)),
   }));
 
   const genreOptions = (state.genres || []).slice().sort((a, b) => a.name.localeCompare(b.name));

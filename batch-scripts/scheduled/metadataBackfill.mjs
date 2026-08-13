@@ -21,13 +21,23 @@
 //
 // GENRE INFERENCE
 //
-// books.genre uses a bespoke 15-genre taxonomy ("Gothic & Haunted Houses"),
-// so no API returns it directly — which is what made this look like a job for
-// a model. It isn't. All three sources return raw subject/tag lists, and a
-// keyword table maps those onto the canonical names deterministically. Books
-// matching no rule are left null and written to genre-unmatched.csv rather
-// than guessed at. Leaving a genre null costs a book nothing since v0.60 of
-// useStacks: it is still fully browsable, just not genre-seeded.
+// The taxonomy is bespoke (136 genres as of v0.63), so no API returns it
+// directly — which is what made this look like a job for a model. It isn't.
+// All three sources return raw subject/tag lists, and a keyword table maps
+// those onto the canonical names deterministically. See
+// _shared/genreRules.mjs. Books matching no rule are left null and written to
+// genre-unmatched.csv rather than guessed at.
+//
+// v0.63, three changes:
+//   - MULTI-GENRE. Every genre clearing the threshold is linked into
+//     book_genres, not just the winner. books.genre keeps the top pick because
+//     it is a scalar column other code still reads.
+//   - UMBRELLAS. The parent from public.genres.parent_id is attached alongside
+//     the specific genre, so a folk horror novel is on both shelves.
+//   - SUBJECTS ARE CACHED to books.source_subjects. The rule table will be
+//     edited repeatedly now that it has 136 targets, and without a cache every
+//     edit means re-fetching the whole catalogue over HTTP. With one,
+//     manual/regenreCatalog.mjs re-applies the rules offline in seconds.
 //
 // Usage:
 //   node batch-scripts/metadataBackfill.mjs
@@ -41,6 +51,15 @@
 //   GOOGLE_BOOKS_API_KEY (optional — Google Books allows anonymous use, rate-limited)
 
 import { createServiceClient } from '../_shared/supabaseClient.mjs';
+import {
+  GENRE_RULES,
+  MAX_GENRES_PER_BOOK,
+  inferGenre,
+  inferAllGenres,
+  explainGenre,
+  findGenreDrift,
+  withUmbrellas,
+} from '../_shared/genreRules.mjs';
 import { readFileSync, writeFileSync } from 'fs';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
@@ -178,184 +197,14 @@ function normaliseDescription(raw) {
 
 // ── Genre inference ──────────────────────────────────────────────────────────
 //
-// Ordered most-specific first and evaluated in order, because the general rules
-// would otherwise swallow the specific ones: "southern gothic" contains
-// "gothic", "dark fantasy" contains "fantasy". First match wins.
+// Moved to batch-scripts/_shared/genreRules.mjs in v0.63. The table outgrew
+// this file when the taxonomy went from 49 usable targets to 136, and
+// manual/regenreCatalog.mjs needs exactly the same rules — two scripts writing
+// the same table from two drifting copies of one rule set is a bug that takes
+// months to surface.
 //
-// Every pattern here is deliberately narrow. A rule that fires on a single
-// common word ("horror", "fantasy") would mislabel far more than it fixes, and
-// a wrong genre is worse than no genre — it puts a book in front of exactly the
-// reader who didn't ask for it. Books matching nothing go to the CSV.
-// Weights. A specific genre matching once should beat a broad one matching
-// once — "folk horror" is far stronger evidence than "fiction".
-const SPECIFIC = 3;   // a named subgenre; almost never a coincidence
-const MID = 2;        // a real genre, but with overlap
-const BROAD = 1;      // umbrella terms that appear on half the catalog
-
-// Rules now cover the whole of public.genres worth inferring, not just the 15
-// the crawl writes (v0.60.3).
-//
-// The first version only knew the crawl's canonical names, which is why the dry
-// run left so much on the floor: "Comics & Graphic Novels" matched nothing
-// because there was no Graphic Novel rule, and The Odyssey matched nothing
-// because there was no Classics rule — even though both genres exist in
-// public.genres with hundreds of books already filed under them.
-//
-// Order no longer decides the outcome (see inferGenre) — weight does.
-const GENRE_RULES = [
-  // ── Specific subgenres ───────────────────────────────────────────────────
-  ['Southern & American Gothic',  /southern gothic/i,                                                        SPECIFIC],
-  ['Folk Horror',                 /folk horror|folklore horror|rural horror/i,                               SPECIFIC],
-  ['Body Horror & Transgressive', /body horror|transgressive fiction|splatterpunk/i,                         SPECIFIC],
-  ['Feminist & Sapphic Gothic',   /sapphic|lesbian fiction|feminist gothic|queer gothic/i,                   SPECIFIC],
-  ['Cozy Fantasy',                /coz[yi]e? fantasy|cosy fantasy|low[- ]stakes fantasy/i,                   SPECIFIC],
-  ['Vampires',                    /vampire/i,                                                                SPECIFIC],
-  ['Witches',                     /witch(es|craft)?\b/i,                                                     SPECIFIC],
-  ['Zombies',                     /zombie|undead/i,                                                          SPECIFIC],
-  ['Slasher',                     /slasher|final girl/i,                                                     SPECIFIC],
-  ['Cyberpunk',                   /cyberpunk/i,                                                              SPECIFIC],
-  ['Arthurian',                   /arthurian|king arthur|camelot|holy grail/i,                               SPECIFIC],
-  ['Martial Arts',                /martial arts|wuxia|samurai|kung fu/i,                                     SPECIFIC],
-  ['Epic Poetry',                 /epic poetry|epic poem/i,                                                  SPECIFIC],
-  ['Fairy Tale Retelling',        /fairy tale|fairy tales|retelling/i,                                       SPECIFIC],
-  ['Magical Realism',             /magical realism|latin american|colombian fiction|argentine literature/i,  SPECIFIC],
-  ['Superhero Epic',              /superhero/i,                                                              SPECIFIC],
-  ['Japanese & East Asian Horror',/japanese horror|j-horror|korean horror/i,                                 SPECIFIC],
-  ['East Asian Literary Fiction', /japanese (literature|fiction)|korean (literature|fiction)|chinese (literature|fiction)|east asian literature/i, SPECIFIC],
-  ['Parenting & Motherhood',      /parenting|motherhood|mothers and daughters|new mothers/i,                 SPECIFIC],
-  ['Mythological Fantasy',        /mythology|greek myth|norse myth|egyptian myth/i,                          SPECIFIC],
-  ['Children\'s Picture Book',    /picture book/i,                                                           SPECIFIC],
-  ['Smutty Corner',               /erotica|erotic fiction/i,                                                 SPECIFIC],
-
-  // ── Real genres with some overlap ────────────────────────────────────────
-  ['Classic & Older Gothic',      /classic gothic|victorian gothic|gothic revival/i,                         MID],
-  ['Gothic & Haunted Houses',     /gothic|haunted house|haunted houses|ghost stor(y|ies)/i,                   MID],
-  ['Dark & Epic Fantasy',         /dark fantasy|epic fantasy|high fantasy|grimdark|sword and sorcery|fantasy[ ,\/-]+epic/i, MID],
-  ['Historical Fantasy',          /historical fantasy/i,                                                     MID],
-  ['Fantasy Romance',             /fantasy romance|romantasy|paranormal romance/i,                           MID],
-  ['Historical Romance',          /historical romance|regency romance/i,                                     MID],
-  ['LGBTQ+ Romance',              /lgbt|queer romance|gay romance|m\/m romance/i,                            MID],
-  ['Graphic Novel',               /graphic novel|comic book|comics|manga|sequential art/i,                    MID],
-  ['Mystery',                     /mystery|detective|whodunit|amateur sleuth|crime fiction/i,                MID],
-  ['Psychological Fiction',       /psychological (fiction|thriller|suspense)|unreliable narrator/i,          MID],
-  ['Philosophical Fiction',       /philosophical fiction|existential/i,                                      MID],
-  ['Experimental & Avant-Garde',  /experimental fiction|avant-garde|postmodern/i,                            MID],
-  ['Coming of Age',               /coming of age|bildungsroman/i,                                            MID],
-  ['Historical Fiction',          /historical fiction|historical novel/i,                                    MID],
-  ['Biography',                   /biography|autobiography|memoir|personal memoirs/i,                        MID],
-  ['Comedy & Wit',                /humor|humour|comedy|satire|comic novel/i,                                 MID],
-  ['Social Commentary',           /social commentary|social problem|social science/i,                        MID],
-  ['International Fiction',       /translations into english|african literature|russian literature|german literature|french fiction|indian fiction/i, MID],
-  ['Intimate Fiction',            /sexuality|desire|sensual/i,                                               MID],
-
-  // ── Umbrellas. Only win when nothing sharper matched. ────────────────────
-  // 'translations' removed in v0.60.3: a translated book is not a classic, and
-  // Open Library tags translations heavily. It was quietly scoring on every
-  // work that had ever been published in another language.
-  ['Classics',                    /classics|classic literature|classic fiction|early works to 1800/i,       BROAD],
-  ['Horror',                      /horror/i,                                                                 BROAD],
-  ['Fantasy',                     /fantasy/i,                                                                BROAD],
-  ['Sci-Fi & Speculative',        /science fiction|speculative fiction|dystopia|space opera|time travel/i,   BROAD],
-  ['Romance',                     /romance|love stor(y|ies)/i,                                               BROAD],
-  ['Literary Fiction',            /literary fiction|literary collections/i,                                  BROAD],
-  // Anchored, and deliberately narrow.
-  //
-  // This rule previously matched bare `history`, `psychology` and `philosophy`
-  // anywhere in a subject, which is close to catastrophic on Open Library data
-  // — it tags literary criticism with exactly those words. "The Importance of
-  // Being Earnest" was assigned Non-Fiction on the strength of "Identity
-  // (Psychology)" and "History and criticism", and every classic carrying
-  // "History and criticism" would have gone the same way.
-  //
-  // Rules are tested per-subject, not against a joined blob, so anchoring with
-  // ^...$ means "the subject IS Psychology", not "the subject mentions
-  // psychology somewhere". That keeps a genuine non-fiction tag working while
-  // dropping the criticism metadata.
-  ['Non-Fiction',                 /\bnon-?fiction\b|self-help|true crime|popular science|^(psychology|history|philosophy|economics|sociology)$/i, BROAD],
-  ['Contemporary Fiction',        /contemporary fiction|contemporary/i,                                      BROAD],
-];
-
-// Minimum score before a genre is assigned at all. One BROAD hit deep in a long
-// subject list scores 1 and is not enough — that is how "Fiction" alone used to
-// drag books into a genre they had no business in.
-const MIN_GENRE_SCORE = 3;
-
-// Scored, not first-match-wins (v0.60.3).
-//
-// The old version joined every subject into one blob and returned the first
-// rule that matched anywhere in it. Two things went wrong with that.
-//
-// Open Library returns long lists — 30+ subjects is normal — so almost any book
-// eventually matched something, and what it matched was decided by RULE ORDER
-// rather than by fit. A single incidental subject buried at position 24 could
-// outrank the six subjects at the top that all said something else.
-//
-// And because order decided everything, a broad rule sitting above a specific
-// one silently stole its books.
-//
-// Now every subject is tested against every rule and the genre with the highest
-// total wins. Two things carry weight: how specific the rule is, and how near
-// the top of the list the subject appeared — Open Library orders roughly by
-// prominence, so early subjects are better evidence. A genre needs to clear
-// MIN_GENRE_SCORE to be assigned at all, so weak single hits still yield null
-// and the book goes to genre-unmatched.csv instead of being mislabelled.
-// Shared by inferGenre and explainGenre so the explanation can never drift from
-// the decision.
-//
-// Ties are common and were previously broken by Map insertion order, i.e. by
-// where the rule happened to sit in the array — Poe scored Horror=12 and
-// Mystery=12, Spinning Silver scored Fairy Tale Retelling=9 and Mythological
-// Fantasy=9. Now: highest score, then the more specific rule, then whichever
-// matched nearer the top of the subject list. Fully determined, and by
-// something meaningful rather than by array position.
-function rankGenres(subjects) {
-  const acc = new Map();
-  subjects.forEach((subject, i) => {
-    const positionWeight = i < 6 ? 3 : i < 15 ? 2 : 1;
-    const low = String(subject).toLowerCase();
-    for (const [genre, pattern, specificity] of GENRE_RULES) {
-      if (!pattern.test(low)) continue;
-      const prev = acc.get(genre) || { score: 0, spec: 0, firstPos: Infinity, hits: [] };
-      prev.score += positionWeight * specificity;
-      prev.spec = Math.max(prev.spec, specificity);
-      prev.firstPos = Math.min(prev.firstPos, i);
-      if (prev.hits.length < 3) prev.hits.push(subject);
-      acc.set(genre, prev);
-    }
-  });
-
-  // Tie-break order matters and is not obvious.
-  //
-  // Position first, specificity second. Ranking by specificity first looked
-  // principled and was wrong on real data: Poe scored Horror=12 and Mystery=12,
-  // and "more specific rule wins" handed it to Mystery even though the very
-  // first subject was "American Horror tales". Open Library orders subjects
-  // roughly by prominence, so the genre that appears EARLIEST is the better
-  // signal of what the book actually is.
-  return [...acc.entries()].sort((a, b) =>
-    b[1].score - a[1].score ||
-    a[1].firstPos - b[1].firstPos ||
-    b[1].spec - a[1].spec ||
-    a[0].localeCompare(b[0])
-  );
-}
-
-function inferGenre(subjects) {
-  if (!subjects || subjects.length === 0) return null;
-  const ranked = rankGenres(subjects);
-  if (ranked.length === 0) return null;
-  const [genre, { score }] = ranked[0];
-  return score >= MIN_GENRE_SCORE ? genre : null;
-}
-
-// Used by --verbose so a surprising assignment can be understood without
-// re-deriving it by hand.
-function explainGenre(subjects) {
-  return rankGenres(subjects)
-    .slice(0, 3)
-    .map(([g, v]) => `${g}=${v.score} (${v.hits.join('; ')})`);
-}
-
+// Everything about the scoring, the weights and why it is not first-match-wins
+// is documented there.
 // ── Source 1: Hardcover ──────────────────────────────────────────────────────
 // Best source by a distance: it is where the crawl already gets descriptions,
 // so its coverage of this catalog is high and its text is already the house
@@ -529,14 +378,25 @@ async function fetchMetadata(book, needDesc, needGenre) {
 //
 // Checked before any writes. Reported, not enforced: a stale rule should not
 // stop descriptions being backfilled, which is the larger half of this job.
-async function warnOnGenreDrift() {
-  const { data, error } = await supabase.from('genres').select('name');
+// One query, three uses: ids for linking, names for the drift check, and
+// parent_id for the umbrella map.
+async function loadGenreCatalog() {
+  const { data, error } = await supabase.from('genres').select('id, name, parent_id');
   if (error) {
-    console.warn('[metadataBackfill] could not verify genres table:', error.message);
-    return;
+    console.warn('[metadataBackfill] could not read genres table:', error.message);
+    return { idByName: new Map(), parentByName: new Map() };
   }
-  const known = new Set((data || []).map((r) => r.name));
-  const missing = [...new Set(GENRE_RULES.map(([name]) => name))].filter((n) => !known.has(n));
+  const rows = data || [];
+  const idByName = new Map(rows.map((r) => [r.name, r.id]));
+  const nameById = new Map(rows.map((r) => [r.id, r.name]));
+  // childName -> parentName. Built from the database rather than a second copy
+  // of the hierarchy here, which would disagree with it inside a month.
+  const parentByName = new Map(
+    rows.filter((r) => r.parent_id && nameById.has(r.parent_id))
+        .map((r) => [r.name, nameById.get(r.parent_id)])
+  );
+  const known = new Set(rows.map((r) => r.name));
+  const missing = findGenreDrift(known);
   if (missing.length) {
     console.warn(
       `\n[metadataBackfill] GENRE DRIFT — ${missing.length} rule target(s) absent from ` +
@@ -545,6 +405,7 @@ async function warnOnGenreDrift() {
       `the rows to public.genres.\n`
     );
   }
+  return { idByName, parentByName };
 }
 
 // -- Main ---------------------------------------------------------------------
@@ -554,14 +415,15 @@ async function main() {
     `limit=${LIMIT ?? 'none'} hardcover=${HARDCOVER_TOKEN ? 'yes' : 'NO'}`
   );
 
-  if (WANT_GENRE) await warnOnGenreDrift();
+  const { idByName: genreIdByName, parentByName } =
+    WANT_GENRE ? await loadGenreCatalog() : { idByName: new Map(), parentByName: new Map() };
 
   // Only books that can actually be shown. A book with no cover never reaches
   // The Stacks, so its description is not what is stopping anyone — covers are
   // coverBackfill's job and should run first.
   let query = supabase
     .from('books')
-    .select('id, title, author, description, genre, metadata_checked_at, metadata_attempts')
+    .select('id, title, author, description, genre, metadata_checked_at, metadata_attempts, subjects_fetched_at')
     .not('cover_url', 'is', null)
     .neq('status', 'flagged')
     // Exhausted books are excluded server-side so they never occupy a row of
@@ -605,6 +467,7 @@ async function main() {
 
   let descFilled = 0;
   let genreFilled = 0;
+  let genreLinks = 0;
   let untouched = 0;
   const unmatched = [];
 
@@ -626,11 +489,19 @@ async function main() {
     if (needDesc && description) patch.description = description;
 
     let genre = null;
+    let extraGenres = [];
     if (needGenre) {
       genre = inferGenre(subjects);
       if (subjects.length) vlog(`genre scores: ${explainGenre(subjects).join(' | ') || '(no rule matched)'}`);
       if (genre) {
         patch.genre = genre;
+        // books.genre holds the single top pick because it is a scalar column
+        // other code still reads; book_genres gets the full set.
+        // Specifics first, then their umbrellas — withUmbrellas appends, so if
+        // the cap bites it drops an umbrella rather than the precise genre that
+        // earned the book its place.
+        extraGenres = withUmbrellas(inferAllGenres(subjects), parentByName, MAX_GENRES_PER_BOOK);
+        if (extraGenres.length > 1) vlog(`also linking: ${extraGenres.slice(1).join(', ')}`);
       } else if (subjects.length) {
         unmatched.push({ id: book.id, title: book.title, author: book.author, subjects });
       }
@@ -643,9 +514,17 @@ async function main() {
       // for a while. This is the whole point of the change: without the write,
       // the next run re-selects this book on identical criteria.
       if (!DRY_RUN) {
+        // Subjects are stored even here. "Asked, and they had nothing" is a
+        // fact worth keeping — an empty array with a timestamp stops the
+        // re-genre pass fetching this book again for no reason.
         const { error: markErr } = await supabase
           .from('books')
-          .update({ metadata_checked_at: new Date().toISOString(), metadata_attempts: attempts })
+          .update({
+            metadata_checked_at: new Date().toISOString(),
+            metadata_attempts: attempts,
+            source_subjects: subjects || [],
+            subjects_fetched_at: new Date().toISOString(),
+          })
           .eq('id', book.id);
         if (markErr) vlog(`could not record lookup attempt: ${markErr.message}`);
       }
@@ -664,16 +543,26 @@ async function main() {
       patch.metadata_checked_at = null;
     }
 
+    // Cache what the sources said. This is the row that lets a future rule
+    // change be re-applied offline instead of re-fetching the catalogue, and it
+    // is the audit trail when a book lands somewhere surprising.
+    if (subjects && subjects.length) {
+      patch.source_subjects = subjects;
+      patch.subjects_fetched_at = new Date().toISOString();
+    }
+
     // The retry bookkeeping is not content; showing it in the per-book line
     // would make every row read as if two extra fields had been filled in.
-    const shown = Object.keys(patch)
-      .filter((k) => k !== 'metadata_attempts' && k !== 'metadata_checked_at')
-      .join(', ');
+    const BOOKKEEPING = new Set([
+      'metadata_attempts', 'metadata_checked_at', 'source_subjects', 'subjects_fetched_at',
+    ]);
+    const shown = Object.keys(patch).filter((k) => !BOOKKEEPING.has(k)).join(', ');
 
     if (DRY_RUN) {
       process.stdout.write(
         `    WOULD SET ${shown}` +
         `${patch.genre ? ` (genre=${patch.genre})` : ''}` +
+        `${extraGenres.length > 1 ? ` (+${extraGenres.length - 1} more genre link(s))` : ''}` +
         `${descriptionFrom ? ` (desc from ${descriptionFrom})` : ''}\n`
       );
     } else {
@@ -681,6 +570,30 @@ async function main() {
       if (upErr) {
         process.stdout.write(`    update failed: ${upErr.message}\n`);
         continue;
+      }
+
+      // Link the full genre set into book_genres — the many-to-many the app
+      // actually reads (genresByBookId). books.genre above is the legacy scalar
+      // and holds only the top pick.
+      //
+      // `assigned_by_source` is the column name, NOT `source`. oracleBatch got
+      // this wrong and every one of its genre links failed silently for
+      // months, because the result was never checked. Both are checked now.
+      if (extraGenres.length > 0) {
+        const links = extraGenres
+          .map((name) => genreIdByName.get(name))
+          .filter(Boolean)
+          .map((genre_id) => ({ book_id: book.id, genre_id, assigned_by_source: 'oracle' }));
+        if (links.length) {
+          const { error: linkErr } = await supabase
+            .from('book_genres')
+            .upsert(links, { onConflict: 'book_id,genre_id', ignoreDuplicates: true });
+          if (linkErr) {
+            process.stdout.write(`    genre link failed: ${linkErr.message}\n`);
+          } else {
+            genreLinks += links.length;
+          }
+        }
       }
       process.stdout.write(
         `    set ${shown}` +
@@ -715,7 +628,7 @@ async function main() {
   console.log(
     `\n[metadataBackfill] descriptions=${descFilled} genres=${genreFilled} ` +
     `unmatchedGenre=${unmatched.length} nothingFound=${untouched} ` +
-    `skippedExhausted=${skippedExhausted}` +
+    `genreLinks=${genreLinks} skippedExhausted=${skippedExhausted}` +
     `${DRY_RUN ? ' (DRY RUN — nothing written)' : ''}`
   );
 }

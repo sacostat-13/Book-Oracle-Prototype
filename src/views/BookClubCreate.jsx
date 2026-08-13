@@ -5,10 +5,10 @@ import { useState } from 'react';
 import { useData } from '../lib/DataContext';
 import { useRouter } from '../lib/RouterContext';
 import { useT, useTNode } from '../lib/I18nContext';
-
-// v0.38 onboarding mood taxonomy — reused here so clubs can be tagged and
-// later filtered in the directory by the same vibe chips as onboarding.
-const MOODS = ['comfort', 'challenge', 'escapism', 'mind-bending', 'character-driven', 'atmospheric', 'fast-paced', 'short-read'];
+// Was a local copy of the v0.38 onboarding taxonomy. Lifted to lib/moods.js
+// when Curated Lists became the third surface to need it — three hand-kept
+// copies of the same list is how they stop matching.
+import { MOODS, moodTitleKey } from '../lib/moods';
 
 export default function BookClubCreate() {
   const { createClub, state } = useData();
@@ -188,7 +188,7 @@ export default function BookClubCreate() {
                       key={id} type="button" onClick={() => toggleMood(id)}
                       className={`chip${selected ? ' chip--active' : ''}`}
                     >
-                      {t(`onboarding.moods.${id}.title`)}
+                      {t(moodTitleKey(id))}
                     </button>
                   );
                 })}

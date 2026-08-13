@@ -100,3 +100,59 @@ $ro-shadow-light: 0 16px 36px rgba(90, 70, 30, 0.18);
 @mixin ro-down($name) {
   @media (max-width: (map.get($ro-bp, $name) - 1px)) { @content; }
 }
+
+// ── Shelf marking (v0.63) ────────────────────────────────────────────────────
+//
+// "This book is already on one of your shelves", drawn on a cover.
+//
+// Lifted out of pages/_stacks.scss so Curated Lists can reuse it rather than
+// copy the declarations. That matters more than the saved lines: if the two
+// drift, the colour that means "read" in The Stacks means something vaguely
+// similar but not identical on a list, and a signal that is only mostly
+// consistent is worse than no signal — the reader stops trusting it.
+//
+// The treatment is deliberately redundant, and the reasoning from _stacks.scss
+// carries over: the target is scanning a wall of covers at speed, and any one
+// channel can be lost against a particular piece of art. Ring, colour wash and
+// (at the call site) a corner badge. All three at once cannot disappear.
+//
+// Drawn as pseudo-elements rather than `outline` or an inset shadow, because
+// the cover image is `object-fit: cover` at 100%×100% and paints over the
+// parent's own box decoration. An ::after layered above the image cannot be.
+//
+// The caller sets `color:` — everything here keys off currentColor.
+@mixin ro-shelf-marked($radius: 12px) {
+  position: relative;
+
+  // Colour wash. At a distance this is what registers first, before any ring
+  // or badge is legible.
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    border-radius: $radius;
+    background: currentColor;
+    opacity: .18;
+    pointer-events: none;
+  }
+
+  // Ring, above the wash.
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    border-radius: $radius;
+    border: 3px solid currentColor;
+    pointer-events: none;
+    // Inner hairline keeps the ring legible against a cover that happens to be
+    // the same colour as the ring itself.
+    box-shadow: inset 0 0 0 1px rgb(0 0 0 / .45);
+  }
+}
+
+// The two shelf colours, named once. `--ro-forest` is read, `--ro-gold` is
+// wanted; both are established by The Stacks and must not be re-picked.
+@mixin ro-shelf-read()     { color: var(--ro-forest); }
+@mixin ro-shelf-wishlist() { color: var(--ro-gold); }

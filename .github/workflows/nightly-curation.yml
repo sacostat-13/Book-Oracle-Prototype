@@ -192,6 +192,7 @@ jobs:
           PROCESSED=$(num curate.log '(?<=Processed:)\s*[0-9]+' | tr -d ' ')
           FAILED=$(num curate.log '(?<=Failed:)\s*[0-9]+' | tr -d ' ')
           SKIPPED=$(num metadata.log '(?<=skippedExhausted=)[0-9]+')
+          LINKS=$(num metadata.log '(?<=genreLinks=)[0-9]+')
           COST=$(grep -oP '(?<=Actual cost: ~\$)[0-9.]+' curate.log 2>/dev/null | tail -1 | one)
           COST=${COST:-0.0000}
 
@@ -203,7 +204,7 @@ jobs:
           BATCH_ERRORS=$(printf '%s' "${BATCH_ERRORS:-0}" | one)
           BATCH_ERRORS=${BATCH_ERRORS:-0}
 
-          for k in DESCS GENRES NOTHING SKIPPED PROCESSED FAILED COST BATCH_ERRORS; do
+          for k in DESCS GENRES NOTHING SKIPPED LINKS PROCESSED FAILED COST BATCH_ERRORS; do
             v=$(printf '%s' "${!k}" | one)
             echo "${k,,}=${v:-0}" >> "$GITHUB_OUTPUT"
           done
@@ -229,6 +230,7 @@ jobs:
             echo "| Failed batches | $BATCH_ERRORS |"
             echo "| Descriptions filled (free) | $DESCS |"
             echo "| Genres filled (free) | $GENRES |"
+            echo "| Genre links written (free) | $LINKS |"
             echo "| Looked up, nothing found (new) | $NOTHING |"
             echo "| Skipped — already exhausted | $SKIPPED |"
             echo ""

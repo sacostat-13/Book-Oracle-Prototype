@@ -92,3 +92,43 @@
     animation: ov-sheet .28s ease;
   }
 }
+
+// ── Tall forms inside a modal (v0.63) ────────────────────────────────────────
+//
+// `.modal` scrolls as a whole, which is fine for a confirm dialog and wrong for
+// a form: on a phone the Create button ends up below fifty chips, so the reader
+// has to scroll past the entire genre taxonomy to find out how to submit.
+//
+// `.modal--scroll` splits it — head and actions stay put, only the body moves.
+// `min-height: 0` on the body is what actually makes it scroll: a flex child
+// defaults to `min-height: auto`, so without it the body refuses to shrink
+// below its content and the overflow leaks out of the modal instead.
+.modal--scroll {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden; // the body owns the scrolling now
+  padding: 0;       // head/body/actions each set their own
+
+  .modal__body {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .modal__actions {
+    flex-shrink: 0;
+    background: var(--ro-surface);
+  }
+}
+
+// Nothing inside a modal may force it wider than the viewport.
+//
+// Flex items default to `min-width: auto`, which means "never shrink below your
+// content". One unbreakable child — a `white-space: nowrap` chip with a long
+// genre name — is then enough to push the whole column past the modal edge,
+// which is exactly what happened to the create-list form on a 320px screen.
+.modal__body > *,
+.lists-modal-form > * {
+  min-width: 0;
+}

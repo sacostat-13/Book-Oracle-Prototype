@@ -47,6 +47,8 @@ import PlanView from './views/PlanView';
 import BookPage from './views/BookPage';
 import ListView from './views/ListView';
 import Lists from './views/Lists';
+import CuratedLists from './views/CuratedLists';
+import ListDirectory from './views/ListDirectory';
 import ListDetail from './views/ListDetail';
 import SeriesPage from './views/SeriesPage';
 // v0.28: book clubs
@@ -96,7 +98,9 @@ export default function App() {
     'oracle-ask': { title: 'Ask the Oracle — The Books Oracle' },
     'plan-create': { title: 'New Reading Plan — The Books Oracle' },
     'plan-list': { title: 'Reading Plans — The Books Oracle' },
-    lists: { title: 'My Lists — The Books Oracle' },
+    lists: { title: 'Curated Lists — The Books Oracle' },
+    'lists-mine': { title: 'My Lists — The Books Oracle' },
+    'lists-discover': { title: 'Discover Curated Lists — The Books Oracle', description: 'Reading lists made by other readers — browse by genre and mood, and follow the ones worth keeping.' },
     'book-clubs': { title: 'Book Clubs — The Books Oracle' },
     'club-directory': { title: 'Find a Book Club — The Books Oracle' },
     'book-club-create': { title: 'Start a Book Club — The Books Oracle' },
@@ -193,7 +197,12 @@ export default function App() {
   // ── Public routes — render immediately, no auth or data required ────────────
   // These pages read content from the URL snapshot and progressively enhance
   // with auth-dependent actions once the user is signed in and data is loaded.
-  const PUBLIC_ROUTES = new Set(['book-page', 'list-view', 'plan-view', 'join-club', 'privacy', 'terms', 'refund', 'not-found', 'sitemap']);
+  // v0.63 — 'lists-discover' joins the public set. Curated lists exist to be
+  // promoted off-site, so the directory is a landing page as much as an
+  // internal one; gating it would put a wall in front of the first thing a
+  // visitor from social media sees. search_public_lists is anon-callable and
+  // returns caller_follows = false for them.
+  const PUBLIC_ROUTES = new Set(['book-page', 'list-view', 'plan-view', 'join-club', 'privacy', 'terms', 'refund', 'not-found', 'sitemap', 'lists-discover']);
   if (PUBLIC_ROUTES.has(route.name)) {
     // During the brief auth check (~100ms), treat as loading not signed-out.
     // This prevents the sign-in prompt flashing before the session is confirmed.
@@ -223,6 +232,18 @@ export default function App() {
           <div className="container">
             <ListView isAuthed={isAuthed} dataReady={dataReady} />
           </div>
+          <Toast />
+        </div>
+      );
+    }
+    if (route.name === 'lists-discover') {
+      return (
+        <div className="app">
+          {isAuthed && <Nav onPreviewBook={setPreviewBook} />}
+          <div className="container">
+            <ListDirectory />
+          </div>
+          {!isAuthed && <LandingFooter />}
           <Toast />
         </div>
       );
@@ -366,7 +387,10 @@ export default function App() {
     // for shared links without auth), so it never reaches this switch.
     case 'book-page': page = <BookPage previewBookRef={previewBookRef} />; break;
     case 'series-page': page = <SeriesPage />; break;
-    case 'lists': page = <Lists />; break;
+    // v0.63 — `lists` is the hub; the old management view moved to lists-mine.
+    case 'lists': page = <CuratedLists />; break;
+    case 'lists-mine': page = <Lists />; break;
+    case 'lists-discover': page = <ListDirectory />; break;
     case 'list-detail': page = <ListDetail />; break;
     case 'list-view': page = <ListView />; break;
     // v0.28: book clubs

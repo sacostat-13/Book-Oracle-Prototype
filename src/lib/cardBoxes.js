@@ -38,6 +38,12 @@ export const CARD_BOXES = {
   "moment-book": { x: 309, y: 255, w: 460, h: 760 },
   "moment-goal": { x: 310, y: 263, w: 459, h: 775 },
   "moment-milestone": { x: 330, y: 305, w: 418, h: 677 },
+  // Same frame image as moment-milestone, so necessarily the same opening.
+  // Written by hand for now; the generator measures the opening from the frame
+  // and will arrive at this value on its own next run. Without an entry the
+  // card falls back to DEFAULT_BOX, which is measured for a different frame and
+  // would put the headline over the ivy.
+  "generic": { x: 330, y: 305, w: 418, h: 677 },
   "moment-plan": { x: 270, y: 204, w: 538, h: 844 },
   "moment-series": { x: 324, y: 295, w: 432, h: 725 },
   "mystery": { x: 285, y: 245, w: 509, h: 750 },

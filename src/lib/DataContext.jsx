@@ -14,6 +14,7 @@ import {
   computeBackfillAccomplishments,
 } from './accomplishments';
 import { CURRENT_VERSION } from './releases';
+import { knownMoods } from './moods';
 import { resolveRecommendation, isOracleSuggested } from './oracleProvenance';
 
 const LOCAL_KEY    = 'wishlist_oracle_state_v2';
@@ -415,7 +416,10 @@ async function loadFromSupabase(userId) {
   try {
     listsRes = await supabase
       .from('lists')
-      .select('*, list_items(position, note, added_at, book:books(*, position_in_series, series:series(*)))')
+      // v0.63: genres and moods ride along on the same request. They are tiny
+      // join tables and the alternative is two more round-trips on every load
+      // to render chips the list editor needs anyway.
+      .select('*, list_items(position, note, added_at, book:books(*, position_in_series, series:series(*))), list_genres(genre_id), list_moods(mood)')
       .eq('user_id', userId)
       .order('created_at', { ascending: false });
   } catch (e) {
@@ -472,6 +476,10 @@ async function loadFromSupabase(userId) {
       .sort((a, b) => a.position - b.position)
       .map((li) => li.book ? { ...bookRowToClient(li.book), _listNote: li.note, _listPos: li.position } : null)
       .filter(Boolean),
+    // Ids, not names: the editor drives a picker keyed on genre id, and names
+    // are resolvable from `state.genres` wherever they need to be displayed.
+    genreIds: (l.list_genres || []).map((g) => g.genre_id),
+    moods: knownMoods((l.list_moods || []).map((m) => m.mood)),
   }));
 
   const currentlyReading = (currentlyReadingRes.data || [])
@@ -2361,6 +2369,120 @@ export function DataProvider({ children }) {
     }));
   }, [user]);
 
+  // ── v0.63: Curated Lists — genres, moods, follows ─────────────────────────
+
+  // Replace-in-full rather than diff.
+  //
+  // A list carries a handful of genres, so computing an add-set and a
+  // remove-set costs more code than it saves requests, and gets the edge cases
+  // (last genre removed, all genres swapped) wrong more often. Delete-then-
+  // insert is one round-trip each and is trivially correct.
+  const setListGenres = useCallback(async (listId, genreIds) => {
+    if (!user) return;
+    const ids = [...new Set(genreIds || [])];
+    await supabase.from('list_genres').delete().eq('list_id', listId);
+    if (ids.length) {
+      const { error } = await supabase
+        .from('list_genres')
+        .insert(ids.map((genre_id) => ({ list_id: listId, genre_id })));
+      if (error) { console.error('setListGenres failed', error); return; }
+    }
+    setState((s) => ({
+      ...s,
+      lists: (s.lists || []).map((l) => l.id === listId ? { ...l, genreIds: ids } : l),
+    }));
+  }, [user]);
+
+  const setListMoods = useCallback(async (listId, moods) => {
+    if (!user) return;
+    // Filtered against the taxonomy before it reaches the database: `mood` is a
+    // plain text column, so nothing else stops a retired id being stored and
+    // later rendering as a raw i18n key on every card.
+    const vals = knownMoods([...new Set(moods || [])]);
+    await supabase.from('list_moods').delete().eq('list_id', listId);
+    if (vals.length) {
+      const { error } = await supabase
+        .from('list_moods')
+        .insert(vals.map((mood) => ({ list_id: listId, mood })));
+      if (error) { console.error('setListMoods failed', error); return; }
+    }
+    setState((s) => ({
+      ...s,
+      lists: (s.lists || []).map((l) => l.id === listId ? { ...l, moods: vals } : l),
+    }));
+  }, [user]);
+
+  // Follows go through RPCs, not table writes: follow_list enforces "public
+  // only" and "not your own" server-side, where the UI cannot be the only
+  // thing standing between a private list and a follower who can no longer
+  // read it.
+  const followList = useCallback(async (listId) => {
+    if (!user) return false;
+    const { data, error } = await supabase.rpc('follow_list', { p_list_id: listId });
+    if (error) { console.error('followList failed', error); return false; }
+    return !!data;
+  }, [user]);
+
+  const unfollowList = useCallback(async (listId) => {
+    if (!user) return false;
+    const { error } = await supabase.rpc('unfollow_list', { p_list_id: listId });
+    if (error) { console.error('unfollowList failed', error); return false; }
+    return true;
+  }, [user]);
+
+  const markListSeen = useCallback(async (listId) => {
+    if (!user) return;
+    await supabase.rpc('mark_list_seen', { p_list_id: listId });
+  }, [user]);
+
+  const fetchFollowedLists = useCallback(async () => {
+    if (!user) return [];
+    const { data, error } = await supabase.rpc('get_followed_lists');
+    if (error) { console.error('get_followed_lists failed', error); return []; }
+    return (data || []).map((r) => ({
+      id: r.id,
+      title: r.title,
+      description: r.description,
+      ownerUsername: r.owner_username,
+      ownerDisplay: r.owner_display,
+      ownerAvatar: r.owner_avatar,
+      bookCount: Number(r.book_count) || 0,
+      followerCount: Number(r.follower_count) || 0,
+      coverUrls: r.cover_urls || [],
+      hasUpdates: !!r.has_updates,
+    }));
+  }, [user]);
+
+  // Deliberately NOT gated on `user`. Unlike the club directory, Discover is a
+  // public landing surface — a list posted on social has to render for someone
+  // who has never signed in. `caller_follows` comes back false for them.
+  const searchPublicLists = useCallback(async ({
+    query = null, genreIds = null, moods = null, sort = 'followers',
+  } = {}) => {
+    const { data, error } = await supabase.rpc('search_public_lists', {
+      p_query: query || null,
+      p_genre_ids: genreIds && genreIds.length ? genreIds : null,
+      p_moods: moods && moods.length ? moods : null,
+      p_sort: sort,
+    });
+    if (error) { console.error('searchPublicLists failed', error); return []; }
+    return (data || []).map((r) => ({
+      id: r.id,
+      title: r.title,
+      description: r.description,
+      createdAt: r.created_at,
+      ownerUsername: r.owner_username,
+      ownerDisplay: r.owner_display,
+      ownerAvatar: r.owner_avatar,
+      bookCount: Number(r.book_count) || 0,
+      followerCount: Number(r.follower_count) || 0,
+      genreNames: r.genre_names || [],
+      moods: knownMoods(r.moods || []),
+      coverUrls: r.cover_urls || [],
+      callerFollows: !!r.caller_follows,
+    }));
+  }, []);
+
   // ── v0.28: Club mutations ─────────────────────────────────────────────────
 
   const createClub = useCallback(async ({
@@ -2759,6 +2881,13 @@ export function DataProvider({ children }) {
     deleteList,
     addBookToList,
     removeBookFromList,
+    setListGenres,
+    setListMoods,
+    followList,
+    unfollowList,
+    markListSeen,
+    fetchFollowedLists,
+    searchPublicLists,
     // v0.28: club mutations
     createClub,
     updateClub,

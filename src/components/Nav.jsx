@@ -179,7 +179,8 @@ export default function Nav({ onPreviewBook, guestMode = false }) {
 
   // Active-state helpers
   const booksActive = ['wishlist', 'library', 'currently-reading', 'read-next', 'plan-create', 'plan-list', 'plan-view'].includes(route.name);
-  const socialActive = ['lists', 'book-clubs', 'book-club-create', 'book-club-detail', 'club-directory',
+  const socialActive = ['lists', 'lists-mine', 'lists-discover', 'list-detail',
+    'book-clubs', 'book-club-create', 'book-club-detail', 'club-directory',
     'session-create', 'session-detail', 'friends', 'friend-profile'].includes(route.name);
 
   // User display
@@ -269,7 +270,7 @@ export default function Nav({ onPreviewBook, guestMode = false }) {
 
             {socialOpen && (
               <div className="nav-group__menu">
-                <button className={`nav-group__item${route.name === 'lists' ? ' is-active' : ''}`} onClick={() => nav('lists')}>
+                <button className={`nav-group__item${['lists', 'lists-mine', 'lists-discover', 'list-detail'].includes(route.name) ? ' is-active' : ''}`} onClick={() => nav('lists')}>
                   {t('nav.lists')}
                   {listsCount > 0 && <span className="nav-group__badge">{listsCount}</span>}
                 </button>

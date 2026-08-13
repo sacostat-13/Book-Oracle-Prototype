@@ -1389,3 +1389,206 @@
   font-size: 11px;
   margin-left: 6px;
 }
+
+// ── Curated Lists — tag editor (v0.63) ───────────────────────────────────────
+// Genre and mood chips on a public list. Reuses `.chip` and
+// `.club-form__genre-row` from the club form on purpose: this is the same
+// action in a different place, and it should not look like a new one.
+.list-meta {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ro-space-4);
+  margin: var(--ro-space-4) 0 var(--ro-space-6);
+  padding: var(--ro-space-4);
+  border: 1px solid var(--ro-border);
+  border-radius: var(--ro-radius-lg);
+  background: var(--ro-surface-2);
+}
+
+.list-meta__field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.list-meta__hint {
+  margin: 0;
+  font-family: var(--ro-font-body);
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--ro-muted);
+}
+
+// Sits inline at the end of the chip row, so it reads as one more chip-shaped
+// affordance rather than a separate control.
+.list-meta__more {
+  align-self: center;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+// Read-only tag row shown when the editor is closed.
+.list-meta__summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 var(--ro-space-5);
+}
+
+// ── Shelf badges on list books (v0.63) ───────────────────────────────────────
+//
+// "You have read this" / "This is on your wishlist", answered for the VIEWER on
+// somebody else's curated list. The report that prompted it: opening a list and
+// finding books you have already read, when the point of browsing a list is
+// finding ones you have not.
+//
+// Ring and wash come from tokens.ro-shelf-marked, the same mixin The Stacks
+// uses, so "read" is the same forest green in both places. The badge below is
+// the third channel — see the mixin's note on why the signal is redundant.
+.lv-row__cover {
+  &.is-library  { @include tokens.ro-shelf-marked(3px); @include tokens.ro-shelf-read; }
+  &.is-wishlist { @include tokens.ro-shelf-marked(3px); @include tokens.ro-shelf-wishlist; }
+}
+
+.shelf-badge {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 2px 7px;
+  border-radius: var(--ro-radius-pill);
+  font-family: var(--ro-font-mono);
+  font-size: 9px;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.shelf-badge--library  { background: var(--ro-forest); color: #fff; }
+.shelf-badge--wishlist { background: var(--ro-gold); color: var(--ro-gold-on); }
+
+// Grid variant of the shelf marking. Larger radius to match `.cover-grid-img`,
+// and the badge is positioned rather than inline because there is no title
+// line beside the cover in a grid.
+.cover-grid-img {
+  &.is-library  { @include tokens.ro-shelf-marked(10px); @include tokens.ro-shelf-read; }
+  &.is-wishlist { @include tokens.ro-shelf-marked(10px); @include tokens.ro-shelf-wishlist; }
+}
+
+.cover-grid-shelf-badge {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  z-index: 3; // above the wash (1) and the ring (2)
+  margin-left: 0;
+}
+
+// ── Curated Lists — landing page + Discover (v0.63) ──────────────────────────
+.cl-section {
+  margin-bottom: var(--ro-space-8);
+}
+
+.cl-section__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--ro-space-4);
+}
+
+.cl-follow-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: var(--ro-space-4);
+}
+
+.cl-follow-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: var(--ro-space-4);
+  border: 1px solid var(--ro-border);
+  border-radius: var(--ro-radius-lg);
+  background: var(--ro-surface);
+  cursor: pointer;
+  transition: border-color .15s ease, background .15s ease;
+
+  &:hover { border-color: var(--ro-gold); background: var(--ro-surface-2); }
+  &:focus-visible { outline: 2px solid var(--ro-gold); outline-offset: 2px; }
+}
+
+.cl-follow-card__title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--ro-font-display);
+  font-size: 18px;
+  line-height: 1.2;
+  color: var(--ro-text);
+}
+
+// "Changed since you last looked". A dot rather than a word: it has to survive
+// next to a long title without wrapping, and it means the same thing in both
+// languages without being translated.
+.cl-follow-card__dot {
+  width: 7px;
+  height: 7px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--ro-gold);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ro-gold) 25%, transparent);
+}
+
+.cl-follow-card__meta {
+  font-family: var(--ro-font-body);
+  font-size: 12px;
+  color: var(--ro-muted);
+  margin-top: 3px;
+}
+
+// ── Cover strip ──────────────────────────────────────────────────────────────
+// Six spines say more about a list than its title and tags combined, so this
+// carries real weight on the card rather than being decoration.
+.cover-strip {
+  display: flex;
+  gap: 5px;
+  align-items: flex-end;
+}
+
+.cover-strip__cover {
+  width: 38px;
+  aspect-ratio: 2 / 3;
+  object-fit: cover;
+  border-radius: 3px;
+  border: 1px solid var(--ro-border-strong);
+  box-shadow: 0 2px 8px rgb(0 0 0 / .3);
+  display: block;
+}
+
+// Discover card: the title is a button so it can be clicked and focused, but it
+// must read as a heading.
+.ld-card__name {
+  background: none;
+  border: 0;
+  padding: 0;
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+
+  &:hover { color: var(--ro-gold-text); }
+}
+
+.ld-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: auto;
+  padding-top: var(--ro-space-3);
+}
+
+.cl-follow-card__head {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}

@@ -16,9 +16,32 @@
 
 // The version label shown as "current" — keep in sync with package.json and
 // the README version line.
-export const CURRENT_VERSION = 'v0.62.3';
+export const CURRENT_VERSION = 'v0.63';
 
 export const RELEASES = [{
+    version: 'v0.63',
+    date: '2026-08-12',
+    titleEn: 'Curated Lists, and books that finally admit to being more than one thing',
+    titleEs: 'Listas curadas, y libros que por fin admiten ser más de una cosa',
+    bodyEn: [
+      'Lists are now Curated Lists, and they have their own corner of the app: a page for the lists you follow, one for your own, and Discover — a directory of public lists made by other readers, filterable by genre and mood exactly like Book Clubs. You can follow a list and hear when it changes, summarised once a day rather than once per book.',
+      'Tag a public list with genres and a mood so people can find it. Both optional, and both only matter once a list is public.',
+      'Books on a list now show whether you have already read them or have them on your wishlist — the same green and gold you already know from The Stacks. The point of browsing somebody else\u2019s shelf is finding what is new to you.',
+      'A shared list opens for anyone, signed in or not, and Discover does too. If somebody posts a list, the person who clicks it sees the whole thing.',
+      'Books can hold several genres at once, and now they do. A folk horror novel is Folk Horror and Horror; a Faulkner is Southern Gothic and Gothic and Literary Fiction. Whether you browse the wide shelf or the narrow one, the book is on it. Nearly every book in the catalogue has been re-read against its sources and re-shelved — most now carry two to five genres where they used to carry one.',
+      'The genre list itself was tidied: compound names like "Southern & American Gothic" became the two real genres they always were, near-duplicates were merged, and every genre that was missing a description now has one.',
+      'Genres without their own artwork no longer fall back to a plain share card — they use a general one, so a milestone in a small genre looks like the achievement it is.',
+    ],
+    bodyEs: [
+      'Las listas ahora son Listas curadas y tienen su propio rincón: una página para las listas que seguís, otra para las tuyas, y Descubrir — un directorio de listas públicas hechas por otras personas, con filtros por género y ánimo igual que en los Clubs. Podés seguir una lista y enterarte cuando cambia, resumido una vez por día y no una vez por libro.',
+      'Etiquetá una lista pública con géneros y un ánimo para que la encuentren. Los dos son opcionales, y los dos importan recién cuando la lista es pública.',
+      'Los libros de una lista ahora muestran si ya los leíste o si los tenés en tu lista de deseos — el mismo verde y dorado que ya conocés de los Estantes. Mirar el estante de otra persona sirve para encontrar lo que todavía no conocés.',
+      'Una lista compartida se abre para cualquiera, con sesión o sin ella, y Descubrir también. Si alguien publica una lista, quien la abre ve todo.',
+      'Un libro puede tener varios géneros a la vez, y ahora los tiene. Una novela de folk horror es Folk Horror y Horror; un Faulkner es Gótico sureño y Gótico y Ficción literaria. Mires el estante amplio o el específico, el libro está ahí. Casi todo el catálogo fue releído contra sus fuentes y reordenado — la mayoría de los libros ahora tiene entre dos y cinco géneros donde antes tenía uno.',
+      'La lista de géneros quedó ordenada: nombres compuestos como «Gótico sureño y estadounidense» se separaron en los dos géneros reales que siempre fueron, se unieron los casi duplicados, y todos los géneros que no tenían descripción ahora la tienen.',
+      'Los géneros sin ilustración propia ya no caen a una tarjeta plana para compartir — usan una general, así un logro en un género chico se ve como el logro que es.',
+    ],
+  }, {
     version: 'v0.62.3',
     date: '2026-08-12',
     titleEn: 'A password, and a shared list that looks like the rest of the site',

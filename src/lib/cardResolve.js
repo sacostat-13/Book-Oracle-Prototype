@@ -24,12 +24,35 @@ export const MOMENT_SLUGS = {
   // — no other logic change needed.
 };
 
+// The generic fallback frame, for genres with no art of their own.
+//
+// The taxonomy grew from 15 seeds to 142 as the Oracle invented genres it
+// needed, and commissioning art for each is not going to keep pace — 93 of them
+// have no folder today. Without this, every one of those falls out of the
+// framed path entirely and shares as the plain cover card, so "I finished my
+// 10th Alien Invasion novel" looks materially cheaper than the same milestone
+// in Horror. The reader did not do anything less impressive.
+//
+// The assets are moment-milestone's: a reader under a tower of books, ivy and
+// stars around the border. Genre-neutral by construction — it was drawn to
+// serve any milestone — which is exactly what a fallback needs to be.
+export const GENERIC_CARD_SLUG = 'generic';
+
 // The asset-folder slug for a moment, or null if it has no framed variant.
-export function frameSlugFor(moment) {
+//
+// `exact` = false (the default) allows the generic fallback. Pass true when you
+// need to know whether the genre has art of its OWN — currently nothing does,
+// but the distinction is the difference between "which folder do I load" and
+// "is this genre illustrated yet", and conflating them is how the fallback
+// would silently become invisible to a future art-coverage report.
+export function frameSlugFor(moment, { exact = false } = {}) {
   if (!moment) return null;
   if (moment.type === 'genre_count' || moment.type === 'new_genre') {
     const meta = GENRE_CARD_META[moment.genre];
-    return meta ? meta.slug : null;
+    if (meta && CARD_GENRES.includes(meta.slug)) return meta.slug;
+    if (exact) return null;
+    // Unknown genre, or one whose folder has not shipped yet.
+    return moment.genre ? GENERIC_CARD_SLUG : null;
   }
   return MOMENT_SLUGS[moment.type] || null;
 }

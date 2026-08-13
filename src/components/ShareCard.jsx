@@ -21,6 +21,10 @@
 import { useI18n } from '../lib/I18nContext';
 import { GENRE_CARD_META } from '../lib/genreCards';
 import { CARD_GENRES } from '../lib/cardGenres';
+// 83 hand-written genre sub-lines that were imported nowhere. The file's own
+// header says momentCopy falls back to them; it never did. Wiring them in is
+// free coverage for genres that have a line but no card art.
+import { GENRE_DESCRIPTIONS } from '../lib/genreDescriptions';
 import { frameSlugFor } from '../lib/cardResolve';
 import { CARD_BOXES, DEFAULT_BOX } from '../lib/cardBoxes';
 import { useData } from '../lib/DataContext';
@@ -75,7 +79,7 @@ function baseCopy(moment, t, lang) {
         eyebrow: t('share.card.genreCountEyebrow'),
         headline: t('share.card.genreCountHeadline', { n: moment.n, genre: moment.genre }),
         // Per-genre sub-line (English) when available; generic i18n otherwise.
-        sub: (lang === 'en' && meta?.sub) || t('share.card.genreCountSub'),
+        sub: (lang === 'en' && genreSub(moment.genre, meta)) || t('share.card.genreCountSub'),
         ornament: '⚜',
         ...bookLine,
       };
@@ -85,7 +89,7 @@ function baseCopy(moment, t, lang) {
       return {
         eyebrow: t('share.card.newGenreEyebrow'),
         headline: moment.genre,
-        sub: (lang === 'en' && meta?.sub) || t('share.card.newGenreSub'),
+        sub: (lang === 'en' && genreSub(moment.genre, meta)) || t('share.card.newGenreSub'),
         ornament: '✧',
         ...bookLine,
       };
@@ -135,6 +139,18 @@ function baseCopy(moment, t, lang) {
         headlineIsBook: true,
       };
   }
+}
+
+// English sub-line for a genre card, best available source first:
+//   1. GENRE_CARD_META — written alongside the card art, tuned to it
+//   2. GENRE_DESCRIPTIONS — the broader hand-written set
+//   3. (caller) the generic i18n string
+//
+// English only, deliberately: both sources are English prose, and the Spanish
+// card takes the translated generic line rather than showing English copy under
+// a Spanish headline.
+function genreSub(genre, meta) {
+  return meta?.sub || GENRE_DESCRIPTIONS[genre] || null;
 }
 
 export function momentCopy(moment, t, lang) {

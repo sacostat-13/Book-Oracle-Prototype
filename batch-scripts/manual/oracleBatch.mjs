@@ -63,6 +63,21 @@ import {
 const __dirname = dirname(fileURLToPath(
   import.meta.url));
 const BATCH_SIZE = 20;
+
+// Genres per book. Raised 3 -> 5 in v0.63.
+//
+// Two things changed at once. The taxonomy grew from 15 seeds to 136 after the
+// compound splits, so the useful entries are far more specific. And umbrellas
+// are now applied ALONGSIDE the specific genre rather than instead of it — a
+// folk horror novel is "Folk Horror" AND "Horror" — because a reader browsing
+// the wide shelf and a reader browsing the narrow one should both find it.
+// That costs a slot, so the budget is roughly two umbrellas plus three
+// specifics.
+//
+// Still capped. With no limit the model pads, and a book tagged with eight
+// genres is as useless for discovery as one tagged with none. Change here and
+// in the GENRE RULES line of the system prompt together.
+const MAX_GENRES_PER_BOOK = 5;
 const MODEL = 'claude-sonnet-4-5';
 
 // Approximate token costs (USD per million)
@@ -291,7 +306,7 @@ function buildPrompt(books, existingGenres) {
 
   const systemPrompt = `You are the Book Oracle, a literary curator. For each book return genres, series info, a description, complexity, depth, and author gender.
 
-GENRE RULES: Prefer existing catalog genres. 1-3 per book. Only invent when nothing fits.
+GENRE RULES: Prefer existing catalog genres. Assign 2-5 per book: every specific genre that genuinely applies, PLUS the broad umbrella above it where one exists. A folk horror novel is \"Folk Horror\" AND \"Horror\"; a Faulkner is \"Southern Gothic\" AND \"Gothic\" AND \"Literary Fiction\". One reader browses the wide shelf and another the narrow one, and the book should be found by both. Do not pad — a genre that only loosely fits is worse than a missing one, because it puts the book in front of a reader who did not ask for it. Prefer a single clear concept over a compound name joined with \"&\": a book can carry several genres, so two ideas belong in two genres. Only invent when nothing in the catalog fits.
 SERIES RULES: null for standalone books. "total" may be null for ongoing series.
 DESCRIPTION RULES: 2-4 sentences. Evocative, literary, informative. English only.
 COMPLEXITY RULES (prose difficulty, 1-5): 1=casual/page-turners, 2=mid-difficulty, 3=literary, 4=challenging (Faulkner, Han Kang), 5=experimental (Donoso, Lispector). Judge sentence structure/vocabulary/technique, not length or genre.
@@ -400,17 +415,34 @@ function sanitizeAuthorGender(v) {
 
 async function writeEnrichment(book, genreIds, seriesData, description, complexity, depth, authorGender) {
   // Genres: direct upsert into book_genres (link_book_genre RPC requires auth.uid)
+  //
+  // THE COLUMN IS `assigned_by_source`, NOT `source`.
+  //
+  // This wrote `source: 'oracle'` — a column that does not exist on
+  // book_genres. PostgREST rejects the whole request with PGRST204, so NOT ONE
+  // genre link was ever written by this script. The result was never checked,
+  // so it failed in total silence, and the update below still stamped the book
+  // `oracle_categorized` — which made every affected book look done while
+  // carrying zero genres. Books linked before this code path (via the
+  // link_book_genre RPC, which names the column correctly) kept theirs, which
+  // is why older books had genres and newly curated ones did not.
+  //
+  // The error is checked now. A genre write that fails must not be reported as
+  // a successful enrichment — that is the whole reason this went unnoticed.
   if (genreIds.length > 0) {
-    await supabase.from('book_genres').upsert(
+    const { error: linkErr } = await supabase.from('book_genres').upsert(
       genreIds.map((genreId) => ({
         book_id: book.id,
         genre_id: genreId,
-        source: 'oracle',
+        assigned_by_source: 'oracle',
       })), {
         onConflict: 'book_id,genre_id',
         ignoreDuplicates: true
       }
     );
+    if (linkErr) {
+      throw new Error(`book_genres upsert failed for "${book.title}": ${linkErr.message}`);
+    }
   }
 
   // Description + complexity + depth + author gender + status
@@ -580,7 +612,12 @@ async function main() {
         // as part of the same prompt.
         const backfillOnly = book.status === 'oracle_categorized';
 
-        const genreNames = backfillOnly ? [] : (Array.isArray(item.genres) ? item.genres.slice(0, 3) : []);
+        // Cap raised 3 -> 4 (v0.63). The taxonomy is 142 genres now, not the
+        // original 15, so the useful ones are far more specific and a book
+        // legitimately sits under more of them. Still capped: without a limit
+        // the model pads, and a book tagged with eight genres is as useless for
+        // discovery as one tagged with none.
+        const genreNames = backfillOnly ? [] : (Array.isArray(item.genres) ? item.genres.slice(0, MAX_GENRES_PER_BOOK) : []);
         const genreIds = genreNames.length ?
           (await Promise.all(genreNames.map((n) => resolveGenreId(n, genreCache)))).filter(Boolean) :
           [];

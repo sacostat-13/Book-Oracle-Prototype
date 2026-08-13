@@ -1,5 +1,14 @@
-// AUTO-GENERATED from the genre catalog. name -> { slug, sub }.
-// slug = folder under public/cards/<slug>/ ; sub = card sub-line (English).
+// name -> { slug, sub }.  slug = folder under public/cards/<slug>/ ;
+// sub = card sub-line (English).
+//
+// The header used to say AUTO-GENERATED. It is not — build-share-cards.mjs
+// writes cardGenres.js and cardBoxes.js, never this file. Edit it by hand.
+//
+// SEVERAL GENRES SHARE ONE ART FOLDER, deliberately. v0.63 split four compound
+// genres into halves, and the halves inherited the compound's artwork rather
+// than dropping to the generic card — 737 books sat on those four shelves, and
+// commissioning eight new illustrations to avoid a regression is not a trade
+// worth making. `slug` is an asset path, not an identity.
 export const GENRE_CARD_META = {
   'Fantasy': { slug: 'fantasy', sub: 'Magic, invented worlds, and the impossible made rule-bound.' },
   'Fairy Tale Retelling': { slug: 'fairytaleretelling', sub: 'Familiar stories cracked open and rebuilt.' },
@@ -13,12 +22,14 @@ export const GENRE_CARD_META = {
   'Intimate Fiction': { slug: 'intimatefiction', sub: 'Stories where desire is central, not incidental.' },
   'Philosophical Fiction': { slug: 'philosophicalfiction', sub: 'Novels that want to think.' },
   'Slasher': { slug: 'slasher', sub: 'The knife, the mask, the body count.' },
-  'Sci-Fi & Speculative': { slug: 'scifispeculative', sub: 'Stars, time, and the estrangement of the possible.' },
+  'Science Fiction': { slug: 'scifispeculative', sub: 'Stars, time, and the estrangement of the possible.' },
+  'Speculative Fiction': { slug: 'scifispeculative', sub: 'One rule changed, everything else honest.' },
   'Witches': { slug: 'witches', sub: 'Cunning women, herbalists, sabbaths, and the persecution of the different.' },
   'Cozy Fantasy': { slug: 'cozyfantasy', sub: 'Enchantment with a hearth at its center.' },
   'Experimental & Avant-Garde': { slug: 'experimentalavantgarde', sub: 'Fiction that breaks the frame.' },
   'Vampires': { slug: 'vampires', sub: 'The blood-drinker across centuries — from Varney and Carmilla to Rice\'s chronicles.' },
-  'Gothic & Haunted Houses': { slug: 'gothichauntedhouses', sub: 'Spirits inhabit the architecture.' },
+  'Gothic': { slug: 'gothichauntedhouses', sub: 'Dread built from place and inheritance.' },
+  'Haunted Houses': { slug: 'gothichauntedhouses', sub: 'Spirits inhabit the architecture.' },
   'Magical Realism': { slug: 'magicalrealism', sub: 'The miraculous woven into the everyday without apology or explanation.' },
   'Coming of Age': { slug: 'comingofage', sub: 'The crossing from one version of yourself to another.' },
   'Mythological Fantasy': { slug: 'mythologicalfantasy', sub: 'Gods walk among us, or used to.' },
@@ -35,9 +46,12 @@ export const GENRE_CARD_META = {
   'Feminist & Sapphic Gothic': { slug: 'feministsapphicgothic', sub: 'The feminine gaze turned inward and outward on a world that haunts women in particular ways.' },
   'East Asian Literary Fiction': { slug: 'eastasianliteraryfiction', sub: 'The literary traditions of Japan, Korea, China, and their neighbors — novels of alienation, obligation, and quiet devastation.' },
   'Romance': { slug: 'romance', sub: 'Love at the center of the plot, and the promise of an ending that earns it.' },
-  'Dark & Epic Fantasy': { slug: 'darkepicfantasy', sub: 'Dragons, war, chosen ones, and the cost of power across vast invented worlds.' },
+  'Epic Fantasy': { slug: 'darkepicfantasy', sub: 'Dragons, war, chosen ones, and the cost of power across vast invented worlds.' },
+  'Dark Fantasy': { slug: 'darkepicfantasy', sub: 'Magic that costs more than it gives.' },
   'International Fiction': { slug: 'internationalfiction', sub: 'Literary fiction rooted in specific places and traditions outside the Anglo-American mainstream — African, Latin American, Celtic, and beyond.' },
-  'Southern & American Gothic': { slug: 'southernamericangothic', sub: 'Kudzu on the verandah, rot beneath the gentility, violence encoded in the landscape.' },
+  // ── v0.63 split: these four pairs inherit their compound's art ───────────
+  'Southern Gothic': { slug: 'southernamericangothic', sub: 'Kudzu on the verandah, rot beneath the gentility, violence encoded in the landscape.' },
+  'American Gothic': { slug: 'southernamericangothic', sub: 'Old sins keep their addresses in the new world.' },
   'Classic & Older Gothic': { slug: 'classicoldergothic', sub: 'The original haunted manor, the brooding aristocrat, the ancestral curse.' },
   'Arthurian': { slug: 'arthurian', sub: 'Camelot\'s endless retelling — Merlin\'s prophecies, the Round Table\'s fractures, Guinevere and Lancelot\'s impossible love.' },
   'Body Horror & Transgressive': { slug: 'bodyhorrortransgressive', sub: 'Where the body becomes the site of horror.' },

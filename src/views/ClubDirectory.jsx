@@ -9,8 +9,7 @@ import { useData } from '../lib/DataContext';
 import { useRouter } from '../lib/RouterContext';
 import { useT, useTNode } from '../lib/I18nContext';
 import BookCover from '../components/BookCover';
-
-const MOODS = ['comfort', 'challenge', 'escapism', 'mind-bending', 'character-driven', 'atmospheric', 'fast-paced', 'short-read'];
+import { MOODS, moodTitleKey } from '../lib/moods';
 
 function DirectoryCard({ club, onJoin, joining }) {
   const t = useT();
@@ -104,7 +103,7 @@ function DirectoryCard({ club, onJoin, joining }) {
           ))}
           {club.moods.map((m) => (
             <span key={m} className="directory-tag directory-tag--mood">
-              {t(`onboarding.moods.${m}.title`)}
+              {t(moodTitleKey(m))}
             </span>
           ))}
         </div>
@@ -272,7 +271,10 @@ export default function ClubDirectory() {
 
       {filtersOpen && (
         <div className="overlay" onClick={() => setFiltersOpen(false)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
+          {/* modal--scroll: the genre filter lists the whole taxonomy, which is
+              far taller than a phone. Without it the chips scroll the entire
+              modal and Done goes off-screen. */}
+          <div className="modal modal--scroll" onClick={(e) => e.stopPropagation()}>
             <button className="modal__close" onClick={() => setFiltersOpen(false)}>×</button>
             <div className="modal__head">
               <h2 className="modal__title">{t('clubs.directory.filtersTitle')}</h2>
@@ -309,7 +311,7 @@ export default function ClubDirectory() {
                     className={`chip${mood === id ? ' chip--active' : ''}`}
                     onClick={() => setMood(mood === id ? null : id)}
                   >
-                    {t(`onboarding.moods.${id}.title`)}
+                    {t(moodTitleKey(id))}
                   </button>
                 ))}
               </div>

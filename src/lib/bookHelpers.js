@@ -165,3 +165,36 @@ export function buildBookPageParams(book, from = 'app', fromLabel = '') {
   if (snap) params.snap = snap;
   return params;
 }
+
+// ── Shelf state for a book the viewer is looking at elsewhere (v0.63) ────────
+//
+// "Have I already read this?" — asked by curated lists, where a reader browsing
+// somebody else's shelf wants to know what is genuinely new to them. Returns
+// 'library' (read), 'wishlist' (wanted) or null.
+//
+// Two deliberate constraints, both easy to get wrong:
+//
+//   1. It answers for the VIEWER, never the list's owner. Showing the curator's
+//      read state with the same visual would be answering a different question
+//      with the same badge, which is worse than showing nothing.
+//   2. It returns null for a signed-out visitor, because there are no shelves
+//      to compare against. Callers get that for free by passing empty sets.
+//
+// Takes prebuilt Sets rather than the arrays: this runs once per book per
+// render on a page that may show a hundred, and rebuilding the key set inside
+// the loop is the O(n²) shape that made the list book-picker lag.
+export function shelfStateOf(book, readKeys, wishKeys) {
+  if (!book) return null;
+  const k = bookKey(book);
+  if (readKeys?.has(k)) return 'library';
+  if (wishKeys?.has(k)) return 'wishlist';
+  return null;
+}
+
+// Convenience for the common call: build both sets from DataContext state.
+export function shelfKeySets(state) {
+  return {
+    readKeys: new Set((state?.library || []).map(bookKey)),
+    wishKeys: new Set((state?.wishlist || []).map(bookKey)),
+  };
+}

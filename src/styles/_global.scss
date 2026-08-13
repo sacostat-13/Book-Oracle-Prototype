@@ -288,3 +288,22 @@ body {
     justify-content: center;
   }
 }
+// Chips must not be able to overflow their row on a narrow screen.
+//
+// `.chip` is `white-space: nowrap`, which is right on desktop — a wrapped chip
+// looks broken. But at 11px mono with 0.12em tracking and uppercase, a label
+// like "JAPANESE & EAST ASIAN HORROR" measures ~254px, and the chip row inside
+// a modal on a 320px phone has ~236px to give. Combined with a flex item's
+// default `min-width: auto`, that single chip pushed the whole form out of the
+// modal rather than wrapping.
+//
+// Below the mobile breakpoint the label is allowed to wrap instead. Two lines
+// of chip is mildly ugly; content outside its container is a bug.
+@include tokens.ro-down(mobile) {
+  .chip {
+    white-space: normal;
+    text-align: center;
+    max-width: 100%;
+    min-width: 0;
+  }
+}

@@ -4,6 +4,7 @@ import { useAuth } from '../lib/AuthContext';
 import { useRouter } from '../lib/RouterContext';
 import { useT, useTNode, useI18n } from '../lib/I18nContext';
 import { useOracleQuota } from '../lib/OracleQuotaContext';
+import { MOODS, moodTitleKey } from '../lib/moods';
 import { parseGoodreadsCSV } from '../lib/goodreadsImport';
 import GoodreadsImportPanel from '../components/GoodreadsImportPanel';
 import { findBookByTitle, bookKey, openBookTab } from '../lib/bookHelpers';
@@ -659,7 +660,7 @@ function PrivacySection({ profile, updatePrivacyPrefs, t }) {
 }
 
 // ── Favorite genres + current mood (v0.38, editable from Profile) ────────────
-const MOODS = ['comfort', 'challenge', 'escapism', 'mind-bending', 'character-driven', 'atmospheric', 'fast-paced', 'short-read'];
+// MOODS imported from lib/moods.js — this was one of four hand-kept copies.
 const GENRE_MAX = 5;
 const MOOD_MAX = 3;
 
@@ -720,7 +721,7 @@ function ReaderPrefsSection({ state, setProfile, t }) {
       <h2 className="pf-section__title">{t('profile.labelCurrentMood')}</h2>
       {!editingMood ? (
         <p className="pf-text pf-text--gap-lg">
-          {currentMood.length > 0 ? currentMood.map((id) => t(`onboarding.moods.${id}.title`)).join(', ') : t('profile.moodNotSet')}
+          {currentMood.length > 0 ? currentMood.map((id) => t(moodTitleKey(id))).join(', ') : t('profile.moodNotSet')}
           <br />
           <button className="btn-secondary" onClick={() => setEditingMood(true)}>{t('common.edit')}</button>
         </p>
@@ -734,7 +735,7 @@ function ReaderPrefsSection({ state, setProfile, t }) {
                 disabled={!currentMood.includes(id) && currentMood.length >= MOOD_MAX}
                 onClick={() => toggleMood(id)}
               >
-                {t(`onboarding.moods.${id}.title`)}
+                {t(moodTitleKey(id))}
               </button>
             ))}
           </div>
@@ -1714,6 +1715,11 @@ const DEFAULT_PREFS = {
   friends: true,
   announcements: true,
   email: true,
+  // v0.63. Defaults ON, and rollup_list_notifications reads the same key with
+  // coalesce(..., true) — the column has no `curated_lists` entry on any
+  // profile created before that migration, and defaulting those to off would
+  // make following look broken for every existing account.
+  curated_lists: true,
 };
 
 function NotificationPreferences({ t, user, showToast }) {
@@ -1745,6 +1751,7 @@ function NotificationPreferences({ t, user, showToast }) {
   const rows = [
     { key: 'book_club', label: t('notifications.prefBookClub'), desc: t('notifications.prefBookClubDesc'), locked: false },
     { key: 'friends', label: t('notifications.prefFriends'), desc: t('notifications.prefFriendsDesc'), locked: false },
+    { key: 'curated_lists', label: t('notifications.prefCuratedLists'), desc: t('notifications.prefCuratedListsDesc'), locked: false },
     { key: 'announcements', label: t('notifications.prefAnnouncements'), desc: t('notifications.prefAnnouncementsDesc'), locked: true },
     { key: 'email', label: t('notifications.prefEmail'), desc: t('notifications.prefEmailDesc'), locked: false },
   ];

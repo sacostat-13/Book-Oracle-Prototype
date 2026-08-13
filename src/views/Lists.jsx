@@ -8,33 +8,41 @@ import { openBookTab } from '../lib/bookHelpers';
 import BookCover from '../components/BookCover';
 import CornerBrackets from '../components/CornerBrackets';
 import EmptyState from '../components/EmptyState';
+import ListMetaEditor from '../components/ListMetaEditor';
 
 // How many covers to show per list before collapsing into a "+N more" box.
 const COVER_PREVIEW = 6;
 
-function CreateListModal({ onSave, onClose }) {
+function CreateListModal({ genres, onSave, onClose }) {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
+  const [genreIds, setGenreIds] = useState([]);
+  const [moods, setMoods] = useState([]);
   const [saving, setSaving] = useState(false);
   const t = useT();
 
   async function handleSave() {
     if (!title.trim()) return;
     setSaving(true);
-    await onSave(title.trim(), description.trim());
+    await onSave(title.trim(), description.trim(), genreIds, moods);
     setSaving(false);
     onClose();
   }
 
   return (
     <div className="overlay" onClick={onClose}>
-      <div className="modal modal--narrow" onClick={e => e.stopPropagation()}>
+      {/* modal--scroll, not the plain modal: this form grew a genre picker and
+          a mood picker, and on a phone the Create button was sitting below all
+          of them. Head and actions are now pinned; only the middle scrolls. */}
+      <div className="modal modal--narrow modal--scroll" onClick={e => e.stopPropagation()}>
         <CornerBrackets />
         <button className="modal__close" onClick={onClose}>✕</button>
-        <div className="bp-section__label">
-          {t('lists.newListBtn')}
+        <div className="modal__head">
+          <div className="bp-section__label">
+            {t('lists.newListBtn')}
+          </div>
         </div>
-        <div className="lists-modal-form">
+        <div className="modal__body lists-modal-form">
           <div>
             <label className="field-label">{t('report.fieldTitle')}</label>
             <input
@@ -59,12 +67,23 @@ function CreateListModal({ onSave, onClose }) {
               rows={3}
             />
           </div>
-          <div className="lists-modal-actions">
-            <button className="btn-tertiary" onClick={onClose}>{t('common.cancel')}</button>
-            <button className="btn-primary" onClick={handleSave} disabled={!title.trim() || saving}>
-              {saving ? '…' : (t('lists.createList'))}
-            </button>
-          </div>
+
+          <ListMetaEditor
+            genres={genres}
+            genreIds={genreIds}
+            moods={moods}
+            onGenresChange={setGenreIds}
+            onMoodsChange={setMoods}
+            disabled={saving}
+            hint={t('lists.metaHint')}
+          />
+
+        </div>
+        <div className="modal__actions lists-modal-actions">
+          <button className="btn-tertiary" onClick={onClose}>{t('common.cancel')}</button>
+          <button className="btn-primary" onClick={handleSave} disabled={!title.trim() || saving}>
+            {saving ? '…' : (t('lists.createList'))}
+          </button>
         </div>
       </div>
     </div>
@@ -72,7 +91,7 @@ function CreateListModal({ onSave, onClose }) {
 }
 
 export default function Lists() {
-  const { state, createList, updateList, deleteList } = useData();
+  const { state, createList, updateList, deleteList, setListGenres, setListMoods } = useData();
   const { go } = useRouter();
   const t = useT();
   const tNode = useTNode();
@@ -82,9 +101,15 @@ export default function Lists() {
   const lists = state.lists || [];
   const { genresByBookId } = state;
 
-  async function handleCreate(title, description) {
+  async function handleCreate(title, description, genreIds, moods) {
     const newList = await createList(title, description);
-    if (newList) go('list-detail', { listId: newList.id });
+    if (!newList) return;
+    // Tags are written after the row exists — they are keyed on its id, and a
+    // list with no genres is still a perfectly good list, so a failure here
+    // must not lose the list itself.
+    if (genreIds?.length) await setListGenres(newList.id, genreIds);
+    if (moods?.length) await setListMoods(newList.id, moods);
+    go('list-detail', { listId: newList.id });
   }
 
   async function handleDelete(list, e) {
@@ -214,7 +239,7 @@ export default function Lists() {
         </div>
       )}
 
-      {creating && <CreateListModal onSave={handleCreate} onClose={() => setCreating(false)} />}
+      {creating && <CreateListModal genres={state.genres || []} onSave={handleCreate} onClose={() => setCreating(false)} />}
     </>
   );
 }

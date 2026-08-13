@@ -232,12 +232,13 @@ For each book you will return:
 
 GENRE RULES:
 - The existing catalog above is the source of truth. Read every description before deciding — a genre that looks unrelated by name alone (e.g. "International Fiction") may be exactly the right fit once you read what it actually covers.
-- Reuse an existing genre whenever it reasonably fits, even if the wording isn't a perfect match. Do NOT create a new genre that is a synonym, word-reordering, or narrower/broader variant of one that already exists. For example: if "Dark & Epic Fantasy" exists, do not also create "Epic Fantasy" or "Epic & Dark Fantasy" for a similar book. If "Folk Horror" exists, do not create "British Folk Horror" or "Regional Folk Horror" — a regional or stylistic flavor of an existing genre is not a new genre.
+- Reuse an existing genre whenever it reasonably fits, even if the wording isn't a perfect match. Do NOT create a new genre that is a synonym or word-reordering of one that already exists. If "Folk Horror" exists, do not create "British Folk Horror" or "Regional Folk Horror" — a regional flavour of an existing genre is not a new genre.
 - Before proposing a new genre, check: is this genre distinguishable from every existing genre by more than region, word order, or a synonym substitution? If not, use the existing one instead.
 - When reusing an existing genre, copy its name EXACTLY as listed above — do not paraphrase, reorder words, or change punctuation.
 - Only create a new genre when the catalog has a genuine gap: a book that doesn't fit any existing genre even loosely.
-- When you do create a new genre, keep it specific and non-overlapping with anything already in the catalog, and match established naming style: evocative, specific, often using "&" (e.g. "Classic & Older Gothic").
-- Assign 1-3 genres. Assign only 1 if the book clearly belongs to one category.
+- When you do create a new genre, keep it specific and non-overlapping with anything already in the catalog. Prefer a single clear concept over a compound name joined with "&" — a book can carry several genres, so two ideas belong in two genres.
+- Assign 2-5 genres: the specific ones the book genuinely belongs to, PLUS the broad umbrella above them where one exists. A folk horror novel is "Folk Horror" AND "Horror"; a Le Guin novel is "Science Fiction" and likely "Literary Fiction" too. Both matter — one reader browses the wide shelf, another the narrow one, and the book should be found by both.
+- Do not pad. A genre that only loosely applies is worse than a missing one, because it puts the book in front of a reader who did not ask for it.
 
 SERIES RULES:
 - Return null for standalone books not part of any series.

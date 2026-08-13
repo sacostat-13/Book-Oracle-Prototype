@@ -5,12 +5,14 @@ import { useMemo, useState } from 'react';
 import { useData } from '../lib/DataContext';
 import { useRouter } from '../lib/RouterContext';
 import { useT, useI18n } from '../lib/I18nContext';
-import { openBookTab, bookKey } from '../lib/bookHelpers';
+import { openBookTab, bookKey, shelfStateOf, shelfKeySets } from '../lib/bookHelpers';
+import { moodTitleKey } from '../lib/moods';
 import CornerBrackets from '../components/CornerBrackets';
 import { useSelection } from '../lib/useSelection';
 import SelectionBar from '../components/SelectionBar';
 import BookCover from '../components/BookCover';
 import ShareModal from '../components/ShareModal';
+import ListMetaEditor from '../components/ListMetaEditor';
 import { listShareUrl } from '../lib/shareService';
 
 function AddBookPicker({ list, onClose }) {
@@ -114,12 +116,13 @@ function AddBookPicker({ list, onClose }) {
 }
 
 export default function ListDetail() {
-  const { state, updateList, removeBookFromList } = useData();
+  const { state, updateList, removeBookFromList, setListGenres, setListMoods } = useData();
   const { route, go } = useRouter();
   const t = useT();
   const { lang } = useI18n();
   const [addingBook, setAddingBook] = useState(false);
   const [shareOpen, setShareOpen] = useState(false); // v0.43: replaces copy-link
+  const [editingMeta, setEditingMeta] = useState(false);
 
   const listId = route.params?.listId;
   const list = (state.lists || []).find(l => l.id === listId);
@@ -134,6 +137,10 @@ export default function ListDetail() {
   // is what kept it hidden.
   const books = list?.books || [];
   const sel = useSelection(books);
+
+  // Shelf state for the badges below. Also above the guard, for the same
+  // reason as useSelection.
+  const { readKeys, wishKeys } = useMemo(() => shelfKeySets(state), [state]);
 
   if (!list) return (
     <div className="lv-empty">
@@ -194,7 +201,49 @@ export default function ListDetail() {
             {sel.active ? (t('common.cancel')) : (t('lists.selectMode'))}
           </button>
         )}
+        {list.is_public && (
+          <button className="btn-secondary" onClick={() => setEditingMeta((v) => !v)}>
+            {editingMeta ? t('common.done') : t('lists.editTags')}
+          </button>
+        )}
       </div>
+
+      {/* Tags are only offered on a public list. They exist so Discover can
+          filter, and a private list is not in Discover — showing the editor
+          there would be asking for work that does nothing. When the list is
+          made public the button appears, which is also the moment the reader
+          has a reason to care. */}
+      {list.is_public && editingMeta && (
+        <ListMetaEditor
+          genres={state.genres || []}
+          genreIds={list.genreIds || []}
+          moods={list.moods || []}
+          onGenresChange={(ids) => setListGenres(list.id, ids)}
+          onMoodsChange={(ms) => setListMoods(list.id, ms)}
+          hint={t('lists.metaHint')}
+        />
+      )}
+
+      {/* Read-only summary when not editing, so a tagged list shows its tags
+          without a click and an untagged public list nudges toward adding
+          some — Discover filters are the whole reason they exist. */}
+      {list.is_public && !editingMeta && (
+        <div className="list-meta__summary">
+          {(list.genreIds || []).length === 0 && (list.moods || []).length === 0 ? (
+            <span className="lv-hl-muted">{t('lists.noTagsYet')}</span>
+          ) : (
+            <>
+              {(list.genreIds || []).map((id) => {
+                const g = (state.genres || []).find((x) => x.id === id);
+                return g ? <span key={id} className="directory-tag">{g.name}</span> : null;
+              })}
+              {(list.moods || []).map((m) => (
+                <span key={m} className="directory-tag directory-tag--mood">{t(moodTitleKey(m))}</span>
+              ))}
+            </>
+          )}
+        </div>
+      )}
 
       {books.length === 0 ? (
         <div className="lv-empty">
@@ -206,7 +255,9 @@ export default function ListDetail() {
         <div className="cover-grid-shelves">
           <div className="cover-shelf">
             <div className="cover-shelf-grid">
-              {books.map((b, i) => (
+              {books.map((b, i) => {
+                const shelf = shelfStateOf(b, readKeys, wishKeys);
+                return (
                 <div
                   key={b.bookId || i}
                   className={`cover-grid-item${sel.active && b.bookId && sel.selected.has(b.bookId) ? ' cover-grid-item--selected' : ''}`}
@@ -218,8 +269,13 @@ export default function ListDetail() {
                       {b.bookId && sel.selected.has(b.bookId) ? '✓' : ''}
                     </div>
                   )}
-                  <div className="cover-grid-img">
+                  <div className={`cover-grid-img${shelf ? ` is-${shelf}` : ''}`}>
                     <BookCover title={b.t} author={b.a} coverUrl={b.coverUrl} />
+                    {shelf && (
+                      <span className={`shelf-badge shelf-badge--${shelf} cover-grid-shelf-badge`}>
+                        {shelf === 'library' ? t('lists.badgeRead') : t('lists.badgeWishlist')}
+                      </span>
+                    )}
                   </div>
                   <div className="cover-grid-hover">
                     <div className="cover-grid-hover-title">{b.t}</div>
@@ -242,7 +298,8 @@ export default function ListDetail() {
                     </button>
                   </div>
                 </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         </div>
