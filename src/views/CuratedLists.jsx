@@ -12,11 +12,11 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useData } from '../lib/DataContext';
+import { CardGridSkeleton } from '../components/Skeleton';
 import { useRouter } from '../lib/RouterContext';
 import { useT, useTNode } from '../lib/I18nContext';
 import EmptyState from '../components/EmptyState';
 import CoverStrip from '../components/CoverStrip';
-import BookLoader from '../components/BookLoader';
 
 function FollowedCard({ list, onOpen }) {
   const t = useT();
@@ -86,8 +86,11 @@ export default function CuratedLists() {
       {/* ── Lists you follow ── */}
       <section className="cl-section">
         <h2 className="pf-section__title">{t('lists.followingSection')}</h2>
+        {/* v0.63.3: BookLoader's literary quote is right for a long Oracle
+            wait and oversized for a list fetch — by the time the quote is read
+            the lists are already there. See the note in Skeleton.jsx. */}
         {loading ? (
-          <BookLoader text={t('lists.loading')} />
+          <CardGridSkeleton count={4} className="cl-follow-grid" />
         ) : followed.length === 0 ? (
           <EmptyState
             ornament="❦"

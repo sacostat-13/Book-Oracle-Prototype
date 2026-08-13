@@ -257,3 +257,44 @@
 @media (prefers-reduced-motion: reduce) {
   .skeleton { animation: none; }
 }
+
+// Composite skeleton layouts. Each mirrors the box of the thing it stands in
+// for, so the page does not reflow when the real content arrives.
+.stack-card--skeleton {
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.skeleton-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 4px 0;
+}
+
+.skeleton-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+
+  &__avatar {
+    width: 40px;
+    height: 40px;
+    flex-shrink: 0;
+    border-radius: var(--ro-radius-pill);
+  }
+
+  &__body {
+    flex: 1;
+    min-width: 0;
+  }
+}
+
+.skeleton-card {
+  border: 1px solid var(--ro-border);
+  border-radius: var(--ro-radius-lg);
+  background: var(--ro-surface);
+  padding: 18px 20px;
+}

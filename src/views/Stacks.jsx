@@ -11,6 +11,7 @@ import { useData } from '../lib/DataContext';
 import { useT } from '../lib/I18nContext';
 import { useStacks, searchStacks } from '../lib/useStacks';
 import StackCard from '../components/StackCard';
+import { CoverGridSkeleton } from '../components/Skeleton';
 
 export default function Stacks() {
   const {
@@ -166,6 +167,11 @@ export default function Stacks() {
           <button className="stacks__link" onClick={clearSearch}>{t('stacks.backToBrowse')}</button>
         </div>
       )}
+
+      {/* v0.63.3: the wall used to be simply absent while the first batch
+          loaded — an empty page with a heading, which reads as "no books"
+          rather than "not yet". */}
+      {loading && shown.length === 0 && <CoverGridSkeleton count={8} />}
 
       <div className="stacks__grid">
         {shown.map((b) => (

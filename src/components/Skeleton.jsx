@@ -79,3 +79,71 @@ export function BookPageSkeleton() {
     </div>
   );
 }
+
+// ── Composites ───────────────────────────────────────────────────────────────
+//
+// WHEN A SKELETON, AND WHEN BookLoader?
+//
+// Both exist and they are not interchangeable.
+//
+//   Skeleton    — the shape of the result is KNOWN and the wait is short. A
+//                 shelf, a grid, a list of rows. Drawing the layout in advance
+//                 means nothing moves when the data lands.
+//   BookLoader  — the wait is LONG and the result's shape is unknown. That is
+//                 the Oracle: five to fifteen seconds, and a skeleton of three
+//                 book cards would be a promise about a number of results we do
+//                 not have yet. A literary quote is better company for that
+//                 wait, and it is the app's own voice.
+//
+// So Oracle surfaces keep BookLoader. Everything that renders a predictable
+// list gets a skeleton.
+
+/** A wall of covers — The Stacks, and any cover grid. */
+export function CoverGridSkeleton({ count = 8 }) {
+  return (
+    <div className="stacks__grid" aria-busy="true">
+      {Array.from({ length: count }, (_, i) => (
+        <div key={i} className="stack-card stack-card--skeleton">
+          <Skeleton variant="cover" />
+          <Skeleton variant="text" width="82%" />
+          <Skeleton variant="text" width="54%" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/** Rows with a small leading square — friends, requests, feed events. */
+export function RowListSkeleton({ count = 3, className = '' }) {
+  return (
+    <div className={`skeleton-rows ${className}`} aria-busy="true">
+      {Array.from({ length: count }, (_, i) => (
+        <div key={i} className="skeleton-row">
+          <Skeleton variant="block" className="skeleton-row__avatar" />
+          <div className="skeleton-row__body">
+            <Skeleton variant="text" width="46%" />
+            <Skeleton variant="text" width="72%" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/** Cards in a responsive grid — curated lists, club directory. */
+export function CardGridSkeleton({ count = 6, className = 'directory-grid' }) {
+  return (
+    <div className={className} aria-busy="true">
+      {Array.from({ length: count }, (_, i) => (
+        <div key={i} className="skeleton-card">
+          <Skeleton variant="title" width="64%" />
+          <Skeleton variant="text" lines={2} />
+          <div className="bp-meta">
+            <Skeleton variant="chip" width="72px" />
+            <Skeleton variant="chip" width="56px" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}

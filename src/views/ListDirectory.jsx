@@ -27,6 +27,7 @@ import { useData } from '../lib/DataContext';
 import { useAuth } from '../lib/AuthContext';
 import { useRouter } from '../lib/RouterContext';
 import { useT, useTNode } from '../lib/I18nContext';
+import { CardGridSkeleton } from '../components/Skeleton';
 import { MOODS, moodTitleKey } from '../lib/moods';
 import CoverStrip from '../components/CoverStrip';
 import FollowListButton from '../components/FollowListButton';
@@ -248,6 +249,8 @@ export default function ListDirectory() {
           </div>
         </div>
       )}
+
+      {loading && lists.length === 0 && <CardGridSkeleton count={6} />}
 
       {!loading && lists.length === 0 ? (
         <div className="lv-empty">

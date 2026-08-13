@@ -4,6 +4,7 @@
 
 import { useMemo, useState, useCallback, useEffect } from 'react';
 import { useData } from '../lib/DataContext';
+import { RowListSkeleton } from '../components/Skeleton';
 import { useRouter } from '../lib/RouterContext';
 import { useT, useTNode } from '../lib/I18nContext';
 import { useAuth } from '../lib/AuthContext';
@@ -964,10 +965,7 @@ function FriendsFeedWidget({ userId, hasFriends, go, t }) {
       </div>
 
       {loading && events.length === 0 ? (
-        <div className="db-ff-loading">
-          <div className="loading-spinner" />
-          <span className="db-spark__loading-label">{t('common.loading')}</span>
-        </div>
+        <RowListSkeleton count={3} />
       ) : events.length === 0 ? (
         <p className="db-ff-empty-text">{t('dashboard.friendsFeedEmpty')}</p>
       ) : (

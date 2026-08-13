@@ -9,6 +9,7 @@ import { useData } from '../lib/DataContext';
 import { useRouter } from '../lib/RouterContext';
 import { useT, useTNode } from '../lib/I18nContext';
 import BookCover from '../components/BookCover';
+import { CardGridSkeleton } from '../components/Skeleton';
 import { MOODS, moodTitleKey } from '../lib/moods';
 
 function DirectoryCard({ club, onJoin, joining }) {
@@ -331,6 +332,8 @@ export default function ClubDirectory() {
           </div>
         </div>
       )}
+
+      {loading && clubs.length === 0 && <CardGridSkeleton count={6} />}
 
       {!loading && clubs.length === 0 ? (
         <div className="empty-state">

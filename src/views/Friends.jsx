@@ -9,6 +9,7 @@ import { useRouter } from '../lib/RouterContext';
 import { useT } from '../lib/I18nContext';
 import { supabase } from '../lib/supabase';
 import Avatar from '../components/Avatar';
+import { RowListSkeleton } from '../components/Skeleton';
 
 // ── Friend request row ────────────────────────────────────────────────────────
 function RequestRow({ req, onAccept, onDecline }) {
@@ -283,9 +284,7 @@ export default function Friends() {
             Friend Requests {incomingCount > 0 && `· ${incomingCount}`}
           </div>
           {loading ? (
-            <div className="db-ff-loading">
-              <div className="loading-spinner" />
-            </div>
+            <RowListSkeleton count={2} />
           ) : incomingCount === 0 ? (
             <div className="friends-empty">
               No pending requests.
@@ -311,9 +310,7 @@ export default function Friends() {
           Your Friends {friendsCount > 0 && `· ${friendsCount}`}
         </div>
         {loading ? (
-          <div className="db-ff-loading">
-            <div className="loading-spinner" />
-          </div>
+          <RowListSkeleton count={4} />
         ) : friendsCount === 0 ? (
           <div className="empty-state">
             <div className="ornament">📚</div>
