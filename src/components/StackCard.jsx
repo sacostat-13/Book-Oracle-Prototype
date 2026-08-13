@@ -19,7 +19,7 @@
 
 import { useState } from 'react';
 import { useT } from '../lib/I18nContext';
-import { openBookTab } from '../lib/bookHelpers';
+import { openBookTab, displayAuthor } from '../lib/bookHelpers';
 
 export default function StackCard({ book, onAdd, onHide, state, busy }) {
   const t = useT();
@@ -59,7 +59,7 @@ export default function StackCard({ book, onAdd, onHide, state, busy }) {
 
           <div className="stack-card__meta">
             <div className="stack-card__title" title={book.t}>{book.t}</div>
-            <div className="stack-card__author" title={book.a}>{book.a}</div>
+            <div className="stack-card__author" title={displayAuthor(book)}>{displayAuthor(book)}</div>
           </div>
         </div>
 
@@ -67,7 +67,7 @@ export default function StackCard({ book, onAdd, onHide, state, busy }) {
         <div className="stack-card__face stack-card__back">
           <div className="stack-card__back-head">
             <div className="stack-card__title">{book.t}</div>
-            <div className="stack-card__author">{book.a}</div>
+            <div className="stack-card__author">{displayAuthor(book)}</div>
           </div>
 
           {/* Own scroll container. Nothing is layered over it now, so the

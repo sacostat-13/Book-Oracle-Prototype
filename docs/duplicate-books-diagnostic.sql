@@ -147,18 +147,18 @@ limit 100;
 --    "load more" clicks rather than missing. Confirm with your user id from
 --    query 2.
 -- ─────────────────────────────────────────────────────────────────────────────
--- select
---   coalesce(
---     (select g.name from public.book_genres bg
---        join public.genres g on g.id = bg.genre_id
---       where bg.book_id = b.id
---       order by g.usage_count nulls last, g.name limit 1),
---     b.genre,
---     'Uncategorized'
---   ) as shelf_section,
---   count(*) as books_on_that_section
--- from public.read_books r
--- join public.books b on b.id = r.book_id
--- where r.user_id = 'PASTE-USER-ID-FROM-QUERY-2'
--- group by 1
--- order by 1;
+select
+  coalesce(
+    (select g.name from public.book_genres bg
+       join public.genres g on g.id = bg.genre_id
+      where bg.book_id = b.id
+      order by g.usage_count nulls last, g.name limit 1),
+    b.genre,
+    'Uncategorized'
+  ) as shelf_section,
+  count(*) as books_on_that_section
+from public.read_books r
+join public.books b on b.id = r.book_id
+where r.user_id = 'PASTE-USER-ID-FROM-QUERY-2'
+group by 1
+order by 1;

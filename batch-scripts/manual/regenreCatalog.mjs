@@ -308,7 +308,7 @@ async function loadGenreCatalog() {
       `\nBooks assigned these are unreachable: the picker only offers names from that table.\n`
     );
   }
-  return { idByName, parentByName, total: rows.length };
+  return { idByName, nameById, parentByName, total: rows.length };
 }
 
 // ── Phase 1: fetch ───────────────────────────────────────────────────────────
@@ -401,6 +401,26 @@ async function phaseFetch() {
   if (!DRY_RUN) console.log('[regenre] next: --apply --dry-run --verbose, then --apply');
 }
 
+// v0.63.2. The machine-assigned links that already exist, book_id -> Set(genre_id).
+//
+// Needed so --dry-run can say what --replace WOULD remove. Only 'oracle' rows,
+// because that is exactly the set --replace deletes; 'admin' and 'seed' links
+// are human judgements and are never touched by either.
+async function loadExistingOracleLinks() {
+  const rows = await fetchAll(() => supabase
+    .from('book_genres')
+    .select('book_id, genre_id')
+    .eq('assigned_by_source', 'oracle')
+    .order('book_id', { ascending: true }));
+  const byBook = new Map();
+  for (const r of rows) {
+    let set = byBook.get(r.book_id);
+    if (!set) { set = new Set(); byBook.set(r.book_id, set); }
+    set.add(r.genre_id);
+  }
+  return byBook;
+}
+
 // ── Phase 2/3: infer from stored subjects ────────────────────────────────────
 async function loadBooksWithSubjects() {
   return fetchAll(() => supabase
@@ -419,13 +439,30 @@ function planFor(book, parentByName) {
 }
 
 async function phaseApply() {
-  const { idByName, parentByName, total } = await loadGenreCatalog();
+  const { idByName, nameById, parentByName, total } = await loadGenreCatalog();
   console.log(`[regenre] --apply: ${total} genres in the taxonomy, offline (no network)`);
 
   const books = await loadBooksWithSubjects();
   console.log(`[regenre] ${books.length} book(s) with stored subjects\n`);
 
+  // v0.63.2 — WHY THIS LOAD EXISTS.
+  //
+  // `cleared` and `linked` used to be incremented only inside the write block,
+  // which sits after `if (DRY_RUN) continue`. So a dry run could not reach them
+  // and reported `links=0 cleared=0` unconditionally — including with --replace,
+  // whose entire purpose is to remove links. The one command whose job is to
+  // preview a destructive operation was structurally incapable of describing it,
+  // and printed a confident pair of zeros instead of saying so.
+  //
+  // A dry run now diffs the plan against what is actually in book_genres, so
+  // --replace can be inspected before it is trusted.
+  const existingByBook = await loadExistingOracleLinks();
+
   let linked = 0, placed = 0, unplaced = 0, cleared = 0;
+  // Dry-run projections, kept separate from the write counters above so the two
+  // can never be confused for one another in the summary.
+  let wouldAdd = 0, wouldRemove = 0, wouldKeep = 0, booksChanged = 0, booksLosing = 0;
+  const changes = [];
   const unmatched = [];
 
   for (const book of books) {
@@ -441,7 +478,33 @@ async function phaseApply() {
       vlog(full.join(', '));
       vlog(explainGenre(subjects).join(' | '));
     }
-    if (DRY_RUN) continue;
+    if (DRY_RUN) {
+      const want = new Set(full.map((n) => idByName.get(n)).filter(Boolean));
+      const have = existingByBook.get(book.id) || new Set();
+      const add    = [...want].filter((id) => !have.has(id));
+      // Only --replace removes; without it a stale link simply survives, and
+      // saying otherwise would overstate what a plain --apply does.
+      const remove = REPLACE ? [...have].filter((id) => !want.has(id)) : [];
+      const keep   = [...want].filter((id) => have.has(id));
+
+      wouldAdd += add.length;
+      wouldRemove += remove.length;
+      wouldKeep += keep.length;
+
+      if (add.length || remove.length) {
+        booksChanged++;
+        if (remove.length) booksLosing++;
+        changes.push({
+          id: book.id,
+          title: book.title,
+          author: book.author,
+          added: add.map((id) => nameById.get(id) || id),
+          removed: remove.map((id) => nameById.get(id) || id),
+          kept: keep.map((id) => nameById.get(id) || id),
+        });
+      }
+      continue;
+    }
 
     // --replace clears only what a machine wrote. 'admin' and 'seed' links are
     // human judgements and survive untouched.
@@ -478,9 +541,44 @@ async function phaseApply() {
     writeFileSync(join(__dirname, '..', 'output', 'regenre-unmatched.csv'), csv);
   }
 
+  // A dry run reports the PROJECTION; a real run reports what it did. Printing
+  // the write counters in dry mode is what produced the misleading zeros.
+  if (DRY_RUN) {
+    if (changes.length) {
+      const csv = ['id,title,author,added,removed,kept',
+        ...changes.map((c) => [
+          c.id, c.title, c.author || '',
+          c.added.join('; '), c.removed.join('; '), c.kept.join('; '),
+        ].map((f) => `"${String(f).replace(/"/g, '""')}"`).join(','))].join('\n');
+      writeFileSync(join(__dirname, '..', 'output', 'regenre-changes.csv'), csv);
+    }
+
+    console.log(
+      `\n[regenre] DRY RUN — nothing written.\n` +
+      `  books with subjects ..... ${books.length}\n` +
+      `  the rules can place ..... ${placed}\n` +
+      `  the rules cannot ........ ${unplaced}\n` +
+      `\n` +
+      `  links already correct ... ${wouldKeep}\n` +
+      `  links that would be ADDED ${wouldAdd}\n` +
+      (REPLACE
+        ? `  links that would be REMOVED ${wouldRemove}   <- only --replace does this\n`
+        : `  links that would be REMOVED 0   (run with --replace to remove stale links)\n`) +
+      `\n` +
+      `  books whose shelves change ${booksChanged}\n` +
+      (REPLACE ? `  books LOSING a genre ..... ${booksLosing}\n` : '')
+    );
+    if (changes.length) {
+      console.log(`  ${changes.length} changed book(s), before and after -> output/regenre-changes.csv`);
+    }
+    if (unmatched.length) {
+      console.log(`  ${unmatched.length} unplaceable book(s) -> output/regenre-unmatched.csv`);
+    }
+    return;
+  }
+
   console.log(`\n[regenre] placed=${placed} unplaced=${unplaced} links=${linked}` +
     (REPLACE ? ` cleared=${cleared}` : '') +
-    (DRY_RUN ? ' (DRY RUN — nothing written)' : '') +
     (unmatched.length ? `\n[regenre] ${unmatched.length} book(s) -> output/regenre-unmatched.csv` : ''));
 }
 

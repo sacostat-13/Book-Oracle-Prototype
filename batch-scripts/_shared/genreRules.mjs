@@ -62,7 +62,24 @@ export const GENRE_RULES = [
   ['Southern Gothic',             /southern gothic/i,                                                        SPECIFIC],
   ['American Gothic',             /american gothic/i,                                                        SPECIFIC],
   ['Australian Gothic',           /australian gothic|antipodean gothic/i,                                    SPECIFIC],
-  ['Feminist & Sapphic Gothic',   /sapphic|lesbian fiction|feminist gothic|queer gothic/i,                   SPECIFIC],
+  // v0.63.2 — was /sapphic|lesbian fiction|feminist gothic|queer gothic/i.
+  //
+  // The first two alternatives are unqualified: they match a sapphic book of
+  // ANY kind and file it under a GOTHIC subgenre at SPECIFIC weight. A hit in
+  // the first six subjects scores 9, which beats almost everything else the
+  // table can produce, so the wrong shelf also wins decisively. "Cleat Cute",
+  // a sapphic sports romance, was filed as Feminist & Sapphic Gothic on the
+  // strength of the word "sapphic" alone.
+  //
+  // The other two alternatives were always right — they require the book to be
+  // gothic as well as queer, which is what this genre means. All four do now.
+  // The unqualified terms move to LGBTQ+ Fiction / LGBTQ+ Romance below, where
+  // they belong.
+  //
+  // This is the failure mode the header of this file warns about: "A WRONG
+  // GENRE IS WORSE THAN NO GENRE. It puts a book in front of exactly the reader
+  // who did not ask for it."
+  ['Feminist & Sapphic Gothic',   /sapphic gothic|lesbian gothic|feminist gothic|queer gothic/i,             SPECIFIC],
   ['Classic & Older Gothic',      /classic gothic|victorian gothic|gothic revival/i,                         SPECIFIC],
   ['Haunted Houses',              /haunted house|haunted houses|ghost stor(y|ies)|haunting/i,                SPECIFIC],
   ['Dark Academia',               /dark academia|campus novel|academic thriller|boarding school/i,           SPECIFIC],
@@ -161,7 +178,7 @@ export const GENRE_RULES = [
   ['Court Intrigue',              /court intrigue|palace intrigue|royal court/i,                             SPECIFIC],
   ['War Fiction',                 /war stories|world war|military history fiction/i,                         SPECIFIC],
   ['Western',                     /western stories|westerns|cowboys/i,                                       SPECIFIC],
-  ['Sports Fiction',              /sports fiction|baseball|boxing stories/i,                                 SPECIFIC],
+  ['Sports Fiction',              /sports fiction|sports romance|baseball|boxing stories|soccer|football stories/i, SPECIFIC],
   ['Music Fiction',               /music fiction|rock music fiction|musicians fiction/i,                     SPECIFIC],
   ['Aviation',                    /aviation|aeronautics|pilots/i,                                            SPECIFIC],
   ['Folklore',                    /folklore|folk tales|legends/i,                                            SPECIFIC],
@@ -193,8 +210,8 @@ export const GENRE_RULES = [
   // ══ Real genres with some overlap ═════════════════════════════════════════
   ['Fantasy Romance',             /fantasy romance|romantasy|paranormal romance/i,                           MID],
   ['Historical Romance',          /historical romance|regency romance/i,                                     MID],
-  ['LGBTQ+ Romance',              /queer romance|gay romance|m\/m romance/i,                                 MID],
-  ['LGBTQ+ Fiction',              /lgbt|gay fiction|queer fiction|transgender fiction/i,                     MID],
+  ['LGBTQ+ Romance',              /queer romance|gay romance|m\/m romance|f\/f romance|sapphic romance|lesbian romance/i, MID],
+  ['LGBTQ+ Fiction',              /lgbt|gay fiction|queer fiction|transgender fiction|sapphic|lesbian fiction|wlw/i, MID],
   ['Mystery',                     /mystery|detective|whodunit|amateur sleuth/i,                              MID],
   // "murder" on its own, 75 books. BROAD because it is genuinely ambiguous —
   // it sits on crime novels, but equally on literary fiction and horror where
