@@ -368,10 +368,14 @@ async function phaseFetch() {
       try {
         const subjects = await collectSubjects(bk);
         if (!DRY_RUN) {
-          const { error } = await supabase.from('books').update({
-            source_subjects: subjects,
-            subjects_fetched_at: new Date().toISOString(),
-          }).eq('id', bk.id);
+          // v0.63.2b: same guard as metadataBackfill. A --fetch that comes back
+          // empty must not overwrite subjects an earlier run managed to get.
+          // --retry-empty exists precisely because empty results are often
+          // transient, so re-asking must never be able to destroy evidence.
+          const patch = { subjects_fetched_at: new Date().toISOString() };
+          if (subjects && subjects.length) patch.source_subjects = subjects;
+
+          const { error } = await supabase.from('books').update(patch).eq('id', bk.id);
           if (error) {
             failed++;
             process.stdout.write(`  store failed: ${bk.title}: ${error.message}\n`);

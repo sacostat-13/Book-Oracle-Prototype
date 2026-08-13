@@ -211,7 +211,29 @@ export const GENRE_RULES = [
   ['Fantasy Romance',             /fantasy romance|romantasy|paranormal romance/i,                           MID],
   ['Historical Romance',          /historical romance|regency romance/i,                                     MID],
   ['LGBTQ+ Romance',              /queer romance|gay romance|m\/m romance|f\/f romance|sapphic romance|lesbian romance/i, MID],
-  ['LGBTQ+ Fiction',              /lgbt|gay fiction|queer fiction|transgender fiction|sapphic|lesbian fiction|wlw/i, MID],
+  // v0.63.2b — SPLIT BY STRENGTH, and this split is load-bearing.
+  //
+  // Moving 'sapphic' off the (wrong) Gothic rule dropped it from SPECIFIC to
+  // MID, and MID is not enough on its own at the tail of a subject list:
+  //
+  //     score = positionWeight (3 / 2 / 1) x specificity
+  //     MIN_GENRE_SCORE = 3
+  //
+  // so MID x 1 = 2 fails to clear the bar. A book whose ONLY genre signal is
+  // "Sapphic" sitting past position 15 scored 3 under the old SPECIFIC rule and
+  // placed — wrongly, as Gothic, but it placed — and scored 2 under the first
+  // draft of this fix and placed NOTHING. Correcting a wrong shelf must not
+  // empty the shelf.
+  //
+  // "Sapphic" and "lesbian fiction" are precise, rarely-incidental terms; they
+  // earn SPECIFIC on their own merits, the same way "folk horror" does. What
+  // they never earned was being routed to a GOTHIC genre. The broader terms
+  // stay at MID because "lgbt" genuinely does appear on books of every kind.
+  //
+  // Two rules for one genre is fine: rankGenres accumulates by genre name, so
+  // a book matching both simply scores higher.
+  ['LGBTQ+ Fiction',              /sapphic|lesbian fiction|wlw/i,                                           SPECIFIC],
+  ['LGBTQ+ Fiction',              /lgbt|gay fiction|queer fiction|transgender fiction/i,                     MID],
   ['Mystery',                     /mystery|detective|whodunit|amateur sleuth/i,                              MID],
   // "murder" on its own, 75 books. BROAD because it is genuinely ambiguous —
   // it sits on crime novels, but equally on literary fiction and horror where

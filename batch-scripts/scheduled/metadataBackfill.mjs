@@ -602,17 +602,34 @@ async function main() {
       // for a while. This is the whole point of the change: without the write,
       // the next run re-selects this book on identical criteria.
       if (!DRY_RUN) {
-        // Subjects are stored even here. "Asked, and they had nothing" is a
-        // fact worth keeping — an empty array with a timestamp stops the
-        // re-genre pass fetching this book again for no reason.
+        // "Asked, and they had nothing" is a fact worth keeping — a timestamp
+        // stops the re-genre pass fetching this book again for no reason.
+        //
+        // v0.63.2b — BUT NOT AT THE COST OF WHAT IS ALREADY THERE. This used to
+        // write `source_subjects: subjects || []` unconditionally, so a lookup
+        // that found nothing today ERASED subjects a successful lookup had
+        // stored earlier. The sources are flaky and rate-limited; an empty
+        // result is very often "not today" rather than "does not exist".
+        //
+        // The damage is silent and compounding. Subjects are the only evidence
+        // the rule table ever gets, and regenreCatalog --apply reads nothing
+        // else — so a wiped book keeps whatever genre it was given back when
+        // the evidence existed, and can never be re-derived or corrected.
+        // "Cleat Cute" is the worked example: books.genre said 'Feminist &
+        // Sapphic Gothic', a name only a rule matching "sapphic" can produce,
+        // while source_subjects was []. The verdict outlived its evidence.
+        //
+        // Only ever widen what is stored. Nothing found means nothing written.
+        const mark = {
+          metadata_checked_at: new Date().toISOString(),
+          metadata_attempts: attempts,
+          subjects_fetched_at: new Date().toISOString(),
+        };
+        if (subjects && subjects.length) mark.source_subjects = subjects;
+
         const { error: markErr } = await supabase
           .from('books')
-          .update({
-            metadata_checked_at: new Date().toISOString(),
-            metadata_attempts: attempts,
-            source_subjects: subjects || [],
-            subjects_fetched_at: new Date().toISOString(),
-          })
+          .update(mark)
           .eq('id', book.id);
         if (markErr) vlog(`could not record lookup attempt: ${markErr.message}`);
       }

@@ -6,6 +6,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useData } from '../lib/DataContext';
 import { resolveGenres } from '../lib/genreDisplay';
+import { supabase } from '../lib/supabase';
+import { lookUpByShareKey } from '../lib/shareKey';
 import { useRouter } from '../lib/RouterContext';
 import { useT } from '../lib/I18nContext';
 import { useDocumentMeta } from '../lib/useDocumentMeta';
@@ -182,6 +184,9 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
   const fromLabel = route.params?.fromLabel || 'Dashboard';
 
   const [book, setBook] = useState(null);
+  // v0.63.2b: genre links for a book that is on NO shelf. See the effect below.
+  const [pageGenres, setPageGenres] = useState(null);
+  const [pageGenresLoading, setPageGenresLoading] = useState(false);
 
   // v0.39: SEO/share title+description once the book resolves. Deliberately
   // NOT set in App.jsx's generic route-title effect (see App.jsx) — this is
@@ -198,6 +203,10 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
   const [seriesLoading, setSeriesLoading] = useState(false);
   const [seriesDescription, setSeriesDescription] = useState(null);
   const [notFound, setNotFound] = useState(false);
+  // v0.63.3: a shared link's database lookup is in flight. Distinct from
+  // notFound — showing "not found" while still looking is how the previous
+  // version behaved, and it was wrong.
+  const [lookingUp, setLookingUp] = useState(false);
   const [ratingEditorOpen, setRatingEditorOpen] = useState(false);
   const [pendingMoment, setPendingMoment] = useState(null); // share moment queued behind the rating step
   const [finishing, setFinishing] = useState(false);
@@ -273,7 +282,25 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
       // Once collection loads this effect re-runs and upgrades to the full record.
       setBook(snapshotBook);
     } else {
-      setNotFound(true);
+      // v0.63.3 — SHARED LINKS.
+      //
+      // Previously this was `setNotFound(true)`, and that was the whole of the
+      // bug: resolution consulted the reader's own shelves and the `?snap=`
+      // snapshot the app embeds in URLs it builds itself, and nothing else. A
+      // shared link is bare and its recipient does not own the book, so both
+      // missed and every shared link 404'd for exactly the audience it was
+      // shared with. It was invisible to whoever shared it, because their copy
+      // always resolves from their shelf.
+      //
+      // The share card rendered the whole time — og-prerender.js finds the book
+      // server-side — which made the page look broken rather than the link.
+      //
+      // The database is the third place to look, and now the SPA looks there.
+      setLookingUp(true);
+      lookUpByShareKey(bookKey_).then((row) => {
+        setLookingUp(false);
+        if (row) setBook(row); else setNotFound(true);
+      });
     }
     // `upsertDiscoveredBook` is intentionally absent. It comes from
     // DataContext and is rebuilt on every provider render, so listing it here
@@ -282,6 +309,61 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
     // not just a wasted render.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bookKey_, route.params, previewBookRef, state.wishlist, state.library, state.readNext, snapshotBook]);
+
+  // Depend on the boolean, not on state.genresByBookId — that object is rebuilt
+  // on every shelf load, and depending on its identity would re-run the fetch
+  // (and the query) every time anything on any shelf changed.
+  const hasShelfGenres = !!(book?.bookId && state.genresByBookId?.[book.bookId]?.length);
+
+  // v0.63.2b — GENRES FOR A BOOK YOU DO NOT OWN.
+  //
+  // `state.genresByBookId` is hydrated from book_genres_view for the ids on the
+  // wishlist, library and read-next shelves, and nothing else. That is correct
+  // for the shelves, and it means a Book Page for a book on NO shelf has no
+  // link data at all — it falls back to the legacy `books.genre` scalar carried
+  // in the URL snapshot.
+  //
+  // Which works from a Stacks card, because that card was built from a `books`
+  // row and the snapshot carries `g`. It does NOT work from search: those
+  // results come from Hardcover / Google Books, which know nothing about this
+  // catalogue's taxonomy, so `g` is absent and the page renders no genres at
+  // all — even when the book has a full set of links in the database. That is
+  // the reported "Cleat Cute shows no genres".
+  //
+  // One query, only when the shelves cannot answer. `pageGenresLoading` is
+  // tracked so the chips are held rather than flashing the scalar and then
+  // being replaced — the exact swap this release set out to remove.
+  useEffect(() => {
+    const id = book?.bookId;
+    if (!id || hasShelfGenres) { setPageGenres(null); return; }
+
+    let cancelled = false;
+    setPageGenresLoading(true);
+    (async () => {
+      const { data, error } = await supabase
+        .from('book_genres_view')
+        .select('genre_id, genre_name, genre_description, usage_count, normalized_name')
+        .eq('book_id', id);
+      if (cancelled) return;
+      if (error) {
+        // A failed lookup must not blank the page: fall through to whatever the
+        // snapshot carried, which is what happened before this effect existed.
+        console.warn('[BookPage] genre lookup failed', error.message);
+        setPageGenres(null);
+      } else {
+        setPageGenres((data || []).map((r) => ({
+          genreId: r.genre_id,
+          name: r.genre_name,
+          description: r.genre_description || null,
+          usageCount: r.usage_count,
+          normalizedName: r.normalized_name,
+        })));
+      }
+      setPageGenresLoading(false);
+    })();
+
+    return () => { cancelled = true; };
+  }, [book?.bookId, hasShelfGenres]);
 
   // Enrichment:
   // For preview books (from search), fetch the full Hardcover record by
@@ -404,6 +486,18 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
     () => new Set((state.library || []).map(bookKey)),
     [state.library]
   );
+
+  // v0.63.3: the database lookup for a shared link is still running. Rendering
+  // "not found" here — which is what happened before the lookup existed — tells
+  // the reader the book does not exist while we are in the middle of finding it.
+  if (lookingUp && !book) {
+    return (
+      <div className="lv-empty">
+        <div className="lv-empty-icon">❦</div>
+        <div className="lv-empty-text">{t('bookPage.loadingBook')}</div>
+      </div>
+    );
+  }
 
   if (notFound) {
     return (
@@ -533,7 +627,34 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
   // which rendered the single legacy scalar on every first paint because
   // genresByBookId starts empty — one chip, then the rest arriving visibly
   // later. resolveGenres tells us whether the blank is "loading" or "settled".
-  const { genres, pending: genresPending } = resolveGenres(state, loading, display);
+  //
+  // v0.63.2b: shelves first, then the direct lookup above for books on none of
+  // them, then the scalar. `pageGenres` is [] for a book that genuinely has no
+  // links, which is a real answer and must not be mistaken for "not fetched" —
+  // hence the null check rather than a length check.
+  // Order matters, and the naive version gets it backwards: resolveGenres
+  // already folds the scalar in as its last resort, so testing its result first
+  // would let ONE legacy chip beat a full set of real links fetched above.
+  // Shelf links, then the direct lookup, then whatever resolveGenres decides.
+  const shelfLinks = display.bookId ? state.genresByBookId?.[display.bookId] : null;
+  const shelfResolved = resolveGenres(state, loading, display);
+
+  let genres;
+  let genresPending;
+  if (shelfLinks && shelfLinks.length) {
+    genres = shelfLinks;
+    genresPending = false;
+  } else if (pageGenresLoading) {
+    // Hold the row rather than paint the scalar and swap it a moment later.
+    genres = [];
+    genresPending = true;
+  } else if (pageGenres && pageGenres.length) {
+    genres = pageGenres;
+    genresPending = false;
+  } else {
+    genres = shelfResolved.genres;
+    genresPending = shelfResolved.pending;
+  }
 
   // Similar books — scored by Oracle genre overlap, author, complexity, length.
   // `state.library` is the read shelf; it stays in the pool so nothing else

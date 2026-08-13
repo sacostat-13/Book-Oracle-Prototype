@@ -43,31 +43,15 @@ const BOT_UA_PATTERN = /bot|crawl|spider|slurp|facebookexternalhit|slackbot|twit
 // netlify/functions/sitemap.js and netlify/edge-functions/og-prerender.js.
 const SITE = 'https://www.thebooksoracle.com';
 
-// Mirrors src/lib/bookHelpers.js bookKey() and netlify/functions/sitemap.js's
-// copy of the same function — duplicated again here since Edge Functions run
-// in a separate Deno bundle and can't import client source directly.
+// v0.63.3: the local copy of bookKey()/matchesBookKey() that used to live here
+// is gone. Its own comment recorded why it was a liability — the client's author
+// truncation length had already drifted from it once (assumed 10, production was
+// generating 11) — and the tolerant matching it grew in response was a patch over
+// the real problem, which was three implementations of one algorithm.
 //
-// v0.39.10: matching against this key is deliberately NOT a strict string
-// equality check anymore (see matchesBookKey below). The client's author
-// truncation length has drifted from this copy at least once already
-// (was assumed to be 10 chars, production was actually generating 11) —
-// duplicating the exact algorithm server-side is inherently fragile to
-// that kind of drift, so the match is tolerant of it instead of exact.
-
-// Title must match exactly (titles aren't truncated, so no drift risk there).
-// Author is compared as a mutual prefix rather than an exact substring — this
-// tolerates the client using any truncation length (10, 11, or a future
-// change) without needing this file kept in perfect lockstep with it.
-function matchesBookKey(title, author, wantedKey) {
-  const [wantedTitle, wantedAuthor] = wantedKey.split('|');
-  const normTitle = (title || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-  const normAuthor = (author || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-  if (normTitle !== wantedTitle) return false;
-  if (!wantedAuthor || !normAuthor) return wantedAuthor === normAuthor;
-  const shorter = wantedAuthor.length <= normAuthor.length ? wantedAuthor : normAuthor;
-  const longer = wantedAuthor.length <= normAuthor.length ? normAuthor : wantedAuthor;
-  return longer.startsWith(shorter);
-}
+// It now lives once, in SQL: client_title_key / client_author_key /
+// find_book_by_client_key, migration 20260813120000. This function and the SPA
+// both call it, so there is nothing left to drift.
 
 function normalizeSeriesName(name) {
   return (name || '')
@@ -183,16 +167,29 @@ function injectBody(html, blockHtml) {
 // and weighs deep pages through links from other pages; 1,700 orphans reachable
 // only from a sitemap is a much weaker position than 1,700 pages that reference
 // each other by series and genre.
-function bookLink(title, author) {
-  const key = (title || '').toLowerCase().replace(/[^a-z0-9]/g, '') +
-    '|' + (author || '').toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 10);
+// v0.63.3: takes the precomputed share_key from public.books_share_key rather
+// than recomputing it. This was the last copy of the algorithm in this file,
+// and it generated the internal links Google follows — drift here meant
+// advertising 404s to a crawler, the same failure sitemap.js had.
+function bookLink(row) {
+  const key = row?.share_key;
+  // Title half must be non-empty — see the note in sitemap.js. "|author" is a
+  // key that find_book_by_client_key deliberately refuses to resolve.
+  if (!key || key.startsWith('|')) return null;
   return `/book/${encodeURIComponent(key)}`;
 }
 
 function listItems(rows) {
   return rows.map((b) => {
     const pos = b.position_in_series != null ? `${Number(b.position_in_series)}. ` : '';
-    return `<li>${escapeHtml(pos)}<a href="${escapeHtml(bookLink(b.title, b.author))}">${escapeHtml(b.title)}</a>` +
+    const href = bookLink(b);
+    // An unaddressable row is listed without a link rather than dropped: the
+    // title is still useful context, and a dead href is not.
+    if (!href) {
+      return `<li>${escapeHtml(pos)}${escapeHtml(b.title)}` +
+        `${b.author ? ` — ${escapeHtml(b.author)}` : ''}</li>`;
+    }
+    return `<li>${escapeHtml(pos)}<a href="${escapeHtml(href)}">${escapeHtml(b.title)}</a>` +
       `${b.author ? ` — ${escapeHtml(b.author)}` : ''}</li>`;
   }).join('');
 }
@@ -278,32 +275,30 @@ export default async (request, context) => {
       // unfurls look broken for legitimately-reachable content. Deliberate
       // split: sitemap strict, OG-prerender permissive.
       //
-      // No stored bookKey column to query by directly, so we fetch and
-      // compute bookKey() per row to find the match — same tradeoff
-      // sitemap.js already makes. PostgREST caps `limit` at the project's
-      // Max Rows setting (default 1000) regardless of what's requested, so
-      // a single fetch silently truncates on any catalog bigger than that
-      // — paginate with `offset` until we find a match or run out of rows,
-      // stopping early on match so most requests only cost one round trip.
-      const PAGE_SIZE = 1000;
-      const MAX_PAGES = 20; // hard ceiling so a runaway catalog can't hang the function
-      let match = null;
-      let totalFetched = 0;
+      // v0.63.3: was a paginated scan of the whole `books` table, recomputing
+      // the key per row, because there was no way to query by it. There is now
+      // — find_book_by_client_key (migration 20260813120000) holds the same
+      // matching logic in SQL, indexed on the title half, and the SPA calls the
+      // very same function. One definition, three callers, no drift.
+      //
+      // The scan is gone rather than kept as a fallback on purpose: a silent
+      // fallback would hide a broken migration until someone noticed link
+      // previews had quietly stopped working.
+      const res = await fetch(`${supabaseUrl}/rest/v1/rpc/find_book_by_client_key`, {
+        method: 'POST',
+        headers: { ...restHeaders, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ _key: wantedKey }),
+      });
 
-      for (let page = 0; page < MAX_PAGES; page++) {
-        const res = await fetch(
-          `${supabaseUrl}/rest/v1/books?select=title,author,description,cover_url,genre,series_id,position_in_series&limit=${PAGE_SIZE}&offset=${page * PAGE_SIZE}`, {
-            headers: restHeaders
-          }
-        );
-        if (!res.ok) break;
+      let match = null;
+      if (res.ok) {
         const rows = await res.json();
-        totalFetched += rows.length;
-        match = rows.find((b) => matchesBookKey(b.title, b.author, wantedKey));
-        if (match || rows.length < PAGE_SIZE) break; // found it, or hit the last page
+        match = Array.isArray(rows) ? rows[0] : rows;
+      } else {
+        console.log(`[og-prerender] lookup failed ${res.status} | wanted=${wantedKey}`);
       }
 
-      console.log(`[og-prerender] scanned ${totalFetched} books | wanted=${wantedKey} | match=${!!match}${match ? ` (${match.title} by ${match.author})` : ''}`);
+      console.log(`[og-prerender] wanted=${wantedKey} | match=${!!match}${match ? ` (${match.title} by ${match.author})` : ''}`);
 
       if (!match) return context.next();
 
@@ -357,13 +352,13 @@ export default async (request, context) => {
       if (match.series_id) {
         const [sRes, bRes] = await Promise.all([
           fetch(`${supabaseUrl}/rest/v1/series?select=name&id=eq.${encodeURIComponent(match.series_id)}&limit=1`, { headers: restHeaders }),
-          fetch(`${supabaseUrl}/rest/v1/books?select=title,author,position_in_series&series_id=eq.${encodeURIComponent(match.series_id)}&order=position_in_series.asc&limit=30`, { headers: restHeaders }),
+          fetch(`${supabaseUrl}/rest/v1/books_share_key?select=title,author,share_key,position_in_series&series_id=eq.${encodeURIComponent(match.series_id)}&order=position_in_series.asc&limit=30`, { headers: restHeaders }),
         ]);
         if (sRes.ok) seriesName = (await sRes.json())[0]?.name || null;
         if (bRes.ok) siblings = await bRes.json();
       } else if (match.genre) {
         const nRes = await fetch(
-          `${supabaseUrl}/rest/v1/books?select=title,author&genre=eq.${encodeURIComponent(match.genre)}` +
+          `${supabaseUrl}/rest/v1/books_share_key?select=title,author,share_key&genre=eq.${encodeURIComponent(match.genre)}` +
           `&status=in.(verified,oracle_categorized)&title=neq.${encodeURIComponent(match.title)}&limit=8`,
           { headers: restHeaders }
         );
@@ -407,7 +402,7 @@ export default async (request, context) => {
       // leaving the entire point of the page unsaid.
       let volumes = [];
       const vRes = await fetch(
-        `${supabaseUrl}/rest/v1/books?select=title,author,position_in_series,description` +
+        `${supabaseUrl}/rest/v1/books_share_key?select=title,author,share_key,position_in_series,description` +
         `&series_id=eq.${encodeURIComponent(match.id)}&order=position_in_series.asc&limit=60`,
         { headers: restHeaders }
       );
@@ -445,7 +440,10 @@ export default async (request, context) => {
               name: b.title,
               ...(b.author ? { author: { '@type': 'Person', name: b.author } } : {}),
               ...(b.position_in_series != null ? { position: Number(b.position_in_series) } : {}),
-              url: SITE + bookLink(b.title, b.author),
+              // v0.63.3: omit `url` rather than emit a broken one — structured
+              // data pointing at a 404 is worse for SEO than structured data
+              // with one fewer field.
+              ...(bookLink(b) ? { url: SITE + bookLink(b) } : {}),
             })),
           } : {}),
         },

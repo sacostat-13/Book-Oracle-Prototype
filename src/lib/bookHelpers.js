@@ -50,6 +50,25 @@ export function displayAuthor(b) {
   return a || UNKNOWN_AUTHOR;
 }
 
+// The shareable address of a book: /book/<bookKey>.
+//
+// v0.63.3 — THIS IS NOW THE ONLY COPY. og-prerender.js and sitemap.js each
+// carried their own, and og-prerender's comment recorded that they had already
+// drifted once (it assumed 10 characters of author; production was emitting
+// 11). Both now take the key precomputed from public.books_share_key, and
+// lookups go through find_book_by_client_key — see migration
+// 20260813120000_client_book_key_lookup.sql, which is the authority this
+// function must agree with.
+//
+// It survives here because the client has to build a URL from a book already in
+// memory, and a round trip to learn its own address would be absurd. If you
+// change it, change client_title_key / client_author_key to match, or shared
+// links silently start 404ing — the failure is invisible to whoever shares one,
+// because their own copy always resolves from their shelf.
+//
+// Note this is an ADDRESS, not an identity. books.normalized_key is the
+// identity, and it is built differently on purpose (spaces kept, accents
+// folded, author not truncated).
 export function bookKey(b) {
   return (
     (b.t || '').toLowerCase().replace(/[^a-z0-9]/g, '') +

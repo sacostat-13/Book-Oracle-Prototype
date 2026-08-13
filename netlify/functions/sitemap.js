@@ -53,15 +53,14 @@
 // netlify/functions/sitemap.js and netlify/edge-functions/og-prerender.js.
 const SITE = 'https://www.thebooksoracle.com';
 
-// Mirrors src/lib/bookHelpers.js bookKey() — duplicated here since this
-// function runs server-side and can't import client source directly.
-function bookKey(title, author) {
-  return (
-    (title || '').toLowerCase().replace(/[^a-z0-9]/g, '') +
-    '|' +
-    (author || '').toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 10)
-  );
-}
+// v0.63.3: the local copy of bookKey() is gone. It generated the URLs a shared
+// link resolves against, so any drift between it and the client's version
+// produced sitemap entries that 404'd — advertising broken URLs to search
+// engines, which is worse than omitting them.
+//
+// The key now comes precomputed from public.books_share_key (migration
+// 20260813120000), the same functions find_book_by_client_key resolves with.
+// Generation and lookup cannot disagree because they are the same expression.
 
 function xmlEscape(s) {
   return String(s)
@@ -125,8 +124,8 @@ export async function handler() {
     // status is filtered server-side: 'oracle_categorized' is treated as
     // equivalent to 'verified' everywhere else in the app, so books the Oracle
     // classified but nobody hand-checked belong in the sitemap too.
-    const select = 'title,author,series:series(name)';
-    const query = `${supabaseUrl}/rest/v1/books` +
+    const select = 'share_key,series_name';
+    const query = `${supabaseUrl}/rest/v1/books_share_key` +
       `?select=${encodeURIComponent(select)}` +
       `&status=in.(verified,oracle_categorized)`;
 
@@ -155,11 +154,16 @@ export async function handler() {
     const seriesNames = new Set();
 
     for (const b of books || []) {
-      if (!b.title || !b.author) continue;
-      const key = bookKey(b.title, b.author);
-      if (!key || key === '|') continue;
+      const key = b.share_key;
+      // Not addressable unless the TITLE half is non-empty. The old guard tested
+      // `key === '|'`, which catches a book with neither title nor author but
+      // misses the real case: a title with no ASCII alphanumerics — anything
+      // written wholly in Korean, Japanese, Cyrillic — produces "|author", which
+      // passes that test and resolves to nothing. Advertising it to a crawler is
+      // advertising a 404.
+      if (!key || key.startsWith('|')) continue;
       bookEntries.push(urlEntry(`/book/${encodeURIComponent(key)}`, { priority: '0.7' }));
-      if (b.series?.name) seriesNames.add(b.series.name);
+      if (b.series_name) seriesNames.add(b.series_name);
     }
 
     const seriesEntries = [...seriesNames].map((name) =>
