@@ -1,5 +1,5 @@
 // src/components/landing/Companions.jsx
-// Act IV — The Companions. Eight quiet tiles, staggered rise.
+// Act IV — The Companions. Nine quiet tiles, staggered rise.
 //
 // This used to also draw faint gold curves *between* related tiles (a
 // "connections" motif). Removed: the page already has one gold line with a
@@ -20,6 +20,7 @@ const TILES = [
   { key: 'clubs', sigil: '⚭' },
   { key: 'series', sigil: '⧉' },
   { key: 'vault', sigil: '◈' },
+  { key: 'stacks', sigil: '▤' },
   { key: 'lists', sigil: '☽' },
   { key: 'bilingual', sigil: 'Æ' },
   { key: 'share', sigil: '❧' },
@@ -30,7 +31,9 @@ const TILES = [
 // document-spanning GoldThread weaves through (top-center and bottom-center
 // of the grid), so the thread is drawn over the tiles rather than skirting
 // the section.
-const THREAD_TILES = [1, 6];
+// Nine tiles in a three-column grid: index 1 is top-centre, index 7 is
+// bottom-centre. Keep these in step with TILES.length when adding a tile.
+const THREAD_TILES = [1, 7];
 
 export default function Companions({ tileAnchorRefs = [] }) {
   const t = useT();

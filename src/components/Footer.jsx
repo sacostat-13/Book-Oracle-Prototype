@@ -16,6 +16,10 @@ const IconX = () => (
   <svg viewBox="0 0 24 24" aria-hidden><path d="M22 5.9c-.7.3-1.5.5-2.3.6a4 4 0 0 0 1.8-2.2c-.8.5-1.7.8-2.6 1a4 4 0 0 0-6.8 3.6A11.3 11.3 0 0 1 3.7 4.6a4 4 0 0 0 1.2 5.3c-.6 0-1.2-.2-1.8-.5a4 4 0 0 0 3.2 4 4 4 0 0 1-1.8.1 4 4 0 0 0 3.7 2.8A8 8 0 0 1 2 18a11.3 11.3 0 0 0 6.1 1.8c7.3 0 11.4-6.1 11.4-11.4v-.5c.8-.6 1.5-1.3 2-2z" /></svg>
 );
 
+// Social accounts are not live yet, so the icon row is held back rather than
+// deleted — flip this to true when the profiles exist.
+const SHOW_SOCIAL = false;
+
 export default function Footer({ guestMode = false }) {
   const { go } = useRouter();
   const { lang, toggleLang, t } = useI18n();
@@ -57,20 +61,22 @@ export default function Footer({ guestMode = false }) {
             <p className="footer-brand__tagline">
               {t('footer.tagline') || 'Your reading companion — wishlist, library, plans and an Oracle that knows what you\'ll love next.'}
             </p>
-            <div className="footer-brand__social">
-              {socialLinks.map(({ href, Icon, label }) => (
-                <a
-                  key={href}
-                  href={href}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="footer-social-btn"
-                  aria-label={label}
-                >
-                  <Icon />
-                </a>
-              ))}
-            </div>
+            {SHOW_SOCIAL && (
+              <div className="footer-brand__social">
+                {socialLinks.map(({ href, Icon, label }) => (
+                  <a
+                    key={href}
+                    href={href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="footer-social-btn"
+                    aria-label={label}
+                  >
+                    <Icon />
+                  </a>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Col 2: Product — hidden in guest mode (unauthenticated legal pages) */}

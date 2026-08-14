@@ -144,6 +144,10 @@ export default function About() {
             {t('about.featureCurrentlyReadingBody')}
           </Feature>
 
+          <Feature title={t('about.featureStacksTitle')}>
+            {t('about.featureStacksBody')}
+          </Feature>
+
           <Feature title={t('about.featureOracleTitle')}>
             {t('about.featureOracleBody')}
             <FeatureSub label={t('about.featureOracleCategoriesTitle')}>
