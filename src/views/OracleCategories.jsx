@@ -11,21 +11,19 @@ import { useT, useI18n, langDirective } from '../lib/I18nContext';
 import BookCard from '../components/BookCard';
 import GenreSelect from '../components/GenreSelect';
 import { buildTasteProfile, describeTasteProfile, computeLocalMatch, MATCH_SCORING_INSTRUCTIONS } from '../lib/matchHelpers';
+import { buildExcludeHint, buildShelfSignature, filterAlreadyKnown, REASON_INSTRUCTIONS } from '../lib/oraclePrompt';
+import { saveDraw, loadDraw } from '../lib/oracleDrawCache';
 
 // v0.15 phase 2.6: copy pass — "categories" → "genres" throughout.
 // The Temperament dropdown now draws from Oracle genres (genresByBookId)
 // for wishlist/vault modes, falling back to b.g for uncategorized books.
 // Route name (oracle-categories) is kept for URL stability.
 
-// v0.63 — prompt budget.
-//
-// claude.js rejects anything over MAX_PROMPT_CHARS (50_000) with a 413. The
-// rest of this prompt — taste profile, recent reads, wishlist sample — runs
-// about 2.5k characters, so 6k for the denylist sample leaves an order of
-// magnitude of headroom and still carries several hundred titles. Sized to be
-// obviously safe rather than maximally full: the list is a hint now, and
-// doubling it would not make the recommendations better.
-const EXCLUDE_CHAR_BUDGET = 6000;
+// v0.63.3 — the prompt budget, the recency-first denylist hint and the
+// title-normalising comparison used to live here. They now live in
+// src/lib/oraclePrompt.js, because OracleAsk and OracleSimilar had the same
+// unbounded-denylist bug this file fixed in v0.63 and could not reuse a fix
+// that was written inside a component.
 
 // Ask for more than we show, because client-side filtering removes some.
 // 8-for-3 survives the model returning five books the reader already owns,
@@ -34,48 +32,6 @@ const EXCLUDE_CHAR_BUDGET = 6000;
 const AI_DRAW_REQUEST = 8;
 const AI_DRAW_COUNT = 3;
 
-// Recency-first: a book added last week is far likelier to be re-suggested
-// than one read in 2011, so if the budget only fits part of the shelf it
-// should fit the part that matters. `known` arrives as
-// [...readNext, ...library, ...wishlist]; readNext is the most immediate
-// signal, so it is preserved at the head.
-function buildExcludeHint(known) {
-  const seen = new Set();
-  const parts = [];
-  let used = 0;
-
-  for (const b of known) {
-    const title = (b?.t || '').trim();
-    if (!title) continue;
-    const key = normalizeTitle(title);
-    if (seen.has(key)) continue;   // the old list shipped duplicates too
-    seen.add(key);
-
-    const piece = `"${title}"`;
-    const cost = piece.length + 2; // ", "
-    if (used + cost > EXCLUDE_CHAR_BUDGET) break;
-    parts.push(piece);
-    used += cost;
-  }
-
-  return parts.join(', ') || '(nothing yet)';
-}
-
-// Loose enough to catch edition/spacing/punctuation drift between what the
-// model returns and what is on the shelf, strict enough not to collapse
-// genuinely different books. Deliberately NOT exported: `bookKey` remains the
-// canonical identity everywhere else, and a second notion of "same book"
-// leaking out of this file is how identity bugs start.
-function normalizeTitle(t) {
-  return (t || '')
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')   // strip accents: "Pedro Páramo" === "Pedro Paramo"
-    .replace(/\s*\([^)]*\)\s*$/, '')   // drop a trailing "(Series, #3)"
-    .replace(/[^a-z0-9]+/g, ' ')
-    .trim();
-}
-
 export default function OracleCategories({ onOpenBook }) {
   const { state, setOracleMode, showToast, vault, loadVault } = useData();
   const { go } = useRouter();
@@ -83,8 +39,18 @@ export default function OracleCategories({ onOpenBook }) {
   const { lang } = useI18n();
   const { quota, handleQuotaError, onCallSucceeded, confirmOracleCall } = useOracleQuota();
   const [genre, setGenre] = useState('all');
-  const [draw, setDraw] = useState([]);
+  // v0.63.3: seeded from the session cache so a reload, a tab discard or a trip
+  // to a book page and back does not read as "my Oracle call vanished". Lazy
+  // initialiser — sessionStorage is touched once on mount, not every render.
+  const [draw, setDraw] = useState(() => loadDraw('categories')?.books || []);
   const [loading, setLoading] = useState(false);
+
+  // One place to set results, so nothing can update the grid without also
+  // updating what a reload would restore.
+  function showDraw(books) {
+    setDraw(books);
+    saveDraw('categories', { books });
+  }
 
   const mode = state.oracleMode || 'wishlist';
   const { genresByBookId } = state;
@@ -168,7 +134,7 @@ export default function OracleCategories({ onOpenBook }) {
   function setMode(newMode) {
     if (newMode === mode) return;
     setOracleMode(newMode);
-    setDraw([]);
+    showDraw([]);
     setGenre('all');
   }
 
@@ -196,7 +162,7 @@ export default function OracleCategories({ onOpenBook }) {
         return;
       }
       const shuffled = [...available].sort(() => Math.random() - 0.5);
-      setDraw(withLocalMatch(shuffled.slice(0, Math.min(3, shuffled.length))));
+      showDraw(withLocalMatch(shuffled.slice(0, Math.min(3, shuffled.length))));
       return;
     }
 
@@ -205,11 +171,22 @@ export default function OracleCategories({ onOpenBook }) {
     // vault modes above return without ever reaching Anthropic.
     if (!(await confirmOracleCall('categories'))) return;
     setLoading(true);
-    setDraw([]);
+    showDraw([]);
     try {
       const profileLevel = state.profile.readingLevel || 3;
-      const libContext = state.library.slice(-15).map((b) => `- ${b.t} by ${b.a}`).join('\n') || '(none)';
-      const wishContext = state.wishlist.slice(0, 30).map((b) => `- ${b.t}`).join('\n') || '(none)';
+
+      // v0.63.3. This was:
+      //   libContext  = state.library.slice(-15)   // "Books they've read recently"
+      //   wishContext = state.wishlist.slice(0, 30)
+      // DataContext returns library read_at DESC and wishlist added_at ASC, so
+      // both slices took the OLDEST end of the shelf. The prompt has been
+      // promising recency and delivering 2011.
+      //
+      // buildShelfSignature knows those orderings, and adds what neither line
+      // carried: shelf sizes, star ratings, and the queue. Ratings are the
+      // part that matters — "you gave Piranesi 5★" is something the Oracle can
+      // build a reason on, where a bare title is not.
+      const shelf = buildShelfSignature(state);
 
       // v0.63 — THIS IS THE FIX FOR "Prompt too long" (413 from claude.js,
       // MAX_PROMPT_CHARS = 50_000).
@@ -249,24 +226,20 @@ export default function OracleCategories({ onOpenBook }) {
       const prompt = `Recommend ${AI_DRAW_REQUEST} books for a reader at reading level ${profileLevel}/5 (1=casual, 5=experimental).
 ${genreHint}
 
-Books they've read recently:
-${libContext}
-
-Books currently on their wishlist (to give you a sense of taste — feel free to go beyond these):
-${wishContext}
+${shelf}
 
 ${describeTasteProfile(tasteProfile)}
 
 Avoid recommending books they already know. Here is a sample of what is already on their shelves (not exhaustive): ${exclude}
 
 Return ONLY valid JSON in this format:
-{"books":[{"title":"...","author":"...","genre":"...","complexity":1-5,"depth":1-5,"description":"one-sentence description","match":0-100}]}`;
+{"books":[{"title":"...","author":"...","genre":"...","complexity":1-5,"depth":1-5,"description":"one-sentence description","reason":"one sentence on why THIS reader would enjoy it right now","match":0-100}]}`;
 
       let response = null;
       try {
         response = await callClaude(
           prompt,
-          `You are a literary curator. Recommend books accurately. Always return valid JSON. ${langDirective(lang)} Any natural-language field in the JSON (description, genre label) MUST be in that language; titles and author names stay in their original language.\n${MATCH_SCORING_INSTRUCTIONS}`,
+          `You are a literary curator. Recommend books accurately. Always return valid JSON. ${langDirective(lang)} Any natural-language field in the JSON (description, reason, genre label) MUST be in that language; titles and author names stay in their original language.\n${MATCH_SCORING_INSTRUCTIONS}\n${REASON_INSTRUCTIONS}`,
           { source: 'categories' } // v0.58: history label (schema_v44)
         );
         onCallSucceeded();
@@ -287,26 +260,26 @@ Return ONLY valid JSON in this format:
           // guarantee that we never recommend a book the reader already has
           // lives HERE — exact, local, free, and applied to the full set rather
           // than to whatever fitted in the character budget.
-          const knownKeys = new Set(known.map(bookKey));
-          const knownTitles = new Set(known.map((b) => normalizeTitle(b.t)));
-
-          books = parsed.books
-            .map((b) => ({
-              t: b.title, a: b.author,
-              g: b.genre || (genre !== 'all' ? selectedGenreName : 'Recommended'),
-              c: b.complexity, p: b.depth, d: b.description,
-              aiSuggested: true,
-              match: Number.isFinite(b.match) ? Math.max(0, Math.min(100, Math.round(b.match))) : undefined,
-            }))
-            .filter((b) => b.t && b.a)
-            // bookKey is title+author, so it misses the case where the model
-            // returns a different edition's author string for a book already on
-            // the shelf ("Jim  Butcher" vs "Jim Butcher"). Title alone is the
-            // safety net: a false positive costs one suggestion out of the
-            // AI_DRAW_REQUEST we asked for, a false negative shows the reader a
-            // book they have already read, which is the failure they notice.
-            .filter((b) => !knownKeys.has(bookKey(b)) && !knownTitles.has(normalizeTitle(b.t)))
-            .slice(0, AI_DRAW_COUNT);
+          books = filterAlreadyKnown(
+            parsed.books
+              .map((b) => ({
+                t: b.title, a: b.author,
+                g: b.genre || (genre !== 'all' ? selectedGenreName : 'Recommended'),
+                c: b.complexity, p: b.depth, d: b.description,
+                // v0.63.3: the personalised "why", deliberately separate from
+                // `d`. A description tells anybody what the book is; `why`
+                // tells THIS reader why it was drawn for them. BookCard has
+                // rendered it as a pull-quote since v0.38 — By genres was the
+                // one AI surface that never asked the model for it, which is
+                // why the landing page's "every suggestion tells you why" was
+                // true on three screens out of four.
+                why: b.reason || undefined,
+                aiSuggested: true,
+                match: Number.isFinite(b.match) ? Math.max(0, Math.min(100, Math.round(b.match))) : undefined,
+              }))
+              .filter((b) => b.t && b.a),
+            known
+          ).slice(0, AI_DRAW_COUNT);
 
           // v0.58 provenance. Inside the AI branch only: the Vault and
           // wishlist fallbacks below are local draws, and logging them would
@@ -330,7 +303,7 @@ Return ONLY valid JSON in this format:
         const v = vault || (await loadVault());
         const drawFrom = (rows) => {
           const shuffled = [...rows].sort(() => Math.random() - 0.5);
-          setDraw(withLocalMatch(shuffled.slice(0, Math.min(3, shuffled.length))));
+          showDraw(withLocalMatch(shuffled.slice(0, Math.min(3, shuffled.length))));
         };
         const usable = (rows) => rows.filter((b) => !inUse.has(bookKey(b)));
 
@@ -352,7 +325,7 @@ Return ONLY valid JSON in this format:
           drawFrom(anyVault.length > 0 ? anyVault : usable(state.wishlist));
         }
       } else {
-        setDraw(books);
+        showDraw(books);
       }
     } finally {
       setLoading(false);
@@ -442,7 +415,14 @@ Return ONLY valid JSON in this format:
             <div className="empty-state-text">Select a temperament above and draw three books.</div>
           </div>
         ) : (
-          draw.map((b, i) => <BookCard key={`${bookKey(b)}-${i}`} book={b} onClick={() => onOpenBook?.(b)} />)
+          draw.map((b, i) => (
+            <BookCard
+              key={`${bookKey(b)}-${i}`}
+              book={b}
+              reason={b.why}
+              onClick={() => onOpenBook?.(b)}
+            />
+          ))
         )}
       </section>
     </>

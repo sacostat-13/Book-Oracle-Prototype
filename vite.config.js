@@ -24,12 +24,52 @@ const AVATARS_DIR = path.resolve(ROOT, 'public/avatars');
 // BUILT with (__APP_VERSION__) against the version currently deployed. A
 // mismatch means this client is running old code, which is the signal the old
 // needRefresh-only path could never produce for a returning visitor.
+//
+// v0.63.3 — this file drifted, and the drift was silent and expensive.
+//
+// It sat at { version: "0.59", critical: true } from the v0.59 hotfix until
+// v0.63.2. Two consequences, neither of which produced an error anywhere:
+//
+//   1. `critical: true` is read by BOTH paths in PWAUpdatePrompt. On path 1 it
+//      means a newly-arrived service worker auto-applies instead of showing the
+//      dismissible toast — so every deploy force-reloaded every open tab, which
+//      is exactly the behaviour registerType: 'prompt' was adopted in v0.45 to
+//      stop. A reader who stepped away mid-session came back to a reloaded page
+//      and lost whatever was in component state.
+//
+//   2. Because the version never moved, __APP_VERSION__ (baked from this file
+//      at build time) always equalled the deployed value, so path 2 — the
+//      stale-client catch added in v0.56 — could never fire at all. The feature
+//      was inert for four releases.
+//
+// A version that must be hand-bumped in two places will be wrong eventually.
+// releases.js already has CURRENT_VERSION and is edited on every release
+// because the notes modal reads it, so it is the honest source of truth. This
+// derives from it and treats disagreement as a build failure rather than
+// something to notice later in a README footnote.
+function readCurrentVersionFromReleases() {
+  const src = fs.readFileSync(path.resolve(ROOT, 'src/lib/releases.js'), 'utf8');
+  const m = src.match(/export const CURRENT_VERSION\s*=\s*['"]v?([^'"]+)['"]/);
+  if (!m) throw new Error('vite.config: could not read CURRENT_VERSION from src/lib/releases.js');
+  return m[1];
+}
+
 function readAppVersion() {
+  const expected = readCurrentVersionFromReleases();
+  let declared;
   try {
-    return JSON.parse(fs.readFileSync(path.resolve(ROOT, 'public/app-version.json'), 'utf8')).version;
+    declared = JSON.parse(fs.readFileSync(path.resolve(ROOT, 'public/app-version.json'), 'utf8')).version;
   } catch {
-    return 'unknown'; // never blocks a build; the check just no-ops (see PWAUpdatePrompt)
+    return 'unknown'; // unreadable file never blocks a build; the check just no-ops (see PWAUpdatePrompt)
   }
+  if (declared !== expected) {
+    throw new Error(
+      `vite.config: public/app-version.json says "${declared}" but releases.js CURRENT_VERSION is ` +
+      `"${expected}". Bump app-version.json to "${expected}". A stale version here silently disables ` +
+      `the stale-client check in PWAUpdatePrompt — see the note above.`
+    );
+  }
+  return declared;
 }
 const AVATAR_MANIFEST_ID = 'virtual:avatar-manifest';
 const RESOLVED_AVATAR_MANIFEST_ID = '\0' + AVATAR_MANIFEST_ID;

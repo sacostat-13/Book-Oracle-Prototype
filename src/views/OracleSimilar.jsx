@@ -11,10 +11,17 @@ import { useT, useI18n, langDirective } from '../lib/I18nContext';
 import BookCard from '../components/BookCard';
 import BookCover from '../components/BookCover';
 import { buildTasteProfile, describeTasteProfile, MATCH_SCORING_INSTRUCTIONS } from '../lib/matchHelpers';
+import { buildExcludeHint, buildShelfSignature, filterAlreadyKnown, REASON_INSTRUCTIONS } from '../lib/oraclePrompt';
+import { saveDraw, loadDraw } from '../lib/oracleDrawCache';
 
 // Max possible raw score per seed book (3 for genre + 2 for complexity + 1 for
 // depth — see the scoring loop below), used to normalize into a 0-100 match %.
 const MAX_SCORE_PER_SEED = 6;
+
+// Ask for more than we show — the real dedupe against the whole shelf runs
+// client-side after the response and needs something to cut into.
+const SIMILAR_REQUEST = 8;
+const SIMILAR_COUNT = 5;
 
 function fallbackSimilar(selection, candidates) {
   const scored = candidates.map((c) => {
@@ -36,7 +43,6 @@ function fallbackSimilar(selection, candidates) {
       ...s.book,
       match: maxPossible > 0 ? Math.round((s.score / maxPossible) * 100) : undefined,
     })),
-    reasons: {},
     source: 'fallback',
   };
 }
@@ -60,10 +66,21 @@ export default function OracleSimilar({ onOpenBook }) {
   const t = useT();
   const { lang } = useI18n();
   const { quota, handleQuotaError, onCallSucceeded, confirmOracleCall } = useOracleQuota();
-  const [selection, setSelection] = useState([]);
-  const [results, setResults] = useState(null);
+  // v0.63.3: seed selection and results from the session cache. The seed books
+  // come back too — a kinship result with no visible seeds is unreadable, since
+  // "similar to WHAT" is the entire frame of this page.
+  const cached = loadDraw('similar');
+  const [selection, setSelection] = useState(() => cached?.selection || []);
+  const [results, setResults] = useState(() => (cached?.results || null));
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState('');
+
+  // Single funnel for results, so nothing updates the grid without also
+  // updating what a reload restores.
+  function showResults(next, seeds = selection) {
+    setResults(next);
+    saveDraw('similar', { selection: seeds, results: next });
+  }
 
   const mode = state.oracleMode || 'wishlist';
 
@@ -106,7 +123,7 @@ export default function OracleSimilar({ onOpenBook }) {
   function setMode(newMode) {
     if (newMode === mode) return;
     setOracleMode(newMode);
-    setResults(null);
+    showResults(null);
   }
 
   async function findSimilar() {
@@ -117,41 +134,57 @@ export default function OracleSimilar({ onOpenBook }) {
     // click through the dialog without reading it.
     if (mode !== 'wishlist' && !(await confirmOracleCall('similar'))) return;
     setLoading(true);
-    setResults(null);
+    showResults(null);
 
     const wishlistPool = state.wishlist.filter(
       (b) => !selection.some((s) => bookKey(s) === bookKey(b))
     );
 
     if (mode === 'wishlist') {
-      setResults(fallbackSimilar(selection, wishlistPool));
+      showResults(fallbackSimilar(selection, wishlistPool));
       setLoading(false);
       return;
     }
 
     // AI mode
-    const exclude = [...state.readNext, ...state.library, ...state.wishlist, ...selection]
-      .map((b) => `"${b.t}"`)
-      .join(', ');
+    // v0.63.3 — THE 413 FIX, ported from OracleCategories (v0.63).
+    //
+    // Unbounded: every title the reader had ever touched, on every search. At
+    // ~1,500 titles that is ~45k characters around a ~2k prompt, and claude.js
+    // rejects anything over MAX_PROMPT_CHARS (50_000) with a 413 before
+    // Anthropic sees it. v0.63 fixed this in By genres; the fix lived inside
+    // that component, so this copy stayed broken.
+    //
+    // Bounded HINT in the prompt, exact guarantee in filterAlreadyKnown()
+    // below. The seeds stay in `known` — recommending a book back to the
+    // reader who just named it as a favourite is the one result this page
+    // must never produce.
+    const known = [...state.readNext, ...state.library, ...state.wishlist, ...selection];
+    const exclude = buildExcludeHint(known);
     const seedBooks = selection
       .map((b) => `- "${b.t}" by ${b.a}${b.g ? ` (${b.g})` : ''}${b.d ? `: ${b.d}` : ''}`)
       .join('\n');
     const tasteProfile = buildTasteProfile(state.library, state.genresByBookId, state.profile);
     const tasteSummary = describeTasteProfile(tasteProfile);
+    // v0.63.3: named books and ratings alongside the averages, so "kinship" can
+    // be argued from something the reader recognises rather than asserted.
+    const shelf = buildShelfSignature(state);
 
     const prompt = `A reader loves these books:
 ${seedBooks}
 
-${tasteSummary ? tasteSummary + '\n\n' : ''}Recommend 5 OTHER books they would love — books with similar tone, themes, prose style, or atmosphere. You are NOT limited to any catalog; recommend the best matches in world literature.
+${tasteSummary ? tasteSummary + '\n\n' : ''}${shelf}
 
-Do NOT recommend any of these (already known to reader): ${exclude}
+Recommend ${SIMILAR_REQUEST} OTHER books they would love — books with similar tone, themes, prose style, or atmosphere. You are NOT limited to any catalog; recommend the best matches in world literature.
+
+Avoid recommending books they already know. Here is a sample of what is already on their shelves (not exhaustive): ${exclude}
 
 Return ONLY valid JSON in this exact format:
-{"books":[{"title":"...","author":"...","genre":"...","complexity":1-5,"depth":1-5,"description":"one-sentence description","reason":"one-sentence kinship to the seed books","match":0-100}]}`;
+{"books":[{"title":"...","author":"...","genre":"...","complexity":1-5,"depth":1-5,"description":"one-sentence description","reason":"one sentence on its kinship to the seed books, in this reader's terms","match":0-100}]}`;
 
     const response = await callClaude(
       prompt,
-      `You are a literary expert recommending books based on a reader's tastes. Recommend accurately. Always return valid JSON. ${langDirective(lang)} Any natural-language field in the JSON (description, reason, genre label) MUST be in that language; titles and author names stay in their original language.\n${MATCH_SCORING_INSTRUCTIONS}`,
+      `You are a literary expert recommending books based on a reader's tastes. Recommend accurately. Always return valid JSON. ${langDirective(lang)} Any natural-language field in the JSON (description, reason, genre label) MUST be in that language; titles and author names stay in their original language.\n${MATCH_SCORING_INSTRUCTIONS}\n${REASON_INSTRUCTIONS}`,
       { source: 'similar' } // v0.58: history label (schema_v44)
     );
 
@@ -159,30 +192,39 @@ Return ONLY valid JSON in this exact format:
     if (response) {
       const parsed = parseJSONResponse(response);
       if (parsed?.books && Array.isArray(parsed.books)) {
-        const books = parsed.books
-          .map((b) => ({
-            t: b.title, a: b.author, g: b.genre || 'Recommended',
-            c: b.complexity, p: b.depth, d: b.description, aiSuggested: true,
-            match: Number.isFinite(b.match) ? Math.max(0, Math.min(100, Math.round(b.match))) : undefined,
-          }))
-          .filter((b) => b.t && b.a);
-        const reasons = {};
-        parsed.books.forEach((b) => { if (b.reason) reasons[b.title] = b.reason; });
+        // v0.63.3: `why` rides on the book object rather than in a title-keyed
+        // side map, which broke whenever the model's `title` and the rendered
+        // title disagreed on punctuation, and could not reach the filter,
+        // the slice, or logRecommendations.
+        const books = filterAlreadyKnown(
+          parsed.books
+            .map((b) => ({
+              t: b.title, a: b.author, g: b.genre || 'Recommended',
+              c: b.complexity, p: b.depth, d: b.description, aiSuggested: true,
+              why: b.reason || undefined,
+              match: Number.isFinite(b.match) ? Math.max(0, Math.min(100, Math.round(b.match))) : undefined,
+            }))
+            .filter((b) => b.t && b.a),
+          known
+        ).slice(0, SIMILAR_COUNT);
+        // Below three survivors the wishlist fallback is the better answer —
+        // unchanged from v0.58, but it now measures what is left AFTER the
+        // shelf filter rather than before it.
         if (books.length >= 3) {
           // v0.58 provenance. Only the AI branch logs — the wishlist fallback
           // below is a local match, not an Oracle recommendation, and counting
           // it would inflate the accept rate with books the Oracle never chose.
           const ids = await logRecommendations('similar', books);
-          aiResults = { books: attachRecommendationIds(books, ids), reasons, source: 'ai' };
+          aiResults = { books: attachRecommendationIds(books, ids), source: 'ai' };
         }
       }
     }
 
     if (aiResults) {
-      setResults(aiResults);
+      showResults(aiResults);
     } else {
       showToast("Couldn't reach the AI. Showing wishlist matches instead.", true);
-      setResults(fallbackSimilar(selection, wishlistPool));
+      showResults(fallbackSimilar(selection, wishlistPool));
     }
     setLoading(false);
   }
@@ -269,7 +311,7 @@ Return ONLY valid JSON in this exact format:
                 <BookCard
                   key={`${bookKey(b)}-${i}`}
                   book={b}
-                  reason={results.reasons?.[b.t]}
+                  reason={b.why}
                   onClick={() => onOpenBook?.(b)}
                 />
               ))}

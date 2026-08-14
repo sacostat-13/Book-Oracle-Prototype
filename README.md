@@ -4,7 +4,7 @@ A reading companion — wishlist, library, reading plans, book clubs, and an AI-
 for book discovery. Built with React + Vite + SCSS, backed by Supabase for auth
 and cross-device sync, and Netlify Functions for API proxying.
 
-> Current version: **v0.63.2** — see [Releases](#releases) below for changelog.
+> Current version: **v0.63.3** — see [Releases](#releases) below for changelog.
 > Upgrading from an earlier version? Check the matching `MIGRATION_*.md` / `UPDATE_*.md`.
 
 ---
@@ -370,6 +370,202 @@ and forward requests. Locally you need `netlify dev` to make them work.
 ---
 
 ## Releases
+
+# Update Notes — v0.63.2 → v0.63.3: the Oracle explains itself, and a tab that reloaded on its own
+
+**Migration required:**
+
+1. `20260814170000_oracle_recommendation_reason.sql` — adds `oracle_recommendations.reason`, updates `log_oracle_recommendations`
+
+A patch release. No new surfaces; the Oracle answers a question it was already
+being paid to answer, three things that were failing silently stopped, and the
+loading-screen pool caught up with a taxonomy that had grown past it.
+
+## 1. "Every suggestion tells you why" was true on three screens out of four
+
+The landing page claims it. `BookCard` has rendered a `reason` pull-quote since
+v0.38. Dashboard Spark, Oracle → Ask and Oracle → Similar all requested one.
+**Oracle → By genres never did** — its JSON schema asked only for `description`,
+a sentence about the book, and rendered `<BookCard book={b} />` with no `reason`
+prop at all. The call was already being made and paid for; it was returning
+about thirty tokens less than it could have.
+
+The reason now rides on the book object as `why` rather than in a title-keyed
+side map. The map was the older pattern and it broke in three ways: silently,
+whenever the model's `title` and the rendered title disagreed on punctuation;
+structurally, because it could not survive the client-side filter or the slice;
+and practically, because it could not reach `logRecommendations`.
+
+Shared `REASON_INSTRUCTIONS` now defines the rubric in one place — one sentence,
+max 25 words, grounded in a specific book the reader finished or rated highly,
+never a restatement of the plot.
+
+## 2. The reason is now a property of the recommendation, not of a render
+
+`reason` lived only in component state. Navigate away and the Oracle's argument
+for a book was gone, which makes a wishlist entry indistinguishable a week later
+from one you added at random.
+
+`oracle_recommendations` gains a nullable `reason` column, clamped to 400
+characters in `log_oracle_recommendations` (same reasoning as the existing
+`ord <= 25` cap — the client sends one sentence, and truncating costs a clipped
+line where rejecting would cost the whole result set). Nullable on purpose: rows
+written before this release have no reason, and local non-LLM draws never will.
+
+`fetchRecommendationReason()` reads it back and `BookModal` shows it above the
+description, gated on `isOracleSuggested` so the overwhelming majority of modal
+opens cost no query. The title fallback escapes LIKE metacharacters — `_` and
+`%` appear in real titles, and unescaped they would match some other book's
+reason and present it with full confidence.
+
+**This also makes the impression log answer a better question.** It recorded
+what was offered and what became of it, but not what we said about it, so it
+could not distinguish which *kinds* of argument get taken up. "Because you rated
+Piranesi 5★" and "a haunting modern gothic" are not the same pitch.
+
+## 3. The 413 that v0.63 fixed in one file and left standing in two
+
+v0.63 replaced the unbounded denylist in `OracleCategories` with a bounded hint
+plus exact client-side filtering. The fix was written *inside the component*, so
+`OracleAsk.jsx` and `OracleSimilar.jsx` kept shipping:
+
+```js
+[...readNext, ...library, ...wishlist].map(b => `"${b.t}"`).join(', ')
+```
+
+and kept failing at `MAX_PROMPT_CHARS = 50_000` for exactly the readers with the
+richest shelves. New `src/lib/oraclePrompt.js` holds `buildExcludeHint`,
+`filterAlreadyKnown`, `normalizeTitle` and `buildShelfSignature`; all three
+views import them. A fix that lives in a component is a fix for one screen.
+
+Ask and Similar now over-request (6→3, 8→5) so the local filter has slack, and
+Ask guards the case where filtering empties a non-empty response — it previously
+rendered "Found 0 books" under a heading promising results, which reads as a
+failure the reader caused.
+
+## 4. The shelf context was pointing at the wrong end of the shelf
+
+```js
+const libContext  = state.library.slice(-15)    // "Books they've read recently"
+const wishContext = state.wishlist.slice(0, 30)
+```
+
+`DataContext` returns `library` ordered `read_at DESC` and `wishlist` ordered
+`added_at ASC`. Both slices took the **oldest** end. The prompt has been
+promising recency and delivering 2011.
+
+`buildShelfSignature(state)` knows the orderings and adds what neither line
+carried: shelf sizes, star ratings, and the queue. Roughly 1.2 kB even against a
+1,600-book shelf. The ratings are the part that matters — `describeTasteProfile`
+already compresses the whole library into averages, and an average cannot
+produce a reason a reader recognises. "You gave Piranesi 5★" can.
+
+Spark also joins the taste profile, having been the only Oracle surface that
+knew the reader's *stated* favourite genres but not which genres they actually
+rate highly.
+
+Total AI-mode prompt is now ~8.5 kB against the 50 kB ceiling.
+
+## 5. Open tabs were force-reloading on every deploy
+
+`public/app-version.json` sat at `{"version": "0.59", "critical": true}` from the
+v0.59 hotfix. `critical` is read by both paths in `PWAUpdatePrompt`, and on the
+`needRefresh` path it means an arriving service worker **auto-applies instead of
+prompting** — reinstating the exact behaviour `registerType: 'prompt'` was
+adopted in v0.45 to remove. Anyone who stepped away mid-session came back to a
+reloaded page and lost whatever was in component state.
+
+Second consequence: because the version never moved, `__APP_VERSION__` always
+equalled the deployed value, so the stale-client check added in v0.56 could
+never fire. It had been inert for four releases.
+
+A version that must be hand-bumped in two places will drift again, so
+`vite.config.js` now derives the expected value from `releases.js`
+`CURRENT_VERSION` and **fails the build** on disagreement.
+
+## 6. Draws survive a reload
+
+Independent of the above, because tab discard and an accidental refresh look the
+same to the reader and neither is preventable. New `src/lib/oracleDrawCache.js`,
+wired into all three surfaces: `sessionStorage`, one-hour TTL, tab-scoped.
+
+Survives reload, discard and back-navigation; does not leak between tabs or hand
+yesterday's picks to someone opening fresh. Ask restores the question alongside
+its results and Similar restores the seed books — results without their question
+read as though they arrived from nowhere.
+
+Deliberately not the database: `oracle_recommendations` holds title, author and
+reason, not the genre/complexity/depth/match a card renders, and bending a
+provenance log to serve rendering is the wrong trade.
+
+## 7. The recommendation card was one large invisible button
+
+The whole card carried `onClick` → open the book page. Undiscoverable, because
+nothing said so, and hostile, because the card also holds buttons: every
+near-miss on "Read next" navigated away from results the reader had just spent
+an Oracle call on.
+
+The card is inert now. Four explicit actions — **Read next**, **Add to
+wishlist**, **I've read this**, **See more ↗** — collapsing to a single "In your
+library" state once the book is settled, rather than three separately-disabled
+buttons saying the same thing.
+
+"I've read this" opens `RatingModal` in `create` mode. Skipping still files the
+book, but a reader saying *I have read this* about an Oracle pick is the single
+most useful moment to ask for stars: it is when we find out whether the Oracle
+was right, and an unrated book contributes nothing to `buildTasteProfile`.
+
+Below `mobile` the row becomes a full-width column. `flex-wrap` at that width
+produces an arbitrary ragged break that differs per locale — Spanish labels are
+consistently longer — and a half-width button under a cover image people are
+already touching to scroll is a smaller target than it looks.
+
+## 8. `no-undef`, and what it caught
+
+Extracting the prompt helpers out of `OracleCategories` deleted a span that also
+held `AI_DRAW_REQUEST` and `AI_DRAW_COUNT`, still referenced twenty lines below.
+The build was green — Vite resolves imports, not identifiers — and the first
+thing that noticed was a reader clicking Draw and getting
+`ReferenceError: AI_DRAW_REQUEST is not defined`. Same shape as the v0.62.3
+hooks bug this lint config was created for: correct-looking code, green build,
+throws on click.
+
+`eslint.config.mjs` gains `no-undef` (with `globals.browser`, which the rule
+requires or every `document` and `fetch` reads as undeclared). Its one
+pre-existing hit was `src/lib/BookLoader.jsx:28` — `height = unset`, a CSS
+keyword used as a JS default parameter, which would throw for every call site
+that omits `height`. It never fired because **nothing imports that file**; the
+live loader is `src/components/BookLoader.jsx`. Fixed so the rule can stay on;
+the file is an orphan and safe to delete.
+
+## 9. Loading-screen quotes: 198 → 515, 49 shelves → 173
+
+The pool was written when the taxonomy had 49 genres. `public.genres` now holds
+137, and the pool had never caught up: **78 browsable shelves had no voice in
+the loader at all**, including Science Fiction (604 books), Young Adult (432),
+Children's Fiction (356), LGBTQ+ Fiction (273) and Thriller (240).
+
+Coverage is now 136 of 137. The exception is Flintlock Fantasy (0 books), whose
+one verifiable line is filed under Military Fantasy rather than duplicated.
+
+Every added quote was verified against a source — wording, author, title —
+before it was written in, and anything that could not be confirmed was dropped
+rather than approximated, which is why several sections carry two rather than
+three. The file header states that rule for whoever extends it next. In a
+product whose whole proposition is that it knows books, a confidently
+misattributed line costs more than a missing one.
+
+`QUOTES` remains a flat shuffled array; the genre headings are organisational
+only, so a line filed under Cosmic Horror can appear while the Oracle draws cozy
+mysteries. They exist so the shape of the coverage is legible at a glance.
+
+**Known, unfixed:** five headings predate the v0.63 genre split (`Arthurian`,
+`Biography`, `Social Commentary`, `Gothic & Haunted Houses`,
+`Southern & American Gothic`) and no longer match a row in `public.genres`. And
+`src/lib/genreDescriptions.js` carries **168 keys against the table's 137** —
+its own drift, worth reconciling separately.
+
+---
 
 # Update Notes — v0.63 → v0.63.2: book identity, and four things failing in silence
 

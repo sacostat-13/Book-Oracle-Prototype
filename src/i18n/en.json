@@ -537,6 +537,8 @@
     "sortBooks": "Most books"
   },
   "bookPage": {
+    "seeMore": "See more ↗",
+    "alreadyRead": "✓ I've read this",
     "loading": "Loading…",
     "notFound": "Book not found",
     "notFoundText": "This book may have been removed from the catalog.",
@@ -1522,7 +1524,8 @@
     "bookCount": "{count} books"
   },
   "bookModal": {
-    "seeMore": "See more ↗",
+    "oracleReason": "Why the Oracle drew this",
+        "seeMore": "See more ↗",
     "description": "Description",
     "categories": "Categories",
     "done": "Done",

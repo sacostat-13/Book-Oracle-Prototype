@@ -98,13 +98,53 @@
   margin-top: 14px;
 }
 
+// v0.63.3 — four actions where there used to be one (Read next, wishlist,
+// already-read, see more).
+//
+// Above mobile they wrap onto as many rows as they need. Below it they do NOT:
+// `flex-wrap` on narrow screens produces an arbitrary ragged layout — three
+// buttons then one, or two then two, depending entirely on how long the
+// translated label happens to be — and Spanish labels are consistently longer
+// than English ones, so the same card breaks differently per locale. A column
+// is the same shape in every language.
 .book-card__actions {
   display: flex;
   gap: var(--ro-space-3);
   margin-top: 18px;
   flex-wrap: wrap;
   margin-bottom: var(--ro-space-3);
+  align-items: center;
 
+  @include tokens.ro-down(mobile) {
+    flex-flow: column;
+    align-items: stretch;
+    gap: var(--ro-space-2, 8px);
+
+    // Full-bleed targets. A 44px-tall button that only spans half the card is
+    // a smaller tap target than it looks, and these sit directly under a
+    // cover image people are already touching to scroll.
+    > button {
+      width: 100%;
+      justify-content: center;
+    }
+
+    // "See more" is navigation, not a shelf action — it reads as the quiet
+    // last line rather than a fourth equal choice.
+    .book-card__more {
+      order: 1;
+    }
+  }
+}
+
+// Replaces the whole action row once a book is in the library: there is
+// nothing left to decide about it.
+.book-card__state {
+  font-family: var(--ro-font-mono);
+  font-size: 12px;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--ro-gold-text);
+  padding: 6px 0;
 }
 
 // ── Stat card ─────────────────────────────────────────────────────────────────

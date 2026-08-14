@@ -47,11 +47,20 @@ export async function logRecommendations(surface, books, callId = null) {
     const { data: sessionData } = await supabase.auth.getSession();
     if (!sessionData?.session?.user) return [];
 
-    // Accept both result shapes in the codebase: Oracle views build { t, a },
-    // the raw parse has { title, author }.
+    // Accept both result shapes in the codebase: Oracle views build { t, a, why },
+    // the raw parse has { title, author, reason }.
+    //
+    // v0.63.3: `reason` joins the row. It was the only part of a recommendation
+    // that existed purely in component state — a reader who navigated away and
+    // came back got the book with no memory of why it was drawn for them, and
+    // the impression log recorded what was offered without recording what we
+    // said about it. Both are worth keeping: the reason is half of what a
+    // recommendation IS, and reading back accepted-vs-rejected reasons is the
+    // only way to learn which kinds of argument actually land.
     const payload = books.map((b, i) => ({
       title:    b?.t ?? b?.title ?? null,
       author:   b?.a ?? b?.author ?? null,
+      reason:   b?.why ?? b?.reason ?? null,
       position: i + 1,
     })).filter((b) => b.title);
 
@@ -124,6 +133,52 @@ export async function resolveRecommendation({ recommendationId = null, title = n
  * accept path, and checking both keeps books that were in flight across the
  * deploy from being misfiled as self-chosen.
  */
+/**
+ * Read back the reason the Oracle gave for a book, if it ever gave one.
+ *
+ * `recommendationId` is the fast path, and the title fallback is the point:
+ * the id lives in component state, so it is exactly the thing that is gone by
+ * the time a reader opens the book a week later and wonders why it is on their
+ * shelf. RLS narrows the scan to the reader's own rows before the title
+ * comparison runs, and one reader's impression log is small — a few hundred
+ * rows after heavy use — so this stays cheap even though ILIKE cannot use
+ * oracle_recommendations_resolve_idx the way resolve_oracle_recommendation's
+ * lower(book_title) comparison does.
+ *
+ * Most recent wins: if the Oracle has offered the same book twice, the newer
+ * argument is the one that was made against the shelf as it stands now.
+ *
+ * Same rule as the rest of this module — never throws, never surfaces a
+ * failure. A missing reason renders as no reason.
+ */
+export async function fetchRecommendationReason({ recommendationId = null, title = null } = {}) {
+  try {
+    if (recommendationId == null && !title) return null;
+
+    let q = supabase
+      .from('oracle_recommendations')
+      .select('reason')
+      .not('reason', 'is', null)
+      .order('shown_at', { ascending: false })
+      .limit(1);
+
+    // `_` and `%` are LIKE metacharacters, and book titles contain both
+    // ("Blood_Music", "100% Chance of Rain"). Unescaped, those would match
+    // some other book's reason and attribute it to this one — a wrong answer
+    // presented with full confidence, which is worse than none.
+    q = recommendationId != null
+      ? q.eq('id', recommendationId)
+      : q.ilike('book_title', title.replace(/[\\%_]/g, '\\$&'));
+
+    const { data, error } = await q.maybeSingle();
+    if (error) { console.error('fetchRecommendationReason failed:', error); return null; }
+    return data?.reason || null;
+  } catch (e) {
+    console.error('fetchRecommendationReason threw:', e);
+    return null;
+  }
+}
+
 export function isOracleSuggested(book) {
   return !!(book?.recommendationId != null || book?.aiSuggested);
 }

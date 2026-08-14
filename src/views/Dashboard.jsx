@@ -11,7 +11,7 @@ import { useAuth } from '../lib/AuthContext';
 import { useOracleQuota } from '../lib/OracleQuotaContext';
 import { callClaude, QuotaExceededError } from '../lib/claudeApi';
 import { bookKey, openBookTab } from '../lib/bookHelpers';
-import { buildTasteProfile, suggestLevelFromTaste, goalDirective } from '../lib/matchHelpers';
+import { buildTasteProfile, suggestLevelFromTaste, goalDirective, describeTasteProfile } from '../lib/matchHelpers';
 import { getFriendsFeedEvents } from '../lib/useFriends';
 import { supabase } from '../lib/supabase';
 import CoachMark from '../components/CoachMark';
@@ -166,7 +166,7 @@ function CurrentlyReadingWidget({ books, onOpenBook, t }) {
 }
 
 // ─── Oracle Spark ─────────────────────────────────────────────────────────────
-function OracleSparkWidget({ wishlist, go, t, profile }) {
+function OracleSparkWidget({ wishlist, go, t, profile, tasteProfile }) {
   const { quota, refresh: refreshQuota, confirmOracleCall } = useOracleQuota();
   const [state, setState] = useState('idle');
   const [result, setResult] = useState(null);
@@ -190,7 +190,16 @@ function OracleSparkWidget({ wishlist, go, t, profile }) {
       const favGenres = profile?.favoriteGenres || [];
       const mood = profile?.currentMood || [];
       // v0.50: stated reading level + goal join the Spark personalization.
+      //
+      // v0.63.3: so does the taste profile. Spark was the only Oracle surface
+      // that never saw genre affinity — it knew the reader's STATED favourite
+      // genres but not which genres they actually rate highly, which is the
+      // difference between what someone says they like and what they finish at
+      // five stars. It is one line of prompt and the widget already had the
+      // library loaded upstream.
+      const tasteSummary = describeTasteProfile(tasteProfile);
       const personalization = [
+        tasteSummary || null,
         favGenres.length > 0 ? `Reader's favorite genres: ${favGenres.join(', ')}. Lean toward these when a good option exists, but don't force it.` : null,
         mood.length > 0 ? `Reader says they're currently in the mood for: ${mood.join(', ')}. Frame the pick and reason with this in mind.` : null,
         profile?.readingLevel != null ? `Reader's stated reading level: ${profile.readingLevel}/5 (1=casual page-turners, 5=experimental prose).` : null,
@@ -1169,13 +1178,19 @@ export default function Dashboard({ onOpenBook }) {
   }, [user, state.clubs]);
 
   const layout = useMemo(() => resolveLayout(state.dashboardLayout), [state.dashboardLayout]);
+  // v0.63.3: memoised here rather than inside the Spark widget so it is not
+  // rebuilt on every dashboard render for a feature that fires on a click.
+  const tasteProfile = useMemo(
+    () => buildTasteProfile(state.library, state.genresByBookId, state.profile),
+    [state.library, state.genresByBookId, state.profile]
+  );
   const firstName = (state.profile?.displayName || state.profile?.display_name || '').split(' ')[0];
   const levelName = state.profile?.readingLevel || null;
 
   function renderWidget(id) {
     switch (id) {
       case 'currently-reading': return <CurrentlyReadingWidget key={id} books={state.currentlyReading || []} onOpenBook={onOpenBook} t={t} />;
-      case 'oracle-spark': return <OracleSparkWidget key={id} wishlist={state.wishlist} go={go} t={t} profile={state.profile} />;
+      case 'oracle-spark': return <OracleSparkWidget key={id} wishlist={state.wishlist} go={go} t={t} profile={state.profile} tasteProfile={tasteProfile} />;
       case 'reading-stats': return <ReadingStatsWidget key={id} library={state.library || []} go={go} t={t} />;
       case 'reading-goal': return <ReadingGoalWidget key={id} library={state.library || []} genresByBookId={state.genresByBookId || {}} readingGoalCount={state.readingGoalCount} setReadingGoalCount={setReadingGoalCount} t={t} />;
       case 'series-progress': return <SeriesProgressWidget key={id} library={state.library || []} wishlist={state.wishlist} readNext={state.readNext} go={go} t={t} />;

@@ -16,9 +16,34 @@
 
 // The version label shown as "current" — keep in sync with package.json and
 // the README version line.
-export const CURRENT_VERSION = 'v0.63.2';
+export const CURRENT_VERSION = 'v0.63.3';
 
 export const RELEASES = [{
+    version: 'v0.63.3',
+    date: '2026-08-14',
+    titleEn: 'The Oracle says why, and a page that stopped reloading itself',
+    titleEs: 'El Oráculo dice por qué, y una página que dejó de recargarse sola',
+    bodyEn: [
+      'Every Oracle recommendation now tells you why it was drawn for you, in a line about your shelf rather than about the book. Asking by genre was the one place that never did — it gave you a match percentage and a description of the plot, which is not the same thing as an answer.',
+      'That reason is kept. Open the book a week later from your wishlist and it is still there, under "Why the Oracle drew this", instead of vanishing the moment you looked away.',
+      'The Oracle sees more of your shelf when it answers: what you finished most recently, what you rated highest, what you added last. It was being handed the oldest end of your library and the oldest end of your wishlist, and told they were the most recent.',
+      'Asking the Oracle a free-form question, or for books like ones you love, could simply fail if you had a large wishlist — every title you had ever saved was travelling with the question. The same fix that landed for genres in v0.63 now covers both.',
+      'Your suggestions survive a reload. Step away, come back, refresh by accident, or open a book and come back — the draw is still there, and it no longer looks as though an Oracle call was spent on nothing.',
+      'Recommendation cards stopped being one large invisible button. There is a Read next, an Add to wishlist, an I\'ve read this, and a See more — and on a phone they stack instead of scattering. Clicking anywhere on the card used to take you off the page you were reading.',
+      'The site was force-reloading open tabs on every release. A flag left switched on since v0.59 meant an update applied itself instead of asking, which is exactly what we stopped doing a year ago.',
+      'The quotes on the loading screen grew from 198 to 515, and now cover 136 of the 137 genres instead of 49. Every new one was checked against a source before it was added.',
+    ],
+    bodyEs: [
+      'Cada recomendación del Oráculo ahora te dice por qué te la eligió, con una frase sobre tu estantería y no sobre el libro. Pedir por género era el único lugar donde no pasaba: te daba un porcentaje de afinidad y un resumen del argumento, que no es lo mismo que una respuesta.',
+      'Esa razón se guarda. Abrí el libro una semana después desde tu lista de deseos y sigue ahí, bajo «Por qué el Oráculo lo eligió», en vez de desaparecer apenas mirás para otro lado.',
+      'El Oráculo ve más de tu estantería cuando responde: qué terminaste hace poco, qué calificaste más alto, qué agregaste último. Le estábamos pasando la punta más vieja de tu biblioteca y de tu lista, y diciéndole que era lo más reciente.',
+      'Hacerle una pregunta libre al Oráculo, o pedirle libros parecidos a los que amás, podía fallar sin más si tenías una lista de deseos grande — cada título que habías guardado alguna vez viajaba con la pregunta. El arreglo que llegó para los géneros en v0.63 ahora cubre los dos.',
+      'Tus sugerencias sobreviven a una recarga. Alejate, volvé, refrescá sin querer, o abrí un libro y volvé: la tirada sigue ahí, y ya no parece que una llamada al Oráculo se gastó en nada.',
+      'Las tarjetas de recomendación dejaron de ser un botón enorme e invisible. Hay un Leer a continuación, un Agregar a la lista, un Ya lo leí y un Ver más — y en el teléfono se apilan en vez de desparramarse. Antes, hacer clic en cualquier parte de la tarjeta te sacaba de la página que estabas leyendo.',
+      'El sitio recargaba a la fuerza las pestañas abiertas en cada versión. Una marca que quedó encendida desde la v0.59 hacía que una actualización se aplicara sola en lugar de preguntar, que es justo lo que dejamos de hacer hace un año.',
+      'Las citas de la pantalla de carga pasaron de 198 a 515, y ahora cubren 136 de los 137 géneros en vez de 49. Cada una de las nuevas fue verificada contra una fuente antes de entrar.',
+    ],
+  }, {
     version: 'v0.63.2',
     date: '2026-08-13',
     titleEn: 'Every genre at once, and a few things that were failing quietly',

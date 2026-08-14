@@ -537,6 +537,8 @@
     "sortBooks": "Más libros"
   },
   "bookPage": {
+    "seeMore": "Ver más ↗",
+    "alreadyRead": "✓ Ya lo leí",
     "loading": "Cargando…",
     "notFound": "Libro no encontrado",
     "notFoundText": "Es posible que este libro haya sido eliminado del catálogo.",
@@ -1522,7 +1524,8 @@
     "bookCount": "{count} libros"
   },
   "bookModal": {
-    "seeMore": "Ver más ↗",
+    "oracleReason": "Por qué el Oráculo lo eligió",
+        "seeMore": "Ver más ↗",
     "description": "Descripción",
     "categories": "Categorías",
     "done": "Listo",

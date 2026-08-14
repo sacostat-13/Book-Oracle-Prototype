@@ -25,12 +25,21 @@ const QUOTES = [
   { text: 'There\'s some good in this world, and it\'s worth fighting for.', author: 'J.R.R. Tolkien', book: 'The Two Towers' },
 ];
 
-export default function BookLoader({ text, height = unset }) {
+// NOTE (v0.63.3): nothing imports this file. The live loader is
+// src/components/BookLoader.jsx — 49 genre quotes, rotation, the gold-thread
+// burst — and this is the superseded original. It is safe to delete; the two
+// fixes below exist only so `no-undef` can stay on until someone does.
+//
+// `unset` is a CSS keyword, not a JS value. As a default parameter it is a
+// bare identifier, so calling <BookLoader text="…" /> without a height — which
+// is how every call site in the app does it — would have thrown
+// ReferenceError. The bug never fired because the file is orphaned.
+export default function BookLoader({ text, height = undefined }) {
   // Pick once per mount so it stays stable while visible.
   const quote = useMemo(() => QUOTES[Math.floor(Math.random() * QUOTES.length)], []);
 
   return (
-    <div className="book-loader" role="status" aria-live="polite" styles={{ height: height }}>
+    <div className="book-loader" role="status" aria-live="polite" style={{ height }}>
       <div className="book-loader__anim" aria-hidden="true">
         <div className="book-loader__page" />
       </div>

@@ -14,6 +14,7 @@ import BookCover from './BookCover';
 import RatingModal from './RatingModal';
 import CategoryAutocomplete from './CategoryAutocomplete';
 import { resolveGenres } from '../lib/genreDisplay';
+import { fetchRecommendationReason, isOracleSuggested } from '../lib/oracleProvenance';
 
 // `exclude` holds the reader's finished books. Same rule as BookPage's
 // computeSimilar: a recommendation strip that offers books already on the read
@@ -66,6 +67,12 @@ export default function BookModal({ book, onClose, onOpenBook }) {
   // Toggle the add-category input visibility (off by default so the section
   // doesn't feel cluttered).
   const [adderOpen, setAdderOpen] = useState(false);
+  // v0.63.3: the reason the Oracle gave when it drew this book, read back from
+  // oracle_recommendations. `book.why` is the in-session copy — present when
+  // the modal was opened straight off a result card — and the fetch is for
+  // every other path in, which is most of them: the wishlist, the library, a
+  // link a week later.
+  const [oracleReason, setOracleReason] = useState(book?.why || null);
 
   useEffect(() => {
     document.body.style.overflow = 'hidden';
@@ -73,6 +80,24 @@ export default function BookModal({ book, onClose, onOpenBook }) {
       document.body.style.overflow = '';
     };
   }, []);
+
+  // v0.63.3: recover the Oracle's reason for a book opened outside the result
+  // set that produced it.
+  //
+  // Gated on isOracleSuggested so the overwhelming majority of modal opens —
+  // books the reader chose themselves — cost nothing. That flag is set on the
+  // result objects and survives into the wishlist/library rows, so it is a
+  // reliable "worth asking" signal rather than a guess.
+  useEffect(() => {
+    if (!book) return undefined;
+    if (book.why) { setOracleReason(book.why); return undefined; }
+    if (!isOracleSuggested(book)) { setOracleReason(null); return undefined; }
+
+    let cancelled = false;
+    fetchRecommendationReason({ recommendationId: book.recommendationId, title: book.t })
+      .then((r) => { if (!cancelled) setOracleReason(r); });
+    return () => { cancelled = true; };
+  }, [book]);
 
   useEffect(() => {
     if (!book) return;
@@ -396,6 +421,17 @@ export default function BookModal({ book, onClose, onOpenBook }) {
         </div>
 
         <div className="bp-section">
+          {/* v0.63.3. Above the description on purpose: the description tells
+              anybody what the book is, and this tells THIS reader why it was
+              drawn for them. When both are present the personal one is the
+              one they came back for. */}
+          {oracleReason && (
+            <div className="bp-section">
+              <div className="bp-section__label">{t('bookModal.oracleReason')}</div>
+              <p className="book-card__quote">— {oracleReason}</p>
+            </div>
+          )}
+
           {display.d && (
             <div className="bp-section">
               <div className="bp-section__label">
