@@ -32,11 +32,14 @@
 //
 // SOURCES — ALL FREE, IN DESCENDING ORDER OF AUTHORITY
 //
-//   1. Wikidata P364 ("original language of film, TV show, novel, musical work
-//      or web series"), via the MediaWiki action API on www.wikidata.org.
-//      No key, no account, CC0 data, so nothing that lands in the catalog from
-//      here carries a deletion obligation. This is a stated fact about the
-//      work, which is exactly what the column holds.
+//   1. Wikidata, via the MediaWiki action API on www.wikidata.org. No key, no
+//      account, CC0 data, so nothing that lands in the catalog from here
+//      carries a deletion obligation. P364 ("original language of film, TV
+//      show, novel, musical work or web series") is the exactly-right property;
+//      P407 ("language of work or name") is accepted as a fallback ONLY from an
+//      item that declares itself a written work, because on a film or an
+//      edition it means something else. See the Wikidata section for the three
+//      searches this needs and why one was not enough.
 //
 //      Reached by title search, NOT by ISBN. Wikidata does hold ISBNs (P212 on
 //      edition items), but coverage is a rounding error — the items that exist
@@ -87,8 +90,8 @@
 // answer, and the verification is done against the AUTHOR ITEM'S OWN LABELS AND
 // ALIASES, not against a description string:
 //
-//   candidate has P364, and some P50 author's label/alias matches  →  accept
-//   candidate has P364, no author match                            →  discard
+//   states a language, and a P50 author's label/alias matches      →  accept
+//   states a language, no author match                             →  discard
 //   two accepted candidates that disagree                          →  conflict,
 //                                                                     write
 //                                                                     nothing
@@ -121,9 +124,24 @@
 // applies them — except over 'self_stated' and 'verified', which --force does
 // not reach.
 //
+// WHEN THE NUMBERS LOOK WRONG, RUN --diagnose FIRST
+//
+// The first dry run of this script resolved 0 of 48 rows and reported them all
+// as "no answer", which is five different outcomes wearing one number. Two bugs
+// were hiding under it: MediaWiki error payloads being read as empty results,
+// and a single English prefix search against a catalog full of Spanish,
+// accent-stripped and mistyped titles.
+//
+// --diagnose splits that number into the funnel — no search hits / no language
+// property / author not corroborated / no ISO code / request failed — and never
+// writes. The funnel is printed on every run now, not only under --diagnose,
+// because the aggregate it replaces was the misleading one.
+//
 // USAGE
 //
 //   node batch-scripts/scheduled/originalLanguageBackfill.mjs --probe "Dune|Frank Herbert"
+//   node batch-scripts/scheduled/originalLanguageBackfill.mjs --probe "Cien años de soledad|Gabriel García Márquez|es"
+//   node batch-scripts/scheduled/originalLanguageBackfill.mjs --diagnose --limit 50
 //   node batch-scripts/scheduled/originalLanguageBackfill.mjs --dry-run --limit 50 --verbose
 //   node batch-scripts/scheduled/originalLanguageBackfill.mjs --dry-run          # audit
 //   node batch-scripts/scheduled/originalLanguageBackfill.mjs                    # fill
@@ -154,7 +172,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 
 // ── CLI ──────────────────────────────────────────────────────────────────────
 const args = process.argv.slice(2);
-const DRY_RUN = args.includes('--dry-run');
+const DRY_RUN = args.includes('--dry-run') || args.includes('--diagnose');
 const VERBOSE = args.includes('--verbose');
 // --all             re-examine rows that already have a value, instead of only
 //                   filling gaps. Reports; does not change anything on its own.
@@ -166,6 +184,10 @@ const VERBOSE = args.includes('--verbose');
 const ALL = args.includes('--all');
 const FORCE = args.includes('--force');
 const PROPAGATE_ONLY = args.includes('--propagate-only');
+// --diagnose  never writes, and reports WHERE each row fell out of the funnel
+//             rather than only that it did. "no answer" is five different
+//             outcomes wearing one number; this splits them. Implies --dry-run.
+const DIAGNOSE = args.includes('--diagnose');
 
 function argVal(name, fallback = null) {
   const a = args.find((x) => x === name || x.startsWith(name + '='));
@@ -208,7 +230,6 @@ const vlog = (m) => { if (VERBOSE) process.stdout.write('    ' + m + '\n'); };
 // throttles anonymous clients that do not send one. This is not optional
 // politeness; requests without it get 403s.
 const UA = 'BooksOracle-originalLanguageBackfill/1.0 (https://thebooksoracle.com; simont@mozillafoundation.org)';
-const WD_API = 'https://www.wikidata.org/w/api.php';
 
 // ── HTTP ─────────────────────────────────────────────────────────────────────
 //
@@ -222,6 +243,9 @@ const FAILED = Symbol('request-failed');
 
 let consecutiveFailures = 0;
 const MAX_CONSECUTIVE_FAILURES = 12;
+
+// One line per distinct API error code, not one per request.
+const seenApiErrors = new Set();
 
 async function getJson(url, attempt = 1) {
   try {
@@ -246,8 +270,33 @@ async function getJson(url, attempt = 1) {
       return FAILED;
     }
     if (!resp.ok) { consecutiveFailures++; return FAILED; }
+
+    const body = await resp.json();
+
+    // THE POSTMORTEM'S ROOT CAUSE #1, WHICH THIS SCRIPT REPRODUCED.
+    //
+    // MediaWiki answers HTTP 200 with `{"error": {...}}` for a rejected or
+    // malformed parameter. Returning that body as data made a systematically
+    // broken request indistinguishable, at every call site, from a book
+    // Wikidata has never heard of — which is exactly how `gql()` turned a
+    // Hardcover outage into a 971-row worklist. The first dry run of this
+    // script reported 48 of 48 rows as "no answer" for this reason.
+    //
+    // Printed once per error code, so a systematic fault is loud and a
+    // one-off is not noise.
+    if (body?.error) {
+      consecutiveFailures++;
+      const code = body.error.code || 'unknown';
+      if (!seenApiErrors.has(code)) {
+        seenApiErrors.add(code);
+        console.log(`  ! Wikidata API error "${code}": ${body.error.info || '(no detail)'}`);
+        console.log(`    request: ${url.slice(0, 160)}`);
+      }
+      return FAILED;
+    }
+
     consecutiveFailures = 0;
-    return await resp.json();
+    return body;
   } catch (e) {
     if (attempt <= 3) { await sleep(2000 * attempt); return getJson(url, attempt + 1); }
     consecutiveFailures++;
@@ -275,12 +324,89 @@ function abortIfSourceIsDown() {
 // and WDQS has no search. It also has a 60-second query timeout and an
 // aggressive anonymous throttle, while the action API batches 50 entities per
 // request and is designed to be called in a loop.
+//
+// THREE SEARCHES, NOT ONE — and why the first version found almost nothing
+//
+// v0.64's first dry run resolved 0 of 48 rows with usable authors. Two causes,
+// both in this section, both now fixed:
+//
+//   1. `getJson` returned MediaWiki's error payload as if it were data. The API
+//      answers HTTP 200 with `{"error": {...}}` for a rejected parameter, so a
+//      systematically broken request was indistinguishable from a book Wikidata
+//      has never heard of — the postmortem's root cause #1, reproduced exactly.
+//      Errors are now detected, printed once per code, and counted as failures.
+//
+//   2. One `wbsearchentities` call in English was the whole search. That
+//      endpoint matches labels and aliases by PREFIX, in ONE language. Against
+//      a catalog whose titles are Spanish (*Los peligros de fumar en la cama*),
+//      accent-stripped (*Hadriana en todos mis suenos*), truncated (*Emily
+//      wilde's encyclopedia*) or simply mistyped (*En la tierra somos
+//      fuzgazmente grandiosos*), a prefix match on an English label finds
+//      nothing, and "nothing" was being reported as "no answer" rather than as
+//      "never searched properly".
+//
+// So the candidate set is now the union of three lookups, deduplicated:
+//
+//   a. wbsearchentities in English — precise, cheap, and right for the
+//      Anglophone majority of the catalog.
+//   b. wbsearchentities in the row's OWN language, when `books.language` says
+//      it is not English. This column is at zero nulls as of this release,
+//      which is what makes the second lookup possible at all — the Spanish
+//      label of a Spanish novel is the one a Spanish title will match.
+//   c. CirrusSearch full text (`action=query&list=search`) on title + author.
+//      Not prefix-bound, not label-bound, and tolerant of the accent and typo
+//      damage above. It is the loosest of the three, which is fine, because
+//      loosening the SEARCH does not loosen the ANSWER: every candidate still
+//      has to be corroborated by the author before it may write anything.
+//
+// TWO PROPERTIES, NOT ONE
+//
+// P364 is "original language of film, TV show, novel, musical work or web
+// series" and is the exactly-right property. It is also unevenly applied to
+// books — plenty of novel items carry only P407, "language of work or name".
+//
+// On a WORK item, P407 is the language of the work, which is the original
+// language; on an EDITION or a film item it is the language of that particular
+// thing, which is not. So P407 is accepted only when the item declares itself a
+// written work through P31, and it is recorded as a distinct source
+// (`wikidata_p407`) so the two are separable if the distinction ever bites.
+// P364 always wins where both are present.
+
+const WD_API = 'https://www.wikidata.org/w/api.php';
+
+// P31 classes that make an item a written work rather than a film, album or
+// video game. Only consulted for the P407 fallback — P364 needs no such
+// whitelist, because a desert does not have an original language.
+const WRITTEN_WORK_CLASSES = new Set([
+  'Q7725634',   // literary work
+  'Q47461344',  // written work
+  'Q571',       // book
+  'Q8261',      // novel
+  'Q149537',    // novella
+  'Q49084',     // short story
+  'Q1279564',   // short story collection
+  'Q1667921',   // novel series
+  'Q25379',     // play
+  'Q5185279',   // poem
+  'Q37484',     // epic poem
+  'Q1004',      // comics
+  'Q1760610',   // comic book
+  'Q725377',    // graphic novel
+  'Q8274',      // manga
+  'Q234460',    // text
+  'Q47461344',  // written work (dup, harmless)
+  'Q3331189',   // version, edition or translation
+  'Q690851',    // essay collection
+  'Q35760',     // essay
+  'Q17518461',  // autobiography-ish
+  'Q6473911',   // memoir
+]);
 
 const langCodeCache = new Map();   // language QID  → 639-1 code | null
 const authorNameCache = new Map(); // author QID    → [labels + aliases]
 
 // P218 is the ISO 639-1 code on a language item. Not every language item has
-// one (many small languages only have 639-3, P220), and a language with no
+// one (many smaller languages only have 639-3, P220), and a language with no
 // 639-1 code cannot be stored in a column documented as holding the BCP-47
 // primary subtag — so it resolves to null and the row is left alone rather
 // than being given a code the rest of the app cannot read.
@@ -288,7 +414,7 @@ async function resolveLanguageCodes(qids) {
   const want = [...new Set(qids)].filter((q) => q && !langCodeCache.has(q));
   for (let i = 0; i < want.length; i += 50) {
     const batch = want.slice(i, i + 50);
-    const url = `${WD_API}?action=wbgetentities&ids=${batch.join('|')}&props=claims&format=json&origin=*`;
+    const url = `${WD_API}?action=wbgetentities&ids=${batch.join('|')}&props=claims&format=json&formatversion=2`;
     const data = await getJson(url);
     if (data === FAILED || !data?.entities) { batch.forEach((q) => langCodeCache.set(q, null)); continue; }
     for (const q of batch) {
@@ -303,7 +429,7 @@ async function resolveLanguageCodes(qids) {
 // Labels AND aliases, across the languages the catalog's authors are actually
 // spelled in. An author item's English label may be a transliteration while the
 // catalog holds the native spelling, or the other way round; the alias list is
-// where the other spellings live, and skipping it would reject correct matches.
+// where the other spellings live, and skipping it rejects correct matches.
 const NAME_LANGS = 'en|es|pt|fr|de|it|ca|gl';
 
 async function resolveAuthorNames(qids) {
@@ -312,15 +438,21 @@ async function resolveAuthorNames(qids) {
     const batch = want.slice(i, i + 50);
     const url =
       `${WD_API}?action=wbgetentities&ids=${batch.join('|')}` +
-      `&props=labels|aliases&languages=${NAME_LANGS}&format=json&origin=*`;
+      `&props=labels|aliases&languages=${NAME_LANGS}&format=json&formatversion=2`;
     const data = await getJson(url);
     if (data === FAILED || !data?.entities) { batch.forEach((q) => authorNameCache.set(q, [])); continue; }
     for (const q of batch) {
       const ent = data.entities[q];
       const names = [];
-      for (const l of Object.values(ent?.labels || {})) if (l?.value) names.push(l.value);
+      for (const l of Object.values(ent?.labels || {})) {
+        if (typeof l === 'string') names.push(l);
+        else if (l?.value) names.push(l.value);
+      }
       for (const arr of Object.values(ent?.aliases || {})) {
-        for (const a of arr || []) if (a?.value) names.push(a.value);
+        for (const a of arr || []) {
+          if (typeof a === 'string') names.push(a);
+          else if (a?.value) names.push(a.value);
+        }
       }
       authorNameCache.set(q, names);
     }
@@ -328,27 +460,71 @@ async function resolveAuthorNames(qids) {
   }
 }
 
-// Search returns items, not works. The filtering happens after, in
-// wikidataOriginalLanguage: an item is only ever consulted for P364, and P364
-// is a property of creative works, so a desert and a surname simply have
-// nothing to say and drop out without needing a P31 whitelist to exclude them.
-// That is deliberate — a whitelist of "written work" classes is a list that is
-// always slightly wrong, and the property itself is a better filter than any
-// enumeration of types.
-async function searchEntities(term, limit = 8) {
+// (a) and (b): label/alias prefix search, in one language.
+async function wbSearch(term, lang) {
   const url =
     `${WD_API}?action=wbsearchentities&search=${encodeURIComponent(term)}` +
-    `&language=en&uselang=en&type=item&limit=${limit}&format=json&origin=*`;
+    `&language=${encodeURIComponent(lang)}&uselang=${encodeURIComponent(lang)}` +
+    `&type=item&limit=8&format=json&formatversion=2`;
   const data = await getJson(url);
   if (data === FAILED) return FAILED;
   return (data?.search || []).map((s) => s.id).filter(Boolean);
+}
+
+// (c): CirrusSearch full text. Tolerant of the accent damage, truncation and
+// typos that (a) and (b) cannot see past. Deliberately includes the author in
+// the query string — not as a filter, which would be a gate, but as ranking
+// evidence, so the right item is inside the eight we look at.
+async function cirrusSearch(title, author) {
+  const q = `${title} ${author || ''}`.trim();
+  const url =
+    `${WD_API}?action=query&list=search&srsearch=${encodeURIComponent(q)}` +
+    `&srnamespace=0&srlimit=8&format=json&formatversion=2`;
+  const data = await getJson(url);
+  if (data === FAILED) return FAILED;
+  return (data?.query?.search || []).map((s) => s.title).filter((t) => /^Q\d+$/.test(t || ''));
+}
+
+/**
+ * The union of all three searches, deduplicated and capped.
+ *
+ * A FAILED from any one strategy is not fatal — the others may still answer —
+ * but if EVERY strategy failed there is nothing to distinguish that from a book
+ * nobody has heard of, so the caller is told.
+ */
+async function searchCandidates(title, author, rowLanguage) {
+  const seen = new Set();
+  let anyOk = false;
+
+  const add = (r) => {
+    if (r === FAILED) return;
+    anyOk = true;
+    for (const q of r) seen.add(q);
+  };
+
+  add(await wbSearch(title, 'en'));
+  await sleep(150);
+
+  const own = (rowLanguage || '').slice(0, 2).toLowerCase();
+  if (own && own !== 'en') {
+    add(await wbSearch(title, own));
+    await sleep(150);
+  }
+
+  add(await cirrusSearch(title, author));
+  await sleep(150);
+
+  if (!anyOk) return FAILED;
+  return [...seen].slice(0, 14);
 }
 
 async function fetchClaims(qids) {
   const out = new Map();
   for (let i = 0; i < qids.length; i += 50) {
     const batch = qids.slice(i, i + 50);
-    const url = `${WD_API}?action=wbgetentities&ids=${batch.join('|')}&props=claims|labels&languages=${NAME_LANGS}&format=json&origin=*`;
+    const url =
+      `${WD_API}?action=wbgetentities&ids=${batch.join('|')}` +
+      `&props=claims|labels&languages=${NAME_LANGS}&format=json&formatversion=2`;
     const data = await getJson(url);
     if (data === FAILED || !data?.entities) continue;
     for (const q of batch) if (data.entities[q]) out.set(q, data.entities[q]);
@@ -367,56 +543,99 @@ const claimStrings = (entity, prop) =>
     .map((c) => c?.mainsnak?.datavalue?.value)
     .filter((v) => typeof v === 'string');
 
+const entityLabel = (ent) => {
+  const l = ent?.labels?.en;
+  if (typeof l === 'string') return l;
+  if (l?.value) return l.value;
+  const any = Object.values(ent?.labels || {})[0];
+  return (typeof any === 'string' ? any : any?.value) || '(no label)';
+};
+
+// The language claims an item offers, best property first. P364 is the right
+// property and always wins. P407 is accepted only from an item that declares
+// itself a written work, because on a film or an edition it means something
+// else entirely.
+function languageClaims(ent) {
+  const p364 = claimQids(ent, 'P364');
+  if (p364.length) return { qids: p364, prop: 'P364' };
+  const p407 = claimQids(ent, 'P407');
+  if (!p407.length) return null;
+  const types = claimQids(ent, 'P31');
+  if (!types.some((t) => WRITTEN_WORK_CLASSES.has(t))) return null;
+  return { qids: p407, prop: 'P407' };
+}
+
 /**
- * Resolve one (title, author) pair to a 639-1 code via Wikidata, or null.
+ * Resolve one row to a 639-1 code via Wikidata.
  *
- * Returns { code, qid } on success, null on "no verified answer", FAILED if the
- * source itself is unreachable, and { conflict: [...] } when two candidates
- * both verified against the author and disagreed — which happens for an author
- * who wrote a novel and its screenplay in different languages, and is not
- * something this script gets to adjudicate.
+ * Returns one of:
+ *   { code, source, qid }        a verified answer
+ *   { conflict: [codes], qid }   two corroborated candidates disagreed
+ *   { stage: '…' }               no answer, and where in the funnel it stopped
+ *   FAILED                       every search strategy failed
+ *
+ * The `stage` is the point of this shape. "no answer" is five different
+ * outcomes wearing one number, and the first dry run of this script reported 48
+ * of them without saying which — the same shape of report the 2026-08-17
+ * postmortem is about. --diagnose aggregates these.
  */
-async function wikidataOriginalLanguage(title, author) {
-  const qids = await searchEntities(title);
+async function wikidataOriginalLanguage(title, author, rowLanguage) {
+  const qids = await searchCandidates(title, author, rowLanguage);
   if (qids === FAILED) return FAILED;
-  if (!qids.length) return null;
+  if (!qids.length) return { stage: 'no-search-hits' };
 
   const entities = await fetchClaims(qids);
-  if (!entities.size) return null;
+  if (!entities.size) return { stage: 'entities-unfetchable' };
 
-  // Only candidates that actually state an original language are worth the
-  // author lookups that verification costs.
-  const withLang = [...entities.entries()].filter(([, e]) => claimQids(e, 'P364').length > 0);
-  if (!withLang.length) return null;
+  // Only candidates that state a language are worth the author lookups that
+  // verification costs.
+  const withLang = [];
+  for (const [qid, ent] of entities) {
+    const lc = languageClaims(ent);
+    if (lc) withLang.push({ qid, ent, ...lc });
+  }
+  if (!withLang.length) return { stage: 'no-language-property' };
 
-  const authorQids = withLang.flatMap(([, e]) => claimQids(e, 'P50'));
+  const authorQids = withLang.flatMap((c) => claimQids(c.ent, 'P50'));
   await resolveAuthorNames(authorQids);
 
   const accepted = [];
-  for (const [qid, ent] of withLang) {
+  for (const c of withLang) {
     // P50 is the author item; P2093 is the "author name string" used when no
     // item exists for the person. Both are legitimate evidence, and a work by a
     // minor author often has only the second.
     const names = [
-      ...claimQids(ent, 'P50').flatMap((aq) => authorNameCache.get(aq) || []),
-      ...claimStrings(ent, 'P2093'),
+      ...claimQids(c.ent, 'P50').flatMap((aq) => authorNameCache.get(aq) || []),
+      ...claimStrings(c.ent, 'P2093'),
     ];
     if (!names.length) continue;
     if (!names.some((n) => authorLikelySame(author, n))) continue;
-    accepted.push({ qid, langQids: claimQids(ent, 'P364') });
+    accepted.push(c);
   }
-  if (!accepted.length) return null;
+  if (!accepted.length) return { stage: 'author-not-corroborated' };
 
-  await resolveLanguageCodes(accepted.flatMap((a) => a.langQids));
+  await resolveLanguageCodes(accepted.flatMap((a) => a.qids));
+
+  // P364 outranks P407 outright: if any corroborated candidate states P364, the
+  // P407 answers are not even consulted. Mixing them is how a work item and an
+  // edition item of the same book turn into a "conflict" that is really just
+  // two properties meaning two different things.
+  const best = accepted.some((a) => a.prop === 'P364')
+    ? accepted.filter((a) => a.prop === 'P364')
+    : accepted;
 
   const codes = new Set();
-  for (const a of accepted) for (const lq of a.langQids) {
+  for (const a of best) for (const lq of a.qids) {
     const c = langCodeCache.get(lq);
     if (c) codes.add(c);
   }
-  if (!codes.size) return null;
-  if (codes.size > 1) return { conflict: [...codes], qid: accepted[0].qid };
-  return { code: [...codes][0], qid: accepted[0].qid };
+  if (!codes.size) return { stage: 'no-iso-639-1-code' };
+  if (codes.size > 1) return { conflict: [...codes], qid: best[0].qid };
+  return {
+    code: [...codes][0],
+    source: best[0].prop === 'P407' ? 'wikidata_p407' : 'wikidata',
+    qid: best[0].qid,
+  };
 }
 
 // ── OpenLibrary ──────────────────────────────────────────────────────────────
@@ -446,7 +665,10 @@ async function openLibraryTranslatedFrom(isbn) {
 // one takes the inputs from the command line and runs the same function the
 // main loop runs.
 if (PROBE) {
-  const [pTitle, pAuthor] = String(PROBE).split('|').map((s) => (s || '').trim());
+  // "Title|Author" or "Title|Author|es" — the third field is the row's own
+  // language, which the real run reads from books.language and which decides
+  // whether a second, native-language label search happens.
+  const [pTitle, pAuthor, pLang] = String(PROBE).split('|').map((s) => (s || '').trim());
   if (!pTitle) {
     console.error('Usage: --probe "Title|Author"');
     process.exit(1);
@@ -455,30 +677,35 @@ if (PROBE) {
   console.log(`  normalised title : ${normTitleLoose(pTitle)}`);
   console.log(`  normalised author: ${normPerson(pAuthor)}${isPlaceholderAuthor(pAuthor) ? '   [PLACEHOLDER — a real row here would be skipped]' : ''}`);
 
-  const qids = await searchEntities(pTitle);
-  console.log(`  wikidata search  : ${qids === FAILED ? 'REQUEST FAILED' : (qids.join(', ') || '(no hits)')}`);
+  const qids = await searchCandidates(pTitle, pAuthor, pLang);
+  console.log(`  wikidata search  : ${qids === FAILED ? 'ALL STRATEGIES FAILED' : (qids.join(', ') || '(no hits)')}`);
 
   if (qids !== FAILED && qids.length) {
     const ents = await fetchClaims(qids);
     for (const [qid, ent] of ents) {
       const label = ent?.labels?.en?.value || '(no en label)';
-      const langQids = claimQids(ent, 'P364');
-      if (!langQids.length) { console.log(`    ${qid}  ${label}  — no P364, discarded`); continue; }
+      const lc = languageClaims(ent);
+      if (!lc) {
+        const types = claimQids(ent, 'P31').join(',') || 'no P31';
+        console.log(`    ${qid}  ${label}  — no usable language property (${types}), discarded`);
+        continue;
+      }
       const aQids = claimQids(ent, 'P50');
       await resolveAuthorNames(aQids);
-      await resolveLanguageCodes(langQids);
+      await resolveLanguageCodes(lc.qids);
       const names = [...aQids.flatMap((a) => authorNameCache.get(a) || []), ...claimStrings(ent, 'P2093')];
       const ok = pAuthor && names.some((n) => authorLikelySame(pAuthor, n));
-      const codes = langQids.map((l) => langCodeCache.get(l) || '?').join('/');
-      console.log(`    ${qid}  ${label}  P364=${codes}  authors=[${names.slice(0, 4).join(', ')}]  → ${ok ? 'ACCEPTED' : 'discarded (author not corroborated)'}`);
+      const codes = lc.qids.map((l) => langCodeCache.get(l) || '?').join('/');
+      console.log(`    ${qid}  ${label}  ${lc.prop}=${codes}  authors=[${names.slice(0, 4).join(', ')}]  → ${ok ? 'ACCEPTED' : 'discarded (author not corroborated)'}`);
     }
   }
 
-  const verdict = pAuthor ? await wikidataOriginalLanguage(pTitle, pAuthor) : null;
+  const verdict = pAuthor ? await wikidataOriginalLanguage(pTitle, pAuthor, pLang) : null;
   console.log(`  verdict          : ${
-    verdict === FAILED ? 'REQUEST FAILED'
+    verdict === FAILED ? 'ALL SEARCH STRATEGIES FAILED'
       : verdict?.conflict ? `CONFLICT ${verdict.conflict.join(' vs ')} — would write nothing`
-      : verdict?.code ? verdict.code
+      : verdict?.code ? `${verdict.code}  (${verdict.source})`
+      : verdict?.stage ? `no answer — stopped at: ${verdict.stage}`
       : '(no verified answer — would be left NULL)'
   }`);
   process.exit(0);
@@ -495,9 +722,26 @@ const stats = {
   examined: 0, written: 0, propagated: 0,
   noAuthor: 0, noAnswer: 0, conflict: 0, failed: 0, confirmed: 0, disagreed: 0, protected: 0,
 };
+
+// The funnel. Every row that produces no answer lands in exactly one of these,
+// and the distribution is the difference between "Wikidata does not have these
+// books" and "we are not asking Wikidata properly".
+const funnel = {
+  'resolved': 0,
+  'resolved-via-openlibrary': 0,
+  'placeholder-author': 0,
+  'search-failed': 0,
+  'no-search-hits': 0,
+  'entities-unfetchable': 0,
+  'no-language-property': 0,
+  'author-not-corroborated': 0,
+  'no-iso-639-1-code': 0,
+  'conflict': 0,
+};
+const bump = (k) => { funnel[k] = (funnel[k] || 0) + 1; };
 const conflicts = [];
 const disagreements = [];
-const bySource = { wikidata: 0, openlibrary: 0, catalog_sibling: 0 };
+const bySource = { wikidata: 0, wikidata_p407: 0, openlibrary: 0, catalog_sibling: 0 };
 
 // KEYSET pagination by id, not offset — for the reason languageBackfill.mjs
 // documents at length: a live run changes which rows match the filter, while
@@ -633,6 +877,7 @@ if (PROPAGATE_ONLY) {
 
       if (isPlaceholderAuthor(row.author)) {
         stats.noAuthor++;
+        bump('placeholder-author');
         vlog(`no usable author ${label} — not searched`);
         continue;
       }
@@ -640,18 +885,27 @@ if (PROPAGATE_ONLY) {
       let code = null;
       let source = null;
 
-      const wd = await wikidataOriginalLanguage(row.title, row.author);
+      // books.language is at zero nulls as of this release, which is what lets
+      // the search look for a Spanish title under its Spanish label.
+      const wd = await wikidataOriginalLanguage(row.title, row.author, row.language);
       await sleep(250);
       if (wd === FAILED) {
+        bump('search-failed');
         vlog(`wikidata unreachable for ${label}`);
+      } else if (wd?.stage) {
+        bump(wd.stage);
+        if (DIAGNOSE) console.log(`  ${wd.stage.padEnd(26)} ${label}`);
       } else if (wd?.conflict) {
         stats.conflict++;
+        bump('conflict');
         conflicts.push({ id: row.id, title: row.title, author: row.author, codes: wd.conflict, qid: wd.qid });
         vlog(`CONFLICT ${label}: ${wd.conflict.join(' vs ')} — skipped`);
         continue;
       } else if (wd?.code) {
         code = wd.code;
-        source = 'wikidata';
+        source = wd.source || 'wikidata';
+        bump('resolved');
+        if (DIAGNOSE) console.log(`  ${('resolved ' + code + ' (' + source + ')').padEnd(26)} ${label}   ${wd.qid}`);
       }
 
       if (!code) {
@@ -659,7 +913,12 @@ if (PROPAGATE_ONLY) {
         if (isbn && isValidIsbn(isbn)) {
           const ol = await openLibraryTranslatedFrom(isbn);
           await sleep(300);
-          if (ol && ol !== FAILED) { code = ol; source = 'openlibrary'; }
+          if (ol && ol !== FAILED) {
+            code = ol;
+            source = 'openlibrary';
+            bump('resolved-via-openlibrary');
+            if (DIAGNOSE) console.log(`  ${('resolved ' + code + ' (openlibrary)').padEnd(26)} ${label}`);
+          }
         }
       }
 
@@ -695,7 +954,8 @@ if (PROPAGATE_ONLY) {
 console.log('\n── summary ───────────────────────────────');
 console.log(`examined        ${stats.examined}`);
 console.log(`written         ${stats.written}${DRY_RUN ? ' (dry run — nothing persisted)' : ''}`);
-console.log(`  via wikidata      ${bySource.wikidata}`);
+console.log(`  via wikidata P364 ${bySource.wikidata}`);
+console.log(`  via wikidata P407 ${bySource.wikidata_p407}`);
 console.log(`  via openlibrary   ${bySource.openlibrary}`);
 console.log(`propagated      ${stats.propagated}   — copied from a sibling row of the same work`);
 console.log(`no usable author ${stats.noAuthor}   — null or placeholder; a title match could not be verified`);
@@ -708,6 +968,37 @@ if (ALL) {
 }
 if (stats.failed) console.log(`write failures  ${stats.failed}`);
 
+// THE FUNNEL. A single "no answer" count is five different outcomes wearing
+// one number, and telling them apart is the difference between "Wikidata does
+// not have these books" (nothing to do) and "we are not asking properly" (a
+// bug). Always printed, not just under --diagnose: the number it replaces was
+// the misleading one.
+if (!PROPAGATE_ONLY) {
+  const EXPLAIN = {
+    'resolved': 'answered by Wikidata',
+    'resolved-via-openlibrary': 'answered by OpenLibrary translated_from',
+    'placeholder-author': 'author is null or a placeholder — never searched',
+    'search-failed': 'every search strategy errored — a fault, not a gap',
+    'no-search-hits': 'searched three ways, Wikidata has no such item',
+    'entities-unfetchable': 'search found ids the entity fetch could not load',
+    'no-language-property': 'items found, none state P364 or a usable P407',
+    'author-not-corroborated': 'items state a language, none are by this author',
+    'no-iso-639-1-code': 'language item has no ISO 639-1 code to store',
+    'conflict': 'two corroborated candidates disagreed',
+  };
+  console.log('\n── funnel ────────────────────────────────');
+  for (const [k, v] of Object.entries(funnel)) {
+    if (!v) continue;
+    console.log(`  ${String(v).padStart(5)}  ${k.padEnd(26)} ${EXPLAIN[k] || ''}`);
+  }
+  const bad = funnel['search-failed'] + funnel['entities-unfetchable'];
+  if (bad > stats.examined / 4) {
+    console.log('\n  ! More than a quarter of rows failed at the REQUEST level.');
+    console.log('    That is a broken connection, not a data gap. Do not read the');
+    console.log('    numbers above as coverage. Check the API error lines further up.');
+  }
+}
+
 // A machine-readable line, in the format .github/workflows/catalog-maintenance.yml
 // reads for its summary. The workflow was changed in v0.64 to count these rather
 // than to count rows in a CSV, because a CSV that was never written counted as
@@ -715,7 +1006,10 @@ if (stats.failed) console.log(`write failures  ${stats.failed}`);
 console.log(
   `\n[originalLanguageBackfill] examined=${stats.examined} written=${stats.written} ` +
   `propagated=${stats.propagated} wikidata=${bySource.wikidata} openlibrary=${bySource.openlibrary} ` +
-  `sibling=${bySource.catalog_sibling} noauthor=${stats.noAuthor} noanswer=${stats.noAnswer} ` +
+  `p407=${bySource.wikidata_p407} sibling=${bySource.catalog_sibling} ` +
+  `noauthor=${stats.noAuthor} noanswer=${stats.noAnswer} ` +
+  `nohits=${funnel['no-search-hits']} nolangprop=${funnel['no-language-property']} ` +
+  `noauthormatch=${funnel['author-not-corroborated']} searchfailed=${funnel['search-failed']} ` +
   `conflict=${stats.conflict} failed=${stats.failed} dryrun=${DRY_RUN ? 1 : 0} complete=1`
 );
 

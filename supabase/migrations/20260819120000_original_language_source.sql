@@ -28,6 +28,12 @@
 -- VALUES
 --
 --   'wikidata'         P364 on a work whose P50 author matched the row's author
+--   'wikidata_p407'    P407 on an item that declares itself a written work, used
+--                      only where P364 is absent. Kept distinct from 'wikidata'
+--                      because P407 is "language of work or name" — on a WORK
+--                      item that is the original language, on a film or an
+--                      edition item it is not, and the P31 check that separates
+--                      them is a judgement worth being able to revisit.
 --   'openlibrary'      translated_from / translation_of on the edition record
 --   'catalog_sibling'  copied from another row provably the same work
 --   'oracle_inferred'  the nightly Claude pass
@@ -46,7 +52,7 @@ alter table public.books
   add column if not exists original_language_source text;
 
 comment on column public.books.original_language_source is
-  'Provenance for books.original_language: wikidata | openlibrary | catalog_sibling | oracle_inferred | self_stated | verified. NULL on rows written before v0.64 or by upsert_book. Scripts must not overwrite a value whose source is self_stated or verified.';
+  'Provenance for books.original_language: wikidata | wikidata_p407 | openlibrary | catalog_sibling | oracle_inferred | self_stated | verified. NULL on rows written before v0.64 or by upsert_book. Scripts must not overwrite a value whose source is self_stated or verified.';
 
 -- Partial index, matching the pattern set by books_original_language_idx: the
 -- column is NULL for most of the catalog and the only queries that touch it ask

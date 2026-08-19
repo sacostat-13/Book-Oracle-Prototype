@@ -494,9 +494,13 @@ v0.62.
 `batch-scripts/scheduled/originalLanguageBackfill.mjs` is the answer, and it is
 free. Three sources, in descending order of authority:
 
-1. **Wikidata P364** ("original language of film, TV show, novel, musical work
-   or web series"), via the MediaWiki action API. No key, no account, CC0 data —
-   so nothing written from here carries a deletion obligation.
+1. **Wikidata**, via the MediaWiki action API. No key, no account, CC0 data —
+   so nothing written from here carries a deletion obligation. P364 ("original
+   language of film, TV show, novel, musical work or web series") is the
+   exactly-right property; P407 ("language of work or name") is accepted as a
+   fallback **only** from an item whose P31 declares it a written work, because
+   on a film or an edition item it means something else. P364 always wins where
+   both are present, and the two are recorded as distinct sources.
 2. **OpenLibrary `translated_from`** on the edition record. Present only where a
    librarian filled it in, so coverage is low; where it is there it is the most
    direct possible answer.
@@ -548,6 +552,41 @@ in the catalog inherits the wrong answer.
   of the two is wrong, and the older one has at least had a chance to be
   corrected by hand. `--all` re-checks and reports; `--force` applies; neither
   reaches a value whose source is `self_stated` or `verified`.
+
+### The first dry run found nothing, and that was two bugs
+
+Worth recording, because both have precedent in this repo and one of them is
+the postmortem's root cause reproduced verbatim. The first `--dry-run --limit 50`
+resolved **0 of 48** rows with usable authors and reported every one as
+"no answer".
+
+1. **`getJson` returned MediaWiki's error payload as data.** The action API
+   answers **HTTP 200** with `{"error": {…}}` for a rejected parameter, so a
+   systematically broken request was indistinguishable, at every call site, from
+   a book Wikidata has never heard of. This is `gql()`'s
+   `return json.data || null` again, in a new file, three days after writing it
+   up. API errors are now detected, printed once per error code, and counted as
+   failures that trip the circuit breaker.
+2. **One English prefix search was the whole search.** `wbsearchentities`
+   matches labels and aliases by prefix, in a single language. The catalog's
+   titles are Spanish (*Los peligros de fumar en la cama*), accent-stripped
+   (*Hadriana en todos mis suenos*), truncated (*Emily wilde's encyclopedia*)
+   and sometimes mistyped (*En la tierra somos fuzgazmente grandiosos*). A
+   prefix match on an English label finds none of them.
+
+The search is now the union of three lookups — `wbsearchentities` in English,
+`wbsearchentities` in the row's own language, and CirrusSearch full text on
+title plus author. The second of those is only possible because
+`books.language` reached zero nulls in this same release. Loosening the search
+does not loosen the answer: every candidate still has to be corroborated by the
+author before it may write anything.
+
+The reporting changed too, and that is the more durable fix. "No answer" was
+five outcomes wearing one number. Every run now prints a **funnel** —
+`no-search-hits`, `no-language-property`, `author-not-corroborated`,
+`no-iso-639-1-code`, `search-failed` — and says so in words when more than a
+quarter of rows fail at the request level, so a broken connection cannot be
+read as coverage. `--diagnose` adds the per-row version and never writes.
 
 ### ISBNdb cannot answer this, and that is not a coverage gap
 

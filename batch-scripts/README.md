@@ -148,7 +148,7 @@ is the easiest mistake to make here:
 | Script | Column | Question | Sources |
 | --- | --- | --- | --- |
 | `languageBackfill.mjs` | `books.language` | what language is **this row** in? | OpenLibrary, Google Books, the ISBN registration group |
-| `originalLanguageBackfill.mjs` | `books.original_language` | what language was **the work** written in? | Wikidata P364, OpenLibrary `translated_from`, sibling rows of the same work |
+| `originalLanguageBackfill.mjs` | `books.original_language` | what language was **the work** written in? | Wikidata P364 (P407 as a written-work-only fallback), OpenLibrary `translated_from`, sibling rows of the same work |
 
 *One Hundred Years of Solitude* is `language = 'en'` and
 `original_language = 'es'`. Both columns are correct and they disagree, which is
@@ -180,9 +180,44 @@ work-group propagation, write precedence — so
 `probes/originalLanguage.probe.mjs` can exercise it offline. Run the probe
 before a backfill; it takes a second and needs nothing.
 
+### When the numbers look wrong, run `--diagnose`
+
+The first dry run of `originalLanguageBackfill` resolved **0 of 48** rows and
+reported every one of them as "no answer" — a single number covering five
+different outcomes. Two bugs were underneath it, and both are worth knowing
+because both have precedent in this repo:
+
+1. `getJson` returned MediaWiki's `{"error": …}` payload as if it were data.
+   The API answers **HTTP 200** for a rejected parameter, so a systematically
+   broken request was indistinguishable from a book Wikidata has never heard
+   of. This is `gql()`'s `return json.data || null` again, in a different file.
+2. The whole search was one `wbsearchentities` call in English.
+   `wbsearchentities` matches labels and aliases **by prefix, in one language**.
+   Against titles like *Los peligros de fumar en la cama*, *Hadriana en todos
+   mis suenos* and *En la tierra somos fuzgazmente grandiosos*, it finds
+   nothing — and "nothing" was reported as "no answer" rather than "never
+   properly asked".
+
+The search is now the union of three lookups: `wbsearchentities` in English,
+`wbsearchentities` in the row's own language (possible only because
+`books.language` is at zero nulls), and CirrusSearch full text on title +
+author. Loosening the *search* does not loosen the *answer* — every candidate
+still has to be corroborated by the author.
+
+`--diagnose` never writes and splits "no answer" into the funnel:
+`no-search-hits`, `no-language-property`, `author-not-corroborated`,
+`no-iso-639-1-code`, `search-failed`. The funnel prints on **every** run now,
+not just under `--diagnose`, because the aggregate it replaces was the
+misleading one — and if more than a quarter of rows fail at the request level
+the summary says so in words rather than leaving you to read it as coverage.
+
+```bash
+node batch-scripts/scheduled/originalLanguageBackfill.mjs --diagnose --limit 50
+```
+
 `books.original_language_source` records which source spoke
-(`wikidata` | `openlibrary` | `catalog_sibling` | `oracle_inferred` |
-`self_stated` | `verified`). The last two are the human tier and no script
+(`wikidata` | `wikidata_p407` | `openlibrary` | `catalog_sibling` |
+`oracle_inferred` | `self_stated` | `verified`). The last two are the human tier and no script
 writes them; `--force` refuses to overwrite them. This mirrors
 `author_gender_source`, and it exists because the column has two writers now.
 
