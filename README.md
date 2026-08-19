@@ -634,6 +634,49 @@ The rest of the funnel is the guard working. *Fanning the Flames*, *Exhume* and
 *Root Rot* found items with a stated language that are **not by that author** —
 a different book with the same title — and were correctly refused.
 
+### Where it settled, and why that is the stopping point
+
+**20 of 48, zero conflicts.** Every fix landed: *Cress* and *Carpe Jugulum*
+resolved to `en` through their work items instead of colliding with their
+Swedish and Czech editions, *Batman: The Long Halloween* corroborated through
+P170, and *Passage to Dawn*, *Turn Coat* and *Cribsheet* answered on a reduced
+title — 4 of the 20, which the counters line reports as `reducedtitle=4`.
+
+The residual is not a tuning problem, and the funnel is what makes that
+legible rather than a matter of opinion:
+
+| | | |
+| --- | --- | --- |
+| 16 | `no-search-hits` | *Glass Girls*, *Wolf Worm*, *An Oral Fixation*, *Demon Driven*, a Free Comic Book Day issue, a single JoJo volume. Indie horror, small-press novellas, Warhammer tie-ins and comics volumes. **Wikidata does not have these books.** It is the same tail the ISBN work bottomed out on, for the same reason. |
+| 6 | `no-language-property` | Found the item, it states no language. A genuine Wikidata gap — *Dig*, *Hex*, *King Sized*. The Oracle's job. |
+| 6 | `author-not-corroborated` | Mostly the guard working: *Fanning the Flames*, *Exhume*, *Root Rot* are different books with the same title. |
+| 2 | `placeholder-author` | Never searched, by design. |
+
+Pushing on any of these means loosening acceptance, and acceptance is the one
+thing that must not move. A free source has told us what it knows.
+
+**One row in the residual is worth naming**, because it is the case this whole
+release is about: *Contraataque a los 30* by Won-pyung Sohn is a Spanish
+translation of a Korean novel. Its original language is `ko`, no free source
+we query will say so from the Spanish title, and it is precisely the row
+`original_language` exists to describe. That one is the Oracle's, and it is the
+honest division of labour — Wikidata answers what is written down, Claude
+answers what is known.
+
+### *Hellblazer* is the evidence the design holds
+
+*Hellblazer: Rake at the Gates of Hell* moved from `no-search-hits` to
+`author-not-corroborated` when the title ladder shipped. That is not a
+regression — it is the ladder reducing to `Hellblazer`, finding the **series
+container**, and the author gate refusing it because the series is not credited
+to Garth Ennis.
+
+This is the exact failure `titleMatch.js` warns about in its own comments: the
+one that put *Tainted Love* and *Dangerous Habits* on the same ISBN. Here the
+reduction happened and cost nothing, because the answer is gated on author
+corroboration rather than on the search being careful. **Loosen the search, keep
+the gate** — that is the whole design, and this row is the proof it works.
+
 ### ISBNdb cannot answer this, and that is not a coverage gap
 
 We now pay for ISBNdb, so the question will be asked again. Its Book model is
