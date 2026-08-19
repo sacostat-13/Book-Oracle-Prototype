@@ -86,3 +86,113 @@ export function normalizeLanguage(raw) {
   const s = (raw || '').trim().toLowerCase().split(/[-_]/)[0];
   return /^[a-z]{2}$/.test(s) ? s : null;
 }
+
+// ── Audio ─────────────────────────────────────────────────────────────────────
+//
+// v0.65. An audiobook is measured in time, and time is not pages. Nothing in
+// this file converts between them, and nothing downstream should either: the
+// tempting arithmetic (250 wpm, ~9,300 words an hour, so ten hours is "about
+// 340 pages") has an invented number in every term, and the result would land
+// in accomplishments.js and on share cards indistinguishable from a counted
+// one. Two units, two stats.
+//
+// See docs/audiobook-progress-v1-spec.md.
+
+/**
+ * Total minutes this reader's audio edition runs to, or null.
+ *
+ * Note there is no fallback to a catalog value, deliberately. `books` has no
+ * duration column and should not grow one — length is an edition fact, which
+ * is the lesson the whole reader_editions table exists to encode. If the reader
+ * has not told us, the honest answer is that we do not know.
+ */
+export function effectiveMinutes(edition) {
+  if (edition?.format !== 'audio') return null;
+  const m = Number(edition?.duration_minutes);
+  return Number.isFinite(m) && m > 0 ? m : null;
+}
+
+/** Is this reader tracking this book by time rather than by page? */
+export function isAudioEdition(edition) {
+  return edition?.format === 'audio';
+}
+
+/**
+ * How far through, 0..1, or null when it cannot be known.
+ *
+ * THE point of this function: almost every caller that today divides by pages
+ * actually wants a FRACTION. Giving them one means the audio case is handled
+ * once, here, rather than at every progress bar in the app — and it fixes a
+ * pre-existing wart at the same time, because a PRINT book with no page count
+ * currently renders a bar stuck at 0% for exactly the same reason an audiobook
+ * did.
+ *
+ * `null` means "cannot be known" and every caller must render it as NO BAR.
+ * Zero and unknown are different facts and a progress bar cannot express the
+ * difference, so it should not try.
+ */
+export function progressFraction(book, edition, progress) {
+  if (isAudioEdition(edition)) {
+    const total = effectiveMinutes(edition);
+    const done = Number(progress?.progress_minutes ?? progress?.progressMinutes);
+    if (!total || !Number.isFinite(done) || done <= 0) return null;
+    return Math.min(1, done / total);
+  }
+  const total = effectivePages(book, edition);
+  const done = Number(progress?.pages_read ?? progress?.pagesRead);
+  if (!total || !Number.isFinite(done) || done <= 0) return null;
+  return Math.min(1, done / total);
+}
+
+// ── Hours and minutes, in and out ─────────────────────────────────────────────
+//
+// The column stores minutes; the reader thinks in "11h 47m". These three
+// functions are the whole translation layer, and they are here rather than in
+// the modal so the probe can exercise them without a browser.
+
+/**
+ * Two form fields to a minute count, or null.
+ *
+ * Blank-and-blank is null rather than 0, and that distinction carries the
+ * feature: NULL duration means "the reader does not know the total", which is
+ * a supported state — cumulative hours still counts, only the progress bar is
+ * withheld. Zero would mean "this audiobook is zero minutes long".
+ *
+ * Minutes above 59 are not rejected. Someone typing "0h 90m" means ninety
+ * minutes and is not confused; refusing it to enforce a format would be the
+ * app being pedantic about arithmetic it can do itself.
+ */
+export function toMinutes(hours, minutes) {
+  const h = String(hours ?? '').trim();
+  const m = String(minutes ?? '').trim();
+  if (h === '' && m === '') return null;
+  const hn = h === '' ? 0 : Number(h);
+  const mn = m === '' ? 0 : Number(m);
+  if (!Number.isFinite(hn) || !Number.isFinite(mn) || hn < 0 || mn < 0) return null;
+  const total = Math.round(hn * 60 + mn);
+  return total > 0 ? total : null;
+}
+
+/** A minute count back to the two form fields. Blank strings for null. */
+export function splitMinutes(total) {
+  const n = Number(total);
+  if (!Number.isFinite(n) || n <= 0) return { hours: '', minutes: '' };
+  return { hours: String(Math.floor(n / 60)), minutes: String(n % 60) };
+}
+
+/**
+ * "11h 47m" — for display, never for storage.
+ *
+ * Drops a zero component rather than printing "0h 47m", and returns null for
+ * nothing, so a caller can decide whether a line is worth rendering at all
+ * (the same contract editionTitle() uses).
+ */
+export function formatMinutes(total) {
+  const n = Number(total);
+  if (!Number.isFinite(n) || n <= 0) return null;
+  const h = Math.floor(n / 60);
+  const m = n % 60;
+  if (!h) return `${m}m`;
+  if (!m) return `${h}h`;
+  return `${h}h ${m}m`;
+}

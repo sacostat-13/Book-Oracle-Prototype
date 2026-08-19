@@ -961,7 +961,12 @@
     "editionFormat_audio": "Audiobook",
     "editionTitleLabel": "Title on your copy",
     "editionTranslatorLabel": "Translator",
-    "editionAudioNote": "Audiobooks aren't tracked by page."
+    "listenedLabel": "How far are you?",
+    "editionDurationLabel": "Total length",
+    "editionDurationNote": "Leave blank if you don't know — your listening still counts, you just won't get a progress bar.",
+    "editionNarratorLabel": "Narrator",
+    "hoursShort": "h",
+    "minutesShort": "m"
   },
   "memory": {
     "sectionTitle": "Your reading memory",

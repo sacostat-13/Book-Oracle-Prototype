@@ -351,6 +351,53 @@ function rollupGenres(rows) {
 }
 
 // ---------- Supabase loaders ----------
+
+/**
+ * Run a query that names a column added by a migration, and fall back to a
+ * query that does not if the column is not there yet.
+ *
+ * v0.65.1, written the day after this exact failure shipped. Adding
+ * `progress_minutes` to the currently_reading select made the whole query fail
+ * on any database where 20260820120000 had not been applied — PostgREST
+ * answers `column ... does not exist` — and because that result is consumed as
+ * `(res.data || [])`, four books rendered as an empty shelf. Not an error, not
+ * a spinner: an empty state, which reads as "you are not reading anything"
+ * rather than "the app could not ask".
+ *
+ * The lesson had already been learnt one commit earlier, in
+ * originalLanguageBackfill.mjs, where detectStampColumn() exists for the same
+ * reason and says so at length. It was applied to the batch script and not to
+ * the app, which is the half a reader can see.
+ *
+ * A schema mismatch between a deployed bundle and a database is not an edge
+ * case here — it is the NORMAL state for the minutes between a deploy and a
+ * migration, and for a developer who pulls before applying. Degrading to the
+ * old shape and saying so is the behaviour that fits.
+ */
+async function selectTolerant(run, runWithout, column) {
+  const res = await run();
+  if (!res?.error) return res;
+  if (!new RegExp(column).test(res.error.message || '')) return res;
+  console.warn(
+    `[schema] ${column} is missing — falling back to the previous query shape. ` +
+    'Apply the pending migration; until then this column reads as null.',
+    res.error.message
+  );
+  return runWithout();
+}
+
+// currently_reading, with and without the audiobook column.
+const CR_TAIL = 'book:books(*, position_in_series, series:series(*))';
+const CR_COLS = `started_at, pages_read, user_page_count, progress_minutes, ${CR_TAIL}`;
+const CR_COLS_PRE_AUDIO = `started_at, pages_read, user_page_count, ${CR_TAIL}`;
+
+// reader_editions, likewise. This one already degraded to {} on error, which
+// is correct for a missing TABLE and wrong for a missing column: it would have
+// thrown away every recorded edition — page counts, languages, translators —
+// over two columns nobody had migrated yet.
+const RE_COLS = 'book_id, language, isbn, edition_title, translator, page_count, format, source, duration_minutes, narrator';
+const RE_COLS_PRE_AUDIO = 'book_id, language, isbn, edition_title, translator, page_count, format, source';
+
 async function loadFromSupabase(userId) {
   const [profileRes, wishlistRes, readBooksRes, plansRes, currentlyReadingRes, memoriesRes, accomplishmentsRes, editionsRes] = await Promise.all([
     supabase.from('profiles').select('*').eq('id', userId).maybeSingle(),
@@ -378,10 +425,11 @@ async function loadFromSupabase(userId) {
       .select('*')
       .eq('user_id', userId)
       .order('created_at', { ascending: false }),
-    supabase
-      .from('currently_reading')
-      .select('started_at, pages_read, user_page_count, book:books(*, position_in_series, series:series(*))')
-      .eq('user_id', userId),
+    selectTolerant(
+      () => supabase.from('currently_reading').select(CR_COLS).eq('user_id', userId),
+      () => supabase.from('currently_reading').select(CR_COLS_PRE_AUDIO).eq('user_id', userId),
+      'progress_minutes'
+    ),
     // v0.44: reading memories — one flat query, keyed by book_id client-side
     supabase
       .from('reading_memories')
@@ -397,10 +445,11 @@ async function loadFromSupabase(userId) {
     // v0.65: the reader's own editions (migration 20260818120000). Owner-only
     // RLS, so this returns this reader's rows and nothing else without the
     // query having to say so.
-    supabase
-      .from('reader_editions')
-      .select('book_id, language, isbn, edition_title, translator, page_count, format, source')
-      .eq('user_id', userId),
+    selectTolerant(
+      () => supabase.from('reader_editions').select(RE_COLS).eq('user_id', userId),
+      () => supabase.from('reader_editions').select(RE_COLS_PRE_AUDIO).eq('user_id', userId),
+      'duration_minutes'
+    ),
   ]);
 
   // v0.65: reader editions by book_id.
@@ -524,6 +573,49 @@ async function loadFromSupabase(userId) {
     moods: knownMoods((l.list_moods || []).map((m) => m.mood)),
   }));
 
+  // A FAILED SHELF QUERY MUST NOT BE RETURNED AS AN EMPTY SHELF.
+  //
+  // This is the defect the progress_minutes mistake exposed, and it is much
+  // worse than the mistake was. loadFromSupabase did not throw when a shelf
+  // query errored — it returned a state object with `currentlyReading: []`,
+  // because every result is consumed as `(res.data || [])`. The caller has no
+  // way to tell that apart from a reader who genuinely has nothing on the go,
+  // so it did what it does with any successful load:
+  //
+  //   supabaseLoadedRef.current = true;   // "this is real data now"
+  //   setState(remote);                   // renders the empty shelf
+  //   saveSessionCache(user.id, remote);  // caches the empty shelf, 30 min
+  //   saveLocal(state);                   // and writes it to localStorage
+  //
+  // So one failed request became a persistent empty shelf that survived
+  // reloading, survived fixing the actual cause, and could only be cleared by
+  // closing the tab — sessionStorage does not die on F5. A transient failure
+  // was laundered into cached truth.
+  //
+  // Throwing puts it back on the path that already handles this correctly: the
+  // caller catches, falls back to localStorage, and crucially does NOT set
+  // supabaseLoadedRef, so nothing is persisted and the next load tries again.
+  //
+  // Only the shelves. memories, accomplishments and reader_editions degrade to
+  // empty on purpose and say so where they do it — losing those costs a
+  // progress bar's precision, not a reader's library.
+  const shelfFailures = [
+    ['currently_reading', currentlyReadingRes],
+    ['wishlist_items', wishlistRes],
+    ['read_books', readBooksRes],
+    ['plans', plansRes],
+  ].filter(([, res]) => res?.error);
+
+  if (shelfFailures.length) {
+    const detail = shelfFailures.map(([name, res]) => `${name}: ${res.error.message}`).join('; ');
+    throw new Error(
+      `Shelf load failed, refusing to cache an empty library. A missing column here is ` +
+      `usually a migration that has not been applied — or applied to a different project ` +
+      `than .env.local points at, or applied without PostgREST reloading its schema ` +
+      `cache. ${detail}`
+    );
+  }
+
   const currentlyReading = (currentlyReadingRes.data || [])
     .map((r) =>
       r.book
@@ -531,6 +623,9 @@ async function loadFromSupabase(userId) {
             startedAt: r.started_at,
             pagesRead: r.pages_read ?? 0,
             userPageCount: r.user_page_count ?? null,
+            // v0.65.1 — the audio counterpart of pagesRead. Null for every
+            // print row, which is what makes it safe to read unconditionally.
+            progressMinutes: r.progress_minutes ?? null,
           })
         : null
     )
@@ -868,6 +963,8 @@ export function DataProvider({ children }) {
               loadedUserIdRef.current = user.id;
             }
           } catch (e) {
+            // Deliberately does NOT set supabaseLoadedRef, so the persist effect
+            // stays quiet and neither cache learns anything from a failed load.
             console.error('Failed to load from Supabase, falling back to local', e);
             if (!cancelled) setState(loadLocal());
           }
@@ -1690,6 +1787,12 @@ export function DataProvider({ children }) {
         translator: patch?.translator ?? null,
         page_count: patch?.page_count ?? null,
         format: patch?.format ?? null,
+        // v0.65.1 — audiobooks. duration_minutes is the audio counterpart of
+        // page_count and narrator of translator; both are nullable and both are
+        // included in the emptiness check below, so an edition consisting of
+        // nothing but a narrator still counts as recorded.
+        duration_minutes: patch?.duration_minutes ?? null,
+        narrator: patch?.narrator ?? null,
       };
       const empty = Object.values(next).every((v) => v == null || v === '');
 
@@ -1727,6 +1830,44 @@ export function DataProvider({ children }) {
           { onConflict: 'user_id,book_id' }
         );
       if (error) console.error('saveReaderEdition failed', error);
+    },
+    [user]
+  );
+
+  /**
+   * How far into an audio edition this reader is, in minutes.
+   *
+   * A sibling of updateReadingProgress rather than a parameter on it, and the
+   * separation is the point: pages and minutes are different units on different
+   * columns, and a reader who switches format mid-book must not have one
+   * reinterpreted as the other. See docs/audiobook-progress-v1-spec.md.
+   *
+   * `null` clears the position — a reader who empties the field is saying they
+   * do not know where they are, which is different from saying zero.
+   */
+  const updateListeningProgress = useCallback(
+    async (book, minutes) => {
+      if (!book?.bookId) return;
+      const value = Number.isFinite(minutes) && minutes > 0 ? Math.round(minutes) : null;
+
+      // Optimistic, matching updateReadingProgress: the modal closes on the
+      // decision, not on the round trip.
+      setState((s) => ({
+        ...s,
+        currentlyReading: s.currentlyReading.map((b) =>
+          b.bookId === book.bookId ? { ...b, progressMinutes: value } : b
+        ),
+      }));
+
+      if (!user) return;
+
+      const { error } = await supabase
+        .from('currently_reading')
+        .update({ progress_minutes: value })
+        .eq('user_id', user.id)
+        .eq('book_id', book.bookId);
+
+      if (error) console.error('updateListeningProgress failed', error);
     },
     [user]
   );
@@ -3044,6 +3185,7 @@ export function DataProvider({ children }) {
     removeFromCurrentlyReading,
     // v0.28: reading progress
     updateReadingProgress,
+    updateListeningProgress,
     saveReaderEdition,
     // v0.44: reading memory
     memoriesForBook,

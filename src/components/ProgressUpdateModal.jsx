@@ -1,10 +1,39 @@
 // ProgressUpdateModal.jsx — v0.37.3
 // v0.44: Reading Memory capture + recall (docs/reading-memory-v1-spec.md)
+// v0.65: reader editions (docs/reader-editions-v1-spec.md)
+// v0.65.1: audiobooks (docs/audiobook-progress-v1-spec.md)
+//
+// FORMAT DECIDES THE FORM.
+//
+// The v0.65 layout asked for a page count first and the edition afterwards, as
+// an afterthought behind a disclosure link. That ordering was wrong in a way
+// that only became visible once audiobooks existed: it asks "how many pages?"
+// before it knows whether this book has pages at all, and an audiobook listener
+// got a disabled page field, a note apologising for it, and nowhere to record
+// what they had actually done.
+//
+// The form now establishes WHAT THE COPY IS before asking HOW FAR IN you are:
+//
+//   ISBN → Format → Title → Language          (every format, in this order)
+//     ├── print / ebook: Pages read · Pages in your edition · Translator
+//     └── audio:         Listened · Total length · Narrator
+//
+// ISBN stays first because it is the one field a reader can copy off the back
+// cover without deciding anything, and filling it fills several of the others.
+// Format is second because it is the switch — everything below it changes shape.
+//
+// The two branches are not cosmetic variants of one control. An audiobook is
+// measured in time, and this file never converts between time and pages; see
+// src/lib/editions.js and the spec for why that conversion would be a
+// fabrication rather than a convenience.
 
 import { useEffect, useState } from 'react';
 import { useT } from '../lib/I18nContext';
 import { useData } from '../lib/DataContext';
-import { EDITION_LANGUAGES, EDITION_FORMATS, effectivePages, normalizeLanguage } from '../lib/editions';
+import {
+  EDITION_LANGUAGES, EDITION_FORMATS, effectivePages, normalizeLanguage,
+  toMinutes, splitMinutes,
+} from '../lib/editions';
 import { cleanIsbn, isValidIsbn } from '../lib/isbn';
 import { googleBooksLookupByIsbn } from '../lib/googleBooksService';
 import CornerBrackets from './CornerBrackets';
@@ -12,36 +41,39 @@ import CoachMark from './CoachMark';
 
 export default function ProgressUpdateModal({ book, onSave, onClose }) {
   const t = useT();
-  const { memoriesForBook, addReadingMemory, dismissCoachmark, state, saveReaderEdition } = useData();
+  const {
+    memoriesForBook, addReadingMemory, dismissCoachmark, state,
+    saveReaderEdition, updateListeningProgress,
+  } = useData();
   const catalogPages = book?.pp || null;
   const initialPages = book?.pagesRead ?? 0;
 
-  // v0.65 — the edition the reader has already recorded, if any. Falls back to
-  // the legacy currently_reading override so a reader who set a page count
-  // before this shipped sees their own number, not the catalog's.
   const edition = state?.editionsByBookId?.[book?.bookId] || null;
   const initialOverride = edition?.page_count ?? book?.userPageCount ?? null;
 
   const [pages, setPages] = useState(String(initialPages || ''));
-  const [showOverride, setShowOverride] = useState(!!initialOverride || !!edition);
   const [overridePages, setOverridePages] = useState(initialOverride ? String(initialOverride) : '');
   const [saving, setSaving] = useState(false);
 
-  // v0.65 — the rest of the edition. This control used to capture ONLY a page
-  // count, which is the number a reader notices but not the thing that explains
-  // it: they typed 512 because they are reading a different book-object, and
-  // the app had nowhere to say so. Same disclosure, same one-click expansion,
-  // three more optional fields.
   const [edLang, setEdLang] = useState(edition?.language || '');
   const [edIsbn, setEdIsbn] = useState(edition?.isbn || '');
   const [edTitle, setEdTitle] = useState(edition?.edition_title || '');
   const [edFormat, setEdFormat] = useState(edition?.format || '');
   const [edTranslator, setEdTranslator] = useState(edition?.translator || '');
+  const [edNarrator, setEdNarrator] = useState(edition?.narrator || '');
   const [isbnLooking, setIsbnLooking] = useState(false);
   const [isbnNote, setIsbnNote] = useState(null);
 
-  // v0.44: optional memory capture — collapsed by default; the newest
-  // existing memory is recalled read-only at the top of the modal.
+  // Hours and minutes as two fields, because that is how a listening app shows
+  // a position and how a publisher prints a length. The column stores minutes;
+  // toMinutes/splitMinutes in editions.js are the whole translation.
+  const initialDuration = splitMinutes(edition?.duration_minutes);
+  const initialListened = splitMinutes(book?.progressMinutes);
+  const [durH, setDurH] = useState(initialDuration.hours);
+  const [durM, setDurM] = useState(initialDuration.minutes);
+  const [lisH, setLisH] = useState(initialListened.hours);
+  const [lisM, setLisM] = useState(initialListened.minutes);
+
   const [memoryOpen, setMemoryOpen] = useState(false);
   const [memoryText, setMemoryText] = useState('');
   const lastMemory = memoriesForBook(book)[0] || null;
@@ -52,15 +84,11 @@ export default function ProgressUpdateModal({ book, onSave, onClose }) {
     return () => window.removeEventListener('keydown', onKey);
   }, [onClose, saving]);
 
-  // Type thirteen digits, get the rest filled in.
-  //
-  // This is the whole reason to ask for an ISBN at all: a translation's ISBN is
-  // the one fact a reader can read off the back of the book without thinking,
-  // and it implies the language, the page count and the title. Asking them to
-  // type those separately would be asking them to do a lookup we can do.
-  //
-  // Never overwrites something already filled in — a reader who typed their
-  // page count and then pasted an ISBN meant the page count.
+  // An unset format behaves as print. It is what the overwhelming majority of
+  // rows are, and defaulting the SELECT to 'print' instead would write a claim
+  // the reader never made onto every edition they touch.
+  const isAudio = edFormat === 'audio';
+
   async function lookUpIsbn() {
     const clean = cleanIsbn(edIsbn);
     if (!clean || !isValidIsbn(clean)) { setIsbnNote(t('progress.editionIsbnInvalid')); return; }
@@ -70,7 +98,10 @@ export default function ProgressUpdateModal({ book, onSave, onClose }) {
       const hit = await googleBooksLookupByIsbn(clean);
       if (!hit) { setIsbnNote(t('progress.editionIsbnNotFound')); return; }
       if (hit.lang && !edLang) setEdLang(normalizeLanguage(hit.lang) || '');
-      if (hit.pp && !overridePages) setOverridePages(String(hit.pp));
+      // Never onto an audio edition: Google's page count is the print
+      // edition's, and writing it here would give an audiobook a page count,
+      // which is the one thing this release exists to stop happening.
+      if (hit.pp && !overridePages && !isAudio) setOverridePages(String(hit.pp));
       if (hit.t && !edTitle && hit.t.trim() !== (book?.t || '').trim()) setEdTitle(hit.t);
       setIsbnNote(t('progress.editionIsbnFound'));
     } catch {
@@ -80,54 +111,80 @@ export default function ProgressUpdateModal({ book, onSave, onClose }) {
     }
   }
 
+  // ── Print / ebook ──────────────────────────────────────────────────────────
   const overrideNum = parseInt(overridePages, 10);
   const validOverride = !isNaN(overrideNum) && overrideNum > 0;
-  // An audiobook has no page count and never will, so the progress bar must not
-  // render rather than render a fiction. effectivePages() encodes the same
-  // precedence used everywhere else; this is the one place that also has an
-  // unsaved edit to respect.
-  const totalPages = edFormat === 'audio'
+  const totalPages = isAudio
     ? null
-    : (showOverride && validOverride && overridePages !== '')
+    : (validOverride && overridePages !== '')
       ? overrideNum
       : effectivePages(book, edition);
 
   const pagesNum = parseInt(pages, 10);
   const validPages = !isNaN(pagesNum) && pagesNum >= 0;
   const cappedPages = validPages && totalPages ? Math.min(pagesNum, totalPages) : pagesNum;
-  const pct = totalPages && validPages ? Math.min(100, Math.round((cappedPages / totalPages) * 100)) : null;
 
-  const canSave = validPages && (!showOverride || overridePages === '' || validOverride);
+  // ── Audio ──────────────────────────────────────────────────────────────────
+  const durationMinutes = toMinutes(durH, durM);
+  const listenedRaw = toMinutes(lisH, lisM);
+  const listenedMinutes = listenedRaw && durationMinutes
+    ? Math.min(listenedRaw, durationMinutes)
+    : listenedRaw;
+
+  // One percentage, whichever unit the reader is in. `null` means "cannot be
+  // known" — a total nobody has given us — and every consumer of it below
+  // renders nothing rather than zero.
+  const pct = isAudio
+    ? (durationMinutes && listenedMinutes ? Math.min(100, Math.round((listenedMinutes / durationMinutes) * 100)) : null)
+    : (totalPages && validPages ? Math.min(100, Math.round((cappedPages / totalPages) * 100)) : null);
+
+  const canSave = isAudio
+    ? true                                        // a listener with no total is still making progress
+    : (validPages && (overridePages === '' || validOverride));
 
   async function handleSave() {
     if (!canSave) return;
     setSaving(true);
-    // null clears the override and falls back to the catalog page count
-    const userPageCount = showOverride && overridePages !== '' && validOverride ? overrideNum : null;
+    const userPageCount = !isAudio && overridePages !== '' && validOverride ? overrideNum : null;
     try {
-      await onSave?.(cappedPages, userPageCount);
-      // v0.65: the edition saves alongside the progress — one button, one
-      // action, same rule the memory capture below follows. A failed edition
-      // write must never undo a successful progress save, so it is caught here
-      // rather than allowed to reject the whole handler.
+      if (isAudio) {
+        // pages_read is passed through UNCHANGED, and the page override is left
+        // alone (undefined, not null). A reader who read 76 pages of the
+        // paperback and then switched to the audiobook has not un-read them,
+        // and clearing the override would destroy a number they would need
+        // again the moment they switched back.
+        await onSave?.(initialPages, undefined);
+        await updateListeningProgress?.(book, listenedMinutes);
+      } else {
+        await onSave?.(cappedPages, userPageCount);
+      }
+
       try {
         await saveReaderEdition?.(book, {
           language: normalizeLanguage(edLang),
           isbn: cleanIsbn(edIsbn),
           edition_title: edTitle.trim() || null,
-          translator: edTranslator.trim() || null,
-          page_count: userPageCount,
+          translator: isAudio ? (edition?.translator ?? null) : (edTranslator.trim() || null),
+          narrator: isAudio ? (edNarrator.trim() || null) : (edition?.narrator ?? null),
+          // Keep the other unit's numbers rather than nulling them. The form
+          // only shows one branch at a time; a hidden field is not a retracted
+          // one, and switching format twice must not be lossy.
+          page_count: isAudio ? (edition?.page_count ?? null) : userPageCount,
+          duration_minutes: isAudio ? durationMinutes : (edition?.duration_minutes ?? null),
           format: edFormat || null,
           source: edition?.source || 'manual',
         });
       } catch (err) {
         console.warn('reader edition save failed', err);
       }
-      // v0.44: memory saves with the progress — one action, never blocking.
-      // A failed memory write must not undo a successful progress save.
+
       if (memoryText.trim()) {
         try {
-          await addReadingMemory(book, memoryText, { pagesAt: cappedPages, pctAt: pct, kind: 'progress' });
+          await addReadingMemory(book, memoryText, {
+            pagesAt: isAudio ? null : cappedPages,
+            pctAt: pct,
+            kind: 'progress',
+          });
         } catch (err) {
           console.warn('reading memory save failed', err);
         }
@@ -135,12 +192,19 @@ export default function ProgressUpdateModal({ book, onSave, onClose }) {
     } finally { setSaving(false); }
   }
 
+  function clearEdition() {
+    setOverridePages('');
+    setEdLang(''); setEdIsbn(''); setEdTitle('');
+    setEdFormat(''); setEdTranslator(''); setEdNarrator('');
+    setDurH(''); setDurM(''); setIsbnNote(null);
+  }
+
   return (
     <div
       onClick={(e) => { if (e.target === e.currentTarget && !saving) onClose?.(); }}
       className="rating-modal-overlay"
     >
-      <div className="rating-modal">
+      <div className="rating-modal pu-modal">
         <CornerBrackets size="sm" />
         <div className="rating-modal__eyebrow">
           {t('progress.eyebrow')}
@@ -165,38 +229,10 @@ export default function ProgressUpdateModal({ book, onSave, onClose }) {
           </div>
         )}
 
-        <div>
-          <label className="field-label">
-            {t('progress.pagesLabel')}
-            {totalPages && (
-              <span className="club-form__optional">
-                {t('progress.pagesOf', { total: totalPages })}
-              </span>
-            )}
-          </label>
-          <div className="pu-input-row">
-            <input
-              type="number" min="0" max={totalPages || undefined}
-              value={pages} onChange={(e) => setPages(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleSave()}
-              placeholder="0" autoFocus className="input pf-input--narrow"
-            />
-            {totalPages && validPages ? (
-              <span className="pu-progress-label">
-                {pct}%
-              </span>
-            ) : null}
-          </div>
-        </div>
+        <div className="pu-form">
+          {/* ── What the copy is ──────────────────────────────────────────── */}
 
-        {!showOverride ? (
-          <button type="button" className="btn-text btn--sm" onClick={() => setShowOverride(true)}>
-            {t('progress.editionDifferLink')}
-          </button>
-        ) : (
-          <div className="pu-edition">
-            {/* ISBN first: it is the one field a reader can copy off the back
-                cover without deciding anything, and filling it fills the rest. */}
+          <div className="pu-field">
             <label className="field-label" htmlFor="pu-ed-isbn">
               {t('progress.editionIsbnLabel')}
             </label>
@@ -208,7 +244,7 @@ export default function ProgressUpdateModal({ book, onSave, onClose }) {
                 value={edIsbn}
                 onChange={(e) => { setEdIsbn(e.target.value); setIsbnNote(null); }}
                 placeholder="978…"
-                className="input pf-input--narrow"
+                className="input"
               />
               <button
                 type="button"
@@ -219,47 +255,17 @@ export default function ProgressUpdateModal({ book, onSave, onClose }) {
                 {isbnLooking ? t('progress.editionIsbnLooking') : t('progress.editionIsbnLookup')}
               </button>
             </div>
-            {isbnNote && <div className="pu-progress-label">{isbnNote}</div>}
+            {isbnNote && <div className="pu-note">{isbnNote}</div>}
+          </div>
 
-            <label className="field-label" htmlFor="pu-ed-lang">
-              {t('progress.editionLanguageLabel')}
-            </label>
-            <select
-              id="pu-ed-lang"
-              className="input pf-input--narrow"
-              value={edLang}
-              onChange={(e) => setEdLang(e.target.value)}
-            >
-              <option value="">{t('progress.editionLanguageUnset')}</option>
-              {EDITION_LANGUAGES.map((code) => (
-                <option key={code} value={code}>{t(`language.${code}`)}</option>
-              ))}
-            </select>
-
-            <label className="field-label" htmlFor="pu-ed-pages">
-              {t('progress.editionPagesLabel')}
-            </label>
-            <input
-              id="pu-ed-pages"
-              type="number" min="1"
-              value={overridePages}
-              onChange={(e) => setOverridePages(e.target.value)}
-              placeholder={catalogPages ? String(catalogPages) : ''}
-              className="input pf-input--narrow"
-              disabled={edFormat === 'audio'}
-            />
-            <div className="pu-progress-label">
-              {edFormat === 'audio'
-                ? t('progress.editionAudioNote')
-                : t('progress.editionOverrideNote')}
-            </div>
-
+          {/* The switch. Everything below this changes shape with it. */}
+          <div className="pu-field">
             <label className="field-label" htmlFor="pu-ed-format">
               {t('progress.editionFormatLabel')}
             </label>
             <select
               id="pu-ed-format"
-              className="input pf-input--narrow"
+              className="input"
               value={edFormat}
               onChange={(e) => setEdFormat(e.target.value)}
             >
@@ -268,7 +274,9 @@ export default function ProgressUpdateModal({ book, onSave, onClose }) {
                 <option key={f} value={f}>{t(`progress.editionFormat_${f}`)}</option>
               ))}
             </select>
+          </div>
 
+          <div className="pu-field">
             <label className="field-label" htmlFor="pu-ed-title">
               {t('progress.editionTitleLabel')}
             </label>
@@ -280,50 +288,163 @@ export default function ProgressUpdateModal({ book, onSave, onClose }) {
               placeholder={book?.t || ''}
               className="input"
             />
+          </div>
 
-            <label className="field-label" htmlFor="pu-ed-translator">
-              {t('progress.editionTranslatorLabel')}
+          <div className="pu-field">
+            <label className="field-label" htmlFor="pu-ed-lang">
+              {t('progress.editionLanguageLabel')}
             </label>
-            <input
-              id="pu-ed-translator"
-              type="text"
-              value={edTranslator}
-              onChange={(e) => setEdTranslator(e.target.value)}
+            <select
+              id="pu-ed-lang"
               className="input"
-            />
-
-            <button
-              type="button"
-              className="btn-text btn--sm"
-              onClick={() => {
-                // Clears the whole edition, not just the page count. Leaving
-                // the language and ISBN behind while dropping the number they
-                // explain would store a claim the reader just retracted.
-                setShowOverride(false);
-                setOverridePages('');
-                setEdLang(''); setEdIsbn(''); setEdTitle('');
-                setEdFormat(''); setEdTranslator(''); setIsbnNote(null);
-              }}
+              value={edLang}
+              onChange={(e) => setEdLang(e.target.value)}
             >
-              {t('progress.editionUseDefault')}
-            </button>
+              <option value="">{t('progress.editionLanguageUnset')}</option>
+              {EDITION_LANGUAGES.map((code) => (
+                <option key={code} value={code}>{t(`language.${code}`)}</option>
+              ))}
+            </select>
           </div>
-        )}
 
-        {totalPages ? (
-          <div>
+          {/* ── How far in ────────────────────────────────────────────────── */}
+
+          {isAudio ? (
+            <>
+              <div className="pu-field">
+                <label className="field-label" htmlFor="pu-lis-h">
+                  {t('progress.listenedLabel')}
+                  {pct != null && (
+                    <span className="club-form__optional">{pct}%</span>
+                  )}
+                </label>
+                <div className="pu-hm">
+                  <input
+                    id="pu-lis-h" type="number" min="0" className="input"
+                    value={lisH} onChange={(e) => setLisH(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleSave()}
+                    placeholder="0" autoFocus
+                  />
+                  <span className="pu-hm__unit">{t('progress.hoursShort')}</span>
+                  <input
+                    type="number" min="0" className="input"
+                    value={lisM} onChange={(e) => setLisM(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleSave()}
+                    placeholder="00"
+                  />
+                  <span className="pu-hm__unit">{t('progress.minutesShort')}</span>
+                </div>
+              </div>
+
+              <div className="pu-field">
+                <label className="field-label" htmlFor="pu-dur-h">
+                  {t('progress.editionDurationLabel')}
+                </label>
+                <div className="pu-hm">
+                  <input
+                    id="pu-dur-h" type="number" min="0" className="input"
+                    value={durH} onChange={(e) => setDurH(e.target.value)}
+                    placeholder="0"
+                  />
+                  <span className="pu-hm__unit">{t('progress.hoursShort')}</span>
+                  <input
+                    type="number" min="0" className="input"
+                    value={durM} onChange={(e) => setDurM(e.target.value)}
+                    placeholder="00"
+                  />
+                  <span className="pu-hm__unit">{t('progress.minutesShort')}</span>
+                </div>
+                {/* Optional on purpose: the hours-listened total works without
+                    it, and only the progress bar needs it. Saying so stops the
+                    field reading as a requirement the reader cannot meet. */}
+                <div className="pu-note">{t('progress.editionDurationNote')}</div>
+              </div>
+
+              <div className="pu-field">
+                <label className="field-label" htmlFor="pu-ed-narrator">
+                  {t('progress.editionNarratorLabel')}
+                </label>
+                <input
+                  id="pu-ed-narrator"
+                  type="text"
+                  value={edNarrator}
+                  onChange={(e) => setEdNarrator(e.target.value)}
+                  className="input"
+                />
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="pu-field">
+                <label className="field-label" htmlFor="pu-pages">
+                  {t('progress.pagesLabel')}
+                  {totalPages && (
+                    <span className="club-form__optional">
+                      {t('progress.pagesOf', { total: totalPages })}
+                    </span>
+                  )}
+                </label>
+                <div className="pu-input-row">
+                  <input
+                    id="pu-pages"
+                    type="number" min="0" max={totalPages || undefined}
+                    value={pages} onChange={(e) => setPages(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleSave()}
+                    placeholder="0" autoFocus className="input"
+                  />
+                  {pct != null ? <span className="pu-progress-label">{pct}%</span> : null}
+                </div>
+              </div>
+
+              <div className="pu-field">
+                <label className="field-label" htmlFor="pu-ed-pages">
+                  {t('progress.editionPagesLabel')}
+                </label>
+                <input
+                  id="pu-ed-pages"
+                  type="number" min="1"
+                  value={overridePages}
+                  onChange={(e) => setOverridePages(e.target.value)}
+                  placeholder={catalogPages ? String(catalogPages) : ''}
+                  className="input"
+                />
+                <div className="pu-note">{t('progress.editionOverrideNote')}</div>
+              </div>
+
+              <div className="pu-field">
+                <label className="field-label" htmlFor="pu-ed-translator">
+                  {t('progress.editionTranslatorLabel')}
+                </label>
+                <input
+                  id="pu-ed-translator"
+                  type="text"
+                  value={edTranslator}
+                  onChange={(e) => setEdTranslator(e.target.value)}
+                  className="input"
+                />
+              </div>
+            </>
+          )}
+
+          {/* One bar, either unit. Absent when the fraction cannot be known —
+              which is now also the honest answer for a print book with no page
+              count, where this used to render stuck at zero. */}
+          {pct != null ? (
             <div className="db-ai__track">
-              <div className="db-ai__fill" style={{ '--ai-pct': `${validPages ? Math.min(100, (cappedPages / totalPages) * 100) : 0}%` }} />
+              <div className="db-ai__fill" style={{ '--ai-pct': `${pct}%` }} />
             </div>
-          </div>
-        ) : null}
+          ) : null}
+
+          <button type="button" className="btn-text btn--sm pu-form__reset" onClick={clearEdition}>
+            {t('progress.editionUseDefault')}
+          </button>
+        </div>
 
         {!memoryOpen ? (
           <div style={{ position: 'relative', display: 'inline-block' }}>
             <button type="button" className="btn-text btn--sm" onClick={() => { dismissCoachmark('memory-note'); setMemoryOpen(true); }}>
               ✎ {t('memory.captureLink')}
             </button>
-            {/* v0.46: one-time hint — Reading Memory is easy to overlook */}
             <CoachMark
               id="memory-note"
               placement="top"

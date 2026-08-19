@@ -4,7 +4,7 @@
 
 import { useMemo, useState, useCallback, useEffect } from 'react';
 import { useData } from '../lib/DataContext';
-import { effectivePages } from '../lib/editions';
+import { effectivePages, effectiveMinutes, isAudioEdition, formatMinutes } from '../lib/editions';
 import { RowListSkeleton } from '../components/Skeleton';
 import { useRouter } from '../lib/RouterContext';
 import { useT, useTNode } from '../lib/I18nContext';
@@ -323,7 +323,7 @@ function OracleSparkWidget({ wishlist, go, t, profile, tasteProfile }) {
 // `editions` is the reader's reader_editions map, passed in rather than read
 // from context because this widget already takes its data as props and a second
 // source of truth inside it would be the thing that drifts.
-function ReadingStatsWidget({ library, editions, go, t }) {
+function ReadingStatsWidget({ library, editions, currentlyReading, go, t }) {
   const now = new Date();
   const year = now.getFullYear();
   const total = library.length;
@@ -337,12 +337,45 @@ function ReadingStatsWidget({ library, editions, go, t }) {
   // catalog's edition has. A reader working through Spanish translations was
   // credited with English page counts — the same mismatch the progress bar
   // had, in the one number the Dashboard presents as an achievement.
-  const pages = library.reduce((sum, b) => sum + (effectivePages(b, editions?.[b.bookId]) || 0), 0);
+  const pages = library.reduce(
+    (sum, b) => (isAudioEdition(editions?.[b.bookId]) ? sum : sum + (effectivePages(b, editions?.[b.bookId]) || 0)),
+    0
+  );
+
+  // v0.65.1 — hours listened, and the reason it is a SEPARATE number.
+  //
+  // Until now this widget summed effectivePages over the whole library. An
+  // audiobook has no page count, contributed zero, and a reader who finished
+  // forty of them was shown a pages total that said they had read nothing.
+  // That is the bug; the tile is the fix.
+  //
+  // It is not fixed by giving audiobooks a page count. There is no honest
+  // pages-per-hour rate, and a fabricated one would be indistinguishable here
+  // from a counted page — see docs/audiobook-progress-v1-spec.md. Two units,
+  // two tiles, and `pages` now explicitly SKIPS audio editions rather than
+  // relying on them happening to be null.
+  //
+  // Finished books count their full duration; a book in progress counts how far
+  // the reader has got. The first is an approximation (abandoned at 80% and
+  // marked read counts 100%) and is documented as one in the spec.
+  const finishedMinutes = library.reduce(
+    (sum, b) => sum + (effectiveMinutes(editions?.[b.bookId]) || 0),
+    0
+  );
+  const inProgressMinutes = (currentlyReading || []).reduce(
+    (sum, b) => (isAudioEdition(editions?.[b.bookId]) ? sum + (Number(b.progressMinutes) || 0) : sum),
+    0
+  );
+  const listened = finishedMinutes + inProgressMinutes;
 
   const cards = [
     { value: total, label: thisYearCount > 0 ? t('dashboard.statsWidgetThisYear', { count: thisYearCount }) : t('dashboard.statsWidgetBooks', { count: total }) },
     { value: pace ?? '—', label: 'avg per month' },
     { value: pages > 0 ? pages.toLocaleString() : '—', label: 'pages total' },
+    // Rendered only when there is something to show. A reader who listens to
+    // nothing should not be told they have listened to nothing — an empty tile
+    // is a worse answer than no tile.
+    ...(listened > 0 ? [{ value: formatMinutes(listened), label: 'listened' }] : []),
   ];
 
   return (
@@ -1199,7 +1232,7 @@ export default function Dashboard({ onOpenBook }) {
     switch (id) {
       case 'currently-reading': return <CurrentlyReadingWidget key={id} books={state.currentlyReading || []} onOpenBook={onOpenBook} t={t} />;
       case 'oracle-spark': return <OracleSparkWidget key={id} wishlist={state.wishlist} go={go} t={t} profile={state.profile} tasteProfile={tasteProfile} />;
-      case 'reading-stats': return <ReadingStatsWidget key={id} library={state.library || []} editions={state.editionsByBookId} go={go} t={t} />;
+      case 'reading-stats': return <ReadingStatsWidget key={id} library={state.library || []} editions={state.editionsByBookId} currentlyReading={state.currentlyReading || []} go={go} t={t} />;
       case 'reading-goal': return <ReadingGoalWidget key={id} library={state.library || []} genresByBookId={state.genresByBookId || {}} readingGoalCount={state.readingGoalCount} setReadingGoalCount={setReadingGoalCount} t={t} />;
       case 'series-progress': return <SeriesProgressWidget key={id} library={state.library || []} wishlist={state.wishlist} readNext={state.readNext} go={go} t={t} />;
       case 'streak': return <StreakWidget key={id} library={state.library || []} t={t} />;

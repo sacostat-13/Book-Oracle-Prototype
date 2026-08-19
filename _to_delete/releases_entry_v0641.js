@@ -1,0 +1,20 @@
+  {
+    version: 'v0.64.1',
+    date: '2026-08-20',
+    titleEn: 'Audiobooks count',
+    titleEs: 'Los audiolibros cuentan',
+    bodyEn: [
+      'If you are listening rather than reading, say so. Choose Audiobook when you update your progress and the form changes to match: how far in you are, how long the book runs, and who narrates it — all in hours and minutes instead of pages.',
+      'You do not have to know the total length. Leave it blank and your listening still counts; you just will not get a progress bar until you fill it in.',
+      'The hours add up on your dashboard, next to your pages. They are kept separate on purpose — an hour is not a number of pages, and we would rather show you two true numbers than one invented one.',
+      'Audiobooks used to count as nothing at all. The pages total on your dashboard skipped them silently, so if you had finished forty audiobooks this year it told you that you had read nothing. That is fixed, and it is the real reason this release exists.',
+      'The progress form was rearranged. It asks what your copy is before asking how far into it you are, everything lines up now, and the Save and Cancel buttons stay put instead of disappearing off the bottom of a long form.',
+    ],
+    bodyEs: [
+      'Si estás escuchando en vez de leyendo, decilo. Elegí Audiolibro al actualizar tu progreso y el formulario cambia: por dónde vas, cuánto dura el libro y quién lo narra — todo en horas y minutos en lugar de páginas.',
+      'No hace falta que sepas la duración total. Dejala en blanco y lo que escuchaste igual cuenta; lo único que no vas a ver es la barra de progreso hasta que la completes.',
+      'Las horas se suman en tu panel, al lado de tus páginas. Van separadas a propósito: una hora no es una cantidad de páginas, y preferimos mostrarte dos números ciertos antes que uno inventado.',
+      'Antes los audiolibros no contaban para nada. El total de páginas del panel los salteaba en silencio, así que si habías terminado cuarenta audiolibros este año te decía que no habías leído nada. Ya está arreglado, y es la verdadera razón de esta versión.',
+      'El formulario de progreso se reordenó. Ahora pregunta qué ejemplar tenés antes de preguntar por dónde vas, todo quedó alineado, y los botones de Guardar y Cancelar se quedan en su lugar en vez de desaparecer al final de un formulario largo.',
+    ],
+  },

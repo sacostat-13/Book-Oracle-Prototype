@@ -234,7 +234,39 @@
   display: flex;
   gap: 0.5rem;
   flex-wrap: wrap;
+  justify-content: flex-end;
   margin-top: 1.5rem;
+}
+
+// v0.65.1 — the actions must never scroll out of reach.
+//
+// .rating-modal caps itself at the viewport and scrolls its own content
+// (see the v0.60.3 note in _social.scss). That fixed modals growing PAST the
+// screen; it did not stop the buttons being below the fold of the scroll, and
+// the progress modal is now long enough that they always are. A reader who
+// opens it sees four fields and no way to commit them, which reads as broken
+// rather than as scrollable.
+//
+// Sticky rather than fixed: it stays inside the surface, inherits its
+// background, and needs no knowledge of where the modal happens to be on
+// screen. The negative margins pull it out to the shell's edges so the divider
+// spans the full width instead of floating inside the padding, and the
+// matching bottom offset cancels the shell's own bottom padding so the bar
+// sits flush against the end of the scroll.
+.pu-modal {
+  --pu-pad: 32px;
+
+  .pu-actions {
+    position: sticky;
+    bottom: calc(var(--pu-pad) * -1);
+    margin: 1.5rem calc(var(--pu-pad) * -1) calc(var(--pu-pad) * -1);
+    padding: 14px var(--pu-pad) var(--pu-pad);
+    background: var(--ro-surface);
+    border-top: 1px solid var(--ro-border);
+    // Above the corner brackets, which are absolutely positioned on the shell
+    // and would otherwise draw over the buttons at the bottom edge.
+    z-index: 3;
+  }
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
