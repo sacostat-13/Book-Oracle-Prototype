@@ -235,6 +235,46 @@ practice — zero answers across the first fifty rows, against fourteen for P407
 how *Cress* produced "en vs sv". Edition items are followed through P629 to the
 work; they are never believed directly.
 
+### The queue is the stamp, not the value
+
+`originalLanguageBackfill` went into `scheduled/` on the grounds that it is free
+**and it terminates**. The first was true; the second was not, and it is worth
+knowing why because the mistake is easy to repeat.
+
+Its filter was `original_language IS NULL`. It resolves ~40% of what it
+examines; the other ~60% are books Wikidata genuinely does not have, so they
+stay NULL, so they stay eligible — and a weekly cron re-asks the same ~2,000
+indie novellas, Warhammer tie-ins and single-issue comics every Monday, forever.
+Slow, poor manners toward a free service that asks for a contact address, and a
+report that never shrinks, which is the worst of the three: a queue that cannot
+drain gives no signal about whether anything is working.
+
+`books.original_language_checked_at` (migration `20260819180000`) is the fix,
+and it is `authorGenderBackfill.mjs`'s rule verbatim — **stamp even when the
+answer is nothing**, so an honest shrug is recorded as asked-and-answered.
+
+**A failed request never stamps.** `search-failed` and `entities-unfetchable`
+mean the row was *attempted*, not asked; writing a timestamp for them turns an
+outage into a permanent "we checked, there is nothing" — the 2026-08-17
+postmortem's root cause with a date on it. `shouldStampChecked()` in
+`src/lib/originalLanguage.js` owns that call and the probe asserts on it.
+
+Four states, all meaningful:
+
+| `original_language` | `_checked_at` | Means |
+| --- | --- | --- |
+| value | stamp | answered |
+| NULL | stamp | asked; no free source knows. The Oracle's problem now |
+| NULL | NULL | never asked — **this is the queue, and it must shrink every run** |
+| value | NULL | written before v0.64.1. The migration retro-stamps these |
+
+`--recheck` reverts to the value filter for a deliberate sweep after a source or
+the matching improves. Do not put it on a schedule.
+
+If the migration is not applied, the script says so and runs in v0.64 mode
+rather than crashing mid-pagination — a missing migration should be a sentence,
+not a PostgREST error thrown four hours into a run nobody is watching.
+
 `books.original_language_source` records which source spoke
 (`wikidata` | `wikidata_p407` | `openlibrary` | `catalog_sibling` |
 `oracle_inferred` | `self_stated` | `verified`). The last two are the human tier and no script

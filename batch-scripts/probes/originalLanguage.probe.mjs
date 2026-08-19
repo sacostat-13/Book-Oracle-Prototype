@@ -27,7 +27,7 @@
 
 import {
   normPerson, normTitleLoose, isPlaceholderAuthor, authorLikelySame,
-  to6391, workKeys, planPropagation, decideWrite, searchTitles,
+  to6391, workKeys, planPropagation, decideWrite, searchTitles, shouldStampChecked,
 } from '../../src/lib/originalLanguage.js';
 
 let pass = 0;
@@ -199,6 +199,31 @@ check('--force does not reach a verified answer',
 check('--force does not reach a self-stated answer',
   decideWrite({ original_language: 'en', original_language_source: 'self_stated' }, 'es', { force: true }), 'protected');
 check('no code, no write', decideWrite({ original_language: null }, null), 'conflict');
+
+// ── Asked-and-answered ───────────────────────────────────────────────────────
+//
+// The stamp is what makes this script terminate. Everything that is an ANSWER
+// must stamp, including the answers that found nothing, or the weekly cron
+// re-asks Wikidata about ~2,000 books forever.
+for (const stage of [
+  'resolved', 'resolved-via-openlibrary', 'placeholder-author',
+  'no-search-hits', 'no-language-property', 'author-not-corroborated',
+  'no-iso-639-1-code', 'conflict',
+]) {
+  check(`stamps: ${stage}`, shouldStampChecked(stage), true);
+}
+
+// …and the two that must NOT. A failed request means the row was ATTEMPTED,
+// not asked. Stamping it records an outage as a verdict, which is the
+// 2026-08-17 postmortem's root cause made permanent — 971 books declared
+// unfindable by a broken connection, saved only because nothing wrote it down.
+check('does not stamp a failed search', shouldStampChecked('search-failed'), false);
+check('does not stamp an unfetchable entity', shouldStampChecked('entities-unfetchable'), false);
+
+// An unknown stage is more likely to be a new failure mode than a new kind of
+// answer, and re-asking is the recoverable mistake.
+check('does not stamp an unknown stage', shouldStampChecked('something-new'), false);
+check('does not stamp undefined', shouldStampChecked(undefined), false);
 
 // ── Report ───────────────────────────────────────────────────────────────────
 console.log(`\noriginalLanguage.probe — ${pass} passed, ${failures.length} failed\n`);

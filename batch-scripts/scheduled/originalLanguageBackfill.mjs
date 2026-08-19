@@ -119,8 +119,32 @@
 // Write 'unknown'. oracleBatch.mjs stores 'unknown' deliberately, as a resolved
 // answer that stops a book being re-billed. This script has no per-book cost,
 // so it has nothing to protect by claiming an answer it does not have. A row it
-// cannot resolve is left NULL and stays eligible for the next run — and for the
-// Oracle, which may know things Wikidata does not.
+// cannot resolve is left NULL — and still eligible for the Oracle, which knows
+// things Wikidata does not.
+//
+// THE QUEUE, AND WHY IT IS NOT `original_language IS NULL`
+//
+// That filter looks right and does not terminate. Roughly 60% of what this
+// examines is books Wikidata genuinely does not have; they stay NULL, so they
+// stay eligible, so a weekly cron re-asks the same ~2,000 indie novellas,
+// Warhammer tie-ins and single-issue comics every Monday forever. Slow, poor
+// manners toward a free service, and a report that never shrinks — which is
+// worse than either, because a queue that cannot drain gives no signal about
+// whether anything is working.
+//
+// `books.original_language_checked_at` (migration 20260819180000) is the stamp
+// that fixes it, and it is authorGenderBackfill.mjs's rule verbatim: stamp even
+// when the answer is nothing, so an honest shrug is recorded as asked-and-
+// answered rather than re-asked. The default pass selects rows never asked.
+//
+// ONE EXCEPTION, AND IT IS THE IMPORTANT ONE. A failed REQUEST never stamps.
+// `search-failed` and `entities-unfetchable` mean the row was attempted, not
+// asked, and writing a timestamp for them converts an outage into a permanent
+// "we checked, there is nothing" — the postmortem's root cause with a date on
+// it. 971 books were declared unfindable by a broken connection once, and the
+// only thing that saved them was that nothing recorded the verdict.
+// shouldStampChecked() in src/lib/originalLanguage.js owns that decision, and
+// the probe asserts on it.
 //
 // Overwrite. Write-once, matching oracleBatch's guard and for its reason: the
 // language García Márquez wrote in does not change, so a second and different
@@ -151,12 +175,14 @@
 //   node batch-scripts/scheduled/originalLanguageBackfill.mjs --dry-run          # audit
 //   node batch-scripts/scheduled/originalLanguageBackfill.mjs                    # fill
 //   node batch-scripts/scheduled/originalLanguageBackfill.mjs --propagate-only   # free pass
+//   node batch-scripts/scheduled/originalLanguageBackfill.mjs --recheck           # re-ask the empties
 //   node batch-scripts/scheduled/originalLanguageBackfill.mjs --all --dry-run    # re-check
 //
 // Start with --probe on a book you know the answer to, then --dry-run. Nothing
 // is written without a real run.
 //
-// Requires migration 20260819120000_original_language_source.sql.
+// Requires migrations 20260819120000_original_language_source.sql and
+// 20260819180000_original_language_checked_at.sql.
 // Required in .env.local: VITE_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
 // No API keys. Every source is anonymous.
 
@@ -170,7 +196,7 @@ import { cleanIsbn, isValidIsbn } from '../../src/lib/isbn.js';
 // offline. This file is the I/O.
 import {
   normPerson, normTitleLoose, isPlaceholderAuthor, authorLikelySame,
-  to6391, planPropagation, decideWrite, searchTitles,
+  to6391, planPropagation, decideWrite, searchTitles, shouldStampChecked,
 } from '../../src/lib/originalLanguage.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -193,6 +219,11 @@ const PROPAGATE_ONLY = args.includes('--propagate-only');
 //             rather than only that it did. "no answer" is five different
 //             outcomes wearing one number; this splits them. Implies --dry-run.
 const DIAGNOSE = args.includes('--diagnose');
+// --recheck  re-examine rows that have already been asked and came back empty.
+//            The default pass only looks at rows never asked, which is what
+//            makes this script terminate. Use this when a source has improved
+//            or the matching has — not on a schedule.
+const RECHECK = args.includes('--recheck');
 
 function argVal(name, fallback = null) {
   const a = args.find((x) => x === name || x.startsWith(name + '='));
@@ -816,6 +847,7 @@ const supabase = createServiceClient(SUPABASE_URL, SERVICE_KEY);
 const stats = {
   examined: 0, written: 0, propagated: 0,
   noAuthor: 0, noAnswer: 0, conflict: 0, failed: 0, confirmed: 0, disagreed: 0, protected: 0,
+  stamped: 0, notStamped: 0,
 };
 
 // The funnel. Every row that produces no answer lands in exactly one of these,
@@ -851,16 +883,67 @@ let reducedTitleHits = 0;
 const PAGE = 200;
 const ZERO_UUID = '00000000-0000-0000-0000-000000000000';
 
-const SELECT_COLS = 'id, title, author, isbn, language, original_language, original_language_source, hardcover_id, goodreads_id';
+const SELECT_COLS = 'id, title, author, isbn, language, original_language, original_language_source, original_language_checked_at, hardcover_id, goodreads_id';
+// Without the stamp column. Kept so a database that predates 20260819180000
+// still runs, degraded and loudly, rather than crashing mid-pagination.
+const SELECT_COLS_LEGACY = 'id, title, author, isbn, language, original_language, original_language_source, hardcover_id, goodreads_id';
+
+// Set when the database predates 20260819180000. See detectStampColumn().
+let stampColumnMissing = false;
+
+/**
+ * Is books.original_language_checked_at there?
+ *
+ * Checked once, up front, rather than discovered as a PostgREST error on the
+ * first page — because the error a missing column produces is
+ * `column books.original_language_checked_at does not exist`, thrown from
+ * inside the pagination loop, after the operator has already walked away from a
+ * run they expected to take four hours.
+ *
+ * The fallback is the old behaviour: filter on the value, stamp nothing. That
+ * is strictly worse — the queue stops draining — but it is a working script
+ * rather than a crash, and it says so in words. A tool that refuses to run
+ * because of an unapplied migration is correct exactly once and infuriating
+ * every other time; a tool that runs degraded and tells you why is neither.
+ */
+async function detectStampColumn() {
+  const { error } = await supabase
+    .from('books')
+    .select('id, original_language_checked_at')
+    .limit(1);
+  if (!error) return;
+  if (!/original_language_checked_at/.test(error.message || '')) throw new Error(`select failed: ${error.message}`);
+
+  stampColumnMissing = true;
+  console.log('  ! books.original_language_checked_at does not exist.');
+  console.log('    Migration 20260819180000_original_language_checked_at.sql has not been applied.');
+  console.log('    Running in v0.64 mode: the queue is "original_language IS NULL", nothing is');
+  console.log('    stamped, and rows that no free source can answer will be re-examined on every');
+  console.log('    future run. Apply the migration before this goes on the weekly cron.\n');
+}
 
 async function fetchAfter(lastId, gapsOnly) {
   let q = supabase
     .from('books')
-    .select(SELECT_COLS)
+    .select(stampColumnMissing ? SELECT_COLS_LEGACY : SELECT_COLS)
     .gt('id', lastId)
     .order('id')
     .limit(PAGE);
-  if (gapsOnly) q = q.is('original_language', null);
+  // THE QUEUE, and why it is keyed on the STAMP rather than on the value.
+  //
+  // `original_language IS NULL` looks like the right filter and does not
+  // terminate: about 60% of what this script examines is books Wikidata
+  // genuinely does not have, they stay NULL, and they stay eligible forever.
+  // On a weekly cron that is the same ~2,000 rows re-asked every Monday, and a
+  // report that never shrinks.
+  //
+  // `original_language_checked_at IS NULL` is "never asked", which drains.
+  // --recheck falls back to the value filter for the rare deliberate sweep.
+  if (gapsOnly) {
+    q = (RECHECK || stampColumnMissing)
+      ? q.is('original_language', null)
+      : q.is('original_language_checked_at', null);
+  }
   const { data, error } = await q;
   if (error) throw new Error(`select failed: ${error.message}`);
   return data || [];
@@ -870,7 +953,11 @@ async function writeAnswer(row, code, source) {
   if (DRY_RUN) return true;
   const { error } = await supabase
     .from('books')
-    .update({ original_language: code, original_language_source: source })
+    .update({
+      original_language: code,
+      original_language_source: source,
+      ...(stampColumnMissing ? {} : { original_language_checked_at: new Date().toISOString() }),
+    })
     .eq('id', row.id);
   if (error) {
     stats.failed++;
@@ -905,6 +992,34 @@ function precedence(row, code, source) {
     return 'skip';
   }
   return verdict === 'write' ? 'write' : 'skip';
+}
+
+/**
+ * Record that this row was asked, whatever the answer was.
+ *
+ * Written PER ROW rather than batched at the end, deliberately. The 2026-08-17
+ * postmortem's second root cause was a run cancelled at [187/971] whose
+ * per-book writes survived and whose end-of-run outputs did not; the 98 books
+ * that kept their answers kept them because the write was immediate. A batched
+ * stamp flushed on completion would lose the whole run's queue progress to one
+ * timeout, and this script's whole budget problem is that it is slow.
+ *
+ * shouldStampChecked() is what decides. It refuses `search-failed` and
+ * `entities-unfetchable`, because those mean the row was attempted rather than
+ * asked, and stamping an outage records it as a verdict.
+ */
+async function stampChecked(row, stage) {
+  if (DRY_RUN || stampColumnMissing || !shouldStampChecked(stage)) return;
+  const { error } = await supabase
+    .from('books')
+    .update({ original_language_checked_at: new Date().toISOString() })
+    .eq('id', row.id);
+  if (error) {
+    stats.failed++;
+    console.log(`  STAMP FAILED "${row.title}": ${error.message}`);
+    return;
+  }
+  stats.stamped++;
 }
 
 // ── Phase 3: propagation ─────────────────────────────────────────────────────
@@ -958,6 +1073,8 @@ console.log('sources: Wikidata P364 (free, no key) → OpenLibrary translated_fr
 console.log('ISBNdb is not consulted: its Book model has `language` (the printing) and no original-language field.');
 console.log('');
 
+await detectStampColumn();
+
 if (PROPAGATE_ONLY) {
   await propagate();
 } else {
@@ -979,6 +1096,10 @@ if (PROPAGATE_ONLY) {
       if (isPlaceholderAuthor(row.author)) {
         stats.noAuthor++;
         bump('placeholder-author');
+        // Stamped. Not searching this row is a DECISION, and it will be the
+        // same decision next week unless the author is fixed in-app — at which
+        // point the row is edited and can be re-queued deliberately.
+        await stampChecked(row, 'placeholder-author');
         vlog(`no usable author ${label} — not searched`);
         continue;
       }
@@ -992,7 +1113,8 @@ if (PROPAGATE_ONLY) {
       await sleep(250);
       if (wd === FAILED) {
         bump('search-failed');
-        vlog(`wikidata unreachable for ${label}`);
+        stats.notStamped++;
+        vlog(`wikidata unreachable for ${label} — NOT stamped, will be re-asked`);
       } else if (wd?.stage) {
         bump(wd.stage);
         if (DIAGNOSE) console.log(`  ${wd.stage.padEnd(26)} ${label}`);
@@ -1000,6 +1122,10 @@ if (PROPAGATE_ONLY) {
         stats.conflict++;
         bump('conflict');
         conflicts.push({ id: row.id, title: row.title, author: row.author, codes: wd.conflict, qid: wd.qid });
+        // Stamped: a conflict is an answer of a kind — the free sources have
+        // spoken and they disagree. Re-asking produces the same disagreement.
+        // It stays in the conflicts report, which is where a human sees it.
+        await stampChecked(row, 'conflict');
         vlog(`CONFLICT ${label}: ${wd.conflict.join(' vs ')} — skipped`);
         continue;
       } else if (wd?.code) {
@@ -1029,6 +1155,9 @@ if (PROPAGATE_ONLY) {
 
       if (!code) {
         stats.noAnswer++;
+        // The stage carries whether this was an answer ("Wikidata has no such
+        // item") or a fault ("the request failed"). Only the first stamps.
+        await stampChecked(row, wd === FAILED ? 'search-failed' : (wd?.stage || 'no-search-hits'));
         vlog(`no answer ${label}`);
         continue;
       }
@@ -1076,6 +1205,11 @@ if (ALL) {
   console.log(`disagreed       ${stats.disagreed}   — already set, and re-checking did not${FORCE ? ' (applied, except where protected)' : ' (left alone)'}`);
   if (stats.protected) console.log(`protected       ${stats.protected}   — human-sourced; --force does not reach these`);
 }
+console.log(`stamped         ${stats.stamped}   — recorded as asked; these leave the queue for good`);
+if (stats.notStamped) {
+  console.log(`NOT stamped     ${stats.notStamped}   — the request failed, so the row was attempted, not asked.`);
+  console.log('                     Deliberately left in the queue. An outage is not a verdict.');
+}
 if (stats.failed) console.log(`write failures  ${stats.failed}`);
 
 // THE FUNNEL. A single "no answer" count is five different outcomes wearing
@@ -1118,7 +1252,7 @@ console.log(
   `propagated=${stats.propagated} wikidata=${bySource.wikidata} openlibrary=${bySource.openlibrary} ` +
   `p407=${bySource.wikidata_p407} sibling=${bySource.catalog_sibling} ` +
   `noauthor=${stats.noAuthor} noanswer=${stats.noAnswer} ` +
-  `reducedtitle=${reducedTitleHits} ` +
+  `reducedtitle=${reducedTitleHits} stamped=${stats.stamped} notstamped=${stats.notStamped} ` +
   `nohits=${funnel['no-search-hits']} nolangprop=${funnel['no-language-property']} ` +
   `noauthormatch=${funnel['author-not-corroborated']} searchfailed=${funnel['search-failed']} ` +
   `conflict=${stats.conflict} failed=${stats.failed} dryrun=${DRY_RUN ? 1 : 0} complete=1`
@@ -1144,6 +1278,8 @@ if (disagreements.length) {
 
 console.log(ALL
   ? '\nRan over the whole catalog (--all). Without --force, existing values were only checked.'
-  : '\nRe-run safely at any time: only rows with original_language IS NULL are touched.');
+  : RECHECK
+    ? '\nRe-checked rows that were asked before and came back empty (--recheck).'
+    : '\nRe-run safely at any time: only rows never asked are touched, so the queue shrinks.');
 console.log('Rows left NULL are still eligible for the nightly Oracle pass, which is the point —');
 console.log('this script fills what a free source can state, and does not pretend to the rest.');

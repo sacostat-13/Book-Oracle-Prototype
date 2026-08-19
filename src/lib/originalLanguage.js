@@ -284,6 +284,44 @@ export function planPropagation(rows, isValid = () => true) {
   return { assignments, poisoned: [...poisoned] };
 }
 
+// ── Asked-and-answered ───────────────────────────────────────────────────────
+
+// Outcomes that mean "we asked, and this is what the free sources know". Every
+// one of these stamps books.original_language_checked_at, including the ones
+// that found nothing — an honest shrug has to drain the queue or the script
+// never terminates and re-asks Wikidata about the same 2,000 books every week.
+//
+// The two absent from this list are the whole point of having a list.
+const ASKED_STAGES = new Set([
+  'resolved',
+  'resolved-via-openlibrary',
+  'placeholder-author',        // a decision, not a failure: deliberately not searched
+  'no-search-hits',
+  'no-language-property',
+  'author-not-corroborated',
+  'no-iso-639-1-code',
+  'conflict',
+]);
+
+/**
+ * May this outcome record the row as asked?
+ *
+ * NO for `search-failed` and `entities-unfetchable`, and that exception is the
+ * reason this function exists rather than the caller stamping unconditionally.
+ * Those two mean the REQUEST failed — the row was attempted, not asked. Writing
+ * a timestamp for them converts an outage into a permanent "we checked, there
+ * is nothing", which is the 2026-08-17 postmortem's root cause with a date on
+ * it: 971 books were declared unfindable by a broken connection, and the only
+ * thing that saved them was that nothing recorded the verdict.
+ *
+ * An unknown stage is treated as NOT asked. A stage nobody thought about is
+ * more likely to be a new failure mode than a new kind of answer, and the
+ * recoverable mistake is the one that re-asks.
+ */
+export function shouldStampChecked(stage) {
+  return ASKED_STAGES.has(stage);
+}
+
 // ── Write precedence ─────────────────────────────────────────────────────────
 
 // Sources a script is never allowed to overwrite, even with --force. Mirrors
