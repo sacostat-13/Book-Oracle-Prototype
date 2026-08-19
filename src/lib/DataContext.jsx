@@ -380,7 +380,7 @@ async function loadFromSupabase(userId) {
       .order('created_at', { ascending: false }),
     supabase
       .from('currently_reading')
-      .select('started_at, pages_read, user_page_count, book:books(*, position_in_series, series:series(*))')
+      .select('started_at, pages_read, user_page_count, progress_minutes, book:books(*, position_in_series, series:series(*))')
       .eq('user_id', userId),
     // v0.44: reading memories — one flat query, keyed by book_id client-side
     supabase
@@ -531,6 +531,9 @@ async function loadFromSupabase(userId) {
             startedAt: r.started_at,
             pagesRead: r.pages_read ?? 0,
             userPageCount: r.user_page_count ?? null,
+            // v0.65.1 — the audio counterpart of pagesRead. Null for every
+            // print row, which is what makes it safe to read unconditionally.
+            progressMinutes: r.progress_minutes ?? null,
           })
         : null
     )
@@ -1690,6 +1693,12 @@ export function DataProvider({ children }) {
         translator: patch?.translator ?? null,
         page_count: patch?.page_count ?? null,
         format: patch?.format ?? null,
+        // v0.65.1 — audiobooks. duration_minutes is the audio counterpart of
+        // page_count and narrator of translator; both are nullable and both are
+        // included in the emptiness check below, so an edition consisting of
+        // nothing but a narrator still counts as recorded.
+        duration_minutes: patch?.duration_minutes ?? null,
+        narrator: patch?.narrator ?? null,
       };
       const empty = Object.values(next).every((v) => v == null || v === '');
 
@@ -1727,6 +1736,44 @@ export function DataProvider({ children }) {
           { onConflict: 'user_id,book_id' }
         );
       if (error) console.error('saveReaderEdition failed', error);
+    },
+    [user]
+  );
+
+  /**
+   * How far into an audio edition this reader is, in minutes.
+   *
+   * A sibling of updateReadingProgress rather than a parameter on it, and the
+   * separation is the point: pages and minutes are different units on different
+   * columns, and a reader who switches format mid-book must not have one
+   * reinterpreted as the other. See docs/audiobook-progress-v1-spec.md.
+   *
+   * `null` clears the position — a reader who empties the field is saying they
+   * do not know where they are, which is different from saying zero.
+   */
+  const updateListeningProgress = useCallback(
+    async (book, minutes) => {
+      if (!book?.bookId) return;
+      const value = Number.isFinite(minutes) && minutes > 0 ? Math.round(minutes) : null;
+
+      // Optimistic, matching updateReadingProgress: the modal closes on the
+      // decision, not on the round trip.
+      setState((s) => ({
+        ...s,
+        currentlyReading: s.currentlyReading.map((b) =>
+          b.bookId === book.bookId ? { ...b, progressMinutes: value } : b
+        ),
+      }));
+
+      if (!user) return;
+
+      const { error } = await supabase
+        .from('currently_reading')
+        .update({ progress_minutes: value })
+        .eq('user_id', user.id)
+        .eq('book_id', book.bookId);
+
+      if (error) console.error('updateListeningProgress failed', error);
     },
     [user]
   );
@@ -3044,6 +3091,7 @@ export function DataProvider({ children }) {
     removeFromCurrentlyReading,
     // v0.28: reading progress
     updateReadingProgress,
+    updateListeningProgress,
     saveReaderEdition,
     // v0.44: reading memory
     memoriesForBook,

@@ -48,11 +48,15 @@ a number we would be inventing ourselves.
 
 Two nullable columns. No new table.
 
-```sql
--- 202608xxxxxxxx_audiobook_progress.sql
+Shipped as `20260820120000_audiobook_progress.sql`. Three columns, not two —
+`narrator` came out of the build: it is the audio counterpart of `translator`,
+free to capture while the reader is already describing their copy, and
+expensive to ask for later.
 
+```sql
 alter table public.reader_editions
-  add column if not exists duration_minutes integer;
+  add column if not exists duration_minutes integer,
+  add column if not exists narrator         text;
 
 comment on column public.reader_editions.duration_minutes is
   'Total length of THIS reader''s audio edition, in minutes. NULL = unknown, which is a supported state: cumulative listening still counts without it, only the progress bar needs it. Minutes, not hours, because an audiobook is 11h 47m and a float column would render 11.783.';
@@ -161,13 +165,47 @@ hours-listened is a separate number next to it. Nothing sums them.
 
 ## UI
 
-**1. `ProgressUpdateModal` — the input follows the format.**
+**1. `ProgressUpdateModal` — format decides the whole form.**
 
-The edition block from v0.64 already asks for format. When it is `audio`, the
-page field becomes a time field:
+This went further than "the input follows the format", and the screenshot of
+the v0.65 modal is why. That layout asked for a page count *first* and the
+edition afterwards, behind a disclosure link — so it asked "how many pages?"
+before it knew whether the book had pages at all, and an audiobook listener got
+a disabled field, a note apologising for it, and nowhere to record what they
+had actually done.
 
-> **How far are you?**  `[ 4 ]` h `[ 20 ]` m
-> *of* `[ 11 ]` h `[ 47 ]` m — *leave blank if you don't know*
+The form now establishes **what the copy is** before asking **how far in** you
+are, in one order for every format:
+
+```
+ISBN → Format → Title → Language
+  ├── print / ebook : Pages read · Pages in your edition · Translator
+  └── audio         : How far are you · Total length · Narrator
+```
+
+ISBN stays first because it is the one field a reader can copy off the back
+cover without deciding anything, and filling it fills several of the others.
+Format is second because it is the switch. The disclosure link is gone: a form
+whose primary field lives inside a collapsed section is a form with no primary
+field.
+
+Two consequences worth stating, because both are data-safety rather than
+layout:
+
+- **Switching format is not lossy.** The hidden branch's numbers are preserved
+  on save, never nulled. A hidden field is not a retracted one, and a reader who
+  read 76 pages of the paperback before switching to the audiobook has not
+  un-read them.
+- **The ISBN lookup will not write a page count onto an audio edition.**
+  Google's page count is the print edition's, and copying it here would give an
+  audiobook pages — the exact thing this release exists to prevent.
+
+The audio branch reads:
+
+> **How far are you?**  `[ 4 ]` h `[ 20 ]` m   · 37%
+> **Total length**  `[ 11 ]` h `[ 47 ]` m
+> *Leave blank if you don't know — your listening still counts, you just won't
+> get a progress bar.*
 
 Two decisions worth naming:
 
@@ -185,9 +223,13 @@ The v0.64 line already reads *Reading the Spanish edition · Cien años de soled
 · 496 pp*. For audio it reads *Listening · 11h 47m*. Same line, same
 owner-only visibility, different noun.
 
-**3. `Dashboard` — one new stat tile.**
+**3. `Dashboard` — one new stat tile, and one correction next to it.**
 
-Next to pages read, not instead of it: **`142h listened`**. Rendered only when
+`pages total` now explicitly **skips audio editions** rather than relying on
+them happening to have a null page count. Same number, stated as a rule instead
+of an accident.
+
+Next to it, not instead of it: **`142h listened`**. Rendered only when
 it is non-zero, so it does not appear as an empty tile for readers who do not
 listen to anything.
 
@@ -210,6 +252,28 @@ A finished audiobook with **no** `duration_minutes` contributes zero and cannot
 do otherwise. That is the honest answer, and it is the argument for prompting
 for the total at the point the reader marks an audio edition as read, if they
 have not given one.
+
+## One layout fix that is not about audiobooks
+
+`.rating-modal` caps itself at the viewport and scrolls its own content (the
+v0.60.3 note in `_social.scss`). That stopped modals growing *past* the screen;
+it did not stop the action buttons sitting below the fold of that scroll, and
+this form is now long enough that they always do. A reader who opens it sees
+four fields and no way to commit them, which reads as broken rather than as
+scrollable.
+
+`.pu-actions` is `position: sticky` against the bottom of the surface, with
+negative margins pulling the divider out to the shell's edges. Sticky rather
+than fixed: it stays inside the modal, inherits its background, and needs to
+know nothing about where the modal is on screen.
+
+And every control in the form is now full width. It had accumulated a mix of
+`.pf-input--narrow` (a fixed 120px borrowed from the reading-challenge target),
+full-width text inputs and intrinsically-sized selects, so five stacked fields
+had four different right edges. Nothing here benefits from being narrow — a page
+count in a 120px box is not easier to read, just a ragged column. Scoped to
+`.pu-form`, because `.pf-input--narrow` is doing the right thing where it came
+from.
 
 ## Prefill: worth a probe, not worth blocking on
 

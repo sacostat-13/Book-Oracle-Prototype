@@ -961,7 +961,12 @@
     "editionFormat_audio": "Audiolibro",
     "editionTitleLabel": "Título de tu ejemplar",
     "editionTranslatorLabel": "Traducción de",
-    "editionAudioNote": "Los audiolibros no se miden por páginas."
+    "listenedLabel": "¿Por dónde vas?",
+    "editionDurationLabel": "Duración total",
+    "editionDurationNote": "Dejalo en blanco si no lo sabés — lo que escuchaste igual cuenta, solo que no vas a ver la barra de progreso.",
+    "editionNarratorLabel": "Narrador",
+    "hoursShort": "h",
+    "minutesShort": "min"
   },
   "memory": {
     "sectionTitle": "Tu memoria de lectura",
