@@ -16,9 +16,32 @@
 
 // The version label shown as "current" — keep in sync with package.json and
 // the README version line.
-export const CURRENT_VERSION = 'v0.63.3';
+export const CURRENT_VERSION = 'v0.64';
 
 export const RELEASES = [{
+    version: 'v0.64',
+    date: '2026-08-19',
+    titleEn: 'The site learns what language a book is in',
+    titleEs: 'El sitio aprende en qué idioma está un libro',
+    bodyEn: [
+      'You can tell us which edition you are actually reading. Open Update progress and there is now "Which edition are you reading?" — language, format, page count, and a box for the ISBN on the back of your copy. Type the thirteen digits and the rest fills itself in.',
+      'That edition is yours and it stays. Before, the custom page count lived on the book only while you were reading it: you told us your copy was 512 pages, you finished it, and we forgot. It now survives finishing the book, and your progress and reading stats count the pages you actually turned.',
+      'Audiobooks stop pretending to have pages. Mark the format as audiobook and the progress bar goes away instead of sitting at 0% forever.',
+      '"More by this author" stops listing the same novel three times. Assassin\'s Apprentice, Aprendiz del Asesino and Die Tochter des Wolfs are one book, and the site now knows it — and shows it under the title the author wrote.',
+      'The catalogue knows the language of every book in it. Every single one: the count of books with no language recorded is now zero, and so is the count with no ISBN. That is what was making a Spanish edition show up as a separate, emptier copy of a book we already had.',
+      'A book now also knows the language it was WRITTEN in, which is not always the one on the cover. One Hundred Years of Solitude was written in Spanish, and that is the fact that lets us show you the original rather than whichever translation happened to be added first.',
+      'A weekly job that maintains the catalogue had been reporting "nothing to do" when what it meant was "did not finish". It had also declared 971 books unfindable during an outage that lasted a few hours. Both now say what actually happened.',
+    ],
+    bodyEs: [
+      'Podés decirnos qué edición estás leyendo de verdad. En Actualizar progreso ahora aparece «¿Qué edición estás leyendo?» — idioma, formato, cantidad de páginas y un campo para el ISBN de la contratapa de tu ejemplar. Escribís los trece dígitos y el resto se completa solo.',
+      'Esa edición es tuya y se queda. Antes, las páginas personalizadas vivían en el libro solo mientras lo estabas leyendo: nos decías que tu ejemplar tenía 512 páginas, lo terminabas, y lo olvidábamos. Ahora sobrevive a que lo termines, y tu progreso y tus estadísticas cuentan las páginas que realmente diste vuelta.',
+      'Los audiolibros dejan de fingir que tienen páginas. Marcá el formato como audiolibro y la barra de progreso desaparece en vez de quedarse en 0% para siempre.',
+      '«Más de este autor» deja de listar la misma novela tres veces. Assassin\'s Apprentice, Aprendiz del Asesino y Die Tochter des Wolfs son un solo libro, y el sitio ya lo sabe — y lo muestra con el título en que el autor lo escribió.',
+      'El catálogo sabe el idioma de cada libro que tiene. De todos: la cantidad de libros sin idioma registrado ahora es cero, y la de libros sin ISBN también. Eso era lo que hacía que una edición en español apareciera como una copia aparte, y más vacía, de un libro que ya teníamos.',
+      'Un libro ahora también sabe en qué idioma fue ESCRITO, que no siempre es el de la portada. Cien años de soledad se escribió en español, y ese es el dato que nos permite mostrarte el original en lugar de la traducción que se haya agregado primero.',
+      'Un proceso semanal que mantiene el catálogo venía informando «nada que hacer» cuando lo que quería decir era «no terminó». También había declarado 971 libros imposibles de encontrar durante una caída que duró unas horas. Los dos ahora dicen lo que pasó de verdad.',
+    ],
+  }, {
     version: 'v0.63.3',
     date: '2026-08-14',
     titleEn: 'The Oracle says why, and a page that stopped reloading itself',

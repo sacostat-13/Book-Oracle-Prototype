@@ -133,10 +133,64 @@ matters and is not arbitrary.
 | 2 | `scheduled/isbnFallback.mjs` | ISBNs from Open Library / Google Books for what Hardcover couldn't answer. |
 | 3 | `scheduled/coverBackfill.mjs` | Covers, pinned to `--no-claude`. After the ISBN passes — half its lookup chain is ISBN-keyed, so every ISBN resolved above becomes a cover. |
 | 4 | `scheduled/metadataBackfill.mjs` | Descriptions and genres. Last, because it only considers books that already have a cover. |
+| 5 | `scheduled/languageBackfill.mjs` | `books.language` from OpenLibrary / Google Books / the ISBN registration group. After the ISBN passes, because every one of its sources is ISBN-keyed. |
+| 6 | `scheduled/originalLanguageBackfill.mjs` | `books.original_language` from Wikidata / OpenLibrary `translated_from` / the catalog's own work groups. Last, because its cheapest source is other rows that the earlier passes just filled. |
 
-These four and no others. `curateManualBooks.mjs` and `oracleBatch.mjs` are the
+These six and no others. `curateManualBooks.mjs` and `oracleBatch.mjs` are the
 only scripts that bill Anthropic, so neither lives here — a recurring charge
 that nobody approved is exactly what this layout exists to prevent.
+
+## The two language passes
+
+They fill different columns and answer different questions, and confusing them
+is the easiest mistake to make here:
+
+| Script | Column | Question | Sources |
+| --- | --- | --- | --- |
+| `languageBackfill.mjs` | `books.language` | what language is **this row** in? | OpenLibrary, Google Books, the ISBN registration group |
+| `originalLanguageBackfill.mjs` | `books.original_language` | what language was **the work** written in? | Wikidata P364, OpenLibrary `translated_from`, sibling rows of the same work |
+
+*One Hundred Years of Solitude* is `language = 'en'` and
+`original_language = 'es'`. Both columns are correct and they disagree, which is
+the whole point of having two.
+
+Three things worth knowing before touching either:
+
+1. **`books.isbn` is not necessarily that row's edition.** It is chosen by
+   `editionPicker.js` to make a purchase link work, and `isbnFallback --target
+   foreign` exists specifically to *replace* a non-English ISBN with an English
+   one. So a row titled *Aprendiz del Asesino* can legitimately carry the ISBN of
+   the English *Assassin's Apprentice*. `languageBackfill` cross-examines every
+   ISBN answer against the title for that reason, and writes nothing when they
+   disagree — a wrongly-populated column outranks the title heuristic everywhere
+   it is consulted, which is worse than a null.
+2. **A title match is not an identification.** `originalLanguageBackfill`
+   searches Wikidata by title and then refuses every candidate that is not
+   corroborated by the author, against the author item's own labels and aliases.
+   Rows whose author is null or a placeholder (`Unknown author`, `Various`, …)
+   are never searched at all.
+3. **Neither script guesses, and neither writes `'unknown'`.** They are free, so
+   they have nothing to protect by claiming an answer. An unresolved row stays
+   NULL and stays eligible — for the next run, and for `oracleBatch`, which knows
+   things a bibliographic database does not.
+
+`src/lib/originalLanguage.js` holds every rule that can be got wrong without a
+network call — author matching, placeholder rejection, code normalisation,
+work-group propagation, write precedence — so
+`probes/originalLanguage.probe.mjs` can exercise it offline. Run the probe
+before a backfill; it takes a second and needs nothing.
+
+`books.original_language_source` records which source spoke
+(`wikidata` | `openlibrary` | `catalog_sibling` | `oracle_inferred` |
+`self_stated` | `verified`). The last two are the human tier and no script
+writes them; `--force` refuses to overwrite them. This mirrors
+`author_gender_source`, and it exists because the column has two writers now.
+
+**ISBNdb cannot answer `original_language`.** Its Book model has `language` —
+the printing's language, which is `books.language` — and no
+`original_language`, `translated_from`, `translator` or `original_title` field.
+Original language is a fact about a work; ISBNdb is an edition database. See
+`docs/isbndb-evaluation.md`.
 
 ## Nightly curation — billable, capped
 
@@ -197,9 +251,14 @@ reasons worth stating, because the second is easy to lose:
   asked about once, batched 50 to a call, and no web search. `unknown` is an
   accepted answer rather than something to spend more money chasing.
 
-New books get their gender from `oracleBatch.mjs` on the nightly run, once that
-script's prompt is fixed to ask for it — it currently does not. Until then this
-script is the only thing filling the column.
+New books get their gender from `oracleBatch.mjs` on the nightly run — its
+prompt asks for it as of v0.64, so this script is now genuinely one-shot rather
+than the only writer.
+
+`scheduled/originalLanguageBackfill.mjs` is the same shape of one-shot for
+`books.original_language`, and it is in `scheduled/` rather than here for one
+reason: it costs nothing. Free and terminating is exactly what that folder
+means.
 
 ## Probes — read-only, write nothing to the database
 
@@ -207,6 +266,10 @@ script is the only thing filling the column.
 |---|---|
 | `probes/probeHardcoverTags.mjs` | What Hardcover actually calls a genre. `--vocab`, `--variants`, `--neighbours "Gothic"`. Run this before editing `GENRE_MAP` in `netlify/functions/catalog-crawl.mjs`. |
 | `probes/debugCover.mjs` | Trace the cover lookup chain for one book and print what each source returned. |
+| `probes/originalLanguage.probe.mjs` | 55 offline assertions over `src/lib/originalLanguage.js` — author matching, placeholder rejection, ISO-code normalisation, work-group propagation, write precedence. No network, no database. Exit 1 on regression, so it is safe in CI. |
+| `probes/isbndb.probe.mjs` | What ISBNdb actually returns for a given ISBN, and whether a bulk call costs one search or a hundred. |
+| `probes/titleLanguage.probe.mjs` | The title-language heuristic against known-awkward titles. |
+| `probes/workGroups.probe.mjs` | `collapseWorks()` against hand-built rows: originals, translations, series, and pairs that must *not* collapse. |
 
 Hardcover's genre tags are a **folksonomy, not a taxonomy** — the same shelf
 appears as `Science Fiction`, `Sci-fi`, `Scifi` and `science-fiction`, and

@@ -9,7 +9,7 @@ import { resolveGenres } from '../lib/genreDisplay';
 import { supabase } from '../lib/supabase';
 import { lookUpByShareKey } from '../lib/shareKey';
 import { useRouter } from '../lib/RouterContext';
-import { useT } from '../lib/I18nContext';
+import { useT, useI18n } from '../lib/I18nContext';
 import { useDocumentMeta } from '../lib/useDocumentMeta';
 import { bookKey, findBookByTitle, openBookTab, buildBookPageParams, displayAuthor } from '../lib/bookHelpers';
 import { enrichBookFromOpenLibrary, fetchSeriesBooks } from '../lib/enrichmentService';
@@ -18,6 +18,9 @@ import { fetchCoverURL } from '../lib/coverService';
 import { lookupByTitle } from '../lib/bookLookup';
 import { purchaseLinks } from '../lib/purchaseLinks';
 import { fetchSeriesDescriptionFromWikipedia } from '../lib/seriesService';
+import { fetchAuthorWorks, AUTHOR_WORKS_LIMIT } from '../lib/authorWorks';
+import { collapseWorks } from '../lib/workGroups';
+import { effectivePages, editionTitle, editionIsNotable } from '../lib/editions';
 import BookCover from '../components/BookCover';
 import { BookPageSkeleton } from '../components/Skeleton';
 import ReportBookForm from '../components/ReportBookForm';
@@ -89,6 +92,45 @@ function computeSimilar(display, genresByBookId, pool, limit = 12, exclude) {
   return scored.slice(0, limit).map(s => s.book);
 }
 
+// One cover + title + author, clickable through to its own page.
+//
+// Extracted from SimilarBooks in v0.64 because "More by this author" is the
+// same object rendered the same way, and two copies of this markup would drift
+// the first time either grid changed. The class names keep the bp-similar-*
+// prefix they were born with: renaming them would mean touching a 56kB
+// stylesheet to express nothing the reader can see. They are a LAYOUT — a
+// small cover over two lines of text — not a claim about similarity.
+//
+// `showAuthor` is off in the author section, where repeating the same name
+// under all twelve covers is noise, and on everywhere else, where it is the
+// main thing distinguishing one suggestion from another.
+function BookStripItem({ book, showAuthor = true }) {
+  return (
+    <div
+      className="bp-similar-item"
+      onClick={() => openBookTab(book, 'book-page')}
+      title={`${book.t}${book.a ? ' · ' + book.a : ''}`}
+    >
+      {book.coverUrl ? (
+        <img
+          src={book.coverUrl}
+          alt={book.t}
+          className="bp-similar-cover"
+          loading="lazy"
+        />
+      ) : (
+        <div className="bp-similar-cover bp-similar-cover--placeholder">
+          <span className="bp-similar-cover__title">{book.t?.slice(0, 22)}</span>
+        </div>
+      )}
+      <div>
+        <div className="bp-similar-title">{book.t?.length > 34 ? book.t.slice(0, 33) + '…' : book.t}</div>
+        {showAuthor && <div className="bp-similar-author">{displayAuthor(book)}</div>}
+      </div>
+    </div>
+  );
+}
+
 function SimilarBooks({ similar }) {
   const t = useT();
 
@@ -101,28 +143,39 @@ function SimilarBooks({ similar }) {
       </div>
       <div className="bp-similar-grid">
         {similar.map((b, i) => (
-          <div
-            key={bookKey(b) + i}
-            className="bp-similar-item"
-            onClick={() => openBookTab(b, 'book-page')}
-            title={`${b.t}${b.a ? ' · ' + b.a : ''}`}
-          >
-            {b.coverUrl ? (
-              <img
-                src={b.coverUrl}
-                alt={b.t}
-                className="bp-similar-cover"
-              />
-            ) : (
-              <div className="bp-similar-cover bp-similar-cover--placeholder">
-                <span className="bp-similar-cover__title">{b.t?.slice(0, 22)}</span>
-              </div>
-            )}
-            <div>
-              <div className="bp-similar-title">{b.t?.length > 34 ? b.t.slice(0, 33) + '…' : b.t}</div>
-              <div className="bp-similar-author">{displayAuthor(b)}</div>
-            </div>
-          </div>
+          <BookStripItem key={bookKey(b) + i} book={b} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ─── More by this author ──────────────────────────────────────────────────────
+
+// The hop from one book to the next by the same writer, which is otherwise a
+// trip to Goodreads and back. Deliberately a section and not an author page:
+// an author page is a bio, a photo, a canonical bibliography and the problem of
+// two writers sharing a name, and Goodreads maintains one already. What is
+// missing here is only the jump.
+//
+// Renders NOTHING while loading and nothing when empty, rather than a heading
+// over a skeleton. This section sits below the fold on a page that is already
+// fully useful without it, so a placeholder buys the reader no information and
+// costs a layout shift — and for an author we hold one book by, the honest
+// outcome is that the section never appears at all.
+function AuthorWorks({ books, author }) {
+  const t = useT();
+
+  if (!books?.length || !author) return null;
+
+  return (
+    <div className="bp-section">
+      <div className="bp-section__label">
+        {t('bookPage.moreByAuthor', { author })}
+      </div>
+      <div className="bp-similar-grid">
+        {books.map((b, i) => (
+          <BookStripItem key={bookKey(b) + i} book={b} showAuthor={false} />
         ))}
       </div>
     </div>
@@ -177,6 +230,7 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
   } = useData();
   const { route, go } = useRouter();
   const t = useT();
+  const { lang } = useI18n();
 
   // The book is passed via App-level state (route.params.bookKey) and resolved
   // from wishlist + library + readNext. This avoids encoding large objects in URLs.
@@ -203,6 +257,13 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
   const [seriesBooks, setSeriesBooks] = useState([]);
   const [seriesLoading, setSeriesLoading] = useState(false);
   const [seriesDescription, setSeriesDescription] = useState(null);
+  // v0.64 — "More by this author".
+  //
+  // No loading flag on purpose. The section renders nothing until it has
+  // something to show (see the AuthorWorks component), so a pending state has
+  // nothing to drive: an empty array covers "still looking", "nothing found"
+  // and "the lookup failed" identically, and all three render the same absence.
+  const [authorWorks, setAuthorWorks] = useState([]);
   const [notFound, setNotFound] = useState(false);
   // v0.63.3: a shared link's database lookup is in flight. Distinct from
   // notFound — showing "not found" while still looking is how the previous
@@ -460,6 +521,16 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
   const bookTitle = book?.t || null;
   const bookAuthor = book?.a || null;
   const bookHardcoverId = book?.hardcoverId || null;
+  // v0.64 — the current book's identity, as primitives, for the author-section
+  // effect below. Primitives and not the object itself for the reason recorded
+  // on the series effect: `book` gets a new reference every time
+  // cacheBookFields writes back to DataContext, so depending on it re-runs the
+  // effect forever.
+  const bookIsbn = book?.isbn || null;
+  const bookGoodreadsId = book?.goodreadsId || null;
+  const bookLanguage = book?.language || null;
+  const bookSeriesId = book?.s?.seriesId || book?.seriesId || null;
+  const bookSeriesPos = book?.s?.n ?? book?.seriesPosition ?? null;
   const isPreviewParam = route.params?.preview === 'true';
   const hasCover = !!(book?.coverUrl);
   const hasPages = !!(book?.pp);
@@ -557,6 +628,64 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
     });
     return () => { cancelled = true; };
   }, [seriesNameForEffect, authorForEffect]);
+
+  // "More by this author" — v0.64.
+  //
+  // Keyed on the two stable STRINGS, for the same reason the series effect
+  // above is: depending on `book` re-fires the effect every time
+  // cacheBookFields writes back to DataContext and hands this component a new
+  // object reference, which is how the series lookup once managed to call
+  // Wikipedia in a loop.
+  //
+  // authorForEffect is `book?.a` — the author as the reader's own row holds
+  // it. Deliberately NOT enrichment?.author: the enrichment pass can rewrite an
+  // author string mid-render, and a section that quietly re-queries under a
+  // different name while the reader is looking at it is worse than one that
+  // uses the name on the page.
+  useEffect(() => {
+    if (!authorForEffect || !bookTitle) {
+      setAuthorWorks([]);
+      return;
+    }
+    let cancelled = false;
+    setAuthorWorks([]);
+    fetchAuthorWorks(authorForEffect, {
+      // Reassembled from primitives rather than passed as `book` — see the
+      // declarations above. These are exactly the fields collapseWorks groups
+      // on, which is what lets fetchAuthorWorks drop this book's OWN
+      // translations: viewing *The River Has Roots* was returning *El río
+      // tiene raíces* as another book by the same author.
+      currentBook: {
+        t: bookTitle,
+        a: authorForEffect,
+        isbn: bookIsbn || undefined,
+        hardcoverId: bookHardcoverId || undefined,
+        goodreadsId: bookGoodreadsId || undefined,
+        seriesId: bookSeriesId || undefined,
+        seriesPosition: bookSeriesPos ?? undefined,
+        language: bookLanguage || undefined,
+      },
+      excludeTitle: bookTitle,
+      limit: AUTHOR_WORKS_LIMIT,
+      // Anchor the top-up to the language of the book being read, not the
+      // interface. A reader on an English book page wants that author's other
+      // books in English; the UI language is only the fallback when the row
+      // does not say.
+      lang: bookLanguage || lang,
+    })
+      .then((works) => {
+        if (!cancelled) setAuthorWorks(works);
+      })
+      // fetchAuthorWorks swallows its own failures and resolves to [], so this
+      // only fires on a programming error inside it. Caught anyway so an
+      // unhandled rejection cannot take the page down over a decoration.
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [
+    authorForEffect, bookTitle, lang,
+    bookIsbn, bookHardcoverId, bookGoodreadsId,
+    bookSeriesId, bookSeriesPos, bookLanguage,
+  ]);
 
   // Keys of every book already read, used to keep finished books out of
   // "You might also like" further down.
@@ -674,7 +803,13 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
 
   // v0.39: reading-progress fields, same derivation as CurrentlyReading.jsx
   const pagesRead = currentlyReadingRow?.pagesRead ?? 0;
-  const totalPages = currentlyReadingRow?.userPageCount ?? currentlyReadingRow?.pp ?? display.pp;
+  // v0.65: the reader's own edition decides what progress is measured against.
+  // effectivePages checks reader_editions, then the legacy
+  // currently_reading.user_page_count, then the catalog — see src/lib/editions.js.
+  const readerEdition = state.editionsByBookId?.[display.bookId] || null;
+  const totalPages = readerEdition?.format === 'audio'
+    ? null
+    : effectivePages(currentlyReadingRow || display, readerEdition);
   const progressPct = totalPages && pagesRead > 0 ? Math.min(100, Math.round((pagesRead / totalPages) * 100)) : null;
 
   const categories = getCategoriesForBook ? getCategoriesForBook(display) : [];
@@ -747,7 +882,18 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
   // `readKeys` is memoised further up, above the early returns — see the note
   // there. It cannot live here.
   const allBooks = [...state.wishlist, ...state.library, ...state.readNext];
-  const similar = computeSimilar(display, state.genresByBookId, allBooks, 12, readKeys);
+  // v0.64: score more than we show, collapse same-work rows, then cut to twelve.
+  //
+  // A reader who shelved *Cien años de soledad* and *One Hundred Years of
+  // Solitude* has two rows for one novel, and every signal computeSimilar
+  // scores on — genre overlap, author, complexity, length — is near-identical
+  // between them, so they land next to each other at the top of the strip. The
+  // collapse has to happen AFTER scoring (the score is what orders the strip)
+  // and BEFORE the slice, or the duplicates simply eat two of the twelve slots.
+  const similar = collapseWorks(
+    computeSimilar(display, state.genresByBookId, allBooks, 24, readKeys),
+    { uiLang: lang }
+  ).slice(0, 12);
 
   // Series block — same logic as BookModal
   let seriesBlock = null;
@@ -855,6 +1001,40 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
 
           <h1 className="bp-title">{display.t}</h1>
           <div className="bp-author">{displayAuthor(display)}</div>
+
+          {/* v0.65 — the reader's own edition.
+              Owner-only by construction rather than by a check: editionsByBookId
+              is loaded from reader_editions, whose RLS returns only this
+              reader's rows, so there is nothing here another reader could see.
+
+              The heading above stays the CANONICAL title. This page is about
+              the work, and swapping the title per reader would break the one
+              thing shared links depend on being stable — two people discussing
+              the same URL must see the same book named the same way.
+
+              Rendered only when the edition differs in something visible
+              (editionIsNotable): telling a reader their English copy of an
+              English book is English is noise wearing the clothes of a
+              feature. */}
+          {editionIsNotable(display, readerEdition) && (
+            <div className="bp-edition">
+              {editionTitle(display, readerEdition) && (
+                <span className="bp-edition__title">{editionTitle(display, readerEdition)}</span>
+              )}
+              {readerEdition.language && (
+                <span className="bp-edition__bit">{t(`language.${readerEdition.language}`)}</span>
+              )}
+              {readerEdition.format && readerEdition.format !== 'print' && (
+                <span className="bp-edition__bit">{t(`progress.editionFormat_${readerEdition.format}`)}</span>
+              )}
+              {readerEdition.page_count && (
+                <span className="bp-edition__bit">{readerEdition.page_count} {t('profile.statPages')}</span>
+              )}
+              {readerEdition.translator && (
+                <span className="bp-edition__bit">{t('bookPage.translatedBy', { name: readerEdition.translator })}</span>
+              )}
+            </div>
+          )}
 
           {/* Meta pills — .level-pill doesn't exist in the DS; the correct
               class is .bp-pill, with modifiers matching what's actually
@@ -1260,6 +1440,8 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
           </div>
         )}
       </div>
+
+      <AuthorWorks books={authorWorks} author={displayAuthor(display)} />
 
       <SimilarBooks similar={similar} />
 

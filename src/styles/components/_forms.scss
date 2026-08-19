@@ -334,3 +334,20 @@
     color: var(--ro-muted);
   }
 }
+
+// ── Edition picker (ProgressUpdateModal) ──────────────────────────────────────
+// Grew out of the single "edition pages" input, so it inherits the modal's field
+// rhythm rather than introducing its own.
+.pu-edition {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.pu-edition__isbn {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+
+  .input { flex: 1 1 auto; }
+}

@@ -17,7 +17,7 @@ import { OracleQuotaWall } from '../components/OracleQuotaBadge';
 import { useT, useTNode, useI18n, langDirective } from '../lib/I18nContext';
 import BookCard from '../components/BookCard';
 import { buildTasteProfile, describeTasteProfile, MATCH_SCORING_INSTRUCTIONS } from '../lib/matchHelpers';
-import { buildExcludeHint, buildShelfSignature, filterAlreadyKnown, REASON_INSTRUCTIONS } from '../lib/oraclePrompt';
+import { buildExcludeHint, buildShelfSignature, filterAlreadyKnown, REASON_INSTRUCTIONS, REPRESENTATION_INSTRUCTIONS } from '../lib/oraclePrompt';
 import { saveDraw, loadDraw } from '../lib/oracleDrawCache';
 
 const QUERY_MAX = 280;
@@ -106,7 +106,7 @@ Return ONLY valid JSON in this exact format:
     try {
       const raw = await callClaude(
         prompt,
-        `You are a literary oracle taking a free-form request from a reader and recommending books that answer it. Recommend accurately. Always return valid JSON. ${langDirective(lang)} Any natural-language field in the JSON (description, reason, genre label) MUST be in that language; titles and author names stay in their original language.\n${MATCH_SCORING_INSTRUCTIONS}\n${REASON_INSTRUCTIONS}`,
+        `You are a literary oracle taking a free-form request from a reader and recommending books that answer it. Recommend accurately. Always return valid JSON. ${langDirective(lang)} Any natural-language field in the JSON (description, reason, genre label) MUST be in that language; titles and author names stay in their original language.\n${MATCH_SCORING_INSTRUCTIONS}\n${REASON_INSTRUCTIONS}\n${REPRESENTATION_INSTRUCTIONS}`,
         { source: 'ask' } // v0.58: history label (schema_v44)
       );
       const parsed = parseJSONResponse(raw);

@@ -25,7 +25,19 @@
 //      "…: A Novel" leaves 6 characters against 19 and passes; "Agatha Christie" →
 //      "…'s Poirot -- Book One" leaves 14 against 14 and fails.
 
-export const normTitle = (s) => (s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+// Ampersands are spelled out by some catalogues and left as symbols by others, and
+// stripping punctuation turns that difference into a hard mismatch rather than a near
+// one: "At the Corner of Rock Bottom & Nowhere" normalised to
+// "atthecornerofrockbottomnowhere" while ISBNdb's "…Rock Bottom and Nowhere" became
+// "atthecornerofrockbottomandnowhere". Not equal, and not a prefix either — the strings
+// diverge in the middle — so both the exact and the prefix rule failed on what is
+// plainly the same book. Expanding before stripping makes the two sides agree.
+export const normTitle = (s) =>
+  (s || '')
+    .toLowerCase()
+    .replace(/\s*&\s*/g, ' and ')
+    .replace(/\s\+\s/g, ' and ')
+    .replace(/[^a-z0-9]/g, '');
 
 // The three forms of a title, kept LABELLED rather than as a bare array.
 //

@@ -179,6 +179,75 @@ export function buildShelfSignature(state, opts = {}) {
   return lines.join('\n');
 }
 
+// ---------- representation ----------
+
+/**
+ * Appended to every recommending system prompt, alongside
+ * MATCH_SCORING_INSTRUCTIONS and REASON_INSTRUCTIONS.
+ *
+ * WHY THIS EXISTS
+ *
+ * Left to itself, a model asked for "the best books" returns the books that
+ * were written about the most, and what gets written about the most is the
+ * Anglophone twentieth-century canon. That is less the model being biased than
+ * it being an accurate mirror of a lopsided corpus — but the effect on the
+ * reader is the same either way: a recommendation engine that quietly insists
+ * the good books were written by dead Englishmen. The Oracle's whole claim is
+ * that it reads YOUR shelf; a slate that ignores most of world literature is a
+ * narrower answer than the reader asked for, not a safer one.
+ *
+ * WHAT IT IS NOT
+ *
+ * It is not a quota, and it is worded so the model cannot read it as one. A
+ * quota fails in the two places that matter most:
+ *
+ *   1. Narrow requests. "Golden Age locked-room mysteries" and "the Inklings"
+ *      have genuinely skewed candidate pools. A hard floor there forces a bad
+ *      recommendation, and a bad recommendation is the thing the reader
+ *      actually notices.
+ *   2. The reason field. REASON_INSTRUCTIONS asks for one sentence grounded in
+ *      something concrete about this reader. A model filling a quota writes
+ *      "as a novel by a woman, this offers a different perspective" — naming
+ *      the author's demographics as the reason to read the book. That is worse
+ *      than the skew it was meant to correct, so the last rule forbids it
+ *      outright rather than trusting the model to infer good taste.
+ *
+ * Fit stays the first criterion in every sentence below. The instruction acts
+ * on the SHAPE OF THE SLATE — the six books considered together — not on any
+ * individual pick. That is the level at which the skew actually shows up, and
+ * the only level at which it can be corrected without distorting a match.
+ *
+ * WHY IT LIVES HERE
+ *
+ * Same reason buildExcludeHint does. Three Oracle surfaces build their own
+ * prompts, and the last time editorial policy was written inline in one of
+ * them (the v0.63 denylist fix in OracleCategories) it stayed fixed in exactly
+ * one screen for three versions. Policy that applies to every recommendation
+ * belongs in the file every recommender already imports.
+ *
+ * Note this is prompt-side only, and deliberately does not read
+ * books.author_gender. That column is Oracle-inferred for books already in the
+ * catalog, whereas these recommendations range over all of world literature —
+ * most of which has no row to join against at prompt time. The column stays
+ * what it has always been: a record of what a shelf turned out to contain.
+ */
+export const REPRESENTATION_INSTRUCTIONS = `
+RANGE RULES: Fit is always the first criterion — never recommend a book that
+answers the request less well than one you could have named instead. But when
+several books fit comparably well, use that room deliberately:
+- Do not return a slate drawn entirely from the canonical Anglophone
+  tradition. Reach for world literature, work in translation, and authors
+  publishing now as readily as for established names.
+- Across the full set you return, aim for at least a third to be by women or
+  nonbinary authors, and include authors of colour, Indigenous authors, and
+  authors writing from outside the US and UK wherever the request allows it.
+- If the request is genuinely narrow (a specific era, movement, national
+  tradition, or named author), honour it — answer it well and let the range
+  come from within it rather than breaking it.
+- Never mention any of this to the reader. The "reason" field must argue from
+  the book and from this reader's shelf, never from the author's identity: an
+  author's background is not a reason to read their book.`;
+
 // Appended to every recommending system prompt. The match % says how well a
 // book fits; this says why, in language the reader can check against their own
 // shelf. Kept next to buildShelfSignature deliberately — the instruction is

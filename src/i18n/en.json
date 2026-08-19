@@ -547,6 +547,7 @@
     "genres": "Genres",
     "description": "About this book",
     "youMightAlsoLike": "You might also like",
+    "moreByAuthor": "More by {author}",
     "purchase": "Where to buy",
     "addToWishlist": "❦ Add to wishlist",
     "addToNext": "→ Read next",
@@ -576,7 +577,8 @@
     "yourNotes": "Your notes",
     "writeReview": "Write a review",
     "readAgain": "↻ Read again",
-    "match": "match"
+    "match": "match",
+    "translatedBy": "trans. {name}"
   },
   "seriesPage": {
     "breadcrumb": "Back",
@@ -943,7 +945,23 @@
     "cancel": "Cancel",
     "save": "Save progress ❦",
     "saveFinished": "Save — finished! ❦",
-    "saving": "Saving…"
+    "saving": "Saving…",
+    "editionIsbnLabel": "ISBN of your copy",
+    "editionIsbnLookup": "Look up",
+    "editionIsbnLooking": "Looking…",
+    "editionIsbnFound": "Found it — filled in what we could.",
+    "editionIsbnNotFound": "No match for that ISBN. You can still fill this in yourself.",
+    "editionIsbnInvalid": "That doesn't look like a valid ISBN.",
+    "editionLanguageLabel": "Language of your copy",
+    "editionLanguageUnset": "Not specified",
+    "editionFormatLabel": "Format",
+    "editionFormatUnset": "Not specified",
+    "editionFormat_print": "Print",
+    "editionFormat_ebook": "Ebook",
+    "editionFormat_audio": "Audiobook",
+    "editionTitleLabel": "Title on your copy",
+    "editionTranslatorLabel": "Translator",
+    "editionAudioNote": "Audiobooks aren't tracked by page."
   },
   "memory": {
     "sectionTitle": "Your reading memory",
@@ -1525,7 +1543,7 @@
   },
   "bookModal": {
     "oracleReason": "Why the Oracle drew this",
-        "seeMore": "See more ↗",
+    "seeMore": "See more ↗",
     "description": "Description",
     "categories": "Categories",
     "done": "Done",
@@ -2057,5 +2075,20 @@
     "removed": "“{title}” taken back off the shelf.",
     "undoHint": "Click again to undo",
     "notForMe": "Not for me"
+  },
+  "language": {
+    "en": "English",
+    "es": "Spanish",
+    "pt": "Portuguese",
+    "fr": "French",
+    "de": "German",
+    "it": "Italian",
+    "ca": "Catalan",
+    "nl": "Dutch",
+    "pl": "Polish",
+    "ru": "Russian",
+    "ja": "Japanese",
+    "zh": "Chinese",
+    "ko": "Korean"
   }
 }

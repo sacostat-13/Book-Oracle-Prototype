@@ -4,6 +4,7 @@
 
 import { useMemo, useState, useCallback, useEffect } from 'react';
 import { useData } from '../lib/DataContext';
+import { effectivePages } from '../lib/editions';
 import { RowListSkeleton } from '../components/Skeleton';
 import { useRouter } from '../lib/RouterContext';
 import { useT, useTNode } from '../lib/I18nContext';
@@ -319,7 +320,10 @@ function OracleSparkWidget({ wishlist, go, t, profile, tasteProfile }) {
 }
 
 // ─── Reading Stats ─────────────────────────────────────────────────────────────
-function ReadingStatsWidget({ library, go, t }) {
+// `editions` is the reader's reader_editions map, passed in rather than read
+// from context because this widget already takes its data as props and a second
+// source of truth inside it would be the thing that drifts.
+function ReadingStatsWidget({ library, editions, go, t }) {
   const now = new Date();
   const year = now.getFullYear();
   const total = library.length;
@@ -329,7 +333,11 @@ function ReadingStatsWidget({ library, go, t }) {
   const twelveAgo = new Date(now.getFullYear(), now.getMonth() - 11, 1);
   const recent = library.filter((b) => b.dateRead && new Date(b.dateRead) >= twelveAgo);
   const pace = recent.length > 0 ? (recent.length / 12).toFixed(1) : null;
-  const pages = library.reduce((s, b) => s + (b.pp || 0), 0);
+  // v0.65: count the pages the reader actually read, not the pages the
+  // catalog's edition has. A reader working through Spanish translations was
+  // credited with English page counts — the same mismatch the progress bar
+  // had, in the one number the Dashboard presents as an achievement.
+  const pages = library.reduce((sum, b) => sum + (effectivePages(b, editions?.[b.bookId]) || 0), 0);
 
   const cards = [
     { value: total, label: thisYearCount > 0 ? t('dashboard.statsWidgetThisYear', { count: thisYearCount }) : t('dashboard.statsWidgetBooks', { count: total }) },
@@ -1191,7 +1199,7 @@ export default function Dashboard({ onOpenBook }) {
     switch (id) {
       case 'currently-reading': return <CurrentlyReadingWidget key={id} books={state.currentlyReading || []} onOpenBook={onOpenBook} t={t} />;
       case 'oracle-spark': return <OracleSparkWidget key={id} wishlist={state.wishlist} go={go} t={t} profile={state.profile} tasteProfile={tasteProfile} />;
-      case 'reading-stats': return <ReadingStatsWidget key={id} library={state.library || []} go={go} t={t} />;
+      case 'reading-stats': return <ReadingStatsWidget key={id} library={state.library || []} editions={state.editionsByBookId} go={go} t={t} />;
       case 'reading-goal': return <ReadingGoalWidget key={id} library={state.library || []} genresByBookId={state.genresByBookId || {}} readingGoalCount={state.readingGoalCount} setReadingGoalCount={setReadingGoalCount} t={t} />;
       case 'series-progress': return <SeriesProgressWidget key={id} library={state.library || []} wishlist={state.wishlist} readNext={state.readNext} go={go} t={t} />;
       case 'streak': return <StreakWidget key={id} library={state.library || []} t={t} />;

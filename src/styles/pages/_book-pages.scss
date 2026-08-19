@@ -2660,3 +2660,32 @@
     }
   }
 }
+// ── Reader edition ────────────────────────────────────────────────────────────
+// The line under the title saying which edition THIS reader is holding. Quiet on
+// purpose: it is a footnote to the book, not a claim about it, and it renders
+// only when the edition actually differs (see editionIsNotable in editions.js).
+.bp-edition {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+  margin-top: 6px;
+  font-family: var(--ro-font-body);
+  font-size: 13px;
+  color: var(--ro-muted);
+}
+
+.bp-edition__title {
+  font-family: var(--ro-font-display);
+  font-style: italic;
+  color: var(--ro-text);
+}
+
+// Separated by a middot rather than a border, so the row reads as one sentence
+// of metadata instead of a set of chips competing with .bp-meta below it.
+.bp-edition__bit + .bp-edition__bit::before,
+.bp-edition__title + .bp-edition__bit::before {
+  content: '·';
+  margin-right: 10px;
+  opacity: .6;
+}
