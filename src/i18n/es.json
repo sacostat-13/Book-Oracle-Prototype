@@ -547,6 +547,7 @@
     "genres": "Géneros",
     "description": "Sobre este libro",
     "youMightAlsoLike": "También te puede gustar",
+    "moreByAuthor": "Más de {author}",
     "purchase": "Dónde comprarlo",
     "addToWishlist": "❦ Agregar a la lista",
     "addToNext": "→ Por leer",
@@ -576,7 +577,8 @@
     "yourNotes": "Tus notas",
     "writeReview": "Escribí una reseña",
     "readAgain": "↻ Leer de nuevo",
-    "match": "de afinidad"
+    "match": "de afinidad",
+    "translatedBy": "trad. {name}"
   },
   "seriesPage": {
     "breadcrumb": "Volver",
@@ -943,7 +945,23 @@
     "cancel": "Cancelar",
     "save": "Guardar progreso ❦",
     "saveFinished": "Guardar — ¡terminaste! ❦",
-    "saving": "Guardando…"
+    "saving": "Guardando…",
+    "editionIsbnLabel": "ISBN de tu ejemplar",
+    "editionIsbnLookup": "Buscar",
+    "editionIsbnLooking": "Buscando…",
+    "editionIsbnFound": "Encontrado: hemos rellenado lo que hemos podido.",
+    "editionIsbnNotFound": "No encontramos ese ISBN. Puedes rellenarlo a mano.",
+    "editionIsbnInvalid": "Ese ISBN no parece válido.",
+    "editionLanguageLabel": "Idioma de tu ejemplar",
+    "editionLanguageUnset": "Sin especificar",
+    "editionFormatLabel": "Formato",
+    "editionFormatUnset": "Sin especificar",
+    "editionFormat_print": "Papel",
+    "editionFormat_ebook": "Ebook",
+    "editionFormat_audio": "Audiolibro",
+    "editionTitleLabel": "Título de tu ejemplar",
+    "editionTranslatorLabel": "Traducción de",
+    "editionAudioNote": "Los audiolibros no se miden por páginas."
   },
   "memory": {
     "sectionTitle": "Tu memoria de lectura",
@@ -1525,7 +1543,7 @@
   },
   "bookModal": {
     "oracleReason": "Por qué el Oráculo lo eligió",
-        "seeMore": "Ver más ↗",
+    "seeMore": "Ver más ↗",
     "description": "Descripción",
     "categories": "Categorías",
     "done": "Listo",
@@ -2057,5 +2075,20 @@
     "removed": "«{title}» volvió al estante.",
     "undoHint": "Clickeá de nuevo para deshacer",
     "notForMe": "No es para mí"
+  },
+  "language": {
+    "en": "Inglés",
+    "es": "Español",
+    "pt": "Portugués",
+    "fr": "Francés",
+    "de": "Alemán",
+    "it": "Italiano",
+    "ca": "Catalán",
+    "nl": "Neerlandés",
+    "pl": "Polaco",
+    "ru": "Ruso",
+    "ja": "Japonés",
+    "zh": "Chino",
+    "ko": "Coreano"
   }
 }

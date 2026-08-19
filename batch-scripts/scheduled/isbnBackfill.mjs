@@ -50,6 +50,26 @@ const searchTitle = (t) => titleVariants(t).slice(-1)[0] || t || '';
 const docAuthors = (doc) =>
   doc?.author_names || (doc?.contributions || []).map((c) => c?.author?.name).filter(Boolean) || [];
 
+// v0.62.2 — "Unknown author" is a PLACEHOLDER, and treating it as a name is why
+// Winnie-the-Pooh, Don Quixote, The Once and Future King, The Fellowship of the Ring and
+// My Sister the Serial Killer were all reported as unfindable on Hardcover.
+//
+// authorMatches() requires the author to corroborate, so it compared the literal string
+// "Unknown author" against ["A.A. Milne"], failed, and rejected every hit — for books
+// Hardcover obviously has. Worse, the string was also concatenated into the search query
+// ("Winnie-the-Pooh Unknown author"), poisoning the ranking before matching even began.
+// 31 of the 186 remaining rows carry one of these sentinels.
+//
+// Treated as ABSENT instead: authorMatches(null, …) already returns true by design, so
+// the title guard stands alone — and titleMatches requires exact equality for short
+// titles precisely so it can be trusted without corroboration. Writes made this way are
+// flagged, because losing the author check does genuinely lower confidence.
+const SENTINEL_AUTHOR_RX = /^(unknown(\s+author)?|no\s+author|n\/?a|none|anon(ymous)?|various(\s+authors)?|\?+|-+|null|undefined)$/i;
+const realAuthor = (a) => {
+  const t = (a || '').trim();
+  return !t || SENTINEL_AUTHOR_RX.test(t) ? null : t;
+};
+
 
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -107,7 +127,11 @@ const vlog = (m) => { if (VERBOSE) process.stdout.write('    ' + m + '\n'); };
 // each call, if 55 requests have already gone out in the trailing 60s, wait until the
 // oldest one ages out. 55 rather than 60 leaves headroom for clock skew and for the
 // retry after a 429.
-const RATE_LIMIT = 55;
+// 55 was chosen as "60 minus headroom", but the run still collects 429s, so the real
+// ceiling is evidently below the documented 60/min — Hardcover appears to count bursts
+// rather than a clean sliding minute. Overridable without a code edit so the number can
+// be tuned against observed behaviour: HARDCOVER_RATE_LIMIT=40 in .env.local.
+const RATE_LIMIT = Number(env['HARDCOVER_RATE_LIMIT']) > 0 ? Number(env['HARDCOVER_RATE_LIMIT']) : 45;
 const WINDOW_MS = 60_000;
 const requestTimes = [];
 
@@ -124,6 +148,50 @@ async function throttle() {
 }
 
 // -- Hardcover ----------------------------------------------------------------
+// v0.62 — EVERY Hardcover call failing used to look exactly like a catalog with no data.
+//
+// The 2026-08-17 run is the worked example: all 185 searches returned "no confident
+// match" and all 786 batched edition fetches returned "no editions on any candidate
+// record", so the script wrote a 971-row worklist stating, with total confidence, that
+// Hardcover has nothing for Dune. A 100% miss rate across two unrelated query types is
+// not a data gap, it is a broken connection — but nothing said so, because:
+//
+//   * a non-2xx response was reported through vlog(), which is silent without --verbose;
+//   * GraphQL `errors` were likewise vlog()-only, and `json.data || null` turned an
+//     errored response into an ordinary empty one;
+//   * a null return from gql() is indistinguishable, at every call site, from a
+//     legitimate "this book genuinely isn't on Hardcover".
+//
+// So the failure mode was: green step, full log, plausible CSV, wrong conclusion, and a
+// recommendation to spend ~$39 of Claude curation on books that were never missing.
+//
+// Two changes. Transport-level failures are now reported unconditionally, and a run in
+// which Hardcover answers nothing but failures aborts instead of finishing. Refusing to
+// produce output is the correct behaviour when the output would be a confident lie.
+const MAX_CONSECUTIVE_FAILURES = 10;
+let consecutiveFailures = 0;
+let hardcoverOk = 0;
+
+class HardcoverUnavailable extends Error {
+  constructor(detail) {
+    super(
+      `Hardcover returned ${MAX_CONSECUTIVE_FAILURES} consecutive failures and ` +
+      `${hardcoverOk} successful call(s). Aborting rather than reporting every book ` +
+      `as unresolved.\n  Last failure: ${detail}\n` +
+      `  Diagnose with:  node batch-scripts/scheduled/isbnBackfill.mjs --probe`
+    );
+    this.name = 'HardcoverUnavailable';
+  }
+}
+
+// Called on every transport- or GraphQL-level failure. A book that is simply absent from
+// Hardcover does NOT come through here — that is a successful call with no hits, which
+// resets the counter like any other success.
+function noteFailure(detail) {
+  console.warn(`  hardcover: ${detail}`);
+  if (++consecutiveFailures >= MAX_CONSECUTIVE_FAILURES) throw new HardcoverUnavailable(detail);
+}
+
 async function gql(query, variables = {}, attempt = 1) {
   await throttle();
   let resp;
@@ -149,17 +217,58 @@ async function gql(query, variables = {}, attempt = 1) {
     }
     throw e;
   }
+  // v0.62.2 — this used to be `await sleep(60000); return gql(query, variables)`, which
+  // RESET `attempt` to 1 on every retry. Against a per-minute limit that is merely slow;
+  // against an exhausted DAILY quota it never terminates — the run sleeps 60s, retries,
+  // 429s, forever, producing no output and no error. A job killed while in that state is
+  // indistinguishable from one killed while working, which is a plausible reading of what
+  // happened to the curation run.
+  //
+  // Now bounded, and it honours Retry-After when the server sends one instead of always
+  // guessing 60s. After the cap it is reported as a failure like any other, so a run that
+  // has genuinely run out of quota trips the circuit breaker and says so.
   if (resp.status === 429) {
-    console.warn('  rate limited — backing off 60s');
-    await sleep(60000);
-    return gql(query, variables);
-  }
-  if (!resp.ok) {
-    vlog(`hardcover ${resp.status}: ${(await resp.text()).slice(0, 200)}`);
+    const retryAfter = Number(resp.headers.get('retry-after'));
+    const wait = Number.isFinite(retryAfter) && retryAfter > 0 ? Math.min(retryAfter * 1000, 300_000) : 60_000;
+    if (attempt <= 3) {
+      console.warn(`  rate limited (429) — attempt ${attempt}/3, waiting ${Math.round(wait / 1000)}s`);
+      await sleep(wait);
+      return gql(query, variables, attempt + 1);
+    }
+    noteFailure(
+      `429 after 3 backoffs. This is a quota wall, not congestion — most likely the daily ` +
+      `allowance is spent. Lower RATE_LIMIT (currently ${RATE_LIMIT}/min) or rerun later; ` +
+      `the script resumes from where it stopped.`
+    );
     return null;
   }
+  if (!resp.ok) {
+    const body = (await resp.text()).slice(0, 300);
+    // 401/403 will not fix themselves on the next book. Fail on the first one rather
+    // than spending 971 books' worth of wall-clock discovering the same thing 971 times.
+    if (resp.status === 401 || resp.status === 403) {
+      throw new HardcoverUnavailable(
+        `HTTP ${resp.status} — the token was rejected. Check HARDCOVER_API_TOKEN ` +
+        `(Hardcover tokens expire after a year and reset on January 1st), and that the ` +
+        `Authorization header format still matches https://docs.hardcover.app/api/getting-started/. ${body}`
+      );
+    }
+    noteFailure(`HTTP ${resp.status} ${body}`);
+    return null;
+  }
+
   const json = await resp.json();
-  if (json.errors) vlog(`graphql errors: ${JSON.stringify(json.errors).slice(0, 300)}`);
+  // A GraphQL error is a FAILED call that arrives with HTTP 200. `json.data || null`
+  // laundered it into a normal empty result — the single most misleading line in the
+  // original script, because a schema drift (a renamed field, a changed argument type)
+  // reads downstream as "this book does not exist".
+  if (json.errors?.length) {
+    noteFailure(`graphql: ${JSON.stringify(json.errors).slice(0, 300)}`);
+    return null;
+  }
+
+  consecutiveFailures = 0;
+  hardcoverOk++;
   return json.data || null;
 }
 
@@ -171,6 +280,29 @@ const BATCH = 50;
 
 async function editionsByBookIds(ids) {
   if (!ids.length) return new Map();
+
+  // v0.62.1 — the probe proved this query works perfectly when handed a real integer id
+  // (427363 → 10 editions), yet the 2026-08-17 run got "no editions" for all 786 rows
+  // that already had a hardcover_id. The query is not the problem; what we feed it is.
+  //
+  // `ids.map(Number)` turns anything non-numeric — a slug, a UUID, a numeric string with
+  // whitespace, a null — into NaN, and JSON.stringify serialises NaN as `null`. So the
+  // request goes out as { id: { _in: [null] } }, which is valid GraphQL, returns an empty
+  // array, and reads downstream as "this book has no editions". Silent, total, and
+  // indistinguishable from missing data.
+  const coerced = ids.map((id) => ({ raw: id, num: Number(id) }));
+  const bad = coerced.filter((c) => !Number.isFinite(c.num));
+  if (bad.length) {
+    console.warn(
+      `  !! ${bad.length}/${ids.length} hardcover_id value(s) are not numeric and would be ` +
+      `sent as null — e.g. ${JSON.stringify(bad.slice(0, 3).map((b) => b.raw))} ` +
+      `(type ${typeof bad[0].raw}). These cannot match books.id.`
+    );
+  }
+  const usable = coerced.filter((c) => Number.isFinite(c.num)).map((c) => c.num);
+  if (!usable.length) return new Map();
+  ids = usable;
+
   const data = await gql(
     `query EditionsByBooks($ids: [Int!]) {
        books(where: { id: { _in: $ids } }) {
@@ -217,17 +349,31 @@ async function editionsByBookIds(ids) {
 // their editions costs no extra requests in the common case.
 const MAX_CANDIDATES = 3;
 
+// per_page was 10. The probe showed why that is too few: searching "Dune Frank Herbert"
+// reports found: 70, but the first ten hits are God Emperor of Dune, two omnibus
+// collections and two CliffsNotes-style study guides — every one correctly rejected by
+// titleMatches, and the actual novel nowhere in the window. Hardcover's relevance ranking
+// favours records with high activity counts, and study guides of famous books are busy
+// records.
+//
+// A wider window costs exactly the same single request. The guards are unchanged, so
+// precision is unaffected — this only stops the right answer being truncated away.
+const PER_PAGE = 25;
+
 async function runSearch(q) {
   const data = await gql(
-    `query SearchBooks($q: String!, $type: String!) {
-       search(query: $q, query_type: $type, per_page: 10, page: 1) { results }
+    `query SearchBooks($q: String!, $type: String!, $per: Int!) {
+       search(query: $q, query_type: $type, per_page: $per, page: 1) { results }
      }`,
-    { q, type: 'Book' }
+    { q, type: 'Book', per: PER_PAGE }
   );
   return data?.search?.results?.hits || [];
 }
 
-async function searchForBookIds(title, author) {
+async function searchForBookIds(title, rawAuthor) {
+  // Normalise once, here, so both the query text and every guard below see the same
+  // thing. A placeholder must not reach either.
+  const author = realAuthor(rawAuthor);
   // Search on the CORE title, not the stored one. Stored titles carry Goodreads series
   // markers, and feeding them to a relevance-ranked search actively hurts: querying
   // "A Discovery of Witches (All Souls Trilogy, #1) Deborah Harkness" returned only three
@@ -341,7 +487,180 @@ async function fetchAllNullIsbn(limit) {
   return limit ? out.slice(0, limit) : out;
 }
 
+// -- Probe ---------------------------------------------------------------------
+// isbnFallback.mjs has had one of these since its first version; isbnBackfill never did,
+// which is why an entire Hardcover outage had to be inferred from a CSV. Two requests,
+// no throttling, no database, raw status and body printed — enough to tell apart an
+// expired token, a moved endpoint and a changed schema in about five seconds.
+//
+//   node batch-scripts/scheduled/isbnBackfill.mjs --probe
+//   node batch-scripts/scheduled/isbnBackfill.mjs --probe 10534   (a known hardcover_id)
+async function runProbe(bookId) {
+  const auth = HARDCOVER_TOKEN.startsWith('Bearer ') ? HARDCOVER_TOKEN : `Bearer ${HARDCOVER_TOKEN}`;
+  console.log(`endpoint: https://api.hardcover.app/v1/graphql`);
+  console.log(`token:    ${HARDCOVER_TOKEN.length} chars, sent as "${auth.slice(0, 7)}…"`);
+
+  // A JWT carries its own expiry. Reading it locally beats guessing from a 401, and
+  // Hardcover additionally resets tokens every January 1st regardless of the exp claim.
+  try {
+    const claims = JSON.parse(Buffer.from(auth.split(' ')[1].split('.')[1], 'base64url').toString());
+    if (claims.exp) {
+      const when = new Date(claims.exp * 1000);
+      console.log(`          exp ${when.toISOString()} — ${when < new Date() ? '*** EXPIRED ***' : 'valid'}`);
+    }
+  } catch { console.log(`          (token is not a decodable JWT)`); }
+
+  // v0.62.1 — the first version dumped 800 characters of pretty-printed JSON, which on a
+  // Typesense document is spent entirely on `alternative_titles` before reaching anything
+  // the script actually reads. It confirmed the transport was healthy and hid every field
+  // that decides whether a book matches. Print the DECISION INPUTS instead of the payload.
+  const call = async (label, body) => {
+    console.log(`\n--- ${label} ---`);
+    const r = await fetch('https://api.hardcover.app/v1/graphql', {
+      method: 'POST',
+      headers: { Authorization: auth, 'Content-Type': 'application/json', 'User-Agent': 'BooksOracle-isbnBackfill/1.0' },
+      body: JSON.stringify(body),
+    });
+    console.log(`HTTP ${r.status} ${r.statusText}`);
+    const text = await r.text();
+    let json = null;
+    try { json = JSON.parse(text); } catch { /* not JSON */ }
+    if (!json) { console.log(text.slice(0, 600)); return null; }
+    if (json.errors) console.log(`GraphQL errors: ${JSON.stringify(json.errors, null, 2).slice(0, 1200)}`);
+    return json;
+  };
+
+  // 1. Search. Reproduces searchForBookIds() exactly, then reports which of the three
+  //    guards each hit passes — the search returning 70 results tells us nothing if
+  //    titleMatches() then rejects all of them.
+  const TITLE = 'Dune', AUTHOR = 'Frank Herbert';
+  const s = await call('1. search — the path for rows with no hardcover_id', {
+    query: `query SearchBooks($q: String!, $type: String!) {
+       search(query: $q, query_type: $type, per_page: 10, page: 1) { results }
+     }`,
+    variables: { q: [searchTitle(TITLE), AUTHOR].filter(Boolean).join(' '), type: 'Book' },
+  });
+
+  const hits = s?.data?.search?.results?.hits || [];
+  console.log(`hits: ${hits.length}   (found: ${s?.data?.search?.results?.found ?? '?'})`);
+  if (!hits.length) {
+    console.log(`!! results.hits is empty or missing — runSearch() would return [] for every book.`);
+  } else {
+    console.log(`document fields: ${Object.keys(hits[0].document || hits[0]).join(', ')}\n`);
+    console.log(`  ${'id'.padEnd(9)} ${'title'.padEnd(38)} ${'ok?'.padEnd(5)} why`);
+    for (const h of hits.slice(0, 6)) {
+      const doc = h.document || h;
+      const okId = !!doc?.id;
+      const okT = okId && titleMatches(TITLE, doc.title);
+      const okA = okT && authorMatches(AUTHOR, docAuthors(doc));
+      const why = !okId ? 'NO id field — every hit is skipped'
+        : !okT ? `title rejected (got ${JSON.stringify(doc.title)})`
+        : !okA ? `author rejected (got ${JSON.stringify(docAuthors(doc)).slice(0, 60)})`
+        : 'accepted';
+      console.log(`  ${String(doc?.id ?? '—').padEnd(9)} ${String(doc?.title ?? '—').slice(0, 38).padEnd(38)} ${(okA ? 'YES' : 'no').padEnd(5)} ${why}`);
+    }
+  }
+
+  // 2. Editions. This is the 786-book path — the one that returned "no editions on any
+  //    candidate record" for every single row — and it was never exercised above.
+  //    Default to an id the search just returned, so no database lookup is needed.
+  const firstId = hits.map((h) => (h.document || h)?.id).find(Boolean);
+  const probeId = bookId || firstId;
+  if (!probeId) {
+    console.log(`\n2. editions — SKIPPED: no id available. Pass one:  --probe <hardcover_id>`);
+    return;
+  }
+
+  const e = await call(`2. editions for book id ${probeId} — the path for rows that HAVE a hardcover_id`, {
+    query: `query EditionsByBooks($ids: [Int!]) {
+       books(where: { id: { _in: $ids } }) { id title ${EDITION_FIELDS} }
+     }`,
+    variables: { ids: [Number(probeId)] },
+  });
+
+  const books = e?.data?.books;
+  if (!Array.isArray(books)) {
+    console.log(`!! data.books is ${books === undefined ? 'missing' : JSON.stringify(books)} — the query shape has changed.`);
+  } else if (!books.length) {
+    console.log(`!! books[] is EMPTY for id ${probeId}. The row exists (search just returned it),`);
+    console.log(`   so { id: { _in: [Int!] } } is not selecting it — most likely an id TYPE`);
+    console.log(`   mismatch: Hardcover's books.id may now be bigint, and ids.map(Number) sends`);
+    console.log(`   Int. That alone would produce "no editions" for all 786 known-id rows.`);
+  } else {
+    for (const b of books) {
+      const eds = b.editions || [];
+      console.log(`books[0]: id=${b.id} title=${JSON.stringify(b.title)}`);
+      console.log(`editions: ${b.editions === undefined ? '*** FIELD MISSING ***' : eds.length}`);
+      if (eds.length) {
+        console.log(`fields:   ${Object.keys(eds[0]).join(', ')}`);
+        for (const ed of eds.slice(0, 5)) {
+          console.log(`  ${(ed.isbn_13 || ed.isbn_10 || '—').padEnd(15)} fmt=${ed.reading_format_id} lang=${ed.language_id} users=${ed.users_count} ${ed.edition_format || ''}`);
+        }
+      } else {
+        console.log(`!! zero editions on a book the search ranked first. Either the sub-query's`);
+        console.log(`   filters exclude everything (compilation _eq false / limit / order_by) or`);
+        console.log(`   the relationship was renamed. See EDITION_FIELDS in src/lib/editionPicker.js.`);
+      }
+    }
+  }
+}
+
+// -- Probe against REAL rows ---------------------------------------------------
+// --probe uses hardcoded inputs, which is why it came back clean while the job it is
+// meant to diagnose failed on all 786 known-id rows: the two were never given the same
+// data. This variant takes the actual column values out of Supabase and pushes them
+// through the actual code path.
+//
+//   node batch-scripts/scheduled/isbnBackfill.mjs --probe-db
+async function runDbProbe() {
+  const { data, error } = await supabase
+    .from('books')
+    .select('id, title, author, hardcover_id')
+    .is('isbn', null)
+    .not('hardcover_id', 'is', null)
+    .order('title')
+    .range(0, 4);
+  if (error) { console.error(`supabase: ${error.message}`); process.exit(1); }
+  if (!data.length) { console.log('No rows with a null ISBN and a hardcover_id. Nothing to probe.'); return; }
+
+  console.log(`${data.length} row(s) with isbn IS NULL and hardcover_id IS NOT NULL:\n`);
+  console.log(`  ${'hardcover_id'.padEnd(24)} ${'typeof'.padEnd(8)} ${'Number()'.padEnd(12)} title`);
+  for (const b of data) {
+    const n = Number(b.hardcover_id);
+    console.log(
+      `  ${JSON.stringify(b.hardcover_id).padEnd(24)} ${(typeof b.hardcover_id).padEnd(8)} ` +
+      `${(Number.isFinite(n) ? String(n) : '*** NaN ***').padEnd(12)} ${String(b.title).slice(0, 40)}`
+    );
+  }
+
+  const ids = data.map((b) => b.hardcover_id);
+  console.log(`\nSent to Hardcover as: ${JSON.stringify({ ids: ids.map(Number) })}`);
+  console.log(`(NaN serialises to null — a null in that array can never match books.id)\n`);
+
+  const map = await editionsByBookIds(ids);
+  console.log(`--- result ---`);
+  console.log(`records returned: ${map.size} of ${ids.length} requested`);
+  for (const b of data) {
+    const node = map.get(String(b.hardcover_id));
+    const eds = node?.editions || [];
+    console.log(`  ${String(b.hardcover_id).padEnd(12)} ${node ? `matched "${String(node.title).slice(0, 34)}"` : '*** NO RECORD RETURNED ***'}  editions=${eds.length}`);
+    if (eds.length) console.log(`      first: ${eds[0].isbn_13 || eds[0].isbn_10 || '—'}  ${eds[0].edition_format || ''}`);
+  }
+  if (map.size === ids.length && [...map.values()].every((n) => (n.editions || []).length)) {
+    console.log(`\nThis path is healthy on real data. If the scheduled run still reports "no`);
+    console.log(`editions", the difference is upstream — check that the batch is not mixing ids`);
+    console.log(`from rows whose hardcover_id is null or of a different shape.`);
+  }
+}
+
 async function main() {
+  if (args.includes('--probe-db')) return runDbProbe();
+  if (args.includes('--probe')) {
+    const i = args.indexOf('--probe');
+    const next = args[i + 1];
+    return runProbe(next && !next.startsWith('--') ? next : null);
+  }
+
   let books;
   try {
     books = await fetchAllNullIsbn(LIMIT);
@@ -384,6 +703,10 @@ async function main() {
         stats.notFound++;
       }
     } catch (e) {
+      // A dead upstream is not a per-book problem and must not be absorbed into a
+      // per-book failure count — that is how 971 individual "errors" added up to a
+      // confident worklist. Let it terminate the run.
+      if (e instanceof HardcoverUnavailable) throw e;
       console.log(`[search ${processed}/${needSearch}] ${b.title}\n  error: ${e.message}`);
       stats.failed++;
     }
@@ -397,6 +720,7 @@ async function main() {
     try {
       map = await editionsByBookIds(chunk.flatMap((r) => r.hardcoverIds));
     } catch (e) {
+      if (e instanceof HardcoverUnavailable) throw e;
       console.log(`  batch ${i / BATCH + 1} failed: ${e.message}`);
       stats.failed += chunk.length;
       continue;
@@ -434,8 +758,15 @@ async function main() {
         }
       }
 
-      const { isbn, asin, warnings, bookId } = pickBestEdition(pooled);
+      const { isbn, asin, warnings = [], bookId } = pickBestEdition(pooled);
       const hardcoverId = bookId || hardcoverIds[0];
+
+      // Matched on title alone because the stored author is a placeholder. Usually right,
+      // but it is the one path with no second signal — surface it for review rather than
+      // letting it pass as an ordinary confident match.
+      if (!realAuthor(b.author)) {
+        warnings.push(`matched on title alone — stored author is "${b.author || '(blank)'}"`);
+      }
       if (!isbn) {
         console.log(`${VERBOSE ? '' : label + '\n'}  no usable edition (${pooled.length} candidates)\n`);
         unresolved.push({ book: b, reason: `no usable edition (${pooled.length} candidates)` });
@@ -464,6 +795,21 @@ async function main() {
       stats.filled++;
       if (learned) stats.idsLearned++;
     }
+  }
+
+  // Last line of defence, for the case the circuit breaker cannot see: calls that all
+  // SUCCEED but return nothing usable. If not one book in the whole catalog produced an
+  // ISBN, the explanation is a broken query — a renamed field, a changed argument type,
+  // an ID type mismatch — not 971 simultaneously uncatalogued books. Writing the worklist
+  // anyway is what turned a schema problem into a curation budget.
+  if (books.length >= 25 && stats.filled === 0) {
+    console.error(`\n!! ABORTING — ${books.length} books processed and not one ISBN was resolved.`);
+    console.error(`   ${hardcoverOk} Hardcover call(s) succeeded at the transport level, so this is`);
+    console.error(`   most likely a query/schema mismatch rather than missing data. The worklist has`);
+    console.error(`   NOT been written; the previous one is still accurate.`);
+    console.error(`\n   Diagnose:  node batch-scripts/scheduled/isbnBackfill.mjs --probe`);
+    console.error(`   Override:  --allow-empty  (if you have confirmed the catalog really is this bare)`);
+    if (!args.includes('--allow-empty')) process.exit(1);
   }
 
   const retryable = unresolved.filter((u) => isRetryable(u.book));
@@ -498,7 +844,23 @@ async function main() {
     console.log(`\n  worklist written to batch-scripts/isbn-unresolved.csv`);
   }
 
+  // Machine-readable last line, matching metadataBackfill.mjs's convention. The workflow
+  // summary counted CSV rows, so "the file is absent because the step never ran" and
+  // "the file is absent because there was nothing to write" rendered identically as 0.
+  // A counters line is present only when the script actually reached the end.
+  console.log(
+    `[isbnBackfill] filled=${stats.filled} idsLearned=${stats.idsLearned} ` +
+    `unresolved=${unresolved.length} manual=${manual.length} lookedUp=${real.length} ` +
+    `retryable=${retryable.length} failed=${stats.failed} hardcoverOk=${hardcoverOk}`
+  );
+
   if (DRY_RUN) console.log('\n(dry run — nothing was written to the database)');
 }
 
-main();
+// A bare main() left rejections to Node's default handler: a stack trace and a non-zero
+// exit, but nothing that reads as an explanation in a CI log. Handle it so the step
+// output ends with the reason rather than with a trace through fetch().
+main().catch((e) => {
+  console.error(`\n${e.name === 'HardcoverUnavailable' ? '!! ' : ''}${e.message}`);
+  process.exit(1);
+});

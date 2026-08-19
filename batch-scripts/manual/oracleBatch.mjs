@@ -194,6 +194,7 @@ async function fetchEligibleBooks() {
         complexity,
         depth,
         author_gender_source,
+        original_language,
         series_id,
         position_in_series,
         series:series_id ( name )
@@ -304,7 +305,7 @@ function buildPrompt(books, existingGenres) {
     return parts.join('\n');
   }).join('\n\n');
 
-  const systemPrompt = `You are the Book Oracle, a literary curator. For each book return genres, series info, a description, complexity, depth, and author gender.
+  const systemPrompt = `You are the Book Oracle, a literary curator. For each book return genres, series info, a description, complexity, depth, author gender, and the language the book was originally written in.
 
 GENRE RULES: Prefer existing catalog genres. Assign 2-5 per book: every specific genre that genuinely applies, PLUS the broad umbrella above it where one exists. A folk horror novel is \"Folk Horror\" AND \"Horror\"; a Faulkner is \"Southern Gothic\" AND \"Gothic\" AND \"Literary Fiction\". One reader browses the wide shelf and another the narrow one, and the book should be found by both. Do not pad — a genre that only loosely fits is worse than a missing one, because it puts the book in front of a reader who did not ask for it. Prefer a single clear concept over a compound name joined with \"&\": a book can carry several genres, so two ideas belong in two genres. Only invent when nothing in the catalog fits.
 SERIES RULES: null for standalone books. "total" may be null for ongoing series.
@@ -328,11 +329,27 @@ AUTHOR GENDER RULES (strict — read carefully, this is not like COMPLEXITY/DEPT
 - The book's subject matter is not evidence. A book about women does not imply
   a female author.
 
+ORIGINAL LANGUAGE RULES (same standard of evidence as AUTHOR GENDER):
+- Return "originalLanguage": the ISO 639-1 two-letter code for the language the
+  work was FIRST WRITTEN in — not the language of the edition described above,
+  and not the language of its title as given. Gabriel García Márquez wrote in
+  Spanish, so "es", whether the row you were shown says "One Hundred Years of
+  Solitude" or "Cien años de soledad".
+- Return "unknown" unless you actually know. Do NOT infer it from the author's
+  name, nationality, or where they live: Nabokov wrote in both Russian and
+  English, Beckett in French and English, Conrad in English. If you are not
+  certain for THIS book, "unknown" is the correct answer and a frequent one.
+- For a work with no single original language (an anthology of translations, a
+  multilingual text), return "unknown".
+- This is used to decide which of several rows for the same novel a reader is
+  shown. A wrong answer promotes a translation over the original, which is
+  visible and wrong; an "unknown" simply leaves the current behaviour in place.
+
 EXISTING GENRE CATALOG:
 ${catalogList || '(empty — you are seeding the catalog)'}
 
 RESPONSE FORMAT (JSON array, input order):
-[{"index":1,"genres":["Genre"],"series":{"name":"Name","n":1,"total":3},"description":"Text.","complexity":1-5,"depth":1-5,"authorGender":"female"|"male"|"nonbinary"|"mixed"|"unknown"}]
+[{"index":1,"genres":["Genre"],"series":{"name":"Name","n":1,"total":3},"description":"Text.","complexity":1-5,"depth":1-5,"authorGender":"female"|"male"|"nonbinary"|"mixed"|"unknown","originalLanguage":"en"|"es"|...|"unknown"}]
 Return ONLY valid JSON.`;
 
   const userPrompt = `Enrich these ${books.length} books:\n\n${bookList}`;
@@ -413,7 +430,19 @@ function sanitizeAuthorGender(v) {
   return VALID_AUTHOR_GENDERS.has(s) ? s : null;
 }
 
-async function writeEnrichment(book, genreIds, seriesData, description, complexity, depth, authorGender) {
+// v0.64. Deliberately NOT an allow-list of language codes: there are ~184
+// living two-letter codes, the set changes, and rejecting a real one would
+// silently drop a correct answer. Shape is all that is checked — exactly two
+// ASCII letters — plus the explicit 'unknown', which is a real answer here and
+// is stored so the book is not re-asked forever.
+function sanitizeLanguage(v) {
+  if (typeof v !== 'string') return null;
+  const s = v.trim().toLowerCase();
+  if (s === 'unknown') return 'unknown';
+  return /^[a-z]{2}$/.test(s) ? s : null;
+}
+
+async function writeEnrichment(book, genreIds, seriesData, description, complexity, depth, authorGender, originalLanguage) {
   // Genres: direct upsert into book_genres (link_book_genre RPC requires auth.uid)
   //
   // THE COLUMN IS `assigned_by_source`, NOT `source`.
@@ -476,6 +505,24 @@ async function writeEnrichment(book, genreIds, seriesData, description, complexi
     patch.author_gender = authorGender;
     patch.author_gender_source = 'oracle_inferred';
     patch.author_gender_checked_at = new Date().toISOString();
+  }
+
+  // v0.64. Write-once: never overwrite an original_language already on the row.
+  // Unlike complexity or a description, this is not a judgement that improves
+  // on re-reading — the language García Márquez wrote in does not change, so a
+  // second, different answer means one of the two runs is wrong, and the older
+  // one has at least had the chance to be corrected by hand.
+  //
+  // 'unknown' IS stored. It is a resolved answer meaning "asked, no reliable
+  // signal", exactly as it is for author_gender, and storing it is what stops
+  // the same book being re-billed on every subsequent run.
+  if (originalLanguage != null && book.original_language == null) {
+    patch.original_language = originalLanguage;
+    // v0.64.1. The column has two writers now — this pass and
+    // batch-scripts/scheduled/originalLanguageBackfill.mjs — so the row has to
+    // record which one spoke. Same reason author_gender_source exists, and the
+    // backfill reads this column to know what it is allowed to overwrite.
+    patch.original_language_source = 'oracle_inferred';
   }
 
   // Series: direct upsert into series table (upsert_series RPC also requires auth.uid)
@@ -631,8 +678,12 @@ async function main() {
         // are ones the Oracle has never seen, which reproduces the v0.55 bug in
         // a subtler form.
         const authorGender = sanitizeAuthorGender(item.authorGender);
+        // Same reasoning as authorGender above: not gated on backfillOnly,
+        // because original_language is null on every row that predates v0.64,
+        // which is all of them.
+        const originalLanguage = sanitizeLanguage(item.originalLanguage);
 
-        await writeEnrichment(book, genreIds, seriesData, description, complexity, depth, authorGender);
+        await writeEnrichment(book, genreIds, seriesData, description, complexity, depth, authorGender, originalLanguage);
 
         // Keep genre catalog fresh for subsequent batches
         for (const name of genreNames) {

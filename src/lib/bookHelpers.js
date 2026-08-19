@@ -1,5 +1,5 @@
 // Pure helpers around the book catalog. No state, no React.
-import { BOOKS_DATA } from './booksData';
+import { BOOKS_DATA } from './booksData.js';
 
 // Dedupe by normalized title
 const _seen = new Set();

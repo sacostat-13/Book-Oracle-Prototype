@@ -277,6 +277,22 @@ AUTHOR GENDER RULES (strict — read carefully, this is not like COMPLEXITY/DEPT
   here — do not strain to produce a definite value. A wrong guess is worse
   than an honest "unknown".
 
+ORIGINAL LANGUAGE RULES (same standard of evidence as AUTHOR GENDER):
+- Return "originalLanguage": the ISO 639-1 two-letter code for the language the
+  work was FIRST WRITTEN in — not the language of the edition described above,
+  and not the language of its title as given. Gabriel García Márquez wrote in
+  Spanish, so "es", whether the row you were shown says "One Hundred Years of
+  Solitude" or "Cien años de soledad".
+- Return "unknown" unless you actually know. Do NOT infer it from the author's
+  name, nationality, or where they live: Nabokov wrote in both Russian and
+  English, Beckett in French and English, Conrad in English. If you are not
+  certain for THIS book, "unknown" is the correct answer and a frequent one.
+- For a work with no single original language (an anthology of translations, a
+  multilingual text), return "unknown".
+- This is used to decide which of several rows for the same novel a reader is
+  shown. A wrong answer promotes a translation over the original, which is
+  visible and wrong; an "unknown" simply leaves the current behaviour in place.
+
 EXISTING GENRE CATALOG (name: description):
 ${catalogList || '(empty — you are seeding the catalog)'}
 
@@ -288,7 +304,8 @@ RESPONSE FORMAT (JSON array, one object per book, in input order):
     "series": { "name": "Series Name", "n": 1, "total": 3 },
     "complexity": 1-5,
     "depth": 1-5,
-    "authorGender": "female" | "male" | "nonbinary" | "mixed" | "unknown"
+    "authorGender": "female" | "male" | "nonbinary" | "mixed" | "unknown",
+    "originalLanguage": "en" | "es" | … | "unknown"
   }
 ]
 Return ONLY valid JSON. No preamble, no explanation, no markdown fences.`;
@@ -334,10 +351,23 @@ function sanitizeAuthorGender(v) {
   return VALID_AUTHOR_GENDERS.has(v) ? v : null;
 }
 
+// v0.64 — mirrored by sanitizeLanguage in batch-scripts/manual/oracleBatch.mjs,
+// which is the live path. Deliberately not an allow-list of codes: ~184
+// two-letter codes are in use, the set changes, and rejecting a real one drops
+// a correct answer silently. Shape only, plus the explicit 'unknown' — which is
+// a resolved answer here, not a missing one, and is stored so the book is not
+// asked again on every run.
+function sanitizeLanguage(v) {
+  if (typeof v !== 'string') return null;
+  const t = v.trim().toLowerCase();
+  if (t === 'unknown') return 'unknown';
+  return /^[a-z]{2}$/.test(t) ? t : null;
+}
+
 // v0.60.1: `description` parameter removed. It used to sit between seriesData
 // and complexity — if you are merging an older branch, check the call site
 // rather than trusting positional arguments to line up.
-async function writeBookEnrichment(bookId, genreIds, seriesData, complexity, depth, authorGender) {
+async function writeBookEnrichment(bookId, genreIds, seriesData, complexity, depth, authorGender, originalLanguage) {
   // 1. Genres
   for (const genreId of genreIds) {
     const {
@@ -371,6 +401,12 @@ async function writeBookEnrichment(bookId, genreIds, seriesData, complexity, dep
       author_gender_source: 'oracle_inferred',
       author_gender_checked_at: new Date().toISOString(),
     } : {}),
+    // v0.64. No "already set?" guard here, unlike oracleBatch.mjs, because this
+    // patch is built without having read the row. The live path is the batch
+    // script and it is write-once there; if this function is ever revived, that
+    // guard has to come with it — a second run returning a different original
+    // language would otherwise overwrite a value someone may have corrected.
+    ...(originalLanguage ? { original_language: originalLanguage } : {}),
   };
 
   // 3. Series — write via upsert_series RPC if we have a name

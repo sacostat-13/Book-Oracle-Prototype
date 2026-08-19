@@ -4,9 +4,16 @@
 # -----------------------------
 # The schedule runs ONLY the free, deterministic passes:
 #
-#   isbnBackfill.mjs   Hardcover      — free API, rate-limited, no per-call cost
-#   isbnFallback.mjs   OpenLibrary    — free, no key
-#                      Google Books   — free tier, ~1,000 queries/day
+#   isbnBackfill.mjs             Hardcover     — free API, rate-limited, no per-call cost
+#   isbnFallback.mjs             OpenLibrary   — free, no key
+#                                Google Books  — free tier, ~1,000 queries/day
+#                                ISBNdb        — paid subscription, 5,000/day, first when keyed
+#   languageBackfill.mjs         OpenLibrary / Google Books / ISBN registration group
+#   originalLanguageBackfill.mjs Wikidata / OpenLibrary / the catalog's own work groups
+#
+# The two language passes (v0.64) are free, terminate, and write nothing they
+# cannot corroborate. They run last because their cheapest sources are the ISBNs
+# and sibling rows the earlier steps just filled.
 #
 # curateManualBooks.mjs is deliberately NOT on the schedule. It spends Anthropic tokens
 # per book (web search, roughly 3-5 cents each), and a weekly job that quietly bills you
@@ -29,7 +36,12 @@
 #
 # SECRETS (Settings → Secrets and variables → Actions):
 #   VITE_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, HARDCOVER_API_TOKEN,
-#   ANTHROPIC_API_KEY, GOOGLE_BOOKS_API_KEY
+#   ANTHROPIC_API_KEY, GOOGLE_BOOKS_API_KEY, ISBNDB_API_KEY
+#
+# ISBNDB_API_KEY must be added to the repo secrets AND to the "Compose .env.local
+# from secrets" step below. Missing it fails SILENTLY — isbnFallback just skips
+# the source and reports a smaller number, which is indistinguishable from the
+# source having nothing to say.
 
 name: Catalog maintenance
 
@@ -63,7 +75,13 @@ jobs:
     runs-on: ubuntu-latest
     # The scripts self-throttle to stay under Hardcover's 60 req/min, so a full catalog
     # pass is slow by design. Default 360 min is the ceiling; this is well clear of it.
-    timeout-minutes: 180
+    #
+    # v0.64 — the job budget is not the control that matters. On 2026-08-17 a
+    # single step consumed the entire window and the runner cancelled it
+    # mid-loop at [187/971]; the covers, metadata and regenre steps never ran at
+    # all, and the summary reported their absence as zeros. Every step now has
+    # its own timeout, so one slow pass costs its own budget and not the week's.
+    timeout-minutes: 300
 
     # v0.61.2 — THIS IS THE FIX FOR "the run was green but the logs were empty".
     #
@@ -101,6 +119,7 @@ jobs:
           HARDCOVER_API_TOKEN: ${{ secrets.HARDCOVER_API_TOKEN }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           GOOGLE_BOOKS_API_KEY: ${{ secrets.GOOGLE_BOOKS_API_KEY }}
+          ISBNDB_API_KEY: ${{ secrets.ISBNDB_API_KEY }}
         run: |
           set -euo pipefail
           for v in VITE_SUPABASE_URL SUPABASE_SERVICE_ROLE_KEY HARDCOVER_API_TOKEN; do
@@ -112,7 +131,13 @@ jobs:
             echo "HARDCOVER_API_TOKEN=$HARDCOVER_API_TOKEN"
             echo "ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY"
             echo "GOOGLE_BOOKS_API_KEY=$GOOGLE_BOOKS_API_KEY"
+            echo "ISBNDB_API_KEY=$ISBNDB_API_KEY"
           } > .env.local
+          # Not in the required-secrets loop above: isbnFallback works without
+          # it. But it works QUIETLY without it, so say so once, here.
+          if [ -z "${ISBNDB_API_KEY:-}" ]; then
+            echo "::warning::ISBNDB_API_KEY is not set — isbnFallback will skip the ISBNdb source."
+          fi
 
       # writeFileSync does not create parent directories. batch-scripts/output/
       # is gitignored except for .gitkeep, so it does exist in a fresh checkout
@@ -134,11 +159,17 @@ jobs:
       #    which makes every later pass cheaper. Must run before the fallback so the
       #    fallback only sees what Hardcover genuinely couldn't answer.
       - name: Backfill ISBNs from Hardcover
+        timeout-minutes: 40
         run: node batch-scripts/scheduled/isbnBackfill.mjs ${{ steps.args.outputs.limit }} | tee backfill.log
 
       # 2. OpenLibrary + Google Books for what's left, plus replacing non-English ISBNs
       #    on books that do have an English edition.
+      # `!cancelled()` rather than `always()`: a step that FAILED must not skip
+      # the passes after it — they are independent and write different columns —
+      # but a run somebody cancelled should stop.
       - name: Fallback to OpenLibrary / Google Books
+        if: ${{ !cancelled() }}
+        timeout-minutes: 55
         run: node batch-scripts/scheduled/isbnFallback.mjs --target both ${{ steps.args.outputs.limit }} | tee fallback.log
 
       # 3. Covers. Runs AFTER both ISBN passes on purpose: half this script's
@@ -157,6 +188,8 @@ jobs:
       #    — so those books can never be shown to anyone, no matter how long a
       #    reader browses. goodreads_import is the worst offender at 58% bare.
       - name: Backfill missing covers
+        if: ${{ !cancelled() }}
+        timeout-minutes: 30
         run: node batch-scripts/scheduled/coverBackfill.mjs --no-claude ${{ steps.args.outputs.limit }} | tee covers.log
 
       # 4. Descriptions and genres, from the same free APIs. Runs last of the
@@ -175,6 +208,8 @@ jobs:
       #    table maps them onto the canonical 15. Books matching no rule are
       #    left null and listed in genre-unmatched.csv rather than guessed at.
       - name: Backfill descriptions and genres
+        if: ${{ !cancelled() }}
+        timeout-minutes: 35
         run: node batch-scripts/scheduled/metadataBackfill.mjs --target both ${{ steps.args.outputs.limit }} | tee metadata.log
 
       # 4b. Re-apply the genre rules to everything already fetched. FREE and
@@ -194,7 +229,38 @@ jobs:
       #     which is a destructive re-write and belongs in a run someone is
       #     watching.
       - name: Re-apply genre rules to stored subjects (free, offline)
+        if: ${{ !cancelled() }}
+        timeout-minutes: 10
         run: node batch-scripts/manual/regenreCatalog.mjs --apply | tee regenre.log
+
+      # 4c. books.language — v0.64. Free: OpenLibrary, Google Books, and the
+      #     ISBN registration group, which is offline and answers for the recent
+      #     non-Anglophone printings the APIs have never indexed.
+      #
+      #     After both ISBN passes, because every one of its sources is
+      #     ISBN-keyed — an ISBN resolved above becomes a language in the same
+      #     run. It writes NOTHING when the ISBN's language and the title
+      #     disagree: books.isbn is chosen for a purchase link and is not
+      #     necessarily this row's edition, and a wrongly-populated language
+      #     column outranks the title heuristic everywhere it is consulted.
+      - name: Backfill book languages (free)
+        if: ${{ !cancelled() }}
+        timeout-minutes: 45
+        run: node batch-scripts/scheduled/languageBackfill.mjs ${{ steps.args.outputs.limit }} | tee language.log
+
+      # 4d. books.original_language — v0.64. Wikidata P364, OpenLibrary
+      #     translated_from, then propagation across the catalog's own work
+      #     groups. Free, no keys, and it terminates.
+      #
+      #     Last, because its cheapest source is other rows: every answer found
+      #     above spreads to every sibling row of the same work at no cost.
+      #     Refuses to answer from a title match that the author does not
+      #     corroborate, and never writes a guess — an unresolved row stays NULL
+      #     and stays eligible for the nightly Oracle pass.
+      - name: Backfill original languages (free)
+        if: ${{ !cancelled() }}
+        timeout-minutes: 60
+        run: node batch-scripts/scheduled/originalLanguageBackfill.mjs ${{ steps.args.outputs.limit }} | tee origlanguage.log
 
       # 5. Claude — MANUAL ONLY. Never runs on the schedule; only when someone types a
       #    number into curate_limit, which makes the spend an explicit, bounded decision.
@@ -212,6 +278,24 @@ jobs:
         run: |
           set -uo pipefail
           csv_rows() { [ -f "$1" ] && [ "$(wc -l < "$1")" -gt 1 ] && echo $(( $(wc -l < "$1") - 1 )) || echo 0; }
+
+          # THE 2026-08-17 LESSON, IN ONE FUNCTION.
+          #
+          # Every script prints a counters line as its last act, so the line
+          # exists only if the script REACHED its last act. Reading that instead
+          # of counting CSV rows is what makes "did not finish" distinguishable
+          # from "nothing to do": a cancelled fallback left no CSV, the table
+          # counted its absent rows as 0, and the summary said
+          # "Still unresolved after OL/Google: 0" about a step that had died at
+          # [187/971].
+          #
+          # A missing counter renders as an em dash, never as a number.
+          counter() {   # counter <logfile> <field>
+            [ -f "$1" ] || { echo "—  (did not run)"; return; }
+            local v
+            v=$(grep -o "$2=[0-9]*" "$1" 2>/dev/null | tail -1 | cut -d= -f2 || true)
+            [ -n "$v" ] && echo "$v" || echo "—  (did not finish)"
+          }
           # metadataBackfill prints a machine-readable last line:
           #   [metadataBackfill] descriptions=N genres=N unmatchedGenre=N nothingFound=N
           # Nothing was reading it, which is why a run that filled hundreds of
@@ -226,8 +310,17 @@ jobs:
           GENRES=$(meta_field genres);      GENRES=${GENRES:-0}
           NOTHING=$(meta_field nothingFound); NOTHING=${NOTHING:-0}
 
-          UNRESOLVED=$(csv_rows batch-scripts/output/isbn-unresolved.csv)
-          STILL=$(csv_rows batch-scripts/output/isbn-still-unresolved.csv)
+          UNRESOLVED=$(counter backfill.log unresolved)
+          STILL=$(counter fallback.log stuck)
+          # complete=0 means isbnFallback flushed partial output on a signal.
+          # The billable-curation issue must not fire on a partial number — that
+          # is how a transient Hardcover outage turned into a recommendation to
+          # spend ~$39 on books that were never missing.
+          FB_COMPLETE=$(grep -o 'complete=[01]' fallback.log 2>/dev/null | tail -1 | cut -d= -f2 || true)
+          FB_COMPLETE=${FB_COMPLETE:-0}
+          LANG_WRITTEN=$(counter language.log written)
+          ORIGLANG_WRITTEN=$(counter origlanguage.log written)
+          ORIGLANG_PROP=$(counter origlanguage.log propagated)
           PROPOSED=$(csv_rows batch-scripts/output/proposed-titles.csv)
           # Books whose subject lists matched no rule in GENRE_RULES. Read this
           # before considering any Claude spend on genres: a theme recurring
@@ -245,10 +338,19 @@ jobs:
           BACKLOG_THRESHOLD=150
           NEEDS=false
           [ "$PROPOSED" -gt 0 ] && NEEDS=true
-          [ "$STILL" -ge "$BACKLOG_THRESHOLD" ] && NEEDS=true
+          # Numeric comparisons only against a number. STILL is an em dash when
+          # the step did not finish, and "did not finish" is never a reason to
+          # recommend spending money.
+          case "$STILL" in
+            ''|*[!0-9]*) : ;;
+            *) [ "$FB_COMPLETE" = "1" ] && [ "$STILL" -ge "$BACKLOG_THRESHOLD" ] && NEEDS=true ;;
+          esac
           echo "needs_review=$NEEDS" >> "$GITHUB_OUTPUT"
           # ~4c/book: 3-5c covers Sonnet tokens plus up to 4 web searches.
-          echo "curate_cost=$(awk -v n="$STILL" 'BEGIN{printf "%.2f", n*0.04}')" >> "$GITHUB_OUTPUT"
+          case "$STILL" in
+            ''|*[!0-9]*) echo "curate_cost=0.00" >> "$GITHUB_OUTPUT" ;;
+            *) echo "curate_cost=$(awk -v n="$STILL" 'BEGIN{printf "%.2f", n*0.04}')" >> "$GITHUB_OUTPUT" ;;
+          esac
 
           {
             echo "## Catalog maintenance"
@@ -262,11 +364,14 @@ jobs:
             echo "| Descriptions filled (free APIs) | $DESCS |"
             echo "| Genres filled (free APIs) | $GENRES |"
             echo "| Looked up, nothing found | $NOTHING |"
+            echo "| Languages filled | $LANG_WRITTEN |"
+            echo "| Original languages filled | $ORIGLANG_WRITTEN |"
+            echo "| Original languages propagated to siblings | $ORIGLANG_PROP |"
             echo ""
             # Report every expected log, including the ones that are missing or
             # empty. `continue`-ing past an absent file is what made a silent
             # failure look identical to a step that had nothing to say.
-            for f in backfill fallback covers metadata regenre curate; do
+            for f in backfill fallback covers metadata regenre language origlanguage curate; do
               if [ ! -f "$f.log" ]; then
                 # curate is dispatch-only, so its absence is normal.
                 [ "$f" = "curate" ] && continue

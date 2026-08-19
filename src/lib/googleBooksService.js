@@ -28,7 +28,10 @@
 // anonymous quota, so keyless calls to the public endpoint return HTTP 429 with
 // a per-day limit of 0. See netlify/functions/googlebooks.js for the key setup.
 
-import { cleanTitle, cleanAuthor } from './bookHelpers';
+// Explicit .js so this module loads under raw node as well as Vite, matching
+// editionPicker.js/isbn.js. batch-scripts/probes/googleBooksByAuthor.probe.mjs
+// imports this file directly to check the language passes without a network.
+import { cleanTitle, cleanAuthor } from './bookHelpers.js';
 
 const ENDPOINT = '/.netlify/functions/googlebooks';
 
@@ -150,6 +153,16 @@ function normalize(item) {
   return {
     t: displayTitle(vi),
     a: (vi.authors || [])[0] || 'Unknown author',
+    // v0.64: the FULL credit list, not just the first name.
+    //
+    // `a` keeps its old meaning (one author, for display) because everything
+    // downstream expects a string. But taking authors[0] and discarding the
+    // rest loses a real distinction on co-authored books: Google Books returns
+    // *This Is How You Lose the Time War* with Max Gladstone first on some
+    // editions and Amal El-Mohtar first on others. An author section that
+    // matches on authors[0] therefore drops the book from half its editions and
+    // files the other half under a name the reader did not click on.
+    authors: Array.isArray(vi.authors) ? vi.authors.filter(Boolean) : [],
     d: vi.description || null,
     pp: vi.pageCount || null,
     // Low-trust cover — see file header.
@@ -163,11 +176,16 @@ function normalize(item) {
 
 // ---------- requests ----------
 
-async function runQuery(q, restrict) {
+// `maxResults` defaults to 5 — what every title lookup in this file wants,
+// since those queries validate hard against one known title and a longer list
+// is just more to discard. The author query (googleBooksByAuthor) is the one
+// caller that genuinely wants breadth, so it passes its own. The proxy clamps
+// to 20 regardless (netlify/functions/googlebooks.js).
+async function runQuery(q, restrict, maxResults = 5) {
   const resp = await fetch(ENDPOINT, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ q, maxResults: 5, langRestrict: restrict || undefined }),
+    body: JSON.stringify({ q, maxResults, langRestrict: restrict || undefined }),
   });
   if (!resp.ok) return [];
   const data = await resp.json();
@@ -285,5 +303,135 @@ export async function googleBooksSearchMulti(query, lang = 'en', limit = 6) {
       if (collected.size) return [...collected.values()];
     }
   }
+  return [];
+}
+
+// ---------- by author ----------
+
+// Everything Google Books holds for one writer, deduped to one entry per work.
+//
+// Used by authorWorks.js to top up the "More by this author" section when our
+// own catalog holds too few of an author's books to make a strip. See that
+// file for why this source and not Hardcover.
+//
+// Three things are worth knowing about `inauthor:`:
+//
+//   1. It is a match, not an identity. It returns anthologies the person
+//      contributed to, books ABOUT them, and occasionally a different writer
+//      with a similar name. This function does not try to fix that — the
+//      caller compares author keys, which is the same comparison the SQL side
+//      uses, so there is one rule about who counts as the same person rather
+//      than two.
+//   2. The result set is edition-shaped: one novel comes back as the
+//      hardback, the paperback, the film tie-in and the Spanish translation,
+//      all as separate volumes. canonicalKey() already collapses exactly this
+//      (it is what makes the nav-search dropdown show a book once), so it is
+//      reused here rather than reinvented.
+//   3. Ordering is relevance, which for an author query puts the
+//      best-known books first. That is the right order for this section: a
+//      reader looking for "what else did she write" wants the famous one, not
+//      the alphabetically first.
+//
+// LANGUAGE PASSES ARE ALTERNATIVES, NEVER MERGED — AND NEVER UNRESTRICTED
+// WHEN A LANGUAGE IS KNOWN.
+//
+// This is the one that actually broke in testing, so it is worth being precise
+// about. `canonicalKey` collapses different EDITIONS of a work, and it does that
+// on the title — so two English printings of *This Is How You Lose the Time
+// War* collapse, while *Tak prohraješ časovou válku* does not collapse with
+// either, because they share no characters at all.
+//
+// The first version of this function ran a single UNRESTRICTED pass for English
+// readers. `inauthor:"Amal El-Mohtar"` with no langRestrict returns every
+// edition Google holds in every language, so the section filled up with Czech,
+// German and Spanish translations of the two novels it was trying to show. The
+// author had only two works; the strip had eight covers.
+//
+// So: the anchor language is ALWAYS applied when we have one, each pass is an
+// alternative rather than an accumulation, and the FIRST pass that yields
+// anything is returned whole. The result set is always exactly one language.
+//
+// The unrestricted pass survives only as a last resort, for the case where an
+// author genuinely has nothing catalogued in the anchor language — where the
+// choice is between a foreign-language edition and an empty section.
+export async function googleBooksByAuthor(author, opts = {}) {
+  const { lang = 'en', limit = 12 } = opts;
+  const name = (author || '').trim();
+  if (name.length < 2) return [];
+
+  const want = Math.min(Math.max(limit, 1), 20);
+
+  // Quoted first: it is the precise form, and unquoted `inauthor:` treats the
+  // words as separate terms, which turns "Ann Patchett" into anything by an
+  // Ann or a Patchett. The bare form only runs if the quoted one found nothing.
+  const queries = [`inauthor:"${name}"`, `inauthor:${name}`];
+  const passes = lang ? [lang, null] : [null];
+
+  // Collapsing key for "is this the same person", matching authorKey() in
+  // authorWorks.js and client_author_key() in SQL: strip everything that is not
+  // alphanumeric, do not unaccent.
+  const akey = (a) => (a || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+  const wanted = akey(name);
+
+  for (const restrict of passes) {
+    const collected = new Map(); // canonical work key → normalized book
+    for (const q of queries) {
+      const items = await runQuery(q, restrict, want).catch(() => []);
+      for (const it of items) {
+        const norm = normalize(it);
+        if (!norm) continue;
+
+        // Credit the author whose bibliography this is, whenever they are on
+        // the book at all.
+        //
+        // canonicalKey() is title + FIRST author, and Google orders the credits
+        // differently per edition: *This Is How You Lose the Time War* comes
+        // back with Amal El-Mohtar first on one printing and Max Gladstone
+        // first on the next. Two editions of one co-written novel therefore
+        // produced two different canonical keys and survived as two entries —
+        // which is precisely what the section was reported showing.
+        //
+        // Rewriting `a` before the key is computed fixes it at the source, so
+        // every caller benefits rather than each one re-deriving it.
+        if (wanted && norm.authors?.some((c) => akey(c) === wanted)) norm.a = name;
+
+        // FILTER THE RESPONSE, DO NOT TRUST THE REQUEST.
+        //
+        // langRestrict is a hint Google honours inconsistently for `inauthor:`
+        // queries — sometimes it returns nothing at all, sometimes it returns
+        // other languages anyway. Both failures were visible in testing as the
+        // section flipping between English-only and German/Czech/Spanish on
+        // consecutive reloads of the same page, which is the signature of a
+        // filter that is applied upstream and nowhere else.
+        //
+        // Every volume carries volumeInfo.language, so the language of a result
+        // is a fact we hold rather than a promise the API made. Checking it here
+        // makes the outcome identical whether langRestrict worked, was ignored,
+        // or the unrestricted fallback pass ran.
+        //
+        // A volume with no declared language is kept: absent metadata should
+        // not silently empty the section.
+        if (lang && norm.lang && norm.lang !== lang) continue;
+
+        const key = canonicalKey(norm);
+        const existing = collected.get(key);
+        // First edition seen wins, unless a later one actually has a cover —
+        // this renders as a strip of covers, so a coverless winner is a hole
+        // in the row.
+        if (!existing) collected.set(key, norm);
+        else if (!existing.coverUrl && norm.coverUrl) collected.set(key, norm);
+      }
+      if (collected.size >= want) break;
+    }
+    // Note this returns from inside the pass loop, so a later pass only ever
+    // runs when the one before it found nothing at all. Moving this outside the
+    // loop, or seeding `collected` above it, reintroduces the merge.
+    //
+    // The unrestricted fallback is now safe rather than a liability: results are
+    // language-filtered above regardless of which pass produced them, so the
+    // fallback widens the SEARCH without widening the ANSWER.
+    if (collected.size > 0) return [...collected.values()].slice(0, want);
+  }
+
   return [];
 }

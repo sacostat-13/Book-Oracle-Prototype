@@ -68,6 +68,9 @@ const defaultState = {
   // v0.22: books currently being read. Each entry is a full book client object
   // with an extra `startedAt` (ISO date string) field.
   currentlyReading: [],
+  // v0.65 — { [bookId]: reader_editions row }. Which edition THIS reader read,
+  // keyed by book so it is reachable from any shelf. See src/lib/editions.js.
+  editionsByBookId: {},
   // v0.28: book clubs. Each entry is { id, name, description, joinToken,
   // createdBy, createdAt, callerRole: 'member'|'admin', memberCount }.
   // Full detail (members, sessions) is fetched on demand by the club views.
@@ -252,6 +255,18 @@ function bookRowToClient(b, extra = {}) {
     verifiedBy: b.verified_by || null,
     source: b.source,
     bookId: b.id,
+    // v0.64 — carried for collapseWorks (src/lib/workGroups.js), which uses
+    // them to tell a TRANSLATION of a book already on the shelf from a
+    // different book. Nothing renders these; they are identity, not display.
+    //
+    // hardcover_id is the one that matters most: Hardcover's `books` node is
+    // work-level, so two rows sharing it are the same novel even when their
+    // titles share no characters — which is the case no title comparison can
+    // ever catch.
+    hardcoverId: b.hardcover_id ?? undefined,
+    goodreadsId: b.goodreads_id ?? undefined,
+    language: b.language || undefined,
+    originalLanguage: b.original_language || undefined,
     ...extra,
   };
 }
@@ -337,7 +352,7 @@ function rollupGenres(rows) {
 
 // ---------- Supabase loaders ----------
 async function loadFromSupabase(userId) {
-  const [profileRes, wishlistRes, readBooksRes, plansRes, currentlyReadingRes, memoriesRes, accomplishmentsRes] = await Promise.all([
+  const [profileRes, wishlistRes, readBooksRes, plansRes, currentlyReadingRes, memoriesRes, accomplishmentsRes, editionsRes] = await Promise.all([
     supabase.from('profiles').select('*').eq('id', userId).maybeSingle(),
     // v0.48: paged. PostgREST caps any single response at `max-rows` (1000) and
     // truncates SILENTLY — a 1170-item wishlist loaded as 1000 on every visit.
@@ -379,7 +394,30 @@ async function loadFromSupabase(userId) {
       .select('id, key, kind, book_id, meta, earned_at')
       .eq('user_id', userId)
       .order('earned_at', { ascending: false }),
+    // v0.65: the reader's own editions (migration 20260818120000). Owner-only
+    // RLS, so this returns this reader's rows and nothing else without the
+    // query having to say so.
+    supabase
+      .from('reader_editions')
+      .select('book_id, language, isbn, edition_title, translator, page_count, format, source')
+      .eq('user_id', userId),
   ]);
+
+  // v0.65: reader editions by book_id.
+  //
+  // Degrades to {} on failure exactly like memories below, and that matters
+  // more here than it looks: effectivePages() falls back to the catalog page
+  // count, so a failed load means progress bars read slightly wrong for one
+  // session rather than the shelf failing to open.
+  //
+  // It also degrades to {} when the migration has not been applied yet, since
+  // PostgREST answers an unknown table with an error rather than throwing.
+  const editionsByBookId = {};
+  if (editionsRes?.error) {
+    console.warn('reader_editions load failed — continuing without editions', editionsRes.error);
+  } else {
+    for (const e of (editionsRes?.data || [])) editionsByBookId[e.book_id] = e;
+  }
 
   // v0.44: group memories by book_id (newest first, from the query order).
   // A failed query degrades to "no memories" — never blocks the main load.
@@ -693,6 +731,7 @@ async function loadFromSupabase(userId) {
     genresByBookId,
     genres,
     currentlyReading: dedupeBooks(currentlyReading),
+    editionsByBookId,
     memories,
     accomplishments,
     clubs: (clubsRes.data || []).map((m) => ({
@@ -963,6 +1002,14 @@ export function DataProvider({ children }) {
               ? 'openlibrary'
               : resolvedSource
           : null,
+        // v0.64. `lang` is what googleBooksService.normalize has always
+        // returned from volumeInfo.language and nothing ever read; `language`
+        // is what a book already carrying the field passes back through
+        // cacheBookFields. upsert_book merges these with
+        // coalesce(existing, incoming), so the first source to know wins and a
+        // later lookup cannot relabel a row's language.
+        _language: book.language || book.lang || null,
+        _original_language: book.originalLanguage || null,
       };
       let { data, error } = await supabase.rpc('upsert_book', args);
       // PostgREST schema-cache miss (PGRST202): the first RPC after a cold
@@ -1049,6 +1096,12 @@ export function DataProvider({ children }) {
         _source: resolvedSource,
         _status: 'discovered',
         _metadata: {},
+        // v0.64. Worth having on THIS path in particular: a discovered row is
+        // created by viewing a search result, and a Spanish search result is
+        // how a translated duplicate enters the catalog in the first place.
+        // Recording its language is what later lets the two rows be shown as
+        // one book.
+        _language: book.language || book.lang || null,
       });
     },
     [user, state.wishlist, state.library, state.readNext]
@@ -1619,6 +1672,65 @@ export function DataProvider({ children }) {
 
   // v0.28: update how many pages the user has read for a currently-reading book.
   // Optimistically updates local state; persists to currently_reading.pages_read.
+  // v0.65 — record (or clear) which edition this reader read.
+  //
+  // Upsert on (user_id, book_id), which the table declares unique, so a reader
+  // editing their edition twice does not accumulate rows. Passing null for
+  // every field clears the edition rather than storing an empty one: a row of
+  // all-nulls is indistinguishable from "no edition recorded" to every reader
+  // of this data, and keeping it would make editionIsNotable() lie.
+  const saveReaderEdition = useCallback(
+    async (book, patch) => {
+      if (!book?.bookId) return;
+
+      const next = {
+        language: patch?.language ?? null,
+        isbn: patch?.isbn ?? null,
+        edition_title: patch?.edition_title ?? null,
+        translator: patch?.translator ?? null,
+        page_count: patch?.page_count ?? null,
+        format: patch?.format ?? null,
+      };
+      const empty = Object.values(next).every((v) => v == null || v === '');
+
+      // Optimistic, so the modal closes on a decision rather than on a round
+      // trip — the same pattern updateReadingProgress uses below.
+      setState((s) => {
+        const map = { ...s.editionsByBookId };
+        if (empty) delete map[book.bookId];
+        else map[book.bookId] = { book_id: book.bookId, ...next, source: patch?.source || 'manual' };
+        return { ...s, editionsByBookId: map };
+      });
+
+      if (!user) return;
+
+      if (empty) {
+        const { error } = await supabase
+          .from('reader_editions')
+          .delete()
+          .eq('user_id', user.id)
+          .eq('book_id', book.bookId);
+        if (error) console.error('saveReaderEdition (clear) failed', error);
+        return;
+      }
+
+      const { error } = await supabase
+        .from('reader_editions')
+        .upsert(
+          {
+            user_id: user.id,
+            book_id: book.bookId,
+            ...next,
+            source: patch?.source || 'manual',
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: 'user_id,book_id' }
+        );
+      if (error) console.error('saveReaderEdition failed', error);
+    },
+    [user]
+  );
+
   const updateReadingProgress = useCallback(
     // userPageCount: pass a positive integer to set a per-user page-count
     // override for this book (e.g. a different edition), or null to clear
@@ -1641,7 +1753,22 @@ export function DataProvider({ children }) {
       if (!user || !book.bookId) return;
 
       const update = { pages_read: pages };
+      // v0.65: user_page_count is still written for ONE more release.
+      //
+      // reader_editions is now the home for this number, but the previously
+      // deployed bundle reads the old column, and a reader with two tabs open
+      // (or a stale service worker — it happens) would otherwise see their
+      // page count vanish. effectivePages() reads the new table first and this
+      // second. Drop both this line and the column together.
       if (hasOverrideArg) update.user_page_count = userPageCount;
+
+      // The durable write. Merged into any edition already recorded rather than
+      // replacing it, so setting a page count from the progress modal does not
+      // silently erase the ISBN or translator the reader entered earlier.
+      if (hasOverrideArg) {
+        const existing = state.editionsByBookId?.[book.bookId] || null;
+        await saveReaderEdition(book, { ...(existing || {}), page_count: userPageCount });
+      }
 
       const { error } = await supabase
         .from('currently_reading')
@@ -1651,7 +1778,7 @@ export function DataProvider({ children }) {
 
       if (error) console.error('updateReadingProgress failed', error);
     },
-    [user]
+    [user, state.editionsByBookId, saveReaderEdition]
   );
 
   const updateReadBook = useCallback(
@@ -2917,6 +3044,7 @@ export function DataProvider({ children }) {
     removeFromCurrentlyReading,
     // v0.28: reading progress
     updateReadingProgress,
+    saveReaderEdition,
     // v0.44: reading memory
     memoriesForBook,
     addReadingMemory,
