@@ -573,15 +573,46 @@ async function loadFromSupabase(userId) {
     moods: knownMoods((l.list_moods || []).map((m) => m.mood)),
   }));
 
-  // An empty shelf and a failed query are different facts, and `(data || [])`
-  // renders them identically. This cannot invent the books back, but it can
-  // stop the failure being invisible in the console — which is how four books
-  // became a blank page with nothing to grep for.
-  if (currentlyReadingRes?.error) {
-    console.error(
-      'currently_reading load FAILED — the shelf will render empty, which is not the same as ' +
-      'having no books. Check for a pending migration before assuming the data is gone.',
-      currentlyReadingRes.error
+  // A FAILED SHELF QUERY MUST NOT BE RETURNED AS AN EMPTY SHELF.
+  //
+  // This is the defect the progress_minutes mistake exposed, and it is much
+  // worse than the mistake was. loadFromSupabase did not throw when a shelf
+  // query errored — it returned a state object with `currentlyReading: []`,
+  // because every result is consumed as `(res.data || [])`. The caller has no
+  // way to tell that apart from a reader who genuinely has nothing on the go,
+  // so it did what it does with any successful load:
+  //
+  //   supabaseLoadedRef.current = true;   // "this is real data now"
+  //   setState(remote);                   // renders the empty shelf
+  //   saveSessionCache(user.id, remote);  // caches the empty shelf, 30 min
+  //   saveLocal(state);                   // and writes it to localStorage
+  //
+  // So one failed request became a persistent empty shelf that survived
+  // reloading, survived fixing the actual cause, and could only be cleared by
+  // closing the tab — sessionStorage does not die on F5. A transient failure
+  // was laundered into cached truth.
+  //
+  // Throwing puts it back on the path that already handles this correctly: the
+  // caller catches, falls back to localStorage, and crucially does NOT set
+  // supabaseLoadedRef, so nothing is persisted and the next load tries again.
+  //
+  // Only the shelves. memories, accomplishments and reader_editions degrade to
+  // empty on purpose and say so where they do it — losing those costs a
+  // progress bar's precision, not a reader's library.
+  const shelfFailures = [
+    ['currently_reading', currentlyReadingRes],
+    ['wishlist_items', wishlistRes],
+    ['read_books', readBooksRes],
+    ['plans', plansRes],
+  ].filter(([, res]) => res?.error);
+
+  if (shelfFailures.length) {
+    const detail = shelfFailures.map(([name, res]) => `${name}: ${res.error.message}`).join('; ');
+    throw new Error(
+      `Shelf load failed, refusing to cache an empty library. A missing column here is ` +
+      `usually a migration that has not been applied — or applied to a different project ` +
+      `than .env.local points at, or applied without PostgREST reloading its schema ` +
+      `cache. ${detail}`
     );
   }
 
@@ -932,6 +963,8 @@ export function DataProvider({ children }) {
               loadedUserIdRef.current = user.id;
             }
           } catch (e) {
+            // Deliberately does NOT set supabaseLoadedRef, so the persist effect
+            // stays quiet and neither cache learns anything from a failed load.
             console.error('Failed to load from Supabase, falling back to local', e);
             if (!cancelled) setState(loadLocal());
           }
