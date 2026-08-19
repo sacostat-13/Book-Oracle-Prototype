@@ -27,7 +27,7 @@
 
 import {
   normPerson, normTitleLoose, isPlaceholderAuthor, authorLikelySame,
-  to6391, workKeys, planPropagation, decideWrite,
+  to6391, workKeys, planPropagation, decideWrite, searchTitles,
 } from '../../src/lib/originalLanguage.js';
 
 let pass = 0;
@@ -43,6 +43,12 @@ function check(name, actual, expected) {
 // ── Normalisation ────────────────────────────────────────────────────────────
 check('normPerson strips diacritics', normPerson('Gabriel García Márquez'), 'gabriel garcia marquez');
 check('normPerson strips honorifics', normPerson('Dr. Seuss'), 'seuss');
+// "Richard Wells (ed.)" is how the catalog stores an anthology's editor. The
+// parenthetical is a role, and leaving it in normalises to "richard wells ed",
+// which matches nothing on either side.
+check('normPerson strips an editor marker', normPerson('Richard Wells (ed.)'), 'richard wells');
+check('normPerson strips (editor)', normPerson('Ann Vandermeer (editor)'), 'ann vandermeer');
+check('normPerson survives a double space', normPerson('Jim  Butcher'), 'jim butcher');
 check('normTitleLoose expands &', normTitleLoose('Rock Bottom & Nowhere'), 'rock bottom and nowhere');
 check('normTitleLoose matches the "and" spelling', normTitleLoose('Rock Bottom and Nowhere'), 'rock bottom and nowhere');
 
@@ -86,6 +92,38 @@ for (const [a, b] of different) check(`different people: ${a} vs ${b}`, authorLi
 // J.R.R. vs John Ronald Reuel is an initials-vs-full-name agreement; Stephen
 // vs Owen is a full-name contradiction. If a change ever makes the second pass,
 // every King in the catalog inherits the wrong answer.
+
+// ── Search titles ────────────────────────────────────────────────────────────
+//
+// Every case below is a real row that came back `no-search-hits` in the v0.64
+// diagnose run. Wikidata holds all of these books; it does not hold the
+// Goodreads annotation the catalog staples to them.
+check('series annotation comes off',
+  searchTitles('Turn Coat (The Dresden Files, #11)'),
+  ['Turn Coat (The Dresden Files, #11)', 'Turn Coat']);
+check('multi-series annotation comes off',
+  searchTitles('Passage to Dawn (Legacy of the Drow, #4; The Legend of Drizzt, #10)'),
+  ['Passage to Dawn (Legacy of the Drow, #4; The Legend of Drizzt, #10)', 'Passage to Dawn']);
+check('subtitle is a separate, later rung',
+  searchTitles('Cribsheet: A Data-Driven Guide to Better, More Relaxed Parenting'),
+  ['Cribsheet: A Data-Driven Guide to Better, More Relaxed Parenting', 'Cribsheet']);
+check('a plain title yields exactly one form',
+  searchTitles('The Green Mile'), ['The Green Mile']);
+
+// A bracketed romanisation goes FIRST: for a Japanese or Korean title, the
+// romanised string is the one Wikidata is most likely to hold as a label or
+// alias, and the native form often is not there at all.
+{
+  const forms = searchTitles("ジョジョの奇妙な冒険ストーンオーシャン 14 [JoJo no Kimyō na Bōken Sutōn'ōshan]");
+  check('romanisation is tried first', forms[0], "JoJo no Kimyō na Bōken Sutōn'ōshan");
+}
+// …but a series note in brackets is not a romanisation.
+{
+  const forms = searchTitles('Some Book [Miss Marple, #9]');
+  check('a bracketed series note is not promoted', forms[0], 'Some Book [Miss Marple, #9]');
+}
+check('the ladder is capped', searchTitles('A: B: C (X, #1) [Y, #2]').length <= 4, true);
+check('nothing in, nothing out', searchTitles(''), []);
 
 // ── Language codes ───────────────────────────────────────────────────────────
 check('639-2 bibliographic', to6391('/languages/ger'), 'de');

@@ -148,7 +148,7 @@ is the easiest mistake to make here:
 | Script | Column | Question | Sources |
 | --- | --- | --- | --- |
 | `languageBackfill.mjs` | `books.language` | what language is **this row** in? | OpenLibrary, Google Books, the ISBN registration group |
-| `originalLanguageBackfill.mjs` | `books.original_language` | what language was **the work** written in? | Wikidata P364 (P407 as a written-work-only fallback), OpenLibrary `translated_from`, sibling rows of the same work |
+| `originalLanguageBackfill.mjs` | `books.original_language` | what language was **the work** written in? | Wikidata P407 (P364 wins where present), OpenLibrary `translated_from`, sibling rows of the same work |
 
 *One Hundred Years of Solitude* is `language = 'en'` and
 `original_language = 'es'`. Both columns are correct and they disagree, which is
@@ -214,6 +214,26 @@ the summary says so in words rather than leaving you to read it as coverage.
 ```bash
 node batch-scripts/scheduled/originalLanguageBackfill.mjs --diagnose --limit 50
 ```
+
+Reading the funnel:
+
+| Bucket | What it means | What to do |
+| --- | --- | --- |
+| `search-failed` | requests are erroring | a fault. Read the API error lines above it; do not read any other number on the page as coverage |
+| `no-search-hits` | searched every title form, Wikidata has no such item | mostly correct for indie, Warhammer and single-issue comics. If it is high on *ordinary* books, the catalog's titles are carrying Goodreads series annotation and the fix is in the importer |
+| `no-language-property` | items found, none state P407 or P364 | a genuine Wikidata gap. Leave it to the Oracle |
+| `author-not-corroborated` | items state a language, none are by this author | usually the guard working — a different book with the same title. Only a bug if you recognise the book |
+| `conflict` | two corroborated candidates disagreed | look at it. The first run's two conflicts were edition items being read as works, which was a real defect |
+
+**Two properties, and P364 is not the one.** P364 ("original language of film,
+TV show, novel…") reads like the right property and is a film property in
+practice — zero answers across the first fifty rows, against fourteen for P407
+("language of work or name"). P364 still wins where both are present.
+
+**An edition is not a work.** P407 on a `Q3331189` item is the language of that
+*printing*, which is `books.language`. Reading it as the original language is
+how *Cress* produced "en vs sv". Edition items are followed through P629 to the
+work; they are never believed directly.
 
 `books.original_language_source` records which source spoke
 (`wikidata` | `wikidata_p407` | `openlibrary` | `catalog_sibling` |

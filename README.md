@@ -495,12 +495,14 @@ v0.62.
 free. Three sources, in descending order of authority:
 
 1. **Wikidata**, via the MediaWiki action API. No key, no account, CC0 data —
-   so nothing written from here carries a deletion obligation. P364 ("original
-   language of film, TV show, novel, musical work or web series") is the
-   exactly-right property; P407 ("language of work or name") is accepted as a
-   fallback **only** from an item whose P31 declares it a written work, because
-   on a film or an edition item it means something else. P364 always wins where
-   both are present, and the two are recorded as distinct sources.
+   so nothing written from here carries a deletion obligation. The property that
+   answers is **P407** ("language of work or name"), not P364 ("original
+   language of film, TV show, novel…"): P364 reads like the right one and is a
+   film property in practice, answering **zero** of the first fifty rows where
+   P407 answered fourteen. P364 still wins where both are present. P407 is taken
+   only from an item whose P31 declares it a written work — an **edition** item
+   is followed through P629 to its work rather than believed, because an
+   edition's language is the printing's, which is `books.language`.
 2. **OpenLibrary `translated_from`** on the edition record. Present only where a
    librarian filled it in, so coverage is low; where it is there it is the most
    direct possible answer.
@@ -587,6 +589,50 @@ five outcomes wearing one number. Every run now prints a **funnel** —
 `no-iso-639-1-code`, `search-failed` — and says so in words when more than a
 quarter of rows fail at the request level, so a broken connection cannot be
 read as coverage. `--diagnose` adds the per-row version and never writes.
+
+### What the funnel then found
+
+14 of 48. The distribution is what made the next three fixes obvious, and one
+of them was a live hazard:
+
+- **P364 answered 0 times; P407 answered 14.** P364 is a film-and-television
+  property in practice. The comments in this file had it as the primary and
+  P407 as a grudging fallback; that is now inverted.
+- **`Q3331189` — "version, edition or translation" — was in the written-work
+  whitelist, and should never have been.** On an edition item, P407 is the
+  language of *that printing*, which is `books.language`, which is precisely the
+  thing this column exists to be different from. The funnel caught it as two
+  conflicts: *Cress* came back `en vs sv` and *Carpe Jugulum* `en vs cs`,
+  because a Swedish and a Czech edition item each stated its own language and
+  both were correctly corroborated against the right author. Nothing was
+  written — a conflict writes nothing — but the same pair on a row where *only*
+  the translation item surfaced would have written `sv` for an English novel,
+  silently and permanently. Editions are now **followed** through P629 to the
+  work rather than believed, which turns both conflicts into agreements and
+  turns a translation item from a hazard into a route to the right answer.
+- **21 of the 48 were `no-search-hits`, and most were not obscure books —
+  they were annotated ones.** *Passage to Dawn (Legacy of the Drow, #4; The
+  Legend of Drizzt, #10)*, *Turn Coat (The Dresden Files, #11)*, *Cribsheet: A
+  Data-Driven Guide to…*, a JoJo volume stored as native title plus a bracketed
+  romanisation. Wikidata holds *Passage to Dawn*, *Turn Coat* and *Cribsheet*;
+  it does not hold the Goodreads annotation stapled to them. The search now
+  walks a ladder of title forms, most specific first, using `titleForms()` from
+  `titleMatch.js` — the one place in the repo that owns that rule — plus the
+  bracketed romanisation, which is promoted to the front because for a Japanese
+  or Korean title it is the string Wikidata is most likely to hold. A reduction
+  is only reached when the precise form found nothing, and the summary counts
+  how often one was needed: a high count is an importer problem, not a lookup
+  problem.
+
+Two smaller ones from the same output: `P170` ("creator") joins P50 and P2093 as
+author evidence, because comics and anthologies carry it where a novel carries
+P50 (*Batman: The Long Halloween*, *X-Men: Days of Future Past*), and `(ed.)` is
+stripped from an author string, because *Damnable Tales* is stored as "Richard
+Wells (ed.)" and normalised to "richard wells ed", which matches nothing.
+
+The rest of the funnel is the guard working. *Fanning the Flames*, *Exhume* and
+*Root Rot* found items with a stated language that are **not by that author** —
+a different book with the same title — and were correctly refused.
 
 ### ISBNdb cannot answer this, and that is not a coverage gap
 

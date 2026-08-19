@@ -12,6 +12,11 @@
 // connection on import. authorGenderBackfill.mjs's matching logic is still
 // stuck inside it for exactly that reason.
 
+// titleMatch.js owns the rule for taking Goodreads series annotation and
+// publisher subtitles off a title. Imported rather than re-derived: two copies
+// of that regex set is the bug _shared/genreRules.mjs exists to prevent.
+import { titleVariants } from './titleMatch.js';
+
 // ── Normalisation ────────────────────────────────────────────────────────────
 
 // Diacritics come off both sides of every comparison. Wikidata spells the
@@ -20,9 +25,18 @@
 // wrong, and the difference must not decide whether a book gets an answer.
 export const deburr = (s) => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 
+// "(ed.)" and "(editor)" come off before comparison. The catalog records an
+// anthology's editor in the author column — *Damnable Tales* is stored as
+// "Richard Wells (ed.)" — and the parenthetical is a role, not part of the name.
+// Leaving it in normalises to "richard wells ed", which matches nothing.
+//
+// Note what this does NOT do: it does not make an editor into an author. It only
+// stops the annotation from breaking a comparison that would otherwise be made
+// against Wikidata's P98 (editor) or P170 (creator).
 export const normPerson = (s) =>
   deburr(s)
     .toLowerCase()
+    .replace(/\((?:ed|eds|editor|editors|trans|translator)\.?\)/g, ' ')
     .replace(/\b(jr|sr|ph ?d|md|dr|mr|mrs|ms)\b\.?/g, ' ')
     .replace(/[^a-z0-9]+/g, ' ')
     .trim();
@@ -48,6 +62,80 @@ export const PLACEHOLDER_AUTHORS = new Set([
 export function isPlaceholderAuthor(a) {
   const n = normPerson(a);
   return !n || PLACEHOLDER_AUTHORS.has(n);
+}
+
+// ── Search titles ────────────────────────────────────────────────────────────
+
+// WHY A LADDER AND NOT ONE STRING
+//
+// The v0.64 diagnose run put 21 of 48 rows in `no-search-hits`, and most of them
+// were not obscure — they were annotated:
+//
+//   "Passage to Dawn (Legacy of the Drow, #4; The Legend of Drizzt, #10)"
+//   "Turn Coat (The Dresden Files, #11)"
+//   "Cribsheet: A Data-Driven Guide to Better, More Relaxed Parenting…"
+//   "Ghosted, Vol. 1: Haunted Heist"
+//   "ジョジョの奇妙な冒険… [JoJo no Kimyō na Bōken Sutōn'ōshan]"
+//
+// Wikidata holds "Passage to Dawn", "Turn Coat" and "Cribsheet". It does not
+// hold the Goodreads series annotation stapled to them.
+//
+// `titleForms()` in titleMatch.js already knows how to take that annotation off
+// — it was written for the ISBN lookup chain and it is the one place in this
+// repo that owns the rule. Two copies of that regex set is the bug
+// _shared/genreRules.mjs exists to prevent, so this imports it rather than
+// re-deriving it.
+//
+// WHY REDUCING IS SAFE HERE AND NOT THERE
+//
+// titleMatch.js is emphatic that `want` must never be reduced past its subtitle,
+// because "Hellblazer: Tainted Love" reduced to "Hellblazer" matches the series
+// container and every volume collapses onto one ISBN. That warning is about
+// ACCEPTING a match. This ladder only decides what to SEARCH FOR; the accept
+// decision is still author corroboration, unchanged. A looser search widens the
+// candidate pool, and a candidate that is not by this author still answers
+// nothing.
+//
+// The ladder is ordered most-specific-first and the caller stops at the first
+// rung that yields a corroborated answer, so a reduction is only ever reached
+// when the precise form found nothing.
+
+// Content of a trailing bracket, when it looks like a romanisation rather than a
+// series note. Goodreads stores Japanese and Korean titles as
+// "<native> [<romaji>]", and the romanisation is the string Wikidata is most
+// likely to have as a label or alias — the native form often is not.
+function bracketedRomanisation(title) {
+  const m = String(title || '').match(/\[([^\]]{4,})\]\s*$/);
+  if (!m) return null;
+  const inner = m[1].trim();
+  // A series note ("[Miss Marple, #9]") carries a # or a digit-comma pattern;
+  // a romanisation does not.
+  if (/#\d|,\s*\d+\s*$/.test(inner)) return null;
+  // Only worth trying when it is Latin script and the full title is not — that
+  // is the case where the search would otherwise have nothing to match.
+  if (!/[A-Za-z]/.test(inner)) return null;
+  return inner;
+}
+
+/**
+ * The forms of a title worth searching for, most specific first.
+ *
+ * Deduped and capped at four: past that the reductions are so short that they
+ * stop identifying a book at all ("Dig", "Hex", "Spear" are already at that
+ * edge), and every extra rung is three more HTTP requests per row.
+ */
+export function searchTitles(title) {
+  const out = [];
+  const push = (t) => {
+    const v = String(t || '').trim();
+    if (v.length >= 2 && !out.includes(v)) out.push(v);
+  };
+
+  for (const v of titleVariants(title)) push(v);
+  const rom = bracketedRomanisation(title);
+  if (rom) out.unshift(rom);   // the romanisation is the MOST likely to hit
+
+  return out.slice(0, 4);
 }
 
 // ── Author verification ──────────────────────────────────────────────────────

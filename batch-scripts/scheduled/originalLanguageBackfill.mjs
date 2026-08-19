@@ -34,12 +34,17 @@
 //
 //   1. Wikidata, via the MediaWiki action API on www.wikidata.org. No key, no
 //      account, CC0 data, so nothing that lands in the catalog from here
-//      carries a deletion obligation. P364 ("original language of film, TV
-//      show, novel, musical work or web series") is the exactly-right property;
-//      P407 ("language of work or name") is accepted as a fallback ONLY from an
-//      item that declares itself a written work, because on a film or an
-//      edition it means something else. See the Wikidata section for the three
-//      searches this needs and why one was not enough.
+//      carries a deletion obligation.
+//
+//      The property that actually answers is P407 ("language of work or name"),
+//      not P364 ("original language of film, TV show, novel…"). P364 reads like
+//      the right one and is a film property in practice — it answered zero of
+//      the first fifty catalog rows where P407 answered fourteen. P364 still
+//      wins where both are present. P407 is taken only from an item that
+//      declares itself a WRITTEN WORK; an EDITION item is followed through P629
+//      to its work rather than believed, because an edition's language is the
+//      printing's, which is `books.language`. See the Wikidata section for that
+//      and for the three searches one title needs.
 //
 //      Reached by title search, NOT by ISBN. Wikidata does hold ISBNs (P212 on
 //      edition items), but coverage is a rounding error — the items that exist
@@ -165,7 +170,7 @@ import { cleanIsbn, isValidIsbn } from '../../src/lib/isbn.js';
 // offline. This file is the I/O.
 import {
   normPerson, normTitleLoose, isPlaceholderAuthor, authorLikelySame,
-  to6391, planPropagation, decideWrite,
+  to6391, planPropagation, decideWrite, searchTitles,
 } from '../../src/lib/originalLanguage.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -359,18 +364,36 @@ function abortIfSourceIsDown() {
 //      loosening the SEARCH does not loosen the ANSWER: every candidate still
 //      has to be corroborated by the author before it may write anything.
 //
-// TWO PROPERTIES, NOT ONE
+// TWO PROPERTIES, AND P407 IS THE ONE THAT ANSWERS
 //
 // P364 is "original language of film, TV show, novel, musical work or web
-// series" and is the exactly-right property. It is also unevenly applied to
-// books — plenty of novel items carry only P407, "language of work or name".
+// series" and reads like the exactly-right property. In practice it is a
+// film-and-television property: across the first 50 catalog rows it answered
+// **zero** times and P407 ("language of work or name") answered fourteen. The
+// original framing in this file had it the other way round and was wrong.
+//
+// P364 still wins where both are present — it is the more specific claim — but
+// the working assumption is now that a novel carries P407 and nothing else.
+//
+// THE DISTINCTION THAT MATTERS, AND THE MISTAKE IT ALREADY CAUSED
 //
 // On a WORK item, P407 is the language of the work, which is the original
-// language; on an EDITION or a film item it is the language of that particular
-// thing, which is not. So P407 is accepted only when the item declares itself a
-// written work through P31, and it is recorded as a distinct source
-// (`wikidata_p407`) so the two are separable if the distinction ever bites.
-// P364 always wins where both are present.
+// language. On an EDITION item (P31 = Q3331189, "version, edition or
+// translation") it is the language of THAT PRINTING — which is
+// `books.language`, the one thing this column exists to be different from.
+//
+// Q3331189 was in the written-work whitelist in the first version of this file,
+// and the diagnose run caught it: *Cress* came back "en vs sv" and *Carpe
+// Jugulum* "en vs cs", because a Swedish and a Czech edition item each stated
+// its own language and both were corroborated by the right author. They were
+// reported as conflicts rather than written, so nothing was corrupted — but the
+// same pair on a row where only the translation item was found would have
+// written `sv` for an English novel, silently and permanently.
+//
+// Editions are no longer treated as works. They are FOLLOWED: P629 ("edition or
+// translation of") points at the work, and the work's own language claim is the
+// answer. That turns those two conflicts into agreements and, more usefully,
+// turns a translation item from a hazard into a route to the right answer.
 
 const WD_API = 'https://www.wikidata.org/w/api.php';
 
@@ -394,8 +417,6 @@ const WRITTEN_WORK_CLASSES = new Set([
   'Q725377',    // graphic novel
   'Q8274',      // manga
   'Q234460',    // text
-  'Q47461344',  // written work (dup, harmless)
-  'Q3331189',   // version, edition or translation
   'Q690851',    // essay collection
   'Q35760',     // essay
   'Q17518461',  // autobiography-ish
@@ -551,10 +572,15 @@ const entityLabel = (ent) => {
   return (typeof any === 'string' ? any : any?.value) || '(no label)';
 };
 
-// The language claims an item offers, best property first. P364 is the right
-// property and always wins. P407 is accepted only from an item that declares
-// itself a written work, because on a film or an edition it means something
-// else entirely.
+const EDITION_CLASS = 'Q3331189';   // version, edition or translation
+
+const isEdition = (ent) => claimQids(ent, 'P31').includes(EDITION_CLASS);
+
+// The language claims an item offers, best property first.
+//
+// P364 always wins. P407 is accepted only from an item that declares itself a
+// written work — on a film it is the film's language, and on an edition it is
+// the printing's, which is the one thing this column must never be.
 function languageClaims(ent) {
   const p364 = claimQids(ent, 'P364');
   if (p364.length) return { qids: p364, prop: 'P364' };
@@ -563,6 +589,38 @@ function languageClaims(ent) {
   const types = claimQids(ent, 'P31');
   if (!types.some((t) => WRITTEN_WORK_CLASSES.has(t))) return null;
   return { qids: p407, prop: 'P407' };
+}
+
+/**
+ * Replace every edition item in the candidate map with the WORK it is an
+ * edition of, via P629.
+ *
+ * One extra batched fetch, and it is the fetch that makes translation items
+ * useful instead of dangerous: a Swedish edition of an English novel now
+ * contributes "en" — the work's language — rather than "sv".
+ *
+ * The edition's own author claims go with it. The work carries them, and
+ * corroborating against the work is the stricter of the two anyway.
+ */
+async function resolveEditionsToWorks(entities) {
+  const workQids = [];
+  for (const ent of entities.values()) {
+    if (isEdition(ent)) workQids.push(...claimQids(ent, 'P629'));
+  }
+  if (!workQids.length) return entities;
+
+  const fresh = [...new Set(workQids)].filter((q) => !entities.has(q));
+  const works = fresh.length ? await fetchClaims(fresh) : new Map();
+
+  const out = new Map();
+  for (const [qid, ent] of entities) {
+    if (!isEdition(ent)) { out.set(qid, ent); continue; }
+    for (const wq of claimQids(ent, 'P629')) {
+      const w = entities.get(wq) || works.get(wq);
+      if (w) out.set(wq, w);
+    }
+  }
+  return out;
 }
 
 /**
@@ -580,12 +638,45 @@ function languageClaims(ent) {
  * postmortem is about. --diagnose aggregates these.
  */
 async function wikidataOriginalLanguage(title, author, rowLanguage) {
+  // Most specific title form first; a reduction is only reached when the
+  // precise one found nothing. searchTitles() explains why reducing is safe for
+  // a SEARCH where titleMatch.js forbids it for a MATCH.
+  const forms = searchTitles(title);
+  let best = { stage: 'no-search-hits' };
+
+  for (let i = 0; i < forms.length; i++) {
+    const attempt = await resolveOneTitle(forms[i], author, rowLanguage);
+    if (attempt === FAILED) return FAILED;
+    if (attempt?.code || attempt?.conflict) {
+      if (i > 0) attempt.viaTitle = forms[i];
+      return attempt;
+    }
+    // Keep the most INFORMATIVE failure rather than the last one. "No hits at
+    // all" is a less useful report than "found the book, nobody says who wrote
+    // it", and the funnel is only worth reading if it says the second.
+    if (STAGE_RANK[attempt.stage] > STAGE_RANK[best.stage]) best = attempt;
+  }
+  return best;
+}
+
+// How far down the funnel a failure got. A later stage means the search worked
+// and something else stopped it, which is the more actionable thing to report.
+const STAGE_RANK = {
+  'no-search-hits': 0,
+  'entities-unfetchable': 1,
+  'no-language-property': 2,
+  'author-not-corroborated': 3,
+  'no-iso-639-1-code': 4,
+};
+
+async function resolveOneTitle(title, author, rowLanguage) {
   const qids = await searchCandidates(title, author, rowLanguage);
   if (qids === FAILED) return FAILED;
   if (!qids.length) return { stage: 'no-search-hits' };
 
-  const entities = await fetchClaims(qids);
+  let entities = await fetchClaims(qids);
   if (!entities.size) return { stage: 'entities-unfetchable' };
+  entities = await resolveEditionsToWorks(entities);
 
   // Only candidates that state a language are worth the author lookups that
   // verification costs.
@@ -596,16 +687,20 @@ async function wikidataOriginalLanguage(title, author, rowLanguage) {
   }
   if (!withLang.length) return { stage: 'no-language-property' };
 
-  const authorQids = withLang.flatMap((c) => claimQids(c.ent, 'P50'));
+  const authorQids = withLang.flatMap((c) => [...claimQids(c.ent, 'P50'), ...claimQids(c.ent, 'P170')]);
   await resolveAuthorNames(authorQids);
 
   const accepted = [];
   for (const c of withLang) {
-    // P50 is the author item; P2093 is the "author name string" used when no
-    // item exists for the person. Both are legitimate evidence, and a work by a
-    // minor author often has only the second.
+    // P50 is the author item; P2093 is the "author name string" used where no
+    // item exists for the person; P170 is "creator", which is what comics and
+    // anthologies carry where a novel would carry P50 — *Batman: The Long
+    // Halloween* and *X-Men: Days of Future Past* both failed corroboration on
+    // P50 alone. All three are the same kind of evidence: a name the item
+    // itself asserts, which either matches this row's author or does not.
     const names = [
       ...claimQids(c.ent, 'P50').flatMap((aq) => authorNameCache.get(aq) || []),
+      ...claimQids(c.ent, 'P170').flatMap((aq) => authorNameCache.get(aq) || []),
       ...claimStrings(c.ent, 'P2093'),
     ];
     if (!names.length) continue;
@@ -742,6 +837,12 @@ const bump = (k) => { funnel[k] = (funnel[k] || 0) + 1; };
 const conflicts = [];
 const disagreements = [];
 const bySource = { wikidata: 0, wikidata_p407: 0, openlibrary: 0, catalog_sibling: 0 };
+
+// How many answers needed a title form other than the one the catalog stores.
+// If this is high, the catalog's titles are carrying Goodreads series
+// annotation that belongs in `series` and `position_in_series`, and the real
+// fix is upstream in the importer rather than here.
+let reducedTitleHits = 0;
 
 // KEYSET pagination by id, not offset — for the reason languageBackfill.mjs
 // documents at length: a live run changes which rows match the filter, while
@@ -905,6 +1006,10 @@ if (PROPAGATE_ONLY) {
         code = wd.code;
         source = wd.source || 'wikidata';
         bump('resolved');
+        if (wd.viaTitle) {
+          reducedTitleHits++;
+          vlog(`found via reduced title "${wd.viaTitle}" (row title: "${row.title}")`);
+        }
         if (DIAGNOSE) console.log(`  ${('resolved ' + code + ' (' + source + ')').padEnd(26)} ${label}   ${wd.qid}`);
       }
 
@@ -957,6 +1062,11 @@ console.log(`written         ${stats.written}${DRY_RUN ? ' (dry run — nothing 
 console.log(`  via wikidata P364 ${bySource.wikidata}`);
 console.log(`  via wikidata P407 ${bySource.wikidata_p407}`);
 console.log(`  via openlibrary   ${bySource.openlibrary}`);
+if (reducedTitleHits) {
+  console.log(`  (${reducedTitleHits} of those needed a reduced title — series annotation or a subtitle`);
+  console.log('   in books.title that Wikidata does not carry. High counts here are an importer');
+  console.log('   problem, not a lookup problem.)');
+}
 console.log(`propagated      ${stats.propagated}   — copied from a sibling row of the same work`);
 console.log(`no usable author ${stats.noAuthor}   — null or placeholder; a title match could not be verified`);
 console.log(`no answer       ${stats.noAnswer}   — searched, nothing corroborated; left NULL for the Oracle`);
@@ -1008,6 +1118,7 @@ console.log(
   `propagated=${stats.propagated} wikidata=${bySource.wikidata} openlibrary=${bySource.openlibrary} ` +
   `p407=${bySource.wikidata_p407} sibling=${bySource.catalog_sibling} ` +
   `noauthor=${stats.noAuthor} noanswer=${stats.noAnswer} ` +
+  `reducedtitle=${reducedTitleHits} ` +
   `nohits=${funnel['no-search-hits']} nolangprop=${funnel['no-language-property']} ` +
   `noauthormatch=${funnel['author-not-corroborated']} searchfailed=${funnel['search-failed']} ` +
   `conflict=${stats.conflict} failed=${stats.failed} dryrun=${DRY_RUN ? 1 : 0} complete=1`
