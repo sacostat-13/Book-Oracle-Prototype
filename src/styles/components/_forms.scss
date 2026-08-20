@@ -106,7 +106,14 @@
 // nested rule to 4 selectors and the masked-icon data URI ends up in the
 // bundle eight times over — ~12kB of CSS for one calendar glyph. `:is()`
 // keeps it to one.
-.input:is([type='date'], [type='datetime-local'], [type='month'], [type='time']) {
+// v0.65: matches on the TYPE, not on the class.
+//
+// Every date field in the app happens to carry `.input` today, so scoping to
+// the class was correct and invisible — right up until someone adds a date
+// input without it, at which point the field silently falls back to the raw
+// UA control. A date input should look like ours because it is a date input.
+// Class-less ones pick up the box from the `@extend` below.
+input:is([type='date'], [type='datetime-local'], [type='month'], [type='time']) {
   // A date input sizes itself from its segments, so it renders a few pixels
   // shorter than a text input with identical padding. Pinning the height keeps
   // a date field level with the text fields beside it in the same form.
@@ -198,8 +205,13 @@
   }
 }
 
+// The box itself, for date inputs that arrive without `.input`.
+input:is([type='date'], [type='datetime-local'], [type='month'], [type='time']):not(.input) {
+  @extend .input;
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .input:is([type='date'], [type='datetime-local'], [type='month'], [type='time'])::-webkit-calendar-picker-indicator {
+  input:is([type='date'], [type='datetime-local'], [type='month'], [type='time'])::-webkit-calendar-picker-indicator {
     transition: none;
   }
 }

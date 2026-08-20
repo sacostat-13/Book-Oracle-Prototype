@@ -375,9 +375,13 @@
   padding-top: 0;
 }
 
-// ── v0.43.1: Reading Challenge — last Overview section, panel-wrapped ────────
+// ── Reading Challenge — FIRST Overview section since v0.65, panel-wrapped ─────
 .pf-challenge-block {
-  margin-top: var(--ro-space-6);
+  // v0.65: leads the Overview tab now rather than trailing it, so the gap
+  // belongs BELOW it - separating the challenge from the stats grid that
+  // follows - not above, where it would push the panel off the tab strip.
+  margin-top: var(--ro-space-2);
+  margin-bottom: var(--ro-space-8);
 
   // The challenge component renders .pf-section wrappers internally — inside
   // its panel they don't need the settings-card separators or padding.

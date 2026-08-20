@@ -61,6 +61,18 @@ $ro-bp: (
   mobile:  640px,   // < 640: single column, bottom tab bar
   tablet:  768px,   // >= 768: 2-up grids return
   desktop: 1024px,  // >= 1024: persistent left sidebar
+  // v0.65. The topbar is the one piece of the layout that does not fit at
+  // iPad widths: the full desktop bar (logo + two dropdown groups + Oracle
+  // pill + Stacks pill + 340px search + three icons) needs ~1180px, so
+  // anything from 768px to that runs off the right edge — most visibly on
+  // iPad portrait at 1024x1366, which is comfortably "desktop" by every
+  // other measure and renders the desktop nav accordingly.
+  //
+  // Deliberately a nav-only tier rather than a shove of the desktop
+  // breakpoint: the grids, the rail and the sidebar are all fine at 1024 and
+  // pushing them down to a phone layout to fix a topbar would be a large
+  // regression to fix a small one. See "Condensed topbar" in layout/_nav.scss.
+  midnav:  1180px,  // >= 1180: topbar has room for its full desktop form
   wide:    1280px,  // >= 1280: full 1080px content rail
 );
 
@@ -99,6 +111,16 @@ $ro-shadow-light: 0 16px 36px rgba(90, 70, 30, 0.18);
 //    .desktop-only { @include ro-down(desktop) { display: none; } }
 @mixin ro-down($name) {
   @media (max-width: (map.get($ro-bp, $name) - 1px)) { @content; }
+}
+
+// ---- Helper: a band between two named breakpoints -----------
+//    .topnav { @include ro-between(tablet, midnav) { gap: 2px; } }
+//  Inclusive of $from, exclusive of $to — the same convention as
+//  ro-up/ro-down, so the three compose without gaps or overlaps.
+@mixin ro-between($from, $to) {
+  @media (min-width: map.get($ro-bp, $from)) and (max-width: (map.get($ro-bp, $to) - 1px)) {
+    @content;
+  }
 }
 
 // ── Shelf marking (v0.63) ────────────────────────────────────────────────────

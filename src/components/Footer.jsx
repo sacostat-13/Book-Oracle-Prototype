@@ -30,7 +30,11 @@ export default function Footer({ guestMode = false }) {
     { label: t('footer.about') || 'About', route: 'about' },
     { label: t('nav.oracle') || 'The Oracle', route: 'oracle' },
     { label: t('nav.readNext') || 'Reading plans', route: 'read-next' },
-    { label: t('footer.pricing') || 'Pricing', route: 'profile' },
+    // v0.65: was routing to 'profile' — the subscription tab, which is where
+    // you MANAGE a plan, not where you read what the plans are. Pricing lives
+    // on About; the anchor param drives the deep-link scroll it already
+    // supports (see the effect in views/About.jsx).
+    { label: t('footer.pricing') || 'Pricing', route: 'about', params: { anchor: 'pricing' } },
   ];
 
   const legalLinks = [
@@ -84,8 +88,8 @@ export default function Footer({ guestMode = false }) {
             <div className="footer-col">
               <div className="footer-col__heading">{t('footer.product') || 'Product'}</div>
               <div className="footer-col__links">
-                {productLinks.map(({ label, route }) => (
-                  <button key={route} className="footer-link" onClick={() => go(route)}>
+                {productLinks.map(({ label, route, params }) => (
+                  <button key={label} className="footer-link" onClick={() => go(route, params)}>
                     {label}
                   </button>
                 ))}

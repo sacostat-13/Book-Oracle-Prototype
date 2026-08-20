@@ -902,3 +902,100 @@ body.theme-parchment .nav-logo__img--light {
   font-size: 13px;
   color: var(--ro-muted);
 }
+
+// ── Condensed topbar (v0.65) ──────────────────────────────────────────────────
+//
+// The mid tier: >= 768px, so the desktop bar is what renders, but < 1180px, so
+// it does not fit. iPad portrait (1024x1366) is the case that surfaced it — the
+// icon cluster and part of the search field ran off the right edge, with no
+// scroll and no overflow menu to recover them.
+//
+// This condenses rather than collapses. Everything in the desktop bar is still
+// present and still reachable; it is the padding, the type scale and the search
+// field's generous 340px that give up room, in that order — spacing first,
+// then size, and only then anything that changes what a control looks like.
+// Nothing here is display:none, because a control that vanishes between 1179px
+// and 1180px is a worse bug than the one being fixed.
+//
+// Rules are scoped inside ro-between(tablet, midnav) so they cannot leak into
+// either the mobile overlay below 768 or the full bar above 1180.
+@include tokens.ro-between(tablet, midnav) {
+
+  .topnav {
+    // The desktop gutter is generous by design; at this width it is the
+    // cheapest 40px available.
+    padding-inline: var(--ro-space-4);
+    gap: 4px;
+  }
+
+  // The wordmark is the largest fixed-width thing in the bar and the one whose
+  // legibility survives shrinking best — it is a logo, not text to be read.
+  .nav-logo {
+    margin-right: 2px;
+
+    &__mark { height: 40px; }
+  }
+
+  .nav-groups { gap: 2px; }
+
+  .nav-group__trigger {
+    padding: 0 8px;
+    font-size: 13px;
+    gap: 4px;
+  }
+
+  // The caret is decorative — the trigger already reads as a menu from its
+  // hover and active states, and it is 12px of pure margin per group.
+  .nav-group__caret { display: none; }
+
+  .nav-oracle,
+  .nav-stacks {
+    padding: 0 11px;
+    font-size: 13px;
+  }
+
+  .nav-stacks { margin-left: 4px; }
+
+  // Search keeps its full behaviour and loses only slack. Below ~150px the
+  // placeholder starts truncating, which is why this stops at 200.
+  .nav-search {
+    max-width: 200px;
+    min-width: 0;
+  }
+
+  .nav-icons {
+    gap: 2px;
+    margin-left: 2px;
+  }
+
+  .nav-whatsnew,
+  .nav-bell {
+    width: 32px;
+    height: 32px;
+  }
+}
+
+// ── What's new, mobile (v0.65) ───────────────────────────────────────────────
+//
+// The desktop copy sits in .nav-icons, which is display:none below the tablet
+// breakpoint — so on a phone there was no way to reach the release notes at
+// all, and the unseen-release dot had nowhere to appear. This is the same
+// button, rendered separately in the bar beside the hamburger.
+//
+// Deliberately in the topbar rather than as a row in the overlay menu: the dot
+// is the whole mechanism, and a dot inside a closed menu communicates nothing.
+.nav-whatsnew--mobile {
+  display: none;
+
+  @include tokens.ro-down(tablet) {
+    display: flex;
+    // Absorbs the free space that the hamburger's own `margin-left: auto`
+    // was absorbing, so the pair sits together at the right edge instead of
+    // this button being stranded next to the logo.
+    margin-left: auto;
+    // The desktop icon is 36px, which is under the 44px touch minimum. It gets
+    // away with it on a pointer device; it should not on a phone.
+    width: 44px;
+    height: 44px;
+  }
+}

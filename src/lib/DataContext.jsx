@@ -105,11 +105,15 @@ function loadSessionCache(userId) {
   try {
     const raw = sessionStorage.getItem(SESSION_KEY);
     if (!raw) return null;
-    const { uid, state, ts, catalogVersion } = JSON.parse(raw);
+    const { uid, state, ts, catalogVersion, shelfStamp } = JSON.parse(raw);
     if (uid !== userId) return null; // wrong user, ignore
     // Expire after 30 minutes — forces a fresh load if stale
     if (Date.now() - ts > 30 * 60 * 1000) return null;
-    return { state, catalogVersion: catalogVersion ?? null };
+    return {
+      state,
+      catalogVersion: catalogVersion ?? null,
+      shelfStamp: shelfStamp ?? null,
+    };
   } catch (_) { return null; }
 }
 
@@ -128,6 +132,50 @@ async function fetchCatalogVersion() {
 // every call site. Set on load and whenever a fresh version is observed.
 const catalogVersionRef = { current: null };
 
+// v0.65.3 — the shelf half of the same idea.
+//
+// catalogVersionRef above tracks changes to the CATALOGUE. Nothing tracked
+// changes to the reader's own SHELF, so a read_books row edited anywhere other
+// than this tab's React state — another tab, another device, a hand-run UPDATE
+// in the SQL editor, a batch script — stayed invisible for the cache's full
+// 30-minute life. sessionStorage is designed to survive F5, so a hard refresh
+// did not clear it either. That is how a corrected read date can keep counting
+// toward this month while the database has been right the whole time.
+//
+// `{ n, latest }`: row count plus the newest updated_at. Count alone misses an
+// edit (no row created); updated_at alone misses a delete. Together they move
+// on any change that matters. Requires migration
+// 20260820140000_read_books_updated_at.sql; falls back to the old
+// catalog-version-only behaviour when the column is absent, so the client can
+// ship before the migration lands.
+//
+// NOTE ON STALENESS OF THE REF ITSELF: a local mutation bumps updated_at on the
+// server but not this ref, so the next load sees a stamp mismatch and refetches
+// once. That is the correct direction to fail — an unnecessary refetch costs one
+// round trip; a missed one costs a wrong number on the Profile that no amount of
+// refreshing will fix.
+const shelfStampRef = { current: null };
+
+function sameShelfStamp(a, b) {
+  if (!a || !b) return true;   // unknown on either side proves nothing
+  return a.n === b.n && a.latest === b.latest;
+}
+
+async function fetchShelfStamp(userId) {
+  try {
+    const { data, error, count } = await supabase
+      .from('read_books')
+      .select('updated_at', { count: 'exact' })
+      .eq('user_id', userId)
+      .order('updated_at', { ascending: false })
+      .limit(1);
+    // The column does not exist yet — migration not applied. Not an error
+    // worth surfacing; it just means this check is unavailable.
+    if (error) return null;
+    return { n: typeof count === 'number' ? count : null, latest: data?.[0]?.updated_at ?? null };
+  } catch (_) { return null; }
+}
+
 function saveSessionCache(userId, state) {
   try {
     // Cache the full state including genres — the full genre list is small
@@ -140,6 +188,7 @@ function saveSessionCache(userId, state) {
       // Preserved across saves — the persist effect has no reason to re-fetch it, and a
       // change made outside the app is exactly what the load path is checking for.
       catalogVersion: catalogVersionRef.current,
+      shelfStamp: shelfStampRef.current,
     }));
   } catch (_) {} // quota errors — fail silently
 }
@@ -932,32 +981,62 @@ export function DataProvider({ children }) {
           // to the cache, and for a merge that means holding a book_id that no longer
           // exists. Checking the catalog version overwrites nothing; it only decides
           // whether this cache is still trustworthy.
-          const live = await fetchCatalogVersion();
-          if (!cancelled && live != null && cached.catalogVersion != null && live !== cached.catalogVersion) {
-            console.info(`[catalog] cache built at v${cached.catalogVersion}, live is v${live} — reloading`);
+          // v0.65.3: two checks now, same rule — each only decides whether the
+          // cache is trustworthy, neither overwrites in-memory state.
+          //   catalogVersion — did the CATALOGUE change under us?
+          //   shelfStamp     — did this reader's SHELF change under us?
+          // The second is the one that was missing, and it is the one that
+          // matters for "I edited a read date somewhere else and this tab never
+          // noticed". Fetched together; a null from either means the check is
+          // unavailable and we fall back to trusting the cache, as before.
+          const [live, liveShelf] = await Promise.all([
+            fetchCatalogVersion(),
+            fetchShelfStamp(user.id),
+          ]);
+          const catalogMoved =
+            live != null && cached.catalogVersion != null && live !== cached.catalogVersion;
+          const shelfMoved = !sameShelfStamp(cached.shelfStamp, liveShelf);
+          if (!cancelled && (catalogMoved || shelfMoved)) {
+            console.info(
+              catalogMoved
+                ? `[catalog] cache built at v${cached.catalogVersion}, live is v${live} — reloading`
+                : '[shelf] read_books changed since this cache was written — reloading'
+            );
             clearSessionCache();
             try {
               const remote = await loadFromSupabase(user.id);
               if (!cancelled) {
                 catalogVersionRef.current = live;
+                shelfStampRef.current = liveShelf;
                 setState(remote);
                 saveSessionCache(user.id, remote);
               }
             } catch (e) {
               console.error('[catalog] refresh after version change failed', e);
             }
-          } else if (!cancelled && live != null && cached.catalogVersion == null) {
-            // Cache predates this mechanism — stamp it so the next load can compare.
-            catalogVersionRef.current = live;
+          } else if (!cancelled) {
+            // Cache predates one or both mechanisms — stamp it so the next load
+            // has something to compare against.
+            if (live != null && cached.catalogVersion == null) catalogVersionRef.current = live;
+            if (cached.shelfStamp == null) shelfStampRef.current = liveShelf;
           }
         } else {
           // No cache — fetch from Supabase with spinner
           setLoading(true);
           try {
-            const [remote, live] = await Promise.all([loadFromSupabase(user.id), fetchCatalogVersion()]);
+            const [remote, live, liveShelf] = await Promise.all([
+              loadFromSupabase(user.id),
+              fetchCatalogVersion(),
+              fetchShelfStamp(user.id),
+            ]);
             if (!cancelled) {
               supabaseLoadedRef.current = true;
               catalogVersionRef.current = live;
+              // v0.65.3: stamped on the no-cache path too, or the FIRST cache
+              // written in a session would carry a null shelfStamp and the
+              // check would be unavailable for exactly the reader who just
+              // loaded fresh.
+              shelfStampRef.current = liveShelf;
               setState(remote);
               saveSessionCache(user.id, remote);
               loadedUserIdRef.current = user.id;
@@ -1571,13 +1650,22 @@ export function DataProvider({ children }) {
       }
 
       const today = new Date().toISOString().slice(0, 10);
+      // v0.65: honour a date the reader actually chose.
+      //
+      // RatingModal has offered a "Finished on" field since v0.63 and BookCard
+      // has been passing it through as `extra.readAt` — but this function
+      // hard-coded `today`, so picking a date in that modal silently did
+      // nothing on the create path. Only the edit path (updateReadBook) ever
+      // respected it. Explicit date wins; today remains the default, which is
+      // right here because marking a book read IS a deliberate act.
+      const readAt = extra.readAt ? String(extra.readAt).slice(0, 10) : today;
 
       const ratingRaw = extra.rating != null ? extra.rating : book.rating;
       const rating = ratingRaw && ratingRaw > 0 ? ratingRaw : null;
       const notes =
         extra.notes != null ? (extra.notes.trim() || null) : (book.notes || null);
 
-      const enriched = { ...book, dateRead: today };
+      const enriched = { ...book, dateRead: readAt };
       if (rating != null) enriched.rating = rating;
       if (notes != null) enriched.notes = notes;
 
@@ -1615,7 +1703,7 @@ export function DataProvider({ children }) {
           {
             user_id: user.id,
             book_id: bookId,
-            read_at: today,
+            read_at: readAt,
             // v0.58: 'oracle' is the cheap join key behind the whole point of
             // provenance — "did the Oracle pick better books than you did?" is
             // one filter on this column against `rating`. Ordered before the
@@ -1940,12 +2028,30 @@ export function DataProvider({ children }) {
         const n = patch.notes ? patch.notes.trim() : '';
         update.notes = n.length > 0 ? n : null;
       }
+      // v0.65: a plain YYYY-MM-DD string, not an ISO timestamp.
+      //
+      // read_books.read_at is a DATE column, and the old
+      // `new Date(patch.readAt).toISOString()` round-trip shifted the value by
+      // a timezone: '2025-11-15' parses as UTC midnight, so a reader west of
+      // Greenwich got '2025-11-14' back out of `new Date()` on every stats
+      // pass. It also wrote a full timestamp into local state while
+      // loadUserData maps the column back as a bare date, so the value the
+      // reader saw before a refresh was not the value they saw after one.
+      //
+      // The input is already YYYY-MM-DD (RatingModal's <input type="date">), so
+      // the correct handling is to leave it alone.
       if (patch.readAt) {
-        update.read_at = new Date(patch.readAt).toISOString();
+        update.read_at = String(patch.readAt).slice(0, 10);
       }
 
-      const localPatch = { ...update };
-      if (update.read_at) localPatch.dateRead = update.read_at;
+      // v0.65: build the CLIENT patch explicitly rather than spreading the DB
+      // row. `update` is keyed by column name (read_at, not dateRead), and
+      // spreading it stamped those column names onto the book object alongside
+      // the client fields — harmless until something reads the wrong one.
+      const localPatch = {};
+      if (update.rating !== undefined) localPatch.rating = update.rating || undefined;
+      if (update.notes !== undefined) localPatch.notes = update.notes || undefined;
+      if (update.read_at !== undefined) localPatch.dateRead = update.read_at;
       setState((s) => ({
         ...s,
         library: s.library.map((b) =>
@@ -1966,17 +2072,80 @@ export function DataProvider({ children }) {
         return;
       }
 
-      const { error } = await supabase
+      // v0.65: `.select()` so we can tell "saved" from "matched nothing".
+      //
+      // A PostgREST UPDATE that matches zero rows is not an error — it returns
+      // 204 with no error object. So an edit aimed at a book_id with no
+      // read_books row (the catalogue holds duplicate rows for the same work;
+      // a library entry created against one of them, then re-resolved to the
+      // other, lands here) reported success, patched local state, and then
+      // reverted on the next load. That is exactly the shape of "I changed the
+      // read date to last year and the stats still count it this year, even
+      // after a hard reset": the number never left the browser.
+      //
+      // Zero rows now falls through to an upsert, which writes the row the
+      // update was looking for.
+      // v0.65.2: update EVERY read_books row for this work, not one book_id.
+      //
+      // This is the actual reason a corrected read date came back wrong after a
+      // reload. The catalogue holds duplicate rows for the same work — the
+      // v0.63 note in useStacks counts 17 pairs that share an ISBN while
+      // disagreeing on title or author, and markAsRead has a warning for the
+      // same condition. When The Stacks serves one of those rows for a book the
+      // reader already finished under the other, they end up with TWO
+      // read_books rows for one book.
+      //
+      // The local patch below already fixes both, because it matches on
+      // bookKey — which is why the edit looked like it worked. The server write
+      // matched on a single book_id and fixed one. On the next load the
+      // untouched row came back carrying the old date, and the stats counted
+      // it. Hence "still showing this month, even after a hard reset".
+      //
+      // Collecting the ids from the shelf rather than the argument means the
+      // edit reaches every copy the reader can actually see.
+      const workIds = Array.from(new Set(
+        [bookId, ...state.library.filter((b) => bookKey(b) === k).map((b) => b.bookId)]
+          .filter(Boolean)
+      ));
+
+      const { data: updated, error } = await supabase
         .from('read_books')
         .update(update)
         .eq('user_id', user.id)
-        .eq('book_id', bookId);
+        .in('book_id', workIds)
+        .select('id');
       if (error) {
         console.error('read_books update failed', error);
         showToast("Couldn't save your changes", true);
+        return;
+      }
+      if (updated && updated.length > 1) {
+        // Not an error, but it IS the duplicate-catalogue-row condition, and
+        // the reader has one book counted twice in every stat on the Profile.
+        console.warn(
+          `[updateReadBook] "${book.t}" has ${updated.length} read_books rows ` +
+          `(book_ids: ${workIds.join(', ')}). All were updated, so the edit holds — ` +
+          'but the book is still double-counted in reading stats. ' +
+          'See docs/duplicate-read-books-diagnostic.sql.'
+        );
+      }
+      if (!updated || updated.length === 0) {
+        console.warn(
+          `[updateReadBook] no read_books row for book_id ${bookId} — upserting one. ` +
+          'Usually means this library entry predates the current catalogue row for the work; ' +
+          'see docs/duplicate-books-diagnostic.sql.'
+        );
+        const { error: upsertError } = await supabase.from('read_books').upsert(
+          { user_id: user.id, book_id: bookId, source: 'manual', ...update },
+          { onConflict: 'user_id,book_id' }
+        );
+        if (upsertError) {
+          console.error('read_books upsert fallback failed', upsertError);
+          showToast("Couldn't save your changes", true);
+        }
       }
     },
-    [user, showToast, upsertBookOnServer]
+    [user, state.library, showToast, upsertBookOnServer]
   );
 
   const removeFromLibrary = useCallback(
@@ -2065,15 +2234,28 @@ export function DataProvider({ children }) {
 
   const bulkAddToLibrary = useCallback(
     // v0.44: onProgress(done, total) — same per-book progress as importGoodreads
+    //
+    // v0.65: UNDATED by default, extending the v0.59 importGoodreads rule to
+    // every bulk path.
+    //
+    // All three callers (The Stacks, OnboardingStacks, BulkImport) are a reader
+    // saying "I have read this", not "I finished this today". Stamping today's
+    // date turned each of those taps into a fabricated data point: the book
+    // counted toward this year's reading challenge, this month's bar on the
+    // pace chart, and the streak — so clearing forty cards off the wall in one
+    // sitting read as forty books finished that afternoon.
+    //
+    // A read date the reader never gave us is a guess, and a guess that feeds
+    // stats is worse than a blank. Undated stays undated; the date gets set
+    // later, deliberately, from the rating editor.
     async (books, onProgress) => {
       const existingKeys = new Set(state.library.map(bookKey));
       const toAdd = books.filter((b) => !existingKeys.has(bookKey(b)));
-      const today = new Date().toISOString().slice(0, 10);
 
       if (!user) {
         setState((s) => ({
           ...s,
-          library: dedupeBooks([...s.library, ...toAdd.map((b) => ({ ...b, dateRead: today }))]),
+          library: dedupeBooks([...s.library, ...toAdd.map((b) => ({ ...b, dateRead: b.dateRead || undefined }))]),
         }));
         return toAdd.length;
       }
@@ -2088,12 +2270,16 @@ export function DataProvider({ children }) {
               user_id: user.id,
               book_id: bookId,
               rating: b.rating && b.rating > 0 ? b.rating : null,
-              read_at: today,
+              // v0.65: carries a date only when the book already had one (a
+              // Goodreads-sourced row re-added, say). Otherwise NULL, matching
+              // what loadUserData maps back to `undefined` on the next load —
+              // the two sides must agree or the number changes on refresh.
+              read_at: b.dateRead || null,
               source: 'manual',
             },
             { onConflict: 'user_id,book_id' }
           );
-          if (!error) linked.push({ ...b, bookId, dateRead: today });
+          if (!error) linked.push({ ...b, bookId, dateRead: b.dateRead || undefined });
         }
         onProgress?.(i + 1, toAdd.length);
       }

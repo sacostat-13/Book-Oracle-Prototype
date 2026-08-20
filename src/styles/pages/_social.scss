@@ -1305,6 +1305,18 @@
   text-transform: uppercase;
   color: var(--ro-gold);
   margin-bottom: 0.4rem;
+  // v0.65: a section label needs more air above it than below it, or it reads
+  // as a caption on the control it follows rather than a heading for the one
+  // it introduces. 0.4rem below binds it to its own field; --ro-label-gap
+  // above separates it from the section that ended.
+  margin-top: var(--ro-label-gap);
+}
+
+// Nothing above to separate from. The first label in a modal or panel sits
+// directly under the title, which brings its own spacing.
+.field:first-child > .rating-modal__notes-label,
+.modal__body > .rating-modal__notes-label:first-child {
+  margin-top: 0;
 }
 
 .rating-modal__notes-private {

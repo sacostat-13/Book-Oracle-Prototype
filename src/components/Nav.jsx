@@ -412,6 +412,25 @@ export default function Nav({ onPreviewBook, guestMode = false }) {
           </div>
         </div>
 
+        {/* What's new — mobile (v0.65)
+            The desktop copy lives in .nav-icons, which is display:none below
+            the tablet breakpoint, so upcoming releases were unreachable on a
+            phone: no icon in the bar and no row in the overlay menu either.
+            This is the same button with the same unseen dot, placed beside the
+            hamburger rather than inside the menu so the dot stays visible
+            without opening anything — which is the whole point of a dot. */}
+        <button
+          className="nav-whatsnew nav-whatsnew--mobile"
+          onClick={openReleases}
+          aria-label={t('nav.whatsNew')}
+          title={t('nav.whatsNew')}
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M12 3l1.9 4.6L18.5 9l-4.6 1.9L12 15.5 10.1 10.9 5.5 9l4.6-1.4L12 3z" />
+          </svg>
+          {hasUnseenRelease && <span className="nav-whatsnew__dot" aria-hidden="true" />}
+        </button>
+
         {/* Mobile hamburger */}
         <button
           className={`nav-hamburger${menuOpen ? ' is-open' : ''}`}

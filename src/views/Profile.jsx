@@ -1357,6 +1357,25 @@ export default function Profile() {
 
         {tab === 'overview' && (
         <>
+      {/* ── Reading Challenge — first thing in Overview (v0.65).
+          The goal is the frame the rest of the numbers are read against, so it
+          leads rather than trailing the stats it contextualises. It also
+          renders outside `hasStats`, which means a reader with an empty shelf
+          opens Profile on "set a goal" instead of on nothing.
+
+          No outer overline: the component self-labels ("2026 Reading
+          Challenge" / the set-a-goal subtitle), so an extra label doubled up. */}
+      <section className="pf-challenge-block">
+        <div className="pf-pace-panel">
+          <ReadingChallenge
+            library={state.library}
+            readingGoalCount={state.readingGoalCount}
+            setReadingGoalCount={setReadingGoalCount}
+            t={t}
+          />
+        </div>
+      </section>
+
       {hasStats && (
         <div className="profile-stats">
 
@@ -1487,19 +1506,6 @@ export default function Profile() {
         </div>
       )}
 
-      {/* ── Reading Challenge — inside Overview, panel-wrapped. No outer
-          overline: the component self-labels ("2026 Reading Challenge" /
-          the set-a-goal subtitle), so an extra label doubled up. */}
-      <section className="pf-challenge-block">
-        <div className="pf-pace-panel">
-          <ReadingChallenge
-            library={state.library}
-            readingGoalCount={state.readingGoalCount}
-            setReadingGoalCount={setReadingGoalCount}
-            t={t}
-          />
-        </div>
-      </section>
         </>
         )}
 
