@@ -114,10 +114,10 @@ export function notificationLabel(n, t) {
   const data  = n.data || {};
 
   switch (n.type) {
-    case 'friend_request':
-      return t('notifications.friendRequest', { actor });
-    case 'friend_accepted':
-      return t('notifications.friendAccepted', { actor });
+    case 'new_follower':
+      return t('notifications.newFollower', { name: actor });
+    case 'kinship_formed':
+      return t('notifications.kinshipFormed', { name: actor });
     case 'club_invite':
       return t('notifications.clubInvite', { actor, club: data.club_name || '' });
     case 'poll_started':
@@ -150,9 +150,15 @@ export function notificationLabel(n, t) {
 export function notificationRoute(n) {
   const data = n.data || {};
   switch (n.type) {
-    case 'friend_request':
-    case 'friend_accepted':
-      return n.actor?.username ? ['profile', {}] : ['profile', {}];
+    // v0.66: a follow points at the follower's profile, which is the thing
+    // you actually want to look at when told someone followed you. The old
+    // friend notifications both routed to your OWN profile — a dead end that
+    // made you go find the person yourself.
+    case 'new_follower':
+    case 'kinship_formed':
+      return n.actor?.username
+        ? ['reader-profile', { username: n.actor.username }]
+        : ['kindred', {}];
     case 'club_invite':
     case 'poll_started':
     case 'poll_finalized':

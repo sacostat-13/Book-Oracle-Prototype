@@ -16,9 +16,49 @@
 
 // The version label shown as "current" — keep in sync with package.json and
 // the README version line.
-export const CURRENT_VERSION = 'v0.64.1';
+export const CURRENT_VERSION = 'v0.66';
 
 export const RELEASES = [{
+    version: 'v0.66',
+    date: '2026-08-20',
+    titleEn: 'Kindred',
+    titleEs: 'Afines',
+    bodyEn: [
+      'Reading friends are now Kindred, and the request queue is gone. You follow a reader; they do not have to approve it, and they do not have to follow you back. When a follow does run both ways, it becomes a Kinship.',
+      'A reader profile is finally worth opening. Write a line or two about yourself, show the genres you actually read, and your lists sit right there on the page — which is the point if someone is deciding whether to follow you for your taste.',
+      'You decide who sees your shelves: anyone, the readers who follow you, or nobody. The default is the middle one. Your follower count stays visible either way, so a private profile can still be judged on the readers standing behind it.',
+      'Mute is not unfollow. If someone you like gets loud, silence their updates and keep the connection.',
+      'Search actually finds people now. Username, name, or the exact email they signed up with, and results appear as you type. It used to need an exact username — which meant anyone who had never set one was unfindable.',
+      'Reading Plans are now Passages, and Curated Lists are Anthologies.',
+    ],
+    bodyEs: [
+      'Los amigos de lectura ahora son Afines, y la cola de solicitudes desapareció. Sigues a un lector; no tiene que aprobarlo, ni tiene que seguirte de vuelta. Cuando el seguimiento va en ambos sentidos, se vuelve una Afinidad.',
+      'El perfil de un lector por fin vale la pena abrirlo. Escribe una línea o dos sobre ti, muestra los géneros que de verdad lees, y tus listas quedan ahí mismo — que es de lo que se trata si alguien está decidiendo si seguirte por tu criterio.',
+      'Tú decides quién ve tus estantes: cualquiera, quienes te siguen, o nadie. Por defecto es la opción del medio. Tu número de seguidores se ve igual, así que un perfil privado todavía se puede juzgar por los lectores que lo respaldan.',
+      'Silenciar no es dejar de seguir. Si alguien que te cae bien se pone ruidoso, silencia sus novedades y conserva el vínculo.',
+      'La búsqueda por fin encuentra gente. Por usuario, por nombre, o por el correo exacto con el que se registraron, y los resultados aparecen mientras escribes. Antes hacía falta el usuario exacto — lo que dejaba fuera a cualquiera que nunca hubiera elegido uno.',
+      'Los Planes de lectura ahora son Pasajes, y las Listas curadas son Antologías.',
+    ],
+
+  }, {
+    version: 'v0.65',
+    date: '2026-08-20',
+    titleEn: 'Dates you did not choose, and numbers that would not change',
+    titleEs: 'Fechas que no elegiste, y números que no cambiaban',
+    bodyEn: [
+      'Adding a book from The Stacks no longer stamps it as read today. You are saying you have read it, not that you finished it this afternoon — so it goes in undated, and your reading challenge, streak and pace chart stop counting a browsing session as a year of reading.',
+      'Editing a read date now actually sticks. Corrections could be saved, look right, and quietly revert on the next load; worse, a change made anywhere other than the tab you were in could stay invisible for half an hour, and a hard refresh did not clear it.',
+      'The Reading Challenge moved to the top of your profile, where the goal frames the numbers underneath it rather than trailing them.',
+      'Date pickers are on-brand at last, including the selected day inside the calendar. The upcoming-releases icon works on phones. The footer Pricing link goes to pricing instead of your profile. And the nav no longer runs off the edge of an iPad.',
+    ],
+    bodyEs: [
+      'Añadir un libro desde Los Estantes ya no lo marca como leído hoy. Estás diciendo que lo leíste, no que lo terminaste esta tarde — así que entra sin fecha, y tu reto de lectura, tu racha y tu gráfico de ritmo dejan de contar un rato de exploración como un año de lectura.',
+      'Editar una fecha de lectura ahora sí queda guardada. Las correcciones se guardaban, se veían bien, y volvían atrás en la siguiente carga; peor todavía, un cambio hecho fuera de la pestaña en la que estabas podía quedar invisible media hora, y recargar a la fuerza no lo arreglaba.',
+      'El Reto de lectura se movió al principio de tu perfil, donde la meta enmarca los números que vienen debajo en vez de ir detrás de ellos.',
+      'Los selectores de fecha por fin siguen la marca, incluido el día seleccionado dentro del calendario. El icono de próximos lanzamientos funciona en el móvil. El enlace de Precios del pie va a precios y no a tu perfil. Y la navegación ya no se sale del borde en un iPad.',
+    ],
+
+  }, {
     version: 'v0.64.1',
     date: '2026-08-20',
     titleEn: 'Audiobooks count',

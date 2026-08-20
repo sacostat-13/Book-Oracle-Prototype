@@ -54,9 +54,12 @@ function respond(statusCode, body) {
 // Map notification type → preference category key
 function prefCategory(type) {
   switch (type) {
-    case 'friend_request':
-    case 'friend_accepted':
-      return 'friends';
+    // v0.66: follows replaced friendships. The preference key moved with them
+    // (the migration renamed it in place, so a reader who had friend emails
+    // switched OFF is not opted back IN to what replaced them).
+    case 'new_follower':
+    case 'kinship_formed':
+      return 'follows';
     case 'club_invite':
     case 'poll_started':
     case 'poll_finalized':
@@ -84,22 +87,17 @@ function buildEmail({
   const sessionLink = data ?.session_id ?
     `${appUrl}/#session-detail?sessionId=${data.session_id}` :
     clubLink;
-  const friendsLink = `${appUrl}/friends`;
+  const kindredLink = `${appUrl}/kindred`;
 
   switch (type) {
-    case 'friend_request':
+    // A plain new follower is deliberately NOT emailed — see the note on
+    // shouldEmail below. It reaches the reader in-app and stops there.
+    case 'kinship_formed':
       return {
-        subject: `${actorLabel} wants to be your reading friend`,
-          body: `<strong>${actorLabel}</strong> sent you a friend request on The Books Oracle.`,
-          ctaUrl: friendsLink,
-          ctaLabel: 'View request →',
-      };
-    case 'friend_accepted':
-      return {
-        subject: `${actorLabel} accepted your friend request`,
-          body: `You and <strong>${actorLabel}</strong> are now reading friends.`,
-          ctaUrl: friendsLink,
-          ctaLabel: 'Open app →',
+        subject: `You and ${actorLabel} are Kindred`,
+          body: `<strong>${actorLabel}</strong> followed you back on The Books Oracle. You are now reading alongside each other.`,
+          ctaUrl: kindredLink,
+          ctaLabel: 'Open Kindred →',
       };
     case 'club_invite':
       return {
@@ -224,6 +222,18 @@ export const handler = async (event) => {
     .select('notification_preferences, email_notifications')
     .eq('id', notification.user_id)
     .maybeSingle();
+
+  // v0.66: a plain new follower never becomes an email, whatever the reader's
+  // preferences say.
+  //
+  // Following is one-way and costless, so followers arrive in bursts and at
+  // random — an email per follower is the single most reliable way to teach
+  // someone to filter your domain. The in-app notification carries it fine.
+  // A KINSHIP is different: it is reciprocal, it is rare, and it is the one
+  // social event on this app worth an interruption, so that one does send.
+  if (notification.type === 'new_follower') {
+    return respond(200, { skipped: 'new_follower_never_emailed' });
+  }
 
   const prefs = profile ?.notification_preferences || {};
   // Email master toggle (new JSONB prefs or legacy boolean)

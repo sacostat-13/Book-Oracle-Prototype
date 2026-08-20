@@ -95,7 +95,7 @@ export default function PlanView() {
   }
 
   async function handleDeletePlan() {
-    if (!confirm('Delete this reading plan?')) return;
+    if (!confirm(t('plans.deleteConfirm') || 'Delete this Passage?')) return;
     await deletePlan(plan._id);
     go('dashboard');
   }

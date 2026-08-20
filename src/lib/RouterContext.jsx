@@ -18,7 +18,7 @@ const RouterContext = createContext(null);
 // can never be misread as `/clubs/:clubId` with clubId === 'new'.
 const ROUTE_DEFS = [
   // ── Dynamic (SEO-relevant / shareable primary-id routes) ──────────────────
-  { name: 'friend-profile',    path: '/u/:username' },
+  { name: 'reader-profile',    path: '/u/:username' },
   { name: 'book-page',         path: '/book/:bookKey' },
   { name: 'series-page',       path: '/series/:seriesName' },
   { name: 'plan-view',         path: '/plans/:planId' },
@@ -52,7 +52,7 @@ const ROUTE_DEFS = [
   // dynamic ones, so neither of these can be swallowed by `/lists/:listId`.
   { name: 'lists-mine',         path: '/lists/mine' },
   { name: 'lists-discover',     path: '/lists/discover' },
-  { name: 'friends',            path: '/friends' },
+  { name: 'kindred',            path: '/kindred' },
   { name: 'book-clubs',         path: '/clubs' },
   { name: 'club-directory',     path: '/clubs/discover' },
   { name: 'book-club-create',   path: '/clubs/new' },

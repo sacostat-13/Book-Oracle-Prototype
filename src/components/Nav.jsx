@@ -10,7 +10,6 @@ import { useAuth } from '../lib/AuthContext';
 import { useI18n } from '../lib/I18nContext';
 import { useTheme } from '../lib/ThemeContext';
 import { useNotifications, notificationLabel, notificationRoute } from '../lib/useNotifications';
-import { useFriends } from '../lib/useFriends';
 import AnnouncementModal from './AnnouncementModal';
 import ReleaseNotesModal from './ReleaseNotesModal';
 import { CURRENT_VERSION } from '../lib/releases';
@@ -65,11 +64,10 @@ function useClickOutside(ref, onClose) {
 }
 
 // ── Notification item ─────────────────────────────────────────────────────────
-function NotifItem({ n, t, onClose, go, markOneRead, onAnnouncement, handleAccept, handleDecline }) {
+function NotifItem({ n, t, onClose, go, markOneRead, onAnnouncement }) {
   const actor = n.actor;
   const label = notificationLabel(n, t);
   const dest = notificationRoute(n);
-  const fId = n.data?.friendship_id;
   const clickable = n.type === 'announcement' || !!dest;
 
   function handleClick() {
@@ -93,16 +91,6 @@ function NotifItem({ n, t, onClose, go, markOneRead, onAnnouncement, handleAccep
       }
       <div className="notif-item__body">
         <div className="notif-item__text" dangerouslySetInnerHTML={{ __html: label }} />
-        {n.type === 'friend_request' && !n.read && (
-          <div className="notif-item__actions" onClick={e => e.stopPropagation()}>
-            <button className="btn-primary btn--sm" onClick={() => handleAccept(fId, n.id)}>
-              {t('nav.accept')}
-            </button>
-            <button className="btn-tertiary btn--sm" onClick={() => handleDecline(fId, n.id)}>
-              {t('nav.decline')}
-            </button>
-          </div>
-        )}
         <div className="notif-item__time">
           {new Date(n.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
         </div>
@@ -119,7 +107,6 @@ export default function Nav({ onPreviewBook, guestMode = false }) {
   const { lang, toggleLang, t, tNode } = useI18n();
   const { theme, toggleTheme } = useTheme();
   const { notifications, unreadCount, markAllRead, markOneRead } = useNotifications();
-  const { acceptRequest, declineRequest } = useFriends();
 
   const [menuOpen, setMenuOpen] = useState(false);
   const [booksOpen, setBooksOpen] = useState(false);
@@ -169,8 +156,6 @@ export default function Nav({ onPreviewBook, guestMode = false }) {
     setSocialOpen(false); setBooksOpen(false); setUserOpen(false);
   }
 
-  async function handleAccept(fId, nId) { await acceptRequest(fId); markOneRead(nId); }
-  async function handleDecline(fId, nId) { await declineRequest(fId); markOneRead(nId); }
 
   // Counts
   const readingCount = (state.currentlyReading?.length || 0) + (state.readNext?.length || 0);
@@ -181,7 +166,7 @@ export default function Nav({ onPreviewBook, guestMode = false }) {
   const booksActive = ['wishlist', 'library', 'currently-reading', 'read-next', 'plan-create', 'plan-list', 'plan-view'].includes(route.name);
   const socialActive = ['lists', 'lists-mine', 'lists-discover', 'list-detail',
     'book-clubs', 'book-club-create', 'book-club-detail', 'club-directory',
-    'session-create', 'session-detail', 'friends', 'friend-profile'].includes(route.name);
+    'session-create', 'session-detail', 'kindred', 'reader-profile'].includes(route.name);
 
   // User display
   const userLabel = state.profile?.displayName || user?.email?.split('@')[0] || '';
@@ -278,8 +263,8 @@ export default function Nav({ onPreviewBook, guestMode = false }) {
                   {t('nav.bookClubs')}
                   {clubsCount > 0 && <span className="nav-group__badge">{clubsCount}</span>}
                 </button>
-                <button className={`nav-group__item${['friends', 'friend-profile'].includes(route.name) ? ' is-active' : ''}`} onClick={() => nav('friends')}>
-                  {t('nav.friends') || 'Friends'}
+                <button className={`nav-group__item${['kindred', 'reader-profile'].includes(route.name) ? ' is-active' : ''}`} onClick={() => nav('kindred')}>
+                  {t('nav.kindred') || 'Kindred'}
                 </button>
               </div>
             )}
@@ -359,8 +344,6 @@ export default function Nav({ onPreviewBook, guestMode = false }) {
                           go={go}
                           markOneRead={markOneRead}
                           onAnnouncement={setActiveAnnouncement}
-                          handleAccept={handleAccept}
-                          handleDecline={handleDecline}
                         />
                       ))}
                     </div>
@@ -480,7 +463,7 @@ export default function Nav({ onPreviewBook, guestMode = false }) {
             {[
               { name: 'lists', label: t('nav.lists'), count: listsCount },
               { name: 'book-clubs', label: t('nav.bookClubs'), count: clubsCount },
-              { name: 'friends', label: t('nav.friends') || 'Friends', count: 0 },
+              { name: 'kindred', label: t('nav.kindred') || 'Kindred', count: 0 },
             ].map(({ name, label, count }) => (
               <button key={name} className={`mobile-menu__item${route.name === name ? ' is-active' : ''}`} onClick={() => nav(name)}>
                 {label}

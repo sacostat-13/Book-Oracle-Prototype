@@ -8,7 +8,8 @@ import { MOODS, moodTitleKey } from '../lib/moods';
 import { parseGoodreadsCSV } from '../lib/goodreadsImport';
 import GoodreadsImportPanel from '../components/GoodreadsImportPanel';
 import { findBookByTitle, bookKey, openBookTab } from '../lib/bookHelpers';
-import { useFriends, checkUsernameAvailability, validateUsername } from '../lib/useFriends';
+import { useFollows, checkUsernameAvailability, validateUsername } from '../lib/useFollows';
+import ReaderSettings from '../components/ReaderSettings';
 import { supabase } from '../lib/supabase';
 import { TITLE_TIERS, isTierEarned, sanitizeTitleKey, titleLabel } from '../lib/titles';
 import { STANDARD_AVATARS, GENRE_AVATARS } from '../lib/avatars';
@@ -803,23 +804,28 @@ function ReaderPrefsSection({ state, setProfile, t }) {
   );
 }
 
-// ── Friends callout — now a dedicated page ────────────────────────────────────
-function FriendsCallout({ go, t }) {
-  const { friends, incoming } = useFriends();
+// ── Kindred callout — the dedicated page lives at /kindred ────────────────────
+//
+// v0.66: no pending count, because there is nothing pending. The old version
+// led with "3 requests" whenever an inbox needed clearing; a follow needs no
+// clearing, so this reports the two numbers that describe the relationship
+// rather than a chore.
+function KindredCallout({ go, t }) {
+  const { following, followers } = useFollows();
   return (
     <div className="pf-callout">
       <div>
         <div className="pf-callout__label">
-          {t('profile.labelFriends')}
+          {t('profile.labelKindred')}
         </div>
         <div className="pf-callout__text">
-          {friends.length > 0
-            ? `${friends.length} reading friend${friends.length !== 1 ? 's' : ''}${incoming.length > 0 ? ` · ${incoming.length} request${incoming.length !== 1 ? 's' : ''}` : ''}`
-            : t('profile.friendsEmpty')}
+          {following.length > 0 || followers.length > 0
+            ? t('profile.kindredCount', { count: following.length, followers: followers.length })
+            : t('profile.kindredEmpty')}
         </div>
       </div>
-      <button className="btn-tertiary btn--sm" onClick={() => go('friends')}>
-        {incoming.length > 0 ? `View (${incoming.length})` : 'View friends'}
+      <button className="btn-tertiary btn--sm" onClick={() => go('kindred')}>
+        {t('profile.viewKindred')}
       </button>
     </div>
   );
@@ -1536,6 +1542,10 @@ export default function Profile() {
         <DisplayNameSection profile={state.profile} updateDisplayName={updateDisplayName} t={t} />
         <PasswordSection user={user} showToast={showToast} t={t} />
         <ReaderPrefsSection state={state} setProfile={setProfile} t={t} />
+        {/* v0.66: "About you" and the curator request. Filed here rather than
+            under Privacy — a bio is identity, and it sits with the username,
+            display name and favourite genres it will be read alongside. */}
+        {user && <ReaderSettings section="identity" />}
         {user && <AvatarSection state={state} user={user} updateAvatar={updateAvatar} showToast={showToast} t={t} />}
         <TitlesSection state={state} setProfile={setProfile} t={t} />
 
@@ -1598,7 +1608,13 @@ export default function Profile() {
         )}
 
         {tab === 'privacy' && (
-          <PrivacySection profile={state.profile} updatePrivacyPrefs={updatePrivacyPrefs} t={t} />
+          <>
+            <PrivacySection profile={state.profile} updatePrivacyPrefs={updatePrivacyPrefs} t={t} />
+            {/* v0.66 — shelf visibility and feed scope. The bio and the
+                curator request moved to Account, where a reader would think
+                to look for them. */}
+            <ReaderSettings section="privacy" />
+          </>
         )}
 
         {/* ── Subscription tab ──────────────────────────────────────────────── */}
@@ -1718,7 +1734,7 @@ export default function Profile() {
 
 const DEFAULT_PREFS = {
   book_club: true,
-  friends: true,
+  follows: true,
   announcements: true,
   email: true,
   // v0.63. Defaults ON, and rollup_list_notifications reads the same key with
@@ -1756,7 +1772,7 @@ function NotificationPreferences({ t, user, showToast }) {
 
   const rows = [
     { key: 'book_club', label: t('notifications.prefBookClub'), desc: t('notifications.prefBookClubDesc'), locked: false },
-    { key: 'friends', label: t('notifications.prefFriends'), desc: t('notifications.prefFriendsDesc'), locked: false },
+    { key: 'follows', label: t('notifications.prefFollows'), desc: t('notifications.prefFollowsDesc'), locked: false },
     { key: 'curated_lists', label: t('notifications.prefCuratedLists'), desc: t('notifications.prefCuratedListsDesc'), locked: false },
     { key: 'announcements', label: t('notifications.prefAnnouncements'), desc: t('notifications.prefAnnouncementsDesc'), locked: true },
     { key: 'email', label: t('notifications.prefEmail'), desc: t('notifications.prefEmailDesc'), locked: false },

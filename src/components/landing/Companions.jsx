@@ -21,7 +21,10 @@ const TILES = [
   { key: 'series', sigil: '⧉' },
   { key: 'vault', sigil: '◈' },
   { key: 'stacks', sigil: '▤' },
-  { key: 'lists', sigil: '☽' },
+  // Interlocking rings: the thing worth signalling on this tile is
+  // reciprocity. Deliberately NOT ⚭ (the barred marriage sign), which
+  // `clubs` already uses two rows up.
+  { key: 'kindred', sigil: '⚯' },
   { key: 'bilingual', sigil: 'Æ' },
   { key: 'share', sigil: '❧' },
   { key: 'categories', sigil: '❖' },

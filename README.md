@@ -1,10 +1,10 @@
 # The Wishlist Oracle
 
-A reading companion — wishlist, library, reading plans, book clubs, and an AI-powered "oracle"
-for book discovery. Built with React + Vite + SCSS, backed by Supabase for auth
+A reading companion — wishlist, library, Passages (reading plans), Anthologies (curated
+lists), book clubs, Kindred (follows), and an AI-powered "oracle" for book discovery. Built with React + Vite + SCSS, backed by Supabase for auth
 and cross-device sync, and Netlify Functions for API proxying.
 
-> Current version: **v0.64.1** — see [Releases](#releases) below for changelog.
+> Current version: **v0.66** — see [Releases](#releases) below for changelog.
 > Upgrading from an earlier version? Check the matching `MIGRATION_*.md` / `UPDATE_*.md`.
 
 ---
@@ -365,11 +365,269 @@ and forward requests. Locally you need `netlify dev` to make them work.
 
 **SCSS architecture (v0.30).** `src/styles/main.scss` is a single entry point that `@import`s 28 focused partials organised into four layers: tokens/reset/global (root-level), then `layout/`, `components/`, and `pages/`. `@import` is used over `@use` for reliable Vite HMR and correct `[data-theme]` cascade across all partials. Max nesting depth is 3 levels. No layout rules inside component files; page files contain only page-specific overrides — shared patterns go in the nearest component partial.
 
-**Session cache.** `DataContext` caches Supabase state in `sessionStorage` so new tabs render instantly from cache, then validate in background. Cache keyed by userId with 30-minute expiry.
+**Session cache.** `DataContext` caches Supabase state in `sessionStorage` so new tabs render instantly from cache, then validate in background. Cache keyed by userId with 30-minute expiry. Validation checks **two** stamps: `catalog_meta.version` (did the catalogue change?) and a shelf fingerprint from `read_books.updated_at` (did this reader's shelf change under us?). Both only decide whether the cache is *usable* — neither overwrites in-memory state, so no background-refresh race. Before v0.65 only the first existed, which is why a read date corrected outside the tab stayed invisible for 30 minutes and survived a hard refresh.
 
 ---
 
 ## Releases
+
+# Update Notes — v0.65 → v0.66: Kindred
+
+**Migrations required, in order:**
+
+1. `20260820180000_follows.sql` — `user_follows`, `profiles.bio` / `favorite_genres` / `shelf_visibility`, `lists.visibility`, `curator_requests`, the `read_books` RLS rewrite, and the drop of `friendships` + `friend_pairs`
+2. `20260820210000_reader_search.sql` — `search_readers()`
+3. `20260820220000_kinship_notification.sql` — `kinship_formed`, and the reciprocity check on the follow trigger
+
+**Apply these and deploy the bundle together.** Migration 1 drops `friendships`
+and the `friend_pairs` view, both of which the v0.65 bundle still reads. Old
+code against the new schema breaks the dashboard feed and every profile page,
+so this is one deploy, not two. Verify on a Supabase branch first — §2 is the
+part worth watching.
+
+Spec: `claude/social-model-follows-v1-spec.md`.
+
+Friendships are gone. One asymmetric relationship replaces them, and the
+approval step that used to guard shelf access is now a setting.
+
+## 1. Why a follow rather than a friendship
+
+We had already shipped a follow. `list_followers` (v0.63) is asymmetric, needs
+no approval, and notifies on change. So the question was never "should this app
+have follows" — it was whether to extend that primitive to people, and whether
+the friendship survives alongside it.
+
+It does not, for four reasons:
+
+- **A friendship is a state machine.** `friendships.status` was
+  pending/accepted/blocked, which is five flows — request, accept, decline,
+  cancel, re-request — each needing UI, notifications and edge cases. A follow
+  has one.
+- **The curator goal is asymmetric by nature.** Following a curator is one-way.
+  Modelled as a friendship, a curator with 400 readers approves 400 requests.
+- **Two relationship types would need distinguishing everywhere** — the feed,
+  the profile, notifications, privacy, empty states, onboarding — and readers
+  would have to answer "friend or follow?", a question with no good answer.
+- **It matches the positioning.** A quiet companion does not run a
+  pending-request inbox.
+
+Existing rows were **dropped, not migrated**. There were two in production, both
+belonging to the same account, and both parties re-follow in under a minute.
+
+## 2. The consent boundary moved, and it moved in the same transaction
+
+This is the piece to review.
+
+`read_books`' SELECT policy read "mine, or an accepted friend's". The friendship
+*was* the permission. Deleting friendships without replacing that boundary would
+have silently opened every reader's shelf — so `profiles.shelf_visibility`
+(`public` | `followers` | `private`, default `followers`) lands in the same
+migration, and the policy now calls:
+
+```sql
+create policy "read_books select" on public.read_books
+  for select using (public.can_view_shelf(user_id));
+```
+
+`can_view_shelf()` is SECURITY DEFINER because the check has to read the
+*owner's* profile row to learn their setting, and the viewer has no business
+selecting that row directly. It is `stable`, not `volatile`, so Postgres
+evaluates it once per statement rather than per row of a shelf. `search_path` is
+pinned, because a SECURITY DEFINER function without one is a privilege
+escalation waiting to happen.
+
+Section 6 of the migration is ordered deliberately: repoint the policy, *then*
+drop the view, *then* the table. The other order fails on the dependency, and
+dropping the policy without a replacement leaves `read_books` with no SELECT
+policy at all — which under RLS denies everything, including the reader's own
+shelf.
+
+**The client no longer filters for privacy anywhere.** `useFriends` used to read
+`preferences.friendsCanSeeLibrary` in JavaScript and drop rows, which made the
+setting only as strong as the client honouring it — anyone could call
+`getFriendLibrary` directly. Rows the viewer may not see now never arrive.
+`ReaderProfile` reads `shelf_visibility` for one purpose only: choosing which
+sentence to show in the gap.
+
+## 3. `lists.is_public` is now derived
+
+Lists needed a third tier (`private` / `followers` / `public`), and that is not
+a boolean. Fourteen places read `is_public`.
+
+Rather than rewrite all fourteen, `visibility` became the source of truth and
+`is_public` is maintained by a `before insert or update` trigger. Every existing
+policy, query and RPC keeps working and keeps meaning exactly what it meant —
+"is this on the open web?". **Write to `visibility`; never to `is_public`.**
+
+`clear_followers_on_private()` was rewritten in the same pass. It fired on the
+boolean, so a list moving from public to followers-only would have dropped its
+followers — which is the opposite of what that tier is for.
+
+## 4. `search_readers()`, and what it will not do
+
+The first Kindred build searched `profiles.username` with an exact match. That
+fails in the two most ordinary cases there are: `username` is nullable and
+nothing forces one, so a reader who only set a display name was unfindable by
+any spelling of their name; and "mari" does not equal "marisol".
+
+One SECURITY DEFINER function now handles username prefix, display-name
+substring, and email — the last of which the client cannot do at all, since
+email lives in `auth.users`.
+
+Two deliberate limits:
+
+- **Email matches exactly, never as a prefix or substring.** A partial match
+  turns this into an address-harvesting endpoint: type `@gmail.com`, read back
+  the user list. Exact-match means you can only confirm an address you already
+  had.
+- **The email is never returned.** Matching on it is allowed; reading it back is
+  not.
+
+`is_discoverable` is honoured, the caller is excluded, and execute is granted to
+`authenticated` only — a signed-out visitor can open a profile by URL, but
+enumerating the user base is not on offer.
+
+## 5. Notifications: one event is worth an email
+
+`new_follower` notifies one person, **in-app only**, and
+`send-notification-email.js` hard-refuses to email it regardless of the reader's
+preferences. Following is one-way and costless, so followers arrive in bursts —
+an email each is the most reliable way to teach someone to filter your domain.
+
+`kinship_formed` is different: reciprocal, rare, and it takes two people, so it
+cannot spam. It notifies **both** readers, because it is news to each of them —
+the one who followed back just learned it is mutual, and the original follower
+never knew until now. It is the only social event allowed to become an email.
+
+The preference key was renamed `friends` → `follows` **in place**, so a reader
+who had friend emails switched off is not opted back in to what replaced them.
+
+## 6. Vocabulary
+
+The verb stays plain — a button that says anything other than **Follow** is a
+button people press with hesitation. The room is branded:
+
+| Concept | Interface | Code |
+|---|---|---|
+| People you follow | Your Kindred | `following` |
+| A mutual follow | Kinship | `mutual` (derived) |
+| People who follow you | Readers following you | `followers` |
+
+"Kindred" beat *Acolytes* because the Oracle is already the AI: devotional
+vocabulary implies the reader you follow is an oracle, colliding with the
+product's most established name.
+
+Also renamed, **in-app labels only**: Reading Plans → **Passages**, Curated
+Lists → **Anthologies**. Routes, page titles, meta and the sitemap keep the
+plain words — the Anthologies directory renders signed-out by design and is a
+landing surface, and "curated list" is what a stranger types into a search box.
+
+## 7. Found along the way
+
+`notifications_type_check` never included `'list_updated'`, but the
+curated-lists digest has been inserting exactly that type since v0.63. Either
+the constraint was altered outside migrations, or **every list-follower
+notification has been failing its insert since that feature shipped**. The
+rebuilt constraint includes it. Worth confirming which — if it is the latter,
+list follows have never notified anyone.
+
+## 8. Known state
+
+- `useFriends.js`, `Friends.jsx` and `FriendProfile.jsx` are deleted.
+- No curator directory yet. `favorite_genres` is a real column and filterable,
+  but nothing queries it — that is Phase 3.
+- Curator grants are a `service_role` action. `curator_requests` holds the ask;
+  there is no admin UI, and deliberately no client path to approval.
+- Onboarding's follow step was dropped until there are curators to point it at.
+- `package.json` still reads `0.2.0` and has for many releases. The README line
+  and `CURRENT_VERSION` are the ones kept current.
+
+---
+
+# Update Notes — v0.64.1 → v0.65: dates nobody chose, and a cache that outlived the truth
+
+**Migration required:**
+
+1. `20260820140000_read_books_updated_at.sql` — `read_books.updated_at` plus its
+   trigger and index
+
+Shipped to production ahead of v0.66; written up here after the fact.
+
+## 1. The Stacks stopped inventing read dates
+
+`bulkAddToLibrary` stamped `read_at = today` on every book it added. All three
+of its callers — The Stacks, OnboardingStacks, BulkImport — are a reader saying
+*"I have read this"*, not *"I finished this today"*, so every tap became a
+fabricated data point: the book counted toward this year's reading challenge,
+this month's bar on the pace chart, and the streak. Clearing forty cards off the
+wall in one sitting read as forty books finished that afternoon.
+
+Undated now, extending the v0.59 `importGoodreads` rule to every bulk path. A
+read date the reader never gave us is a guess, and a guess that feeds stats is
+worse than a blank.
+
+`markAsRead` also hard-coded `today` while ignoring `extra.readAt` — so the
+"Finished on" field RatingModal has offered since v0.63 silently did nothing on
+the create path. Only the edit path ever respected it.
+
+## 2. Three separate reasons a corrected read date would not stick
+
+Reported as one bug. It was three.
+
+**A silent no-op.** A PostgREST `UPDATE` matching zero rows returns 204 with no
+error object. An edit aimed at a `book_id` with no `read_books` row reported
+success, patched local state, and reverted on the next load. `updateReadBook`
+now `.select()`s to check, and falls back to an upsert.
+
+**A timezone shift.** `new Date(patch.readAt).toISOString()` parses
+`'2025-11-15'` as UTC midnight, so a reader west of Greenwich got `2025-11-14`
+back out. `read_at` is a DATE column and the input is already `YYYY-MM-DD`; the
+correct handling is to leave it alone.
+
+**The cache, which is why a hard refresh did not help.** `DataContext` treats
+its `sessionStorage` cache as authoritative, and exactly one thing invalidated
+it: `catalog_meta.version`, bumped by a trigger on `books`. That covers
+catalogue changes and nothing about the reader's own shelf — so a change made in
+another tab, on another device, or by hand in the SQL editor stayed invisible
+for the full 30-minute cache lifetime. And `sessionStorage` survives F5 by
+design, so "hard reset" cleared nothing.
+
+`read_books.updated_at` exists so the client can carry a shelf fingerprint
+(`max(updated_at)` + row count) in the cache and compare it in one cheap
+request, in the same shape as the `catalog_meta` check: it decides whether the
+cache is *usable* and never overwrites in-memory state, so it does not
+reintroduce the background-refresh race the no-background-refresh comment
+guards against. `created_at` cannot do this job — editing a read date does not
+create a row.
+
+## 3. The rest
+
+- **Reading Challenge leads the Overview tab.** The goal frames the numbers
+  underneath it. It also renders outside `hasStats`, so an empty shelf opens on
+  "set a goal" rather than on nothing.
+- **Date inputs.** v0.63 styled everything reachable and left the one lever that
+  reaches the popup calendar: `accent-color`. The selected day was still painted
+  system blue. Set now, alongside a `color-scheme` default that applies before
+  React mounts, and a selector that matches on input *type* rather than the
+  `.input` class.
+- **`--ro-label-gap: 1.4rem`** above section labels — more air above than below,
+  or the label reads as a caption on the control it follows rather than a
+  heading for the one it introduces.
+- **A `midnav: 1180px` breakpoint** and a condensed topbar for 768–1180px. The
+  full desktop bar needs ~1180px, so iPad portrait ran off the right edge with
+  no scroll and no overflow menu. Nothing in that tier is `display:none` — a
+  control that vanishes between 1179px and 1180px is a worse bug than the one
+  being fixed.
+- **The what's-new icon renders on mobile**, at a 44px touch target. It lived in
+  `.nav-icons`, which is `display:none` below the tablet breakpoint, so the
+  unseen-release dot had nowhere to appear.
+- **The footer Pricing link** goes to About's pricing anchor instead of the
+  subscription tab.
+- **`docs/stacks-genre-coverage.sql`** — eligible books per genre, mirroring
+  `useStacks.baseQuery()` exactly, with a stricter column that excludes stub
+  descriptions.
+
+---
 
 # Update Notes — v0.64 → v0.64.1: audiobooks, and a backfill that finishes
 

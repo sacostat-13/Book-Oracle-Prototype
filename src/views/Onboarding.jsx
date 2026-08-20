@@ -10,7 +10,7 @@ import OnboardingStacks from '../components/OnboardingStacks';
 import CornerBrackets from '../components/CornerBrackets';
 import { supabase } from '../lib/supabase';
 import { findBookByTitle } from '../lib/bookHelpers';
-import { validateUsername, checkUsernameAvailability } from '../lib/useFriends';
+import { validateUsername, checkUsernameAvailability } from '../lib/useFollows';
 
 // v0.38: fixed set of mood/intent chips for the "what are you looking for right now" step.
 // Multi-select, up to MOOD_MAX. IDs are stable — used as keys in profile.currentMood and in i18n lookups.

@@ -13,7 +13,7 @@ import { useOracleQuota } from '../lib/OracleQuotaContext';
 import { callClaude, QuotaExceededError } from '../lib/claudeApi';
 import { bookKey, openBookTab } from '../lib/bookHelpers';
 import { buildTasteProfile, suggestLevelFromTaste, goalDirective, describeTasteProfile } from '../lib/matchHelpers';
-import { getFriendsFeedEvents } from '../lib/useFriends';
+import { getFollowingFeedEvents } from '../lib/useFollows';
 import { supabase } from '../lib/supabase';
 import CoachMark from '../components/CoachMark';
 import { OracleQuotaBadge } from '../components/OracleQuotaBadge';
@@ -970,7 +970,7 @@ function FriendAvatar({ friend, size = 30 }) {
   );
 }
 
-function FriendsFeedWidget({ userId, hasFriends, go, t }) {
+function FriendsFeedWidget({ userId, hasFriends, go, t, scope = 'both' }) {
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(false);
   const [updatedAt, setUpdatedAt] = useState(null);
@@ -978,9 +978,12 @@ function FriendsFeedWidget({ userId, hasFriends, go, t }) {
   const load = useCallback(async () => {
     if (!userId || !hasFriends) return;
     setLoading(true);
-    try { const evs = await getFriendsFeedEvents(userId); setEvents(evs); setUpdatedAt(new Date()); }
+    // scope comes from the reader's preference: 'follows' | 'mutuals' | 'both'.
+    // Muted follows are dropped inside the query for every scope — that is what
+    // separates a mute from an unfollow.
+    try { const evs = await getFollowingFeedEvents(userId, { scope }); setEvents(evs); setUpdatedAt(new Date()); }
     finally { setLoading(false); }
-  }, [userId, hasFriends]);
+  }, [userId, hasFriends, scope]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -993,8 +996,8 @@ function FriendsFeedWidget({ userId, hasFriends, go, t }) {
       <WidgetShell icon={<IconDiamond />} label={t('dashboard.widgetFriendsFeed')}>
         <div className="db-ff-empty">
           <p className="db-ff-empty-text">{t('dashboard.friendsFeedNoFriends')}</p>
-          <button className="btn-tertiary btn--sm" onClick={() => go('profile')}>
-            {t('profile.labelFriends')}
+          <button className="btn-tertiary btn--sm" onClick={() => go('kindred')}>
+            {t('profile.viewKindred')}
           </button>
         </div>
       </WidgetShell>
@@ -1206,8 +1209,11 @@ export default function Dashboard({ onOpenBook }) {
   // (chunk/SW interop), silently breaking the friend count and clubs summary.
   useEffect(() => {
     if (!user) return;
-    supabase.from('friend_pairs').select('user_b', { count: 'exact', head: true })
-      .eq('user_a', user.id).then(({ count }) => setFriendCount(count || 0));
+    // v0.66: friend_pairs is gone. "Do I follow anyone" is what decides
+    // whether the feed widget has anything to say, and that is one direction
+    // of user_follows.
+    supabase.from('user_follows').select('followee_id', { count: 'exact', head: true })
+      .eq('follower_id', user.id).then(({ count }) => setFriendCount(count || 0));
   }, [user]);
 
   useEffect(() => {
@@ -1238,7 +1244,7 @@ export default function Dashboard({ onOpenBook }) {
       case 'streak': return <StreakWidget key={id} library={state.library || []} t={t} />;
       case 'plans': return <PlansWidget key={id} plans={state.plans || []} go={go} t={t} />;
       case 'clubs': return <ClubsWidget key={id} clubs={state.clubs || []} summary={clubsSummary} go={go} t={t} />;
-      case 'friends-feed': return <FriendsFeedWidget key={id} userId={user?.id} hasFriends={friendCount > 0} go={go} t={t} />;
+      case 'friends-feed': return <FriendsFeedWidget key={id} userId={user?.id} hasFriends={friendCount > 0} go={go} t={t} scope={state.profile?.feedScope || 'both'} />;
       case 'feed': return <FeedWidget key={id} state={state} onOpenBook={onOpenBook} go={go} t={t} eyebrow={t('dashboard.widgetMyFeed')} />;
       default: return null;
     }

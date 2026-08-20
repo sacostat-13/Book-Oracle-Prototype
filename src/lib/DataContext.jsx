@@ -28,6 +28,16 @@ const defaultState = {
     goodreadsImported: false,
     favoriteGenres: [], // v0.38: onboarding — up to 5 genre names
     currentMood: [],    // v0.38: onboarding — up to 3 mood/intent chip ids
+    // v0.66 — follows.
+    bio: null,
+    // Who may read this reader's shelves: 'public' | 'followers' | 'private'.
+    // Mirrors profiles.shelf_visibility, which is what the RLS policy actually
+    // consults. This copy is for rendering the setting, never for deciding
+    // access — the server already decided that.
+    shelfVisibility: 'followers',
+    // Whose updates reach the feed: 'follows' | 'mutuals' | 'both'.
+    feedScope: 'both',
+    isCurator: false,
     // v0.51: the earned Reader Title the user chose to wear (tier key from
     // titles.js), or null. App-granted only — the picker offers earned tiers.
     displayTitle: null,
@@ -846,6 +856,16 @@ async function loadFromSupabase(userId) {
       username: profile.username || null,
       avatarUrl: profile.avatar_url,
       isDiscoverable: profile.is_discoverable ?? true,
+      // v0.66: real columns now, not preferences keys. favoriteGenres prefers
+      // the column and falls back to the blob, because the migration backfills
+      // one from the other and a reader who has not saved since then still has
+      // their genres only in preferences.
+      bio: profile.bio || null,
+      shelfVisibility: profile.shelf_visibility || 'followers',
+      isCurator: !!profile.is_curator,
+      favoriteGenres: (profile.favorite_genres?.length
+        ? profile.favorite_genres
+        : profile.preferences?.favoriteGenres) || [],
       emailNotifications: profile.email_notifications ?? true,
       // v0.45: dedicated column (not preferences) — stamped once by the backfill
       accomplishmentsBackfilledAt: profile.accomplishments_backfilled_at || null,
@@ -914,10 +934,18 @@ async function savePreferences(userId, state) {
         shelfSortMode: state.shelfSortMode,
         oracleMode: state.oracleMode,
         dashboardLayout: state.dashboardLayout,
+        // v0.66: which follows feed the dashboard widget draws from.
+        feedScope: state.profile.feedScope || 'both',
         readingGoalCount: state.readingGoalCount,
         coachmarksSeen: state.coachmarksSeen || [],
         lastSeenVersion: state.lastSeenVersion,
       },
+      // v0.66: the column, written alongside the blob it was promoted out of.
+      // ReaderPrefsSection still edits state.profile.favoriteGenres and knows
+      // nothing about the column — keeping the two in step here means one
+      // place to delete when preferences.favoriteGenres is finally retired,
+      // rather than an editor that has to remember.
+      favorite_genres: state.profile.favoriteGenres || [],
       updated_at: new Date().toISOString(),
     })
     .eq('id', userId);

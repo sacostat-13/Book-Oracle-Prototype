@@ -1604,3 +1604,304 @@
   gap: 2px;
   min-width: 0;
 }
+
+// ── Kindred (v0.66) ──────────────────────────────────────────────────────────
+//
+// Replaces the .friend-row family. Same visual weight — a row is a row — but
+// the actions column now holds mute/unfollow rather than accept/decline, so it
+// is sized for two tertiary buttons instead of a decision.
+
+.kin-search {
+  display: flex;
+  gap: var(--ro-space-2);
+  margin-top: var(--ro-space-4);
+
+  .input { flex: 1 1 auto; min-width: 0; }
+}
+
+.kin-search__hint {
+  margin: var(--ro-space-2) 0 var(--ro-space-6);
+  color: var(--ro-muted);
+  font-size: 0.82rem;
+}
+
+.kin-tabs {
+  display: flex;
+  gap: var(--ro-space-1);
+  flex-wrap: wrap;
+  margin-bottom: var(--ro-space-5);
+  border-bottom: 1px solid var(--ro-border);
+}
+
+.kin-tab__count {
+  margin-left: 6px;
+  font-family: var(--ro-font-mono);
+  font-size: 0.7rem;
+  color: var(--ro-muted);
+}
+
+.kin-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ro-space-2);
+}
+
+.kin-row {
+  display: flex;
+  align-items: center;
+  gap: var(--ro-space-3);
+  padding: var(--ro-space-3) var(--ro-space-4);
+  background: var(--ro-surface);
+  border: 1px solid var(--ro-border);
+  border-radius: var(--ro-radius-md);
+
+  // The row is a button wrapping a button, which is invalid HTML — so the
+  // clickable area is its own <button> sibling of the actions rather than a
+  // wrapper around them.
+  &__main {
+    display: flex;
+    align-items: center;
+    gap: var(--ro-space-3);
+    flex: 1 1 auto;
+    min-width: 0;
+    background: none;
+    border: 0;
+    padding: 0;
+    text-align: left;
+    cursor: pointer;
+    color: inherit;
+
+    &:disabled { cursor: default; }
+    &:focus-visible { outline: 2px solid var(--ro-gold); outline-offset: 3px; }
+  }
+
+  &__body { min-width: 0; }
+
+  &__name {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    font-weight: 600;
+    color: var(--ro-text);
+  }
+
+  &__meta {
+    font-family: var(--ro-font-mono);
+    font-size: 0.75rem;
+    color: var(--ro-muted);
+  }
+
+  // Two lines at most. A bio is a hint on this row, not the content of it —
+  // the profile page is where it gets to be read.
+  &__bio {
+    margin-top: 4px;
+    color: var(--ro-text-2);
+    font-size: 0.86rem;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  &__actions {
+    display: flex;
+    align-items: center;
+    gap: var(--ro-space-2);
+    flex-shrink: 0;
+  }
+
+  &__note {
+    font-family: var(--ro-font-mono);
+    font-size: 0.7rem;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: var(--ro-muted);
+  }
+
+  // Below the tablet breakpoint the actions drop under the reader rather than
+  // squeezing the name into two words.
+  @include tokens.ro-down(tablet) {
+    flex-wrap: wrap;
+
+    &__actions {
+      width: 100%;
+      justify-content: flex-end;
+    }
+  }
+}
+
+.kin-row--list {
+  width: 100%;
+  cursor: pointer;
+  text-align: left;
+  color: inherit;
+
+  &:focus-visible { outline: 2px solid var(--ro-gold); outline-offset: 3px; }
+}
+
+.kin-badge {
+  font-family: var(--ro-font-mono);
+  font-size: 0.62rem;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  padding: 2px 7px;
+  border-radius: var(--ro-radius-pill);
+  border: 1px solid var(--ro-border-strong);
+  color: var(--ro-muted);
+  white-space: nowrap;
+}
+
+.kin-badge--curator {
+  border-color: var(--ro-gold);
+  color: var(--ro-gold-text);
+}
+
+.kin-badge--mutual {
+  border-color: var(--ro-border-strong);
+  color: var(--ro-text-2);
+}
+
+.kin-empty {
+  padding: var(--ro-space-8) var(--ro-space-4);
+  text-align: center;
+
+  &__title {
+    font-family: var(--ro-font-display);
+    font-size: 1.05rem;
+    color: var(--ro-text);
+  }
+
+  // The sentence that explains what a follow IS. Worth the width limit: this
+  // is the only place the one-way model gets explained to someone who has not
+  // used it yet.
+  &__sub {
+    margin: var(--ro-space-2) auto 0;
+    max-width: 46ch;
+    color: var(--ro-muted);
+    font-size: 0.88rem;
+    line-height: 1.55;
+  }
+}
+
+// ── Reader profile additions (v0.66) ─────────────────────────────────────────
+
+.fp-hero__bio {
+  margin-top: var(--ro-space-3);
+  max-width: 58ch;
+  color: var(--ro-text-2);
+  line-height: 1.6;
+}
+
+.fp-hero__genres {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: var(--ro-space-3);
+
+  &-label {
+    font-family: var(--ro-font-mono);
+    font-size: 0.66rem;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--ro-muted);
+    margin-right: 2px;
+  }
+}
+
+.fp-empty__hint {
+  margin-top: var(--ro-space-2);
+  color: var(--ro-muted);
+  font-size: 0.86rem;
+}
+
+.fp-lists {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ro-space-2);
+}
+
+.fp-list-row {
+  display: flex;
+  width: 100%;
+  text-align: left;
+  padding: var(--ro-space-3) var(--ro-space-4);
+  background: var(--ro-surface);
+  border: 1px solid var(--ro-border);
+  border-radius: var(--ro-radius-md);
+  cursor: pointer;
+  color: inherit;
+  transition: border-color .15s;
+
+  &:hover { border-color: var(--ro-border-strong); }
+  &:focus-visible { outline: 2px solid var(--ro-gold); outline-offset: 3px; }
+
+  &__title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    font-weight: 600;
+    color: var(--ro-text);
+  }
+
+  &__desc {
+    margin-top: 4px;
+    color: var(--ro-text-2);
+    font-size: 0.86rem;
+  }
+}
+
+// ── Radio choice rows (ReaderSettings) ───────────────────────────────────────
+//
+// A radio rather than a toggle, because these are three-way and mutually
+// exclusive. The existing .pf-toggle-row is for booleans and stays that way —
+// dressing a three-way choice as two switches is how a privacy setting gets
+// misread.
+
+.pf-choices {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ro-space-2);
+}
+
+.pf-choice {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--ro-space-3);
+  padding: var(--ro-space-3) var(--ro-space-4);
+  border: 1px solid var(--ro-border);
+  border-radius: var(--ro-radius-md);
+  cursor: pointer;
+  transition: border-color .15s, background .15s;
+
+  &:hover { border-color: var(--ro-border-strong); }
+
+  &--on {
+    border-color: var(--ro-gold);
+    background: color-mix(in srgb, var(--ro-gold) 7%, transparent);
+  }
+
+  &__radio {
+    margin-top: 3px;
+    accent-color: var(--ro-gold);
+    flex-shrink: 0;
+  }
+
+  &__body { display: block; }
+
+  &__label {
+    display: block;
+    font-weight: 600;
+    color: var(--ro-text);
+  }
+
+  &__desc {
+    display: block;
+    margin-top: 3px;
+    color: var(--ro-muted);
+    font-size: 0.85rem;
+    line-height: 1.5;
+  }
+}
