@@ -32,6 +32,7 @@ import ShareModal from '../components/ShareModal';
 import { profileShareUrl } from '../lib/shareService';
 import { titleLabel } from '../lib/titles';
 import Avatar from '../components/Avatar';
+import { RowListSkeleton, CoverGridSkeleton } from '../components/Skeleton';
 
 const PAGE_SIZE = 48;
 
@@ -286,7 +287,19 @@ export default function FriendProfile() {
   const [profile, setProfile] = useState(null);
   const [library, setLibrary] = useState([]);
   const [reading, setReading] = useState([]);
+  // Two loading states, not one (v0.66.1).
+  //
+  // `loading` gates the whole page and covers ONE query: the profile itself.
+  // `shelvesLoading` covers the heavy fan-out — library, currently-reading,
+  // counts, lists — and only gates the sections that need them.
+  //
+  // Before this the page waited on all five before rendering anything, so
+  // opening a stranger's profile showed a full-page spinner for as long as
+  // their library took to come back. The parts a visitor actually came for —
+  // name, bio, genres, follower count, the Follow button — depend on none of
+  // that and can be on screen immediately.
   const [loading, setLoading] = useState(true);
+  const [shelvesLoading, setShelvesLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [shareOpen, setShareOpen] = useState(false); // v0.43
   const [counts, setCounts] = useState({ followers: 0, following: 0 });
@@ -301,14 +314,20 @@ export default function FriendProfile() {
   useEffect(() => {
     if (!username) { setNotFound(true); setLoading(false); return; }
     setLoading(true);
+    setShelvesLoading(true);
     setNotFound(false);
     setProfile(null);
     setLibrary([]);
     setReading([]);
 
+    let cancelled = false;
+
     getProfileByUsername(username).then(async (p) => {
-      if (!p) { setNotFound(true); setLoading(false); return; }
+      if (cancelled) return;
+      if (!p) { setNotFound(true); setLoading(false); setShelvesLoading(false); return; }
+      // The page can render now. Everything below fills in behind it.
       setProfile(p);
+      setLoading(false);
 
       // Every one of these is asked for unconditionally. RLS decides what
       // comes back — a shelf this viewer may not see returns [], the same as a
@@ -320,12 +339,15 @@ export default function FriendProfile() {
         getFollowCounts(p.id),
         getVisibleListsFor(p.id),
       ]);
+      if (cancelled) return;
       setLibrary(libRaw.map(normalizeBook));
       setReading(cr);
       setCounts(followCounts);
       setLists(theirLists);
-      setLoading(false);
+      setShelvesLoading(false);
     });
+
+    return () => { cancelled = true; };
   }, [username, isSelf]);
 
   async function toggleFollow() {
@@ -348,14 +370,12 @@ export default function FriendProfile() {
     }
   }
 
-  if (loading) return (
-    <div className="loading">
-      <div className="loading-spinner" />
-      <span className="loading-text">
-        {t('common.loading')}
-      </span>
-    </div>
-  );
+  // A profile has a known shape, so it gets a skeleton rather than BookLoader
+  // — see the doctrine note in components/Skeleton.jsx. BookLoader's literary
+  // quote is for the Oracle, where the wait is long AND the result's shape is
+  // unknown; using it here would promise a fifteen-second think for what is
+  // one indexed lookup.
+  if (loading) return <RowListSkeleton count={4} className="fp-page" />;
 
   if (notFound) return (
     <div className="lv-empty">
@@ -420,11 +440,13 @@ export default function FriendProfile() {
                 comes from a SECURITY DEFINER function precisely so it survives
                 a private profile. The identities behind it never leave the
                 server. */}
-            <span className="bp-pill">
-              ✦ {counts.followers === 1
-                ? t('kindred.followerCount_one')
-                : t('kindred.followerCount', { count: counts.followers })}
-            </span>
+            {!shelvesLoading && (
+              <span className="bp-pill">
+                ✦ {counts.followers === 1
+                  ? t('kindred.followerCount_one')
+                  : t('kindred.followerCount', { count: counts.followers })}
+              </span>
+            )}
             {profile.is_curator && (
               <span className="bp-pill bp-pill--gold" title={t('kindred.curatorHint')}>
                 {t('kindred.curator')}
@@ -485,7 +507,9 @@ export default function FriendProfile() {
         <div className="pf-overline">
           {t('kindred.sectionLibrary')}
         </div>
-        {shelvesHidden ? (
+        {shelvesLoading ? (
+          <CoverGridSkeleton count={6} />
+        ) : shelvesHidden ? (
           <div className="fp-empty">
             <p>{visibility === 'private' ? t('kindred.shelfPrivate') : t('kindred.shelfFollowersOnly')}</p>
             {/* Only offered when following would actually change the answer.
@@ -511,7 +535,9 @@ export default function FriendProfile() {
           still has something here rather than a closed door. */}
       <section>
         <div className="pf-overline">{t('kindred.sectionLists')}</div>
-        {lists.length === 0 ? (
+        {shelvesLoading ? (
+          <RowListSkeleton count={2} />
+        ) : lists.length === 0 ? (
           <p className="fp-empty">{t('kindred.noLists')}</p>
         ) : (
           <div className="fp-lists">
