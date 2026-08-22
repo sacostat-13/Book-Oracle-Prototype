@@ -82,6 +82,20 @@ function cleanAuthor(a) {
   return (a || '').split(/[,&]|\sand\s/i)[0].trim();
 }
 
+// isbnFallback.mjs line 74 documents why this matters: the string goes upstream as a
+// filter, so "Unknown author" makes OpenLibrary and Google return nothing at all, and
+// it poisons ranking before matching begins. That guard existed in one script and not
+// in this one. Postmortem 2026-08-17 §4.
+const PLACEHOLDER_AUTHORS = [
+  'unknown author', 'unknown', 'various', 'various authors', 'anonymous',
+  'no author', 'n/a', 'na', '-', '--'
+];
+
+function isPlaceholderAuthor(a) {
+  const t = (a || '').trim().toLowerCase();
+  return t === '' || PLACEHOLDER_AUTHORS.indexOf(t) !== -1;
+}
+
 function sleep(ms) {
   return new Promise((r) => setTimeout(r, ms));
 }
@@ -92,7 +106,18 @@ function vlog(msg) {
 
 // Verify by doing a HEAD — using ?default=false on OL URLs means 404 = no cover.
 // For non-OL URLs fall back to checking content-type.
-async function verifyImage(url) {
+// MIN_COVER_BYTES exists because a 200 is not evidence.
+// Amazon's cover CDN NEVER 404s — a missing cover comes back as 200 image/gif with a
+// 43-byte 1x1. Measured 2026-08-21 over 40 rows: 11 placeholders, all exactly 43b;
+// the smallest real cover was 20,251b. PRH has the same behaviour (see tryPRH).
+// Without this floor every placeholder is written as a valid cover.
+// Conservative global floor: catches 1x1 placeholder GIFs without risking a small
+// but real Google Books thumbnail. Amazon gets a much higher floor passed explicitly,
+// because its placeholder is a known 43b and its smallest measured real cover 20,251b.
+const MIN_COVER_BYTES = 1000;
+const AMAZON_MIN_BYTES = 5000;
+
+async function verifyImage(url, minBytes = MIN_COVER_BYTES) {
   try {
     const res = await fetch(url, {
       method: 'HEAD'
@@ -101,10 +126,47 @@ async function verifyImage(url) {
     const ct = res.headers.get('content-type') || '';
     // Reject explicitly non-image content-types
     if (ct && ct.indexOf('image/') !== 0) return false;
+    // content-length is advisory: absent means we cannot judge, so we accept.
+    const len = Number(res.headers.get('content-length') || 0);
+    if (len > 0 && len < minBytes) {
+      vlog('too small (' + len + 'b < ' + minBytes + ') — placeholder: ' + url);
+      return false;
+    }
     return true;
   } catch (e) {
     return false;
   }
+}
+
+// -- ISBN-13 -> ISBN-10 -------------------------------------------------------
+// Only defined for the 978 prefix. A 979 ISBN (Amazon KDP's 9798, and 9791) has no
+// ISBN-10 at all, so tryAmazonByIsbn can never serve those rows — they are the
+// residual the paid paths have to cover.
+function isbn13to10(isbn13) {
+  const d = String(isbn13 || '').replace(/[^0-9Xx]/g, '');
+  if (d.length === 10) return d.toUpperCase();
+  if (d.length !== 13 || d.slice(0, 3) !== '978') return null;
+  const core = d.slice(3, 12);
+  let sum = 0;
+  for (let i = 0; i < 9; i++) sum += (10 - i) * Number(core[i]);
+  const check = (11 - (sum % 11)) % 11;
+  return core + (check === 10 ? 'X' : String(check));
+}
+
+// -- Source 2b: Amazon by ISBN ------------------------------------------------
+// Free, deterministic, no key. Measured 2026-08-21: resolved 23 of 40 rows that the
+// whole existing chain — Claude included — had already failed on.
+//
+// IT PROVES ONLY THAT AN IMAGE EXISTS AT THAT ISBN. Amazon returns a valid cover for
+// any ISBN-10 in its catalog, so this source is exactly as trustworthy as books.isbn
+// and no more. A human review of 60 rows on 2026-08-21 found 2 wrong. That is why
+// cover_source is written alongside the URL: a wrong cover has to stay findable.
+async function tryAmazonByIsbn(isbn) {
+  const i10 = isbn13to10(isbn);
+  if (!i10) return null;
+  const url = 'https://images-na.ssl-images-amazon.com/images/P/' + i10 + '.01.LZZZZZZZ.jpg';
+  vlog('Amazon by ISBN: ' + url);
+  return (await verifyImage(url, AMAZON_MIN_BYTES)) ? url : null;
 }
 
 // -- Source 1: Open Library search --------------------------------------------
@@ -392,6 +454,12 @@ async function tryClaude(title, author) {
 
     const blocks = Array.isArray(data && data.content) ? data.content : [];
     vlog('Claude blocks: ' + blocks.map((b) => b.type).join(', '));
+    vlog('Claude stop_reason: ' + data.stop_reason +
+      ' searches=' + ((data.usage && data.usage.server_tool_use && data.usage.server_tool_use.web_search_requests) || 0));
+    if (data.stop_reason === 'max_tokens') {
+      vlog('Claude hit the output ceiling before answering');
+      return null;
+    }
     let raw = '';
     for (let i = blocks.length - 1; i >= 0; i--) {
       if (blocks[i].type === 'text' && (blocks[i].text || '').trim()) {
@@ -403,8 +471,14 @@ async function tryClaude(title, author) {
     if (!raw || raw.toLowerCase() === 'null' || raw.indexOf('http') === -1) return null;
     const match = raw.match(/https?:\/\/[^\s"'<>)]+/);
     if (!match) return null;
-    vlog('Claude URL: ' + match[0]);
-    return (await verifyImage(match[0])) ? match[0] : null;
+    // Claude answers in markdown, so the URL arrives wearing its emphasis:
+    //   ...1454965126.01.LZZZZZZZ.jpg**      ...71kQz6FKGYL.jpg`**
+    // The character class above does not exclude * or backtick. Amazon tolerated the
+    // first and rejected the second with a 400 — a cover Claude had actually found,
+    // reported as "not found". Strip trailing markdown and punctuation.
+    const url = match[0].replace(/[*`_~)\]}>.,;:!?'"]+$/, '');
+    vlog('Claude URL: ' + url);
+    return (await verifyImage(url)) ? url : null;
   } catch (e) {
     vlog('Claude exception: ' + e.message);
     return null;
@@ -431,7 +505,7 @@ async function fetchCover(title, author, existingIsbn, log) {
 
   // 2. Try each ISBN against OL (?default=false) and PRH CDN
   if (isbns.length > 0) {
-    log('OL/PRH by ISBN (' + isbns.length + ')');
+    log('OL/PRH/Amazon by ISBN (' + isbns.length + ')');
     for (const isbn of isbns) {
       url = await tryOlByIsbn(isbn);
       if (url) return {
@@ -442,6 +516,11 @@ async function fetchCover(title, author, existingIsbn, log) {
       if (url) return {
         url,
         source: 'prh'
+      };
+      url = await tryAmazonByIsbn(isbn);
+      if (url) return {
+        url,
+        source: 'amazon-isbn'
       };
     }
   }
@@ -455,7 +534,7 @@ async function fetchCover(title, author, existingIsbn, log) {
   };
 
   if (google.isbns.length > 0) {
-    log('OL/PRH by Google ISBNs (' + google.isbns.length + ')');
+    log('OL/PRH/Amazon by Google ISBNs (' + google.isbns.length + ')');
     for (const isbn of google.isbns) {
       if (isbns.indexOf(isbn) === -1) { // skip already tried
         url = await tryOlByIsbn(isbn);
@@ -467,6 +546,11 @@ async function fetchCover(title, author, existingIsbn, log) {
         if (url) return {
           url,
           source: 'prh'
+        };
+        url = await tryAmazonByIsbn(isbn);
+        if (url) return {
+          url,
+          source: 'amazon-isbn'
         };
       }
     }
@@ -482,8 +566,14 @@ async function fetchCover(title, author, existingIsbn, log) {
 
   // 5. Claude last resort
   if (!NO_CLAUDE) {
+    if (isPlaceholderAuthor(author)) {
+      log('Claude — skipped (placeholder author)');
+      return null;
+    }
     log('Claude');
-    url = await tryClaude(title, author);
+    // cleanTitle strips the series annotation: "Love Hurts (The Dresden Files, #11.5)"
+    // was going to the model verbatim.
+    url = await tryClaude(cleanTitle(title), cleanAuthor(author));
     if (url) return {
       url,
       source: 'claude'
@@ -531,7 +621,8 @@ async function main() {
     'prh': 0,
     'google': 0,
     'hardcover': 0,
-    'claude': 0
+    'claude': 0,
+    'amazon-isbn': 0
   };
   const pad = String(total).length;
 
@@ -548,7 +639,8 @@ async function main() {
         const {
           error: updateErr
         } = await supabase.from('books').update({
-          cover_url: result.url
+          cover_url: result.url,
+          cover_source: result.source
         }).eq('id', b.id);
         if (updateErr) {
           console.log('  ✗ write failed: ' + updateErr.message);
@@ -577,11 +669,19 @@ async function main() {
   console.log('    OL/ISBN : ' + sources['openlibrary-isbn']);
   console.log('    PRH     : ' + sources['prh']);
   console.log('    Google  : ' + sources['google']);
+  console.log('    Amazon  : ' + sources['amazon-isbn']);
   console.log('    Bookcover: ' + sources['hardcover']);
   console.log('    Claude  : ' + sources['claude']);
   console.log('  Not found : ' + notFound);
   console.log('  Errors    : ' + errors);
   console.log('--------------------------------');
+  // Machine-readable counters line, read by catalog-maintenance.yml's summary step.
+  console.log('[coverBackfill] total=' + total + ' found=' + found +
+    ' notFound=' + notFound + ' errors=' + errors +
+    ' ol=' + sources['openlibrary'] + ' olIsbn=' + sources['openlibrary-isbn'] +
+    ' prh=' + sources['prh'] + ' amazon=' + sources['amazon-isbn'] +
+    ' google=' + sources['google'] + ' hardcover=' + sources['hardcover'] +
+    ' claude=' + sources['claude'] + ' complete=1');
 }
 
 main();
