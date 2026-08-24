@@ -234,6 +234,28 @@ function argVal(name, fallback = null) {
 const LIMIT = Number.isFinite(parseInt(argVal('--limit'), 10)) ? parseInt(argVal('--limit'), 10) : null;
 const PROBE = argVal('--probe');
 
+// A wall-clock budget OF ITS OWN, so the run ends rather than being killed.
+//
+// The 2026-08-24 run hit the workflow's hard `timeout-minutes: 60`. A hard kill
+// means no summary, no `[originalLanguageBackfill] ...` counters line -- so the job
+// summary rendered `--  (did not finish)` -- and, worse, propagate() never ran at
+// all. Propagation is free, offline and the highest yield per second in the script.
+// Per-row writes and stamps survived, as designed; the report and the propagation
+// were the whole loss.
+//
+// Default 50 minutes, comfortably inside the step's 60.
+const MAX_MINUTES = Number.isFinite(parseFloat(argVal('--max-minutes')))
+  ? parseFloat(argVal('--max-minutes'))
+  : (Number.isFinite(parseFloat(process.env.ORIGLANG_MAX_MINUTES))
+    ? parseFloat(process.env.ORIGLANG_MAX_MINUTES)
+    : 50);
+const STARTED_AT = Date.now();
+const DEADLINE_AT = STARTED_AT + MAX_MINUTES * 60_000;
+const msLeft = () => DEADLINE_AT - Date.now();
+const outOfTime = () => msLeft() <= 0;
+const elapsedMin = () => ((Date.now() - STARTED_AT) / 60000).toFixed(1);
+let stoppedEarly = false;
+
 // ── Env ──────────────────────────────────────────────────────────────────────
 // Same reader as languageBackfill.mjs — deliberately duplicated rather than
 // shared, because _shared/ is for things two scripts genuinely agree on and a
@@ -290,6 +312,14 @@ async function getJson(url, attempt = 1) {
     if (resp.status === 429 || resp.status === 503) {
       if (attempt <= 3) {
         const wait = 15000 * attempt;
+        // Never sleep past the run's own deadline. The ladder is 15+30+45s, so a
+        // source that is broadly 503ing costs 90s of pure waiting PER URL -- which
+        // is how a 60-minute budget went to roughly forty rows.
+        if (wait >= msLeft()) {
+          consecutiveFailures++;
+          console.log(`  ! HTTP ${resp.status} — no time left in this run to retry: ${url.slice(0, 120)}`);
+          return FAILED;
+        }
         vlog(`HTTP ${resp.status} — waiting ${wait / 1000}s`);
         await sleep(wait);
         return getJson(url, attempt + 1);
@@ -776,9 +806,26 @@ async function resolveOneTitle(title, author, rowLanguage) {
 // the same reason: OpenLibrary uses both the bibliographic and terminological
 // 639-2 codes ("ger" and "deu" are both German) because its records were
 // imported from many sources over twenty years.
+// Per-source breaker, the pattern isbnFallback.mjs already uses. OpenLibrary is
+// the lowest-yield of the three sources and by far the most expensive to fail:
+// up to 90s of backoff for a row Wikidata has usually already answered. Five
+// consecutive failures is an outage, and an outage is not worth the budget.
+let olFailures = 0;
+let olDead = false;
+
 async function openLibraryTranslatedFrom(isbn) {
+  if (olDead) return FAILED;
   const data = await getJson(`https://openlibrary.org/isbn/${isbn}.json`);
-  if (data === FAILED) return FAILED;
+  if (data === FAILED) {
+    if (++olFailures >= 5) {
+      olDead = true;
+      console.log('  ! OpenLibrary disabled for the rest of this run: 5 consecutive request failures.');
+      console.log('    Wikidata and the offline propagation pass are unaffected. Rows that only');
+      console.log('    OpenLibrary could have answered are NOT stamped, so they stay in the queue.');
+    }
+    return FAILED;
+  }
+  olFailures = 0;
   const key = data?.translated_from?.[0]?.key;
   return key ? to6391(key) : null;
 }
@@ -1087,6 +1134,15 @@ if (PROPAGATE_ONLY) {
 
     for (const row of rows) {
       if (LIMIT && stats.examined >= LIMIT) { done = true; break; }
+      if (outOfTime()) {
+        stoppedEarly = true;
+        done = true;
+        console.log(`\n  ! Budget of ${MAX_MINUTES} min reached after ${stats.examined} row(s). Stopping cleanly.`);
+        console.log('    Every answer and every stamp is written per-row, so a re-run resumes from');
+        console.log('    here: the query selects only rows that were never asked. Propagation and the');
+        console.log('    summary still run below, which is the point of stopping instead of being killed.');
+        break;
+      }
       lastId = row.id;
       stats.examined++;
       abortIfSourceIsDown();
@@ -1255,7 +1311,8 @@ console.log(
   `reducedtitle=${reducedTitleHits} stamped=${stats.stamped} notstamped=${stats.notStamped} ` +
   `nohits=${funnel['no-search-hits']} nolangprop=${funnel['no-language-property']} ` +
   `noauthormatch=${funnel['author-not-corroborated']} searchfailed=${funnel['search-failed']} ` +
-  `conflict=${stats.conflict} failed=${stats.failed} dryrun=${DRY_RUN ? 1 : 0} complete=1`
+  `conflict=${stats.conflict} failed=${stats.failed} dryrun=${DRY_RUN ? 1 : 0} ` +
+  `elapsedmin=${elapsedMin()} oldead=${olDead ? 1 : 0} complete=${stoppedEarly ? 0 : 1}`
 );
 
 if (conflicts.length) {

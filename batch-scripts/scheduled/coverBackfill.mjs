@@ -178,20 +178,22 @@ async function tryOpenLibrary(title, author) {
     try {
       if (attempt > 0) await sleep(1000 * attempt);
       const res = await fetch('https://openlibrary.org/search.json?' + q);
-      if (!res.ok) return {
-        coverUrl: null,
-        isbns: [],
-        workKey: null
-      };
+      // THE RETRY LOOP WAS DEAD. Both of these were `return`, so any transient 429 or
+      // 5xx from OpenLibrary gave up instantly and reported the book as having no
+      // cover — indistinguishable from OpenLibrary genuinely not having it. This is
+      // the 2026-08-17 postmortem root cause #1 again: an error branch that returns
+      // the same shape as a legitimate empty answer. OpenLibrary resolves ~60% of
+      // this catalog, so a bad OL day looked like a catalog-wide coverage problem.
+      if (!res.ok) {
+        vlog('OL search HTTP ' + res.status + ' (attempt ' + (attempt + 1) + '/3)');
+        continue;
+      }
       let data;
       try {
         data = await res.json();
       } catch (e) {
-        return {
-          coverUrl: null,
-          isbns: [],
-          workKey: null
-        };
+        vlog('OL search bad JSON (attempt ' + (attempt + 1) + '/3)');
+        continue;
       }
       const docs = Array.isArray(data && data.docs) ? data.docs : [];
       const isbns = [];

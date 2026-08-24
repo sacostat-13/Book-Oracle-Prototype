@@ -50,10 +50,16 @@ const env = Object.fromEntries(
 );
 const supabase = createServiceClient(env['VITE_SUPABASE_URL'], env['SUPABASE_SERVICE_ROLE_KEY']);
 
-const { data: books, error } = await supabase
-  .from('books').select('id, title, author, isbn, language')
-  .is('cover_url', null).not('isbn', 'is', null)
-  .order('created_at', { ascending: true }).limit(LIMIT);
+// --source reviews covers ALREADY WRITTEN, which is the mode that matters after a run.
+// Without it this script only previews candidates, so running it post-backfill returns
+// zero rows and reads — wrongly — as 'everything looks fine'.
+const SOURCE = argVal('--source', null);
+
+let q = supabase.from('books').select('id, title, author, isbn, language, cover_url, cover_source');
+q = SOURCE
+  ? q.eq('cover_source', SOURCE).not('cover_url', 'is', null)
+  : q.is('cover_url', null).not('isbn', 'is', null);
+const { data: books, error } = await q.order('created_at', { ascending: true }).limit(LIMIT);
 if (error) { console.error('Fetch failed: ' + error.message); process.exit(1); }
 
 console.log(`\nProbing ${books.length} row(s)…\n`);
@@ -62,8 +68,8 @@ let tiny = 0, noI10 = 0;
 
 for (const b of books) {
   const i10 = isbn13to10(b.isbn);
-  if (!i10) { noI10++; continue; }
-  const url = amazonUrl(i10);
+  if (!SOURCE && !i10) { noI10++; continue; }
+  const url = SOURCE ? b.cover_url : amazonUrl(i10);
   try {
     const res = await fetch(url, { method: 'HEAD', redirect: 'follow' });
     const ct = res.headers.get('content-type') || '';
@@ -82,7 +88,7 @@ const cards = accepted.map((b) => `
     <figcaption>
       <strong>${esc(b.title)}</strong>
       <span>${esc(b.author || '(no author)')}</span>
-      <code>${esc(b.isbn)} → ${esc(b.i10)}${b.language ? ' · ' + esc(b.language) : ''} · ${b.len}b</code>
+      <code>${esc(b.isbn)}${b.i10 ? ' → ' + esc(b.i10) : ''}${b.cover_source ? ' · ' + esc(b.cover_source) : ''}${b.language ? ' · ' + esc(b.language) : ''} · ${b.len}b</code>
       <label><input type="checkbox" class="rej" data-id="${esc(b.id)}"> wrong cover</label>
     </figcaption>
   </figure>`).join('\n');

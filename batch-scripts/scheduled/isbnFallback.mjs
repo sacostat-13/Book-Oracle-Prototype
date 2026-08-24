@@ -707,12 +707,15 @@ async function runPass(kind) {
     if (kind === 'foreign') console.log(`  current: ${b.isbn} (non-English registrant)`);
 
     let hit = null;
+    // Declared OUTSIDE the try. decisions.push() below reads it, and that read is
+    // outside this block: `const` inside try{} is block-scoped, so the first book that
+    // actually resolved threw "consulted is not defined" and killed the whole pass.
+    const consulted = new Set();
     try {
       // Query BOTH sources and score the pooled candidates. Falling through to the
       // second source only on total failure would take OpenLibrary's first acceptable
       // ISBN even when Google Books had a better trade edition, and vice versa.
       const cands = [];
-      const consulted = new Set();
 
       // ORDER. With a key present ISBNdb goes FIRST, and a hit short-circuits the rest.
       //

@@ -318,6 +318,20 @@ jobs:
           # spend ~$39 on books that were never missing.
           FB_COMPLETE=$(grep -o 'complete=[01]' fallback.log 2>/dev/null | tail -1 | cut -d= -f2 || true)
           FB_COMPLETE=${FB_COMPLETE:-0}
+          # ...and the SUMMARY must not print that partial number either.
+          #
+          # 2026-08-24: isbnFallback died on a ReferenceError at book 1 of 198.
+          # flushOutputs() did its job and wrote a counters line, so `counter`
+          # found stuck=0 and the table printed "Still unresolved after OL/Google: 0"
+          # -- the exact sentence the em-dash machinery above exists to prevent,
+          # arriving by the other door. A counters line that EXISTS is not a
+          # counters line that is COMPLETE; complete=0 is the discriminator and
+          # it was only being read for the billable-issue gate.
+          if [ "$FB_COMPLETE" != "1" ]; then
+            FB_DONE=$(grep -o 'processed=[0-9]*' fallback.log 2>/dev/null | tail -1 | cut -d= -f2 || true)
+            FB_TOTAL=$(grep -o 'total=[0-9]*' fallback.log 2>/dev/null | tail -1 | cut -d= -f2 || true)
+            STILL="—  (did not finish — ${FB_DONE:-0} of ${FB_TOTAL:-?} processed)"
+          fi
           LANG_WRITTEN=$(counter language.log written)
           ORIGLANG_WRITTEN=$(counter origlanguage.log written)
           ORIGLANG_PROP=$(counter origlanguage.log propagated)
