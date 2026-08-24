@@ -13,6 +13,27 @@
 -- `vRes.ok` was false, `volumes` stayed `[]`, and the branch degraded silently
 -- to a heading plus a generic sentence.
 --
+-- AND IT IS NOT ONLY THE SERIES BRANCH. og-prerender.js issues THREE queries
+-- against this view, and on 2026-08-24 every one of them 400d:
+--
+--   line 355  select=title,author,share_key,position_in_series
+--             &series_id=eq...            -> series siblings on a BOOK page
+--   line 361  select=title,author,share_key&genre=eq...
+--                                         -> same-genre neighbours
+--   line 405  select=...,position_in_series,description
+--             &series_id=eq...            -> the series page volume list
+--
+-- `genre` is missing from the view too, which is why this migration adds a
+-- FOURTH column that has nothing to do with series.
+--
+-- Those three queries are the ENTIRE internal link graph offered to a
+-- crawler. The section they live in is titled "Body content + internal
+-- links" and was written to give book pages something to link to. With all
+-- three failing, every prerendered page carries exactly one link: <a href="/">.
+-- Search Console on 2026-08-24: 3,742 URLs "Discovered - currently not
+-- indexed", 22 "Crawled - not indexed", 268 indexed. A site with no internal
+-- links is a site with nothing to crawl.
+--
 -- Confirmed live on 2026-08-24 against /series/Marvel%20Zombies as Googlebot:
 --
 --   <h1>Marvel Zombies series in reading order</h1>
@@ -58,7 +79,8 @@ create or replace view public.books_share_key as
     -- 2026-08-24 additions, appended:
     b.series_id,
     b.position_in_series,
-    b.description
+    b.description,
+    b.genre
   from public.books b
   left join public.series s on s.id = b.series_id;
 

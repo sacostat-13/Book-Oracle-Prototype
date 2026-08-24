@@ -352,17 +352,34 @@ export default async (request, context) => {
       if (match.series_id) {
         const [sRes, bRes] = await Promise.all([
           fetch(`${supabaseUrl}/rest/v1/series?select=name&id=eq.${encodeURIComponent(match.series_id)}&limit=1`, { headers: restHeaders }),
-          fetch(`${supabaseUrl}/rest/v1/books_share_key?select=title,author,share_key,position_in_series&series_id=eq.${encodeURIComponent(match.series_id)}&order=position_in_series.asc&limit=30`, { headers: restHeaders }),
+          // status filter added 2026-08-24 to match sitemap.js and the series
+          // branch below. All three must list the same rows.
+          fetch(`${supabaseUrl}/rest/v1/books_share_key?select=title,author,share_key,position_in_series&series_id=eq.${encodeURIComponent(match.series_id)}&status=in.(verified,oracle_categorized)&order=position_in_series.asc&limit=30`, { headers: restHeaders }),
         ]);
         if (sRes.ok) seriesName = (await sRes.json())[0]?.name || null;
-        if (bRes.ok) siblings = await bRes.json();
+        if (bRes.ok) {
+          siblings = await bRes.json();
+        } else {
+          // See the series branch below for the full version of this lesson.
+          // Until 2026-08-24 this query selected position_in_series and filtered
+          // on series_id, NEITHER of which the view had — so it 400d on every
+          // book page ever prerendered, and the "in reading order" list that is
+          // the main internal link out of a book page was never rendered once.
+          console.warn(`[og-prerender] sibling query failed: ${bRes.status} book="${match.title}" — no series links on this page.`);
+        }
       } else if (match.genre) {
         const nRes = await fetch(
           `${supabaseUrl}/rest/v1/books_share_key?select=title,author,share_key&genre=eq.${encodeURIComponent(match.genre)}` +
           `&status=in.(verified,oracle_categorized)&title=neq.${encodeURIComponent(match.title)}&limit=8`,
           { headers: restHeaders }
         );
-        if (nRes.ok) neighbours = await nRes.json();
+        if (nRes.ok) {
+          neighbours = await nRes.json();
+        } else {
+          // Same story, different column: this one filters on `genre`, which
+          // the view also lacked. Standalone books got no outbound links at all.
+          console.warn(`[og-prerender] neighbour query failed: ${nRes.status} genre="${match.genre}" — no genre links on this page.`);
+        }
       }
 
       const bookBody = [

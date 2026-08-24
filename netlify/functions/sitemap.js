@@ -124,7 +124,12 @@ export async function handler() {
     // status is filtered server-side: 'oracle_categorized' is treated as
     // equivalent to 'verified' everywhere else in the app, so books the Oracle
     // classified but nobody hand-checked belong in the sitemap too.
-    const select = 'share_key,series_name';
+    // cover_url joins the select for the quality bar below. NOT description:
+    // that column only reaches this view via migration 20260824120000, and a
+    // select on a column the view lacks is a 400 that takes the WHOLE sitemap
+    // down to its seven static entries. Add it here once that migration is
+    // applied and verified, not before.
+    const select = 'share_key,series_name,cover_url';
     const query = `${supabaseUrl}/rest/v1/books_share_key` +
       `?select=${encodeURIComponent(select)}` +
       `&status=in.(verified,oracle_categorized)`;
@@ -162,8 +167,40 @@ export async function handler() {
       // passes that test and resolves to nothing. Advertising it to a crawler is
       // advertising a 404.
       if (!key || key.startsWith('|')) continue;
-      bookEntries.push(urlEntry(`/book/${encodeURIComponent(key)}`, { priority: '0.7' }));
+
+      // A series page is worth advertising even when the volume rows under it
+      // are not, so collect the name BEFORE the book-level quality bar.
       if (b.series_name) seriesNames.add(b.series_name);
+
+      // ── Quality bar, 2026-08-24 ─────────────────────────────────────────
+      //
+      // The guard above catches a title with NO ascii alphanumerics. It does
+      // not catch a title half that survived as digits alone:
+      //
+      //   /book/12|hirohikoar        <- books.title is a Japanese title with a
+      //   /book/14|hirohikoar           leading volume number. client_title_key
+      //                                 strips [^a-z0-9], the CJK vanishes, and
+      //                                 the volume number is the entire key.
+      //
+      // Those URLs carry no keyword a query could match and nothing a human
+      // can read before clicking. Same reasoning as the startsWith('|') guard,
+      // applied one step further.
+      //
+      // NOTE ON SCOPE. As of 2026-08-24 Search Console reports 3,742 book URLs
+      // as "Discovered - currently not indexed" against just 22 "Crawled - not
+      // indexed". Google is not REJECTING these pages; it has never fetched
+      // them. This filter therefore is NOT the fix for that number -- crawl
+      // priority follows internal links, and the app emits almost none (every
+      // in-app navigation is an onClick handler on a div, so /book/:key is
+      // reachable only from og-prerender.js's series list). Submitting fewer,
+      // better URLs is worth doing on its own terms. Do not expect it to move
+      // the indexed count by itself.
+      const titleHalf = key.split('|')[0];
+      if (/^[0-9]+$/.test(titleHalf)) continue;   // digits only -- no title left
+      if (titleHalf.length < 3) continue;         // too little to match anything
+      if (!b.cover_url) continue;                 // nothing to show a reader
+
+      bookEntries.push(urlEntry(`/book/${encodeURIComponent(key)}`, { priority: '0.7' }));
     }
 
     const seriesEntries = [...seriesNames].map((name) =>
