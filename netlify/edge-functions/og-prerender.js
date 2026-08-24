@@ -401,12 +401,35 @@ export default async (request, context) => {
       // a page titled after the series with none of its books on it was
       // leaving the entire point of the page unsaid.
       let volumes = [];
-      const vRes = await fetch(
+      const vUrl =
         `${supabaseUrl}/rest/v1/books_share_key?select=title,author,share_key,position_in_series,description` +
-        `&series_id=eq.${encodeURIComponent(match.id)}&order=position_in_series.asc&limit=60`,
-        { headers: restHeaders }
-      );
-      if (vRes.ok) volumes = await vRes.json();
+        `&series_id=eq.${encodeURIComponent(match.id)}` +
+        // Match the sitemap. It emits /series/:name from rows with these two
+        // statuses, so the page behind those URLs must list the same rows --
+        // otherwise a crawler is invited to a list containing books the rest
+        // of the app treats as unverified.
+        `&status=in.(verified,oracle_categorized)` +
+        `&order=position_in_series.asc&limit=60`;
+      const vRes = await fetch(vUrl, { headers: restHeaders });
+      if (vRes.ok) {
+        volumes = await vRes.json();
+      } else {
+        // SAY SO. Until 2026-08-24 this was `if (vRes.ok) volumes = ...` with
+        // no else, and the view was missing three of the columns selected
+        // above. Every series page shipped to Googlebot as a heading with no
+        // list under it, for as long as v0.61.3 has been live, and nothing
+        // anywhere said a word. A 400 is not an empty series.
+        //
+        // Third time this exact shape has cost a release (postmortem
+        // 2026-08-17 #1; v0.64 getJson). The page still renders -- a heading
+        // beats a 500 -- but the log line is the difference between finding
+        // this in a minute and finding it in Search Console two months later.
+        console.warn(
+          `[og-prerender] series volume query failed: ${vRes.status} ` +
+          `series="${match.name}" — the page will render with NO book list. ` +
+          `Check that books_share_key exposes series_id, position_in_series and description.`
+        );
+      }
 
       const first = volumes[0];
       const seriesDesc = match.description

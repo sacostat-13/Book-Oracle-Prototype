@@ -202,7 +202,17 @@ export default function App() {
   // internal one; gating it would put a wall in front of the first thing a
   // visitor from social media sees. search_public_lists is anon-callable and
   // returns caller_follows = false for them.
-  const PUBLIC_ROUTES = new Set(['book-page', 'list-view', 'plan-view', 'join-club', 'privacy', 'terms', 'refund', 'not-found', 'sitemap', 'lists-discover']);
+  // 2026-08-24 — 'series-page' joins the public set, and it is the omission
+  // that cost the most. netlify/functions/sitemap.js submits every /series/:name
+  // to Google; og-prerender.js serves crawlers a page titled "<series> series in
+  // order — every book"; Search Console shows those URLs ranking for "<series>
+  // books in order". And every visitor who clicked one hit the sign-in gate,
+  // because this Set did not list the route. We were advertising a page nobody
+  // could read.
+  //
+  // 'book-page' was public from the start; the series route simply never got
+  // the same treatment when v0.39 introduced path routing.
+  const PUBLIC_ROUTES = new Set(['book-page', 'series-page', 'list-view', 'plan-view', 'join-club', 'privacy', 'terms', 'refund', 'not-found', 'sitemap', 'lists-discover']);
   if (PUBLIC_ROUTES.has(route.name)) {
     // During the brief auth check (~100ms), treat as loading not signed-out.
     // This prevents the sign-in prompt flashing before the session is confirmed.
@@ -221,6 +231,34 @@ export default function App() {
               dataReady={dataReady}
             />
           </div>
+          <Toast />
+        </div>
+      );
+    }
+    // NOT an unconditional early return, unlike the branches below.
+    //
+    // A signed-in reader keeps the full app shell from the main switch — Footer,
+    // ShareMomentModal, ImportProgressToast and OracleGateDialog. "Create a
+    // reading plan" is this page's primary CTA and it can open the Oracle gate,
+    // so dropping OracleGateDialog here would break the flow silently. The
+    // public shell is for the visitor who has no shell to keep.
+    //
+    // While authPending, isAuthed is false and this renders the public view with
+    // its CTA suppressed — no sign-in flash — then hands over once auth resolves.
+    if (route.name === 'series-page' && !isAuthed) {
+      return (
+        <div className="app">
+          <div className="container">
+            <SeriesPage
+              isAuthed={isAuthed}
+              authPending={authPending}
+              dataReady={dataReady}
+            />
+          </div>
+          {/* Same call as lists-discover: for a signed-out visitor this IS a
+              landing page — it is what someone searching "<series> books in
+              order" arrives on — so it gets the marketing footer. */}
+          {!isAuthed && <LandingFooter />}
           <Toast />
         </div>
       );

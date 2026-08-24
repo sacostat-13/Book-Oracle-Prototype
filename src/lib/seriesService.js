@@ -43,20 +43,62 @@ export async function fetchSeriesByName(name) {
   return data;
 }
 
+// Map a `books` row to the client book shape, with the series block populated.
+//
+// Same deliberate duplication as shareKey.js and authorWorks.js: DataContext's
+// bookRowToClient also unpacks per-user fields (rating, notes, dateRead) that
+// this query neither selects nor could populate for a signed-out reader.
+// SeriesPage overlays those from the caller's own shelves where they exist.
+function rowToSeriesBook(r, series) {
+  if (!r) return null;
+  return {
+    bookId: r.id,
+    t: r.title,
+    a: r.author || '',
+    d: r.description || undefined,
+    pp: r.pages || undefined,
+    coverUrl: r.cover_url || undefined,
+    isbn: r.isbn || undefined,
+    status: r.status || 'unreviewed',
+    s: {
+      id:                series.id,
+      name:              series.name,
+      n:                 r.position_in_series ?? null,
+      total:             series.total_books ?? null,
+      publicationStatus: series.publication_status ?? 'unknown',
+    },
+  };
+}
+
 // Fetch all known books in a series by name. Joins the books table on series_id.
+//
+// 2026-08-24: this function existed, was exported, and was called from NOWHERE.
+// SeriesPage rendered from Hardcover/OpenLibrary at runtime while the crawler
+// got a catalog-ordered list out of og-prerender.js — two pages, two sources,
+// one URL. It is now the primary source for both.
+//
+// The status filter matches netlify/functions/sitemap.js and the series branch
+// of og-prerender.js. All three must agree: the sitemap advertises the URL, the
+// prerender lists the books, and this renders them. A row visible to one and
+// not the others is the divergence this change exists to remove.
+//
+// nullsFirst: false is explicit rather than inherited. Postgres sorts NULLs
+// last in ASC by default, but this is a reading-order list and "unnumbered goes
+// at the end" is a product decision, not a database default to be relied on.
 export async function fetchBooksInSeriesByName(name) {
   const series = await fetchSeriesByName(name);
   if (!series) return { series: null, books: [] };
   const { data, error } = await supabase
     .from('books')
-    .select('*, position_in_series, series:series(*)')
+    .select('*, series:series(*)')
     .eq('series_id', series.id)
-    .order('position_in_series', { ascending: true });
+    .in('status', ['verified', 'oracle_categorized'])
+    .order('position_in_series', { ascending: true, nullsFirst: false });
   if (error) {
     console.warn('books-in-series fetch failed', error);
     return { series, books: [] };
   }
-  return { series, books: data || [] };
+  return { series, books: (data || []).map((r) => rowToSeriesBook(r, series)) };
 }
 
 // Hardcover/OpenLibrary lookup wrapper used when we don't have a series in

@@ -29,3 +29,7 @@ scripts
 #
 # Generated results are ignored instead, one level down, in
 # batch-scripts/.gitignore. Scripts are source; CSVs and logs are not.
+# Vite writes one of these next to vite.config.js on every build/dev start and
+# never cleans them up. 149 were committed before this line existed; clear them
+# with:  git rm --cached "vite.config.js.timestamp-*"
+vite.config.js.timestamp-*
