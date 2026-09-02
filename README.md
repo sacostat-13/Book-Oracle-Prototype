@@ -256,8 +256,10 @@ oracle/
 |---|---|
 | `books` | The catalog. `status` enum: `unreviewed` \| `incomplete` \| `oracle_categorized` \| `verified` \| `flagged` \| `discovered`. `complexity`/`depth` (prose complexity / thematic depth, 1-5) were curated-only through v0.41 — as of v0.42 the Oracle categorization pipeline (in-app button and `oracleBatch.mjs`) assigns them too, so coverage grows as books get categorized. |
 | `series` | Series rows. `publication_status` tracks ongoing/complete/unknown. |
-| `genres` | Canonical genre taxonomy. Oracle-curated. 15 seeds pre-loaded. |
-| `book_genres` | Global many-to-many book ↔ genre. |
+| `genres` | Canonical genre taxonomy. Oracle-curated; 167 as of v0.67, grown from 15 seeds. `parent_id` is the **taxonomic** axis — "is this a kind of that?" — sparse, optional, nests. Every row has a description, and that is load-bearing: it is what the Oracle matches against when deciding whether to reuse a genre or invent one. |
+| `genre_families` | 16 curated shelves — the **browsing** axis. `genres.family_id` is total (exactly one per genre) and never nests, and is deliberately allowed to disagree with `parent_id`: Irish Literature is a child of Literary Fiction and sits on the Place & Period shelf. Admin-only, in its own table so the Oracle — which creates genres nightly — cannot invent a family. |
+| `book_genres` | Global many-to-many book ↔ genre. The only place a book's genres actually live; `books.genre` is a legacy scalar holding the top pick, and no UI surface reads it. |
+| `books_needing_curation` | View, not a table. Books wanting genres, a description, or complexity/depth, with the reason as boolean columns. Every curation pass selects from here — selecting on `status` instead is what left 189 `verified` books permanently ineligible for categorisation. |
 | `book_reports` | User-submitted issue reports on catalog entries. |
 
 ### RPCs (v0.28 additions)

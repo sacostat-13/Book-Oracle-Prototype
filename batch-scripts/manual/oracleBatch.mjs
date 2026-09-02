@@ -131,41 +131,40 @@ if (!DRY_RUN && !ANTHROPIC_KEY) {
 const supabase = createServiceClient(SUPABASE_URL, SERVICE_KEY);
 
 // ── Fetch eligible books ──────────────────────────────────────────────────────
+// v0.67 — eligibility is decided by NEED, from books_needing_curation.
+//
+// It used to be decided by status:
+//
+//   status.in.(unreviewed,incomplete),and(status.eq.oracle_categorized,
+//     or(complexity.is.null,depth.is.null))
+//
+// Nothing in that asks whether a book has genres. `verified` is one of the six
+// values books_status_check permits, so a verified book with zero rows in
+// book_genres was ineligible on every run, forever — 189 of them on 2026-09-02.
+// It is the same defect metadataBackfill documents fixing in v0.63 ("the script
+// and the UI were measuring different things"), fixed there and left standing
+// here.
+//
+// The view answers the anti-join PostgREST cannot express. This script pays
+// Anthropic, so it takes only the two reasons that are worth paying for:
+// needs_genres (no free API produces this taxonomy) and needs_depth. A book
+// that merely wants a description is metadataBackfill's job and must never
+// reach a billable call.
 async function fetchEligibleBooks() {
-  // Two eligible groups:
-  //   1. Never processed — status is unreviewed/incomplete. Gets full
-  //      enrichment (genres + series + description + complexity + depth).
-  //   2. Already oracle_categorized under an older version of this script,
-  //      from before complexity/depth existed — those two columns are still
-  //      null. These get complexity/depth backfilled ONLY; writeEnrichment
-  //      is told (via `backfillOnly` in main()) to leave their existing
-  //      genres/series/description untouched.
-  // Excludes 'discovered' books — no one has added them yet
-  //
-  // v0.62: PAGED. This select previously had no .range(), so PostgREST capped
-  // it at its default 1000 rows. A manual run reported "1000 found" and that
-  // number was the cap, not a count — the true backlog was invisible above it
-  // and no log line said so. Draining oldest-first meant the script still made
-  // progress, so this looked like a plausible figure for months.
-  //
-  // See supabase/legacy/oracle_eligibility_audit.sql for the SQL that reports
-  // the real number.
-  const ELIGIBLE = 'status.in.(unreviewed,incomplete),and(status.eq.oracle_categorized,or(complexity.is.null,depth.is.null))';
+  const NEEDED = 'needs_genres.eq.true,needs_depth.eq.true';
 
-  // Exact count first, separately from the rows. Reporting "N found" from the
-  // length of a capped page is what made the old number a lie; with --limit set
-  // we deliberately stop fetching early, so row count can never be the honest
-  // answer to "how big is the backlog". Ask the database.
+  // 'discovered' was excluded implicitly before, by not appearing in the status
+  // list. Need-based selection has no such accident, so say it.
+  const scoped = (q) => q.neq('status', 'discovered').or(NEEDED);
+
+  // Exact count from the database, separately from the rows. Reporting "N
+  // found" from the length of a capped page is what made the old number a lie.
   const {
     count: eligibleCount,
     error: countError
-  } = await supabase
-    .from('books')
-    .select('id', {
-      count: 'exact',
-      head: true
-    })
-    .or(ELIGIBLE);
+  } = await scoped(
+    supabase.from('books_needing_curation').select('id', { count: 'exact', head: true })
+  );
 
   if (countError) {
     console.error('Failed to count eligible books:', countError.message);
@@ -175,14 +174,45 @@ async function fetchEligibleBooks() {
   // Never page past what --limit will keep.
   const wanted = LIMIT ? Math.min(LIMIT, eligibleCount ?? LIMIT) : (eligibleCount ?? 0);
   const PAGE_SIZE = Math.min(1000, Math.max(wanted, 1));
-  const rows = [];
+  const picks = [];
   let from = 0;
 
   for (;;) {
-    const {
-      data,
-      error
-    } = await supabase
+    const { data, error } = await scoped(
+      supabase.from('books_needing_curation').select('id, needs_genres')
+    )
+      // Ordering by created_at ALONE is not safe to paginate: the column is not
+      // unique, and rows tying on the page boundary can be returned twice or
+      // skipped entirely. id is the unique tiebreaker; created_at stays primary
+      // because oldest-first is the intended drain order.
+      .order('created_at', { ascending: true })
+      .order('id', { ascending: true })
+      .range(from, from + PAGE_SIZE - 1);
+
+    if (error) {
+      console.error('Failed to fetch eligible ids:', error.message);
+      process.exit(1);
+    }
+
+    picks.push(...(data || []));
+    if (!data || data.length < PAGE_SIZE) break;
+    if (picks.length >= wanted) break;
+
+    from += PAGE_SIZE;
+  }
+
+  const chosen = picks.slice(0, wanted);
+  if (chosen.length === 0) return { rows: [], eligible: eligibleCount ?? 0 };
+
+  // Hydrate from `books` rather than selecting the whole row from the view:
+  // the prompt needs `series:series_id ( name )`, and PostgREST resolves that
+  // embed from the foreign key on the table. A view carries no foreign keys.
+  const HYDRATE_CHUNK = 50;
+  const hydrated = new Map();
+
+  for (let i = 0; i < chosen.length; i += HYDRATE_CHUNK) {
+    const ids = chosen.slice(i, i + HYDRATE_CHUNK).map((r) => r.id);
+    const { data, error } = await supabase
       .from('books')
       .select(`
         id,
@@ -199,50 +229,92 @@ async function fetchEligibleBooks() {
         position_in_series,
         series:series_id ( name )
       `)
-      .or(ELIGIBLE)
-      // Ordering by created_at ALONE is not safe to paginate: the column is not
-      // unique, and rows tying on the page boundary can be returned twice or
-      // skipped entirely depending on how Postgres breaks the tie between
-      // queries. id is the unique tiebreaker. created_at stays the primary key
-      // of the sort because oldest-first is the intended drain order.
-      .order('created_at', {
-        ascending: true
-      })
-      .order('id', {
-        ascending: true
-      })
-      .range(from, from + PAGE_SIZE - 1);
+      .in('id', ids);
 
     if (error) {
       console.error('Failed to fetch books:', error.message);
       process.exit(1);
     }
-
-    rows.push(...(data || []));
-    if (!data || data.length < PAGE_SIZE) break;
-    if (rows.length >= wanted) break;
-
-    from += PAGE_SIZE;
+    for (const row of data || []) hydrated.set(row.id, row);
   }
 
-  // The caller prints the count, so hand back both. `eligible` is the real
-  // backlog; `rows` is only what this run intends to look at.
+  // Restore the view's order, and carry needs_genres onto the row: it — not
+  // status — is what decides backfillOnly downstream. An oracle_categorized
+  // book with a scalar genre and no links is exactly the cohort that the old
+  // `status === 'oracle_categorized'` test sent through as backfill-only,
+  // skipping the genres it was fetched for.
+  const rows = chosen
+    .map((pick) => {
+      const row = hydrated.get(pick.id);
+      return row ? { ...row, needs_genres: pick.needs_genres !== false } : null;
+    })
+    .filter(Boolean);
+
+  // `eligible` is the real backlog; `rows` is only what this run will look at.
   return { rows, eligible: eligibleCount ?? rows.length };
 }
 
+// v0.67 — reads `genres` directly instead of the search_genres RPC.
+//
+// Two defects, both silent, both in one line:
+//
+//   1. search_genres RETURNS TABLE (id, name, normalized_name, source,
+//      usage_count, exact_match). There is NO description column. So
+//      `g.description` in buildPrompt() was undefined on every row and the
+//      catalog was rendered to the prompt as bare names — for every genre, not
+//      just the undescribed ones. The instruction "Prefer existing catalog
+//      genres... Only invent when nothing in the catalog fits" was being given
+//      to a model with no way to tell what a catalog genre means. That is the
+//      most likely origin of every near-duplicate in the table: Latin American
+//      Literature beside International Fiction, Japanese & East Asian Literary
+//      Fiction beside East Asian Literary Fiction.
+//
+//   2. _limit: 200 against 166 genres, ordered usage_count DESC. The rows that
+//      fall off the end are the LOWEST-usage ones — the rare, recently invented
+//      genres that most need to be reused rather than invented again. Same
+//      shape as the PostgREST 1000-row cap in fetchEligibleBooks: a bound that
+//      silently becomes a lie as the table grows.
+//
+// search_genres is left alone — the in-app genre picker depends on its shape.
+// This script wants a different thing (the whole catalogue, with meanings) and
+// should ask for that thing directly.
 async function fetchExistingGenres() {
-  const {
-    data,
-    error
-  } = await supabase.rpc('search_genres', {
-    _query: '',
-    _limit: 200
-  });
-  if (error) {
-    console.warn('fetchAllGenres failed:', error.message);
-    return [];
+  const rows = [];
+  const PAGE = 1000;
+  let from = 0;
+
+  for (;;) {
+    const { data, error } = await supabase
+      .from('genres')
+      .select('name, description, usage_count')
+      .order('usage_count', { ascending: false })
+      .order('name', { ascending: true })
+      .range(from, from + PAGE - 1);
+
+    if (error) {
+      // Failing open here means the Oracle invents a parallel taxonomy for the
+      // whole run. Say so loudly rather than returning [] and looking fine.
+      console.error('\n  Failed to read the genre catalogue:', error.message);
+      console.error('  Refusing to run — every book would be categorised against an empty catalog.\n');
+      process.exit(1);
+    }
+
+    rows.push(...(data || []));
+    if (!data || data.length < PAGE) break;
+    from += PAGE;
   }
-  return data || [];
+
+  const described = rows.filter((g) => g.description).length;
+  console.log(`  Catalogue: ${rows.length} genres, ${described} with descriptions.`);
+  if (described < rows.length) {
+    console.warn(
+      `  ${rows.length - described} genre(s) have no description and reach the prompt as a ` +
+      `bare name. The Oracle cannot tell what they mean, so it will tend to invent a ` +
+      `near-duplicate instead of reusing them.`
+    );
+  }
+
+  return rows;
 }
 
 // ── Claude API (direct, not via Netlify proxy) ────────────────────────────────
@@ -579,7 +651,7 @@ async function main() {
     console.log(`  Fetched ${books.length} of them this run.`);
   }
 
-  const backfillCount = books.filter((b) => b.status === 'oracle_categorized').length;
+  const backfillCount = books.filter((b) => b.needs_genres === false).length;
   if (backfillCount > 0) {
     console.log(`  (${backfillCount} of those are already oracle_categorized — complexity/depth backfill only, genres/series/description untouched)\n`);
   }
@@ -590,7 +662,7 @@ async function main() {
   }
 
   if (books.length === 0) {
-    console.log('  Nothing to do — all books are already oracle_categorized.\n');
+    console.log('  Nothing to do — no book needs genres, complexity or depth.\n');
     return;
   }
 
@@ -657,7 +729,8 @@ async function main() {
         // complexity/depth were null — don't touch their existing genres,
         // series, or description, even though the model still returned them
         // as part of the same prompt.
-        const backfillOnly = book.status === 'oracle_categorized';
+        // Need, not status. See fetchEligibleBooks().
+        const backfillOnly = book.needs_genres === false;
 
         // Cap raised 3 -> 4 (v0.63). The taxonomy is 142 genres now, not the
         // original 15, so the useful ones are far more specific and a book

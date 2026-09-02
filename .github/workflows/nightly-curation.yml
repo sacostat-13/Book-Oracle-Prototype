@@ -156,6 +156,21 @@ jobs:
             --limit ${{ steps.args.outputs.limit }} \
             ${{ steps.args.outputs.dry }} | tee curate.log
 
+      # 3. BILLABLE, and very small — this closes the categorisation loop.
+      #    oracleBatch renders the catalogue into its prompt as
+      #    "- Name: description" and falls back to "- Name" when there is none.
+      #    A genre invented in step 2 is created with description = null, so on
+      #    tomorrow's run it arrives as a bare word the Oracle cannot match
+      #    against — and the prompt's own instruction ("only invent when nothing
+      #    in the catalog fits") then tells it to invent a near-duplicate. Every
+      #    undescribed genre is a seed for its own copy.
+      #
+      #    Describing them the same night breaks that loop. It costs a fraction
+      #    of a cent on a normal night and nothing at all when step 2 invented
+      #    nothing, because the script writes only where description is null.
+      - name: Describe any new genres (billable, small)
+        run: node batch-scripts/manual/genreDescriptions.mjs | tee genredesc.log
+
       # ── Accounting ────────────────────────────────────────────────────────
       # A job that spends money every night has to report three numbers without
       # anyone opening a log: how many books it touched, how many failed, and
@@ -164,6 +179,7 @@ jobs:
       #
       #   metadataBackfill: [metadataBackfill] descriptions=N genres=N ...
       #   oracleBatch:      │  Processed: N / Failed: N / Actual cost: ~$N
+      #   genreDescriptions:[genreDescriptions] written=N failed=N ... cost=N
       - name: Report books, errors and cost
         id: report
         if: always()
@@ -196,6 +212,10 @@ jobs:
           COST=$(grep -oP '(?<=Actual cost: ~\$)[0-9.]+' curate.log 2>/dev/null | tail -1 | one)
           COST=${COST:-0.0000}
 
+          GDESC=$(num genredesc.log '(?<=written=)[0-9]+')
+          GDCOST=$(num genredesc.log '(?<=cost=)[0-9.]+')
+          GDCOST=${GDCOST:-0.0000}
+
           # Per-batch failures carry their reason on the line; collect them so a
           # recurring error is visible in the summary without downloading logs.
           # `grep -c` prints a count and exits 1 when that count is zero, so the
@@ -204,7 +224,7 @@ jobs:
           BATCH_ERRORS=$(printf '%s' "${BATCH_ERRORS:-0}" | one)
           BATCH_ERRORS=${BATCH_ERRORS:-0}
 
-          for k in DESCS GENRES NOTHING SKIPPED LINKS PROCESSED FAILED COST BATCH_ERRORS; do
+          for k in DESCS GENRES NOTHING SKIPPED LINKS PROCESSED FAILED COST BATCH_ERRORS GDESC GDCOST; do
             v=$(printf '%s' "${!k}" | one)
             echo "${k,,}=${v:-0}" >> "$GITHUB_OUTPUT"
           done
@@ -233,15 +253,17 @@ jobs:
             echo "| Genre links written (free) | $LINKS |"
             echo "| Looked up, nothing found (new) | $NOTHING |"
             echo "| Skipped — already exhausted | $SKIPPED |"
+            echo "| New genres given a description | $GDESC |"
             echo ""
             echo "| Cost | USD |"
             echo "| --- | ---: |"
-            echo "| This run | \$$COST |"
+            echo "| Curation (step 2) | \$$COST |"
+            echo "| Genre descriptions (step 3) | \$$GDCOST |"
             echo "| Per book enriched | \$$PER |"
             echo "| Projected 30 nights at this rate | \$$(awk -v c="$COST" 'BEGIN{printf "%.2f", c*30}') |"
             echo ""
 
-            for f in metadata curate; do
+            for f in metadata curate genredesc; do
               if [ ! -s "$f.log" ]; then
                 echo "⚠️ **$f** — no output. The script died before writing anything; check the step log."
                 echo ""
@@ -282,6 +304,7 @@ jobs:
           path: |
             metadata.log
             curate.log
+            genredesc.log
             batch-scripts/output/*.csv
           if-no-files-found: ignore
           retention-days: 30

@@ -66,7 +66,7 @@ the canonical taxonomy. Both `scheduled/metadataBackfill.mjs` and
 `manual/regenreCatalog.mjs` import it — two copies of one rule set is a bug that
 takes months to surface.
 
-Three things worth knowing before touching genre code:
+Five things worth knowing before touching genre code:
 
 1. **The column is `assigned_by_source`, not `source`.** `oracleBatch` named it
    wrong and PostgREST rejected every insert. Nothing checked the result, so not
@@ -79,6 +79,39 @@ Three things worth knowing before touching genre code:
 3. **Subjects are cached** on `books.source_subjects`. Edit the rules and re-run
    `regenreCatalog --apply` — offline, seconds, no network. Only ever
    `--fetch` for books that have never been looked up.
+4. **A genre with no description is a seed for its own duplicate.** `oracleBatch`
+   renders the catalogue into its prompt as `- Name: description` and falls back
+   to `- Name` when there is none, under an instruction that says to invent only
+   when nothing in the catalog fits. A bare name cannot be matched against, so
+   the Oracle invents a near-duplicate — which is *also* created with a null
+   description, so it is bare on the next run too. Until v0.67 this was worse
+   than it sounds: `search_genres` does not return the `description` column at
+   all, so **every** genre reached the prompt as a bare name and none of the
+   written descriptions had ever been used. Measured effect of the fix: 40 books
+   produced 11 new genres before it, 251 books produced 5 after — 0.275/book to
+   0.020/book. `manual/genreDescriptions.mjs` now runs nightly after
+   `oracleBatch` so a genre invented tonight is described tonight.
+5. **Select on need, never on a proxy for need.** `oracleBatch` chose its work by
+   `status`, which never asked whether a book had genres — so a `verified` book
+   with zero `book_genres` rows was ineligible forever (189 of them on
+   2026-09-02). `metadataBackfill` fetched `LIMIT * 4` rows ordered by
+   `metadata_checked_at` and decided need in memory afterwards, so with 3,674
+   never-checked books its 800-row window never reached the ones that needed
+   anything and it printed `0 book(s) to process`. Both now select from
+   **`books_needing_curation`**, a view that does the anti-join PostgREST cannot
+   express and exposes `needs_genres` / `needs_description` / `needs_depth` as
+   filterable booleans. Any new pass over the catalogue should start there.
+
+### Merging and renaming genres
+
+Never by hand. `merge_genres(loser, winner)` and `rename_genre(normalized_from,
+new_name)` exist because both operations have the same three traps: a blind
+`update book_genres set genre_id` violates the `(book_id, genre_id)` primary key
+for a book tagged with both; deleting a row fails on the self-referencing
+`parent_id` foreign key if anything is parented to it; and `books.genre` holds
+the **display name**, so leaving it pointing at a name nothing answers to
+recreates the genre in the next report. Both functions return what they actually
+did, so a cleanup run is auditable.
 
 Typical loop:
 
@@ -302,7 +335,8 @@ to a cron under the service role key.
 | # | Script | Cost |
 |---|---|---|
 | 1 | `scheduled/metadataBackfill.mjs --limit 200` | free |
-| 2 | `manual/oracleBatch.mjs --limit 40` 💸 | ~$0.007/book → ~$0.28/night |
+| 2 | `manual/oracleBatch.mjs --limit 40` 💸 | ~$0.007/book estimated; ~$0.0023 actual |
+| 3 | `manual/genreDescriptions.mjs` 💸 | fractions of a cent — only writes where `description IS NULL` |
 
 Order is the same principle as the weekly job, for two reasons rather than one:
 every description the free pass resolves is a book Claude is never asked about,
@@ -315,6 +349,14 @@ the workflow to clear a backlog faster, and watch the run summary — it prints
 the estimate before spending anything. `workflow_dispatch` also takes a
 `dry_run` input that estimates without calling the API.
 
+Step 3 closes the categorisation loop rather than adding to it: without it,
+every genre step 2 invents arrives at tomorrow's prompt as a bare word (see
+Genres #4 above). It costs nothing on a night that invented nothing.
+
+The cost model is 3× the observed rate — the estimator says $0.007/book and the
+2026-09-02 runs came in at $0.0023. Read the *actual* line, not the estimate,
+before deciding the cap is too low.
+
 A book with no cover never appears in The Stacks, which filters on
 `cover_url IS NOT NULL`. That is why covers come before descriptions.
 
@@ -325,6 +367,7 @@ A book with no cover never appears in The Stacks, which filters on
 | `manual/curateManualBooks.mjs` 💸 | Proposes title/author corrections for manually-added rows. Writes `output/proposed-titles.csv`; applying is a separate `--apply-titles` run, so nothing changes without a second decision. |
 | `manual/oracleBatch.mjs` 💸 | Bulk Oracle categorisation — genres, series, complexity, depth, author gender. Also invoked nightly by `nightly-curation.yml` at a capped limit; run it by hand only to clear a backlog faster than the cron will. |
 | `manual/authorGenderBackfill.mjs` 💸 | One-shot backfill of `books.author_gender`, keyed on **author** rather than book. Batched Sonnet, no web search. Only touches rows where `author_gender_checked_at IS NULL`, so it is safe to re-run and drains to zero. Writes `output/author-gender.csv`. |
+| `manual/genreDescriptions.mjs` 💸 | Writes the description for every genre that has none, in the house voice, with the rest of the catalogue and sample titles from the shelf as context. Rarest genre first — the one with one book is the one most likely to be re-invented. Never overwrites: the update carries `.is('description', null)`, so a hand-written description wins even mid-run. Also step 3 of `nightly-curation.yml`. |
 | `manual/fixBook.mjs` | Repair a single book by id — surgical, for when one row is wrong. |
 | `manual/fixBadCovers.mjs` | Remove covers that resolve to placeholders or dead URLs. |
 

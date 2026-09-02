@@ -472,8 +472,20 @@ async function main() {
   // `--target genre` it is dropped entirely; on `--target both` it is dropped
   // too, because a coverless book still legitimately wants its genres and the
   // description half simply finds nothing to do.
+  // v0.67 — the candidate set comes from books_needing_curation, not `books`.
+  //
+  // This query used to fetch LIMIT*4 rows from `books` ordered by
+  // metadata_checked_at and decide need in memory afterwards. That sort has no
+  // relation to need. On 2026-09-02, 3,674 books had never been checked, so the
+  // 800-row window at --limit 200 was filled entirely with never-checked books
+  // that already had descriptions and genres, and the run printed
+  // "0 book(s) to process" while 282 books had no genre links at all.
+  //
+  // The window is still an overshoot — isDue() and the scalar-genre test below
+  // still run in memory — but every row in it now wants something, so the
+  // overshoot covers the skips instead of hiding the work.
   let query = supabase
-    .from('books')
+    .from('books_needing_curation')
     .select('id, title, author, description, genre, cover_url, metadata_checked_at, metadata_attempts, subjects_fetched_at')
     .neq('status', 'flagged')
     // Exhausted books are excluded server-side so they never occupy a row of
@@ -535,10 +547,27 @@ async function main() {
     return true;
   }).slice(0, LIMIT || undefined);
 
+  // Report examined AND total. "0 book(s) to process" was true of the rows this
+  // run looked at and false about the catalogue, and nothing in the line said
+  // which it meant. A zero next to a backlog is a bug report; a zero next to a
+  // zero is a quiet night.
+  const { count: backlog } = await supabase
+    .from('books_needing_curation')
+    .select('id', { count: 'exact', head: true })
+    .neq('status', 'flagged');
+
   console.log(
-    `[metadataBackfill] ${needsWork.length} book(s) to process` +
-    `${skippedExhausted ? ` (${skippedExhausted} skipped — checked recently, nothing found)` : ''}\n`
+    `[metadataBackfill] ${needsWork.length} book(s) to process ` +
+    `(of ${(rows || []).length} examined; ${backlog ?? '?'} needing curation in total)` +
+    `${skippedExhausted ? ` — ${skippedExhausted} skipped, checked recently, nothing found` : ''}\n`
   );
+
+  if (needsWork.length === 0 && (backlog ?? 0) > (rows || []).length) {
+    console.warn(
+      `[metadataBackfill] Nothing to do in this window, but ${backlog} books need ` +
+      `curation. Raise --limit or check the ordering before reading this as "done".`
+    );
+  }
 
   let descFilled = 0;
   let genreFilled = 0;
