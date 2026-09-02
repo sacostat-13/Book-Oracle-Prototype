@@ -5,7 +5,7 @@
 // Rich keys are rendered via <T k="myKey" vars={{}} /> or useRichT().
 
 import {
-  createContext, useContext, useEffect, useState, useCallback,
+  createContext, useContext, useEffect, useState, useCallback, useRef,
   createElement, Fragment, isValidElement,
 } from 'react';
 import en from '../i18n/en.json';
@@ -169,19 +169,49 @@ const I18nContext = createContext(null);
 export function I18nProvider({ children }) {
   const [lang, setLangState] = useState(detectInitialLang);
 
+  // 2026-09-01 — WHY THIS REF EXISTS.
+  // syncLangParam() used to run on every mount, because the effect below runs
+  // once with whatever detectInitialLang() returned. So every page load —
+  // including a crawler's — rewrote its own URL from /book/:key to
+  // /book/:key?lang=en via history.replaceState, a few hundred ms after the
+  // document loaded.
+  //
+  // Google's renderer treats a replaceState to a DIFFERENT URL as a redirect.
+  // Search Console reported 358 book URLs as "Page with redirect" and indexed
+  // none of them: the URL in the sitemap was never the URL that finished
+  // rendering. Nothing server-side redirects — netlify.toml has only 200
+  // rewrites — the app was doing it to itself.
+  //
+  // The param is a SHARE feature (see releases.js v0.33: "append ?lang=es to
+  // force a language for the link recipient"), so it belongs in the URL only
+  // when a human chose a language. An inherited default — from localStorage or
+  // navigator.language — is a UI preference and has no business in the URL, for
+  // the same reason siteUrl.js strips query strings from the canonical.
+  //
+  // Incoming ?lang=es links are unaffected: detectInitialLang() reads the param
+  // and the param is already in the URL, so there is nothing to sync.
+  const langChosenExplicitly = useRef(false);
+
   useEffect(() => {
     try {
       window.localStorage.setItem(STORAGE_KEY, lang);
       document.documentElement.lang = lang;
     } catch {}
-    syncLangParam(lang);
+    if (langChosenExplicitly.current) syncLangParam(lang);
   }, [lang]);
 
   const setLang = useCallback((next) => {
-    if (SUPPORTED.includes(next)) setLangState(next);
+    if (SUPPORTED.includes(next)) {
+      langChosenExplicitly.current = true;
+      setLangState(next);
+    }
   }, []);
 
+  // Flag set here too, not only in setLang: the ··· menu toggle calls
+  // toggleLang, which goes straight to setLangState and would otherwise switch
+  // the language without ever writing the param.
   const toggleLang = useCallback(() => {
+    langChosenExplicitly.current = true;
     setLangState((cur) => (cur === 'en' ? 'es' : 'en'));
   }, []);
 

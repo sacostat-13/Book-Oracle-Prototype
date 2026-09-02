@@ -4,7 +4,7 @@ A reading companion — wishlist, library, Passages (reading plans), Anthologies
 lists), book clubs, Kindred (follows), and an AI-powered "oracle" for book discovery. Built with React + Vite + SCSS, backed by Supabase for auth
 and cross-device sync, and Netlify Functions for API proxying.
 
-> Current version: **v0.66** — see [Releases](#releases) below for changelog.
+> Current version: **v0.66.1** — see [Releases](#releases) below for changelog.
 > Upgrading from an earlier version? Check the matching `MIGRATION_*.md` / `UPDATE_*.md`.
 
 ---
@@ -370,6 +370,157 @@ and forward requests. Locally you need `netlify dev` to make them work.
 ---
 
 ## Releases
+
+# Update Notes — v0.66 → v0.66.1: the app had no links in it
+
+**No migrations. No env vars. Deploy the bundle.**
+
+`public/app-version.json` bumped to `0.66.1` (the `vite.config.js` guard fails
+the build otherwise), and `critical` flipped back to **false**. It was sitting
+at `true`, which is the v0.59 hotfix setting that v0.63.3 exists to have caught:
+`critical: true` makes PWAUpdatePrompt auto-apply a new service worker instead
+of showing the dismissible toast, so every open tab force-reloads on deploy and
+loses component state. Nothing in this release is a hotfix a stale client must
+take immediately, so it ships as an ordinary prompt.
+
+Search Console, 2026-09-01: 1,460 pages indexed, 2,760 not. 1,460 impressions,
+3 clicks, median position 60. The not-indexed bucket breaks down as 2,316
+"Discovered – currently not indexed", 358 "Page with redirect", 89 "Crawled –
+currently not indexed".
+
+Three separate causes. None of them is content quality, and one of them is that
+the app was redirecting Googlebot away from its own pages.
+
+## 1. The app was rewriting every URL it served
+
+`I18nContext`'s effect ran `syncLangParam(lang)` on mount, unconditionally. The
+effect fires once with whatever `detectInitialLang()` returned — localStorage,
+then `navigator.language`, then `'en'` — so *every* page load rewrote its own
+URL, a few hundred ms in:
+
+```
+GET /book/thereformatory%7Ctananarive     → 200, no server redirect
+after React mounts                        → /book/thereformatory%7Ctananarive?lang=en
+```
+
+Google's renderer treats a `replaceState` to a different URL as a redirect. The
+URL in the sitemap was never the URL that finished rendering, which is the 358.
+Nothing server-side redirects — `netlify.toml` has only 200 rewrites — the app
+was doing it to itself, and had been since the param was introduced.
+
+`?lang=` is a *share* feature: v0.33's note says "append ?lang=es to force a
+language for the link recipient". A language inherited from localStorage or the
+browser is a UI preference and has no business in the URL, for the same reason
+`siteUrl.js` strips query strings from the canonical. So the write is now gated
+on a `langChosenExplicitly` ref, set by `setLang` **and** `toggleLang` — the ···
+menu goes through `toggleLang`, which calls `setLangState` directly and would
+otherwise have switched languages without ever arming the flag.
+
+Incoming `?lang=es` links are untouched: `detectInitialLang()` reads the param,
+and the param is already in the URL, so there is nothing to sync.
+
+## 2. The sitemap advertised keys with no author
+
+`sitemap.js` guarded against `"|author"` — a title that normalises to nothing —
+and had a comment explaining exactly why that case is worth catching. It did not
+guard the mirror image. `"title|"`, a book whose *author* half normalises away,
+passed `startsWith('|')` and shipped:
+
+```
+https://www.thebooksoracle.com/book/shehauntsmestill%7C
+```
+
+`endsWith('|')` added alongside it. Same reasoning as the original guard, other
+half.
+
+## 3. Search Console was showing us the wrong page
+
+`BOT_UA_PATTERN` in `og-prerender.js` matches `/bot/`, so Googlebot has always
+been served the prerendered head. `Google-InspectionTool` and `GoogleOther`
+contain no `bot` substring and fell through to `context.next()` — the generic
+`index.html`, including its homepage canonical.
+
+Indexing was never affected. But URL Inspection and "Test live URL" run as
+`Google-InspectionTool`, so the console was showing a page with
+`<link rel="canonical" href="https://www.thebooksoracle.com/">` on every book
+URL — i.e. it lied about exactly the pages you open it to debug. Both agents are
+now matched explicitly.
+
+## 4. The 2,316, which is the real number
+
+This one `sitemap.js` had already diagnosed, in a comment dated 2026-08-24:
+
+> crawl priority follows internal links, and the app emits almost none (every
+> in-app navigation is an onClick handler on a div, so `/book/:key` is reachable
+> only from og-prerender.js's series list)
+
+Confirmed by counting. Before this release there were **three** `<a href>`
+elements in all of `src/`, and all three pointed off-site — Wikipedia, purchase
+links, share intents. The app emitted no internal links whatsoever. Google had
+2,316 URLs from a sitemap, on a new domain, with no path to any of them. A
+sitemap is a hint; a link is a path.
+
+### `hrefFor()` and `<RouteLink>`
+
+Both in `RouterContext.jsx`, next to `go()`.
+
+`hrefFor(name, params)` builds the **canonical** URL for a route: path params
+only. Everything else a view hands `go()` — `from`, `fromLabel`, `snap`,
+`anchor` — is in-app state, and none of it may reach an `href` or one page gets
+advertised under a dozen URLs. It returns `null` rather than
+`/book/undefined` when a segment param is missing, same call `buildPath()` makes.
+
+`<RouteLink to params navParams>` renders a real `<a href>` whose onClick calls
+`go()`. The split matters: `params` builds the href, `navParams` goes to `go()`,
+so the crawler sees `/book/:key` while the reader still gets the breadcrumb and
+the instant-render snapshot. Modified clicks (cmd/ctrl/shift/alt, middle button)
+fall through to the browser untouched, so open-in-new-tab and copy-link-address
+work — they never did on a `<div onClick>`, and that is the only part of this
+release a reader will notice.
+
+No SCSS was needed: `_reset.scss` already carries
+`a { color: inherit; text-decoration: none; }`, so a `<div>` or `<button>`
+converted to an `<a>` keeps its exact appearance.
+
+### Converted in this release
+
+Scoped to what Googlebot can actually reach. `/book/:key`, `/series/:name` and
+the static pages are public; Dashboard, Profile, PlanView and ListView are all
+behind auth, so converting those buys UX and no crawl.
+
+| Where | What |
+| --- | --- |
+| `BookPage.jsx` | series dots → sibling volumes (the current volume stays an inert `<div>`, not a link to itself) |
+| `BookPage.jsx` | series name + "open series" pill |
+| `SeriesPage.jsx` | every book title in the series |
+| `SitemapPage.jsx` | all section links, and the breadcrumb |
+| `BookCard.jsx` | "See more" |
+
+`hrefFor` verified against the route table: `{ bookKey: 'thereformatory|tananarive' }`
+→ `/book/thereformatory%7Ctananarive`, byte-identical to the sitemap entry;
+extra params dropped; `null` for a missing or empty key.
+
+## 5. Known state — what this does NOT fix
+
+- **The 89 "Crawled – currently not indexed" are untouched.** Google fetched
+  those and declined. That is a content judgement about pages built from
+  Google Books / Hardcover metadata — data Google already has — and no amount
+  of plumbing answers it. It needs something on a book page that exists nowhere
+  else: reviews, ratings, club activity, reading-plan context.
+- **The sitemap is still ~4,200 URLs on a domain with no authority.** The
+  quality bar in `sitemap.js` (§2, plus the digits-only and `cover_url` filters)
+  should probably tighten to "books with something unique on the page". 400
+  URLs that all get indexed beat 4,200 that do not.
+- **`openBookTab()` in `bookHelpers.js:195` still builds a legacy hash URL** —
+  `?lang=xx#book-page?bookKey=…`, the pre-v0.39 shape. It works only because
+  `migrateLegacyHash()` rewrites it on arrival, which means every Stacks
+  "See more" opens a tab that immediately `replaceState`s to a different URL:
+  the same self-inflicted redirect as §1, from a different direction. It also
+  writes `?lang=` back in. Not fixed here because it opens a new tab with a
+  snapshot payload and deserves its own change.
+- **Nothing here creates inbound links.** Internal linking makes a crawl
+  possible; it does not make the site authoritative. Position 60 with 3 clicks
+  on 1,460 impressions is what a domain with no external links looks like.
 
 # Update Notes — v0.65 → v0.66: Kindred
 

@@ -13,7 +13,7 @@
 
 import { useEffect, useState, useMemo } from 'react';
 import { useData } from '../lib/DataContext';
-import { useRouter } from '../lib/RouterContext';
+import { useRouter, RouteLink } from '../lib/RouterContext';
 import { useT } from '../lib/I18nContext';
 import { useDocumentMeta } from '../lib/useDocumentMeta';
 import { bookKey, buildBookPageParams } from '../lib/bookHelpers';
@@ -364,13 +364,14 @@ export default function SeriesPage({ isAuthed = true, authPending = false, dataR
                   <div className="series-page-book-position">
                     {position ? t('seriesPage.bookN', { n: position }) : '—'}
                   </div>
-                  <div
+                  <RouteLink
                     className="series-page-book-title"
-                    onClick={() => go('book-page', buildBookPageParams(b, 'series-page', seriesName))}
-                    
+                    to="book-page"
+                    params={{ bookKey: bookKey(b) }}
+                    navParams={buildBookPageParams(b, 'series-page', seriesName)}
                   >
                     {b.t}
-                  </div>
+                  </RouteLink>
                   {b.pp && (
                     <div className="series-page-book-pages">
                       {b.pp} {t('profile.statPages')}

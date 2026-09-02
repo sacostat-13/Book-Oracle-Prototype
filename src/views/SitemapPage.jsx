@@ -1,4 +1,4 @@
-import { useRouter } from '../lib/RouterContext';
+import { RouteLink } from '../lib/RouterContext';
 import { useT } from '../lib/I18nContext';
 import { useDocumentMeta } from '../lib/useDocumentMeta';
 
@@ -35,7 +35,6 @@ const SECTIONS = [
 ];
 
 export default function SitemapPage() {
-  const { go } = useRouter();
   const t = useT();
 
   useDocumentMeta({
@@ -47,7 +46,7 @@ export default function SitemapPage() {
     <div className="about-container">
       <div className="page-head">
         <div className="page-head__eyebrow">
-          <a onClick={() => go('dashboard')}>{t('about.breadcrumb') || 'Home'}</a> · {t('sitemapPage.heading') || 'Sitemap'}
+          <RouteLink to="dashboard">{t('about.breadcrumb') || 'Home'}</RouteLink> · {t('sitemapPage.heading') || 'Sitemap'}
         </div>
         <h1 className="page-head__title">{t('sitemapPage.heading') || 'Sitemap'}</h1>
         <p className="page-head__lead">
@@ -62,9 +61,9 @@ export default function SitemapPage() {
           <ul className="legal-list">
             {section.links.map((link) => (
               <li className="legal-list__item" key={link.route}>
-                <button className="footer-link lv-hl" onClick={() => go(link.route)}>
+                <RouteLink to={link.route} className="footer-link lv-hl">
                   {link.label}
-                </button>
+                </RouteLink>
               </li>
             ))}
           </ul>

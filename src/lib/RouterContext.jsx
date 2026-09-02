@@ -260,3 +260,72 @@ export function RouterProvider({ children }) {
 }
 
 export const useRouter = () => useContext(RouterContext);
+
+// ── Crawlable links ──────────────────────────────────────────────────────────
+//
+// 2026-09-01. Every in-app navigation was an onClick handler on a <div> or a
+// <button>. The app therefore emitted no <a href> at all: as of this change
+// there were exactly three in src/, and all three pointed off-site (Wikipedia,
+// purchase links, share intents). sitemap.js already called this out in a
+// comment — "crawl priority follows internal links, and the app emits almost
+// none" — while Search Console reported 2,316 book URLs as "Discovered –
+// currently not indexed". Google had not fetched them because nothing linked
+// to them; a sitemap is a hint, a link is a path.
+//
+// hrefFor() builds the CANONICAL url for a route: path params only. Everything
+// else a view passes to go() — from, fromLabel, snap, anchor — is in-app state
+// that must never reach an href, or one page would be advertised under a dozen
+// distinct URLs. The rich params still go to go() on click via `navParams`, so
+// breadcrumbs and instant-render snapshots behave exactly as before.
+export function hrefFor(name, params = {}) {
+  const dynamicDef = DYNAMIC_DEFS.find((d) => d.name === name);
+  if (dynamicDef) {
+    const segs = [];
+    for (const seg of dynamicDef.segments) {
+      if (seg.literal) { segs.push(seg.literal); continue; }
+      const v = params?.[seg.param];
+      // Same reasoning as buildPath(): no href at all beats '/book/undefined'.
+      if (v == null || v === '') return null;
+      segs.push(encodeURIComponent(v));
+    }
+    return '/' + segs.join('/');
+  }
+  return STATIC_BY_NAME.get(name) ?? null;
+}
+
+// A real anchor that still navigates client-side.
+//
+// `params`    → the path params, used to build the href (canonical URL).
+// `navParams` → what go() receives on click; defaults to `params`. Use it for
+//               the from/fromLabel/snap payloads that must stay out of the URL.
+//
+// Modified clicks (cmd/ctrl/shift/alt, middle button) fall through to the
+// browser, so open-in-new-tab and copy-link-address work — which they never did
+// on a <div onClick>. Falls back to a plain <span> if the href can't be built,
+// rather than rendering a dead <a href="undefined">.
+//
+// NOTE ON STYLING: _reset.scss already sets `a { color: inherit;
+// text-decoration: none; }`, so an element converted from <div>/<button> to
+// <a> keeps its existing appearance with no SCSS change.
+export function RouteLink({ to, params, navParams, children, onClick, ...rest }) {
+  const { go } = useRouter();
+  const href = hrefFor(to, params);
+
+  if (!href) return <span {...rest}>{children}</span>;
+
+  return (
+    <a
+      href={href}
+      onClick={(e) => {
+        onClick?.(e);
+        if (e.defaultPrevented) return;
+        if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
+        e.preventDefault();
+        go(to, navParams ?? params ?? {});
+      }}
+      {...rest}
+    >
+      {children}
+    </a>
+  );
+}

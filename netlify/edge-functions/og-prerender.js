@@ -32,7 +32,14 @@
 
 
 
-const BOT_UA_PATTERN = /bot|crawl|spider|slurp|facebookexternalhit|slackbot|twitterbot|whatsapp|telegrambot|discordbot|linkedinbot|pinterest|embedly|quora link preview|w3c_validator|redditbot|skypeuripreview|vkshare|outbrain|nuzzel|flipboard|tumblr|bitlybot|applebot|semrushbot|ahrefsbot/i;
+// 2026-09-01: google-inspectiontool and googleother added explicitly. Neither
+// contains the substring "bot", so both fell through to context.next() and got
+// the generic index.html — including its homepage canonical. Googlebot itself
+// always matched via /bot/, so indexing was never affected, but URL Inspection
+// ("Test live URL") in Search Console runs as Google-InspectionTool: the page
+// it showed was NOT the page the indexer sees, which makes this console lie
+// about exactly the pages you go there to debug.
+const BOT_UA_PATTERN = /bot|crawl|spider|slurp|google-inspectiontool|googleother|facebookexternalhit|slackbot|twitterbot|whatsapp|telegrambot|discordbot|linkedinbot|pinterest|embedly|quora link preview|w3c_validator|redditbot|skypeuripreview|vkshare|outbrain|nuzzel|flipboard|tumblr|bitlybot|applebot|semrushbot|ahrefsbot/i;
 
 // v0.61.2 — www, matching Netlify's primary domain. thebooksoracle.com 301s
 // here, so the previous non-www value meant every URL emitted by this file

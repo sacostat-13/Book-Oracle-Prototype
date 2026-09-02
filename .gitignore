@@ -6,6 +6,7 @@ dist
 *.log
 .vite
 implementation
+vite.config.js.timestamp-*
 
 # Local Netlify folder
 .netlify

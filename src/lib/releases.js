@@ -16,9 +16,21 @@
 
 // The version label shown as "current" — keep in sync with package.json and
 // the README version line.
-export const CURRENT_VERSION = 'v0.66';
+export const CURRENT_VERSION = 'v0.66.1';
 
 export const RELEASES = [{
+    version: 'v0.66.1',
+    date: '2026-09-01',
+    titleEn: 'Links that behave like links',
+    titleEs: 'Enlaces que se portan como enlaces',
+    bodyEn: [
+      'Book and series titles are real links now. Middle-click or cmd-click one and it opens in a new tab, right-click and you can copy the address — neither of which did anything before, because they were not links, they only looked like them.',
+    ],
+    bodyEs: [
+      'Los títulos de libros y de sagas ahora son enlaces de verdad. Hacé clic con el botón del medio o con cmd y se abren en una pestaña nueva; con el botón derecho podés copiar la dirección. Antes ninguna de las dos cosas hacía nada, porque no eran enlaces: solo lo parecían.',
+    ],
+
+  }, {
     version: 'v0.66',
     date: '2026-08-20',
     titleEn: 'Kindred',

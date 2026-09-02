@@ -8,7 +8,7 @@ import { useData } from '../lib/DataContext';
 import { resolveGenres } from '../lib/genreDisplay';
 import { supabase } from '../lib/supabase';
 import { lookUpByShareKey } from '../lib/shareKey';
-import { useRouter } from '../lib/RouterContext';
+import { useRouter, RouteLink } from '../lib/RouterContext';
 import { useT, useI18n } from '../lib/I18nContext';
 import { useDocumentMeta } from '../lib/useDocumentMeta';
 import { bookKey, findBookByTitle, openBookTab, buildBookPageParams, displayAuthor } from '../lib/bookHelpers';
@@ -944,15 +944,25 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
         const read = state.library.some((l) => bookKey(l) === bookKey(entry));
         const queued = state.readNext.some((l) => bookKey(l) === bookKey(entry));
         const cls = isCurrent ? ' bp-series__dot--current' : read ? ' bp-series__dot--read' : queued ? ' bp-series__dot--queued' : '';
+        const dotTitle = `${entry.t}${read ? ' — read' : queued ? ' — queued' : ''}`;
+        // The current volume is not a link to itself; every other dot is a real
+        // <a href="/book/:key">, which is the only crawlable path from one book
+        // page to its siblings.
         dots.push(
-          <div
-            key={i}
-            className={`bp-series__dot${cls}`}
-            title={`${entry.t}${read ? ' — read' : queued ? ' — queued' : ''}`}
-            onClick={() => !isCurrent && go('book-page', buildBookPageParams(entry, 'book-page', display.t))}
-          >
-            {i}
-          </div>
+          isCurrent ? (
+            <div key={i} className={`bp-series__dot${cls}`} title={dotTitle}>{i}</div>
+          ) : (
+            <RouteLink
+              key={i}
+              className={`bp-series__dot${cls}`}
+              title={dotTitle}
+              to="book-page"
+              params={{ bookKey: bookKey(entry) }}
+              navParams={buildBookPageParams(entry, 'book-page', display.t)}
+            >
+              {i}
+            </RouteLink>
+          )
         );
       } else {
         dots.push(
@@ -1082,7 +1092,11 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
             const currentPos = currentEntry?.s?.n || entries.findIndex((e) => bookKey(e) === currentKey) + 1;
             const trackReadPct = totalBooks > 0 ? (readCount / totalBooks) * 100 : 0;
             const trackCursorPct = totalBooks > 1 ? ((currentPos - 1) / (totalBooks - 1)) * 100 : 0;
-            const goToSeries = () => go('series-page', { seriesName: name, from: 'book-page', fromLabel: display.t });
+            const seriesLinkProps = {
+              to: 'series-page',
+              params: { seriesName: name },
+              navParams: { seriesName: name, from: 'book-page', fromLabel: display.t },
+            };
             return (
               <div className="bp-series">
                 {/* Label row — eyebrow left, open-series pill right */}
@@ -1090,22 +1104,19 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
                   <div className="bp-section__label">
                     {t('bookPage.partOfSeries')}
                   </div>
-                  <button
-                    onClick={goToSeries}
+                  <RouteLink
+                    {...seriesLinkProps}
                     title={t('bookPage.openSeries')}
                     className="bp-series__open"
                   >
                     {t('bookPage.openSeries')}
-                  </button>
+                  </RouteLink>
                 </div>
 
-                {/* Series name — clickable */}
-                <div
-                  className="bp-series__name"
-                  onClick={goToSeries}
-                >
+                {/* Series name — a real link, same target as the pill above */}
+                <RouteLink {...seriesLinkProps} className="bp-series__name">
                   {name}
-                </div>
+                </RouteLink>
 
                 {useTrack ? (
                   <div className="bp-series__track">

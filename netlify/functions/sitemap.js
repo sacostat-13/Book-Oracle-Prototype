@@ -166,7 +166,14 @@ export async function handler() {
       // written wholly in Korean, Japanese, Cyrillic — produces "|author", which
       // passes that test and resolves to nothing. Advertising it to a crawler is
       // advertising a 404.
-      if (!key || key.startsWith('|')) continue;
+      //
+      // 2026-09-01: endsWith('|') added. The startsWith test was one-sided —
+      // it rejected "|author" but passed "title|", a book whose AUTHOR half
+      // normalises to nothing (author missing, or written wholly in a
+      // non-ASCII script). Those keys shipped in the live sitemap
+      // (/book/shehauntsmestill%7C among them) and came back from Search
+      // Console as errors. Same reasoning as the original guard, other half.
+      if (!key || key.startsWith('|') || key.endsWith('|')) continue;
 
       // A series page is worth advertising even when the volume rows under it
       // are not, so collect the name BEFORE the book-level quality bar.

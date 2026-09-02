@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useData } from '../lib/DataContext';
+import { RouteLink } from '../lib/RouterContext';
 import { useT } from '../lib/I18nContext';
 import { bookKey } from '../lib/bookHelpers';
 import { displayAuthor } from '../lib/bookHelpers';
@@ -106,9 +107,22 @@ export default function BookCard({ book, reason, onClick }) {
               </>
             )}
             {onClick && (
-              <button className="btn-tertiary book-card__more" onClick={onClick}>
+              // A real anchor, so cmd/middle-click opens the book in a new tab
+              // instead of doing nothing. onClick still drives the in-app
+              // navigation the parent view wants (breadcrumb + snapshot).
+              <RouteLink
+                className="btn-tertiary book-card__more"
+                to="book-page"
+                params={{ bookKey: k }}
+                onClick={(e) => {
+                  // Let cmd/ctrl/shift/alt/middle clicks through to the href.
+                  if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
+                  e.preventDefault();
+                  onClick(e);
+                }}
+              >
                 {t('bookPage.seeMore')}
-              </button>
+              </RouteLink>
             )}
           </div>
 

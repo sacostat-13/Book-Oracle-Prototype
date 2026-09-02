@@ -1,15 +1,24 @@
+# CANONICAL HOST: www.
+#
+# These rules all targeted the NON-www apex, which itself 301s to www — so
+# every .org/.net visitor took TWO hops instead of one. index.html's v0.61.2
+# note lists four places the host has to agree (index.html, robots.txt,
+# netlify/functions/sitemap.js, netlify/edge-functions/og-prerender.js). This
+# file is a fifth and was missed. If Netlify's primary domain ever flips to
+# non-www, change it here too.
+
 # Redirect .org variants
-http://thebooksoracle.org/* https://thebooksoracle.com/:splat  301!
-https://thebooksoracle.org/* https://thebooksoracle.com/:splat  301!
-http://www.thebooksoracle.org/* https://thebooksoracle.com/:splat  301!
-https://www.thebooksoracle.org/* https://thebooksoracle.com/:splat  301!
+http://thebooksoracle.org/* https://www.thebooksoracle.com/:splat  301!
+https://thebooksoracle.org/* https://www.thebooksoracle.com/:splat  301!
+http://www.thebooksoracle.org/* https://www.thebooksoracle.com/:splat  301!
+https://www.thebooksoracle.org/* https://www.thebooksoracle.com/:splat  301!
 
 # Redirect .net variants
-http://thebooksoracle.net/* https://thebooksoracle.com/:splat  301!
-https://thebooksoracle.net/* https://thebooksoracle.com/:splat  301!
-http://www.thebooksoracle.net/* https://thebooksoracle.com/:splat  301!
-https://www.thebooksoracle.net/* https://thebooksoracle.com/:splat  301!
+http://thebooksoracle.net/* https://www.thebooksoracle.com/:splat  301!
+https://thebooksoracle.net/* https://www.thebooksoracle.com/:splat  301!
+http://www.thebooksoracle.net/* https://www.thebooksoracle.com/:splat  301!
+https://www.thebooksoracle.net/* https://www.thebooksoracle.com/:splat  301!
 
 # Redirect reading.oracle.com subdomain
-http://reading.oracle.com/* https://thebooksoracle.com/:splat  301!
-https://reading.oracle.com/* https://thebooksoracle.com/:splat  301!
+http://reading.oracle.com/* https://www.thebooksoracle.com/:splat  301!
+https://reading.oracle.com/* https://www.thebooksoracle.com/:splat  301!
