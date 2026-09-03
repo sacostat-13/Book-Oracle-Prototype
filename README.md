@@ -4,7 +4,7 @@ A reading companion — wishlist, library, Passages (reading plans), Anthologies
 lists), book clubs, Kindred (follows), and an AI-powered "oracle" for book discovery. Built with React + Vite + SCSS, backed by Supabase for auth
 and cross-device sync, and Netlify Functions for API proxying.
 
-> Current version: **v0.66.1** — see [Releases](#releases) below for changelog.
+> Current version: **v0.67** — see [Releases](#releases) below for changelog.
 > Upgrading from an earlier version? Check the matching `MIGRATION_*.md` / `UPDATE_*.md`.
 
 ---
@@ -372,6 +372,215 @@ and forward requests. Locally you need `netlify dev` to make them work.
 ---
 
 ## Releases
+
+# Update Notes — v0.66.1 → v0.67: the genre layer
+
+**Fourteen migrations. No env vars. Two build scripts to re-run.**
+
+```
+20260902140000_books_needing_curation.sql
+20260902150000_genre_descriptions_backfill.sql
+20260902160000_merge_genres_function.sql
+20260902160100_genre_cleanup.sql
+20260902170000_genre_naming_rule.sql
+20260902180000_genre_families.sql
+20260903090000_family_frame_asset.sql
+20260903100000_historical_romance_description.sql
+20260903110000_book_genres_view_family.sql
+20260903120000_genre_families_public_read.sql
+20260903130000_backfill_version.sql
+20260903140000_accomplishment_kinds.sql
+20260903150000_reset_stale_backfill_stamp.sql
+20260903160000_drop_backfill_gate.sql
+```
+
+Apply in filename order. `140000` must land before the backfill replays, or the
+replay hits the same constraint; `150000` cleans up the stamps written while it
+did.
+
+`130000` and `150000` are kept in the sequence but are superseded by `160000`,
+which drops `accomplishments_backfill_version` outright — a fresh database
+adds the column and then removes it, which is noise but not a hazard, and
+rewriting applied migrations is worse. The gate is gone: the replay now runs on
+every mount and relies on `on conflict do nothing` rather than on a stamp that
+could record work that never happened. `accomplishments_backfilled_at` stays —
+it is history, not a gate, and nothing reads it any more.
+
+Then, in the repo:
+
+```
+node scripts/build-genre-cards.mjs    # expect 167 / 16 / 0 / 0
+node scripts/build-share-cards.mjs    # expect ready=22, no warnings
+```
+
+## 1. The catalogue had 282 books with no genre, and two drains that could not reach them
+
+`oracleBatch` chose its work by `status` — `unreviewed`, `incomplete`, or
+`oracle_categorized` with a null complexity. Nothing in that predicate asked
+whether a book had genres, and `verified` is one of the six values
+`books_status_check` permits. **A verified book with zero rows in `book_genres`
+was ineligible on every run, forever**: 189 of them.
+
+`metadataBackfill` fetched `LIMIT * 4` rows ordered by `metadata_checked_at` and
+decided need in memory afterwards. That sort has no relation to need. With 3,674
+books never checked, the 800-row window at `--limit 200` was filled entirely by
+books that already had everything, and the run printed `0 book(s) to process`
+while 282 books had no genre at all.
+
+Both now select from **`books_needing_curation`**, a view that does the anti-join
+PostgREST cannot express and exposes `needs_genres` / `needs_description` /
+`needs_depth` as filterable booleans. 282 → 9.
+
+## 2. The Oracle had never seen a single genre description
+
+`buildPrompt()` renders the catalogue as `- Name: description`, falling back to
+`- Name`. But `search_genres` — the RPC it read from — does not return the
+`description` column at all, so that ternary could never take its first branch.
+**Every genre reached the prompt as a bare word**, under an instruction that says
+to invent only when nothing in the catalog fits.
+
+That is the origin of most of the near-duplicates in the table. Measured effect
+of the fix:
+
+| Run | Books curated | New genres invented | Rate |
+| --- | ---: | ---: | ---: |
+| Before | 40 | 11 | 0.275 / book |
+| After | 251 | 5 | **0.020 / book** |
+
+`manual/genreDescriptions.mjs` now runs nightly after `oracleBatch`, so a genre
+invented tonight is described tonight rather than arriving at tomorrow's prompt
+as a bare word — every undescribed genre was a seed for its own duplicate.
+
+## 3. Sixteen families
+
+167 genres, each on exactly one of 16 shelves. `genre_families` is a separate,
+admin-only table: the Oracle creates genres nightly and must never be able to
+invent a shelf.
+
+**`family_id` and `parent_id` are different axes and are allowed to disagree.**
+`parent_id` answers "is this a kind of that?" — sparse, optional, nests.
+`family_id` answers "which shelf does a reader find this on?" — total, exactly
+one per genre, never nests. Irish Literature is a child of Literary Fiction and
+sits on the Place & Period shelf. Do not derive one from the other.
+
+The migration ends with a guard that refuses to apply if any genre is
+unassigned; the same query is the weekly curation check.
+
+## 4. Genre and family pages — which did not exist at all
+
+There was no genre route. Genre tags had a cursor and no `href`. 167 genres were
+unreachable to a reader and invisible to a crawler, and the 2026-08-24 postmortem
+found every prerendered page carrying exactly one link, `<a href="/">`.
+
+- `/genres` — the sixteen-family index
+- `/genres/:familySlug` — a family, its genres and their descriptions
+- `/genre/:genreSlug` — the genre, its shelf, its siblings
+
+All three are public and prerendered, and the tags are links now. **Correct when
+logged out** is the constraint that shapes them: personal data is a thin
+client-side overlay, never the page. `genre_families` needed an explicit anon
+grant for that to be true — the prerender runs with the service key and the
+browser as `anon`, so without it a crawler would have seen a full page while a
+human following that link saw nothing.
+
+The cover wall **rotates daily, not per request**: seeded by genre + UTC day, so
+the prerender and the client agree, the cache stays valid for a day, and the link
+graph still varies across a week. Below 5 books a genre page is reachable and
+linked but `noindex` and out of the sitemap — a page with one book on it is
+precisely the thin page Search Console declined in August, and the sitemap and
+the page must agree or Google reports the contradiction.
+
+## 5. One grouped picker, everywhere
+
+`GenreSelect` existed since v0.63 but had only been adopted in one view; Wishlist,
+Library and Passages were still on native `<select>`s holding the whole taxonomy.
+
+It is now an accordion: sixteen family rows and nothing else until one opens, one
+open at a time. **Typing bypasses it entirely** and returns a flat ranked list —
+the accordion serves readers who do not know what they want, and typing is proof
+that you do. This is why it is not two dependent dropdowns: those force a reader
+who knows they want Folk Horror to first answer a question they may not be able
+to, and punish a wrong guess with an empty second control.
+
+Shelves group by family, and **stop grouping once you have filtered**. Sections
+used to be keyed on each book's primary genre, so filtering to Science Fiction
+still produced an "Adventure" heading.
+
+## 6. The Ledger records shelves
+
+The genre ladders could mint **835 plaques** (167 genres × 4 rungs, plus 167
+first-in-genre). Worse, one book minted three: a necromancer novel earned *First
+in Necromancy*, *First in Dark Fantasy* and *First in Fantasy*, because the Oracle
+assigns specific + umbrella by design.
+
+Replaced by `family_count` (10/25/50/100/250/500/1000), `family_breadth`
+(distinct genres within one family) and `new_family` — 176 possible, and one book
+earns at most one. Breadth is capped by the family's book count, or a single
+multi-tagged book would earn "3 genres" on its own.
+
+`genre_count` and `new_genre` are **retired, not deleted**. Rows already earned
+stay in the table and on the shelf — rule 3 of the accomplishments spec — and are
+simply never minted again. They render in a collapsed group.
+
+The family row is a **milestone track, not a progress bar**. Dots are stops made;
+the line ends where the reading ended. A bar filled toward a target is a picture
+of what the reader has not done, which is the habit-app grammar rule 1 refuses.
+
+## 7. Clean URLs
+
+Route params were always two kinds, treated as one. **Addressable** — `tab`,
+`anchor`, `auth`, `scrollTo`, `lang` — must survive a reload. **Transient** —
+`snap` (a base64 blob of the whole book so `BookPage` paints before its fetch),
+`from`, `fromLabel`, `plan` — are an in-app handoff.
+
+`buildPath()` serialised both, producing
+
+```
+/book/galahadandthegrail%7Cmalcolmgui?from=app&snap=JTdCJTIyYm9va0lkJTIy…
+```
+
+which is what a reader copies when they mean to share a book — and, with 3,742
+book URLs already in *Discovered — currently not indexed*, an invitation to treat
+every entry path as a separate document. Transient params now stay in
+`route.params` and never reach the address bar, and a `replaceState` on mount
+scrubs URLs that arrive with them.
+
+## Found along the way
+
+- **`Japanese & East Asian Horror`** said its own category twice; renamed to
+  `East Asian Horror`, the same redundancy merged on the literary side.
+- **Folk Horror's description illustrated a book genre with two films.**
+- **`comedywit` had a hand-measured frame box** keyed to a slug that no longer
+  existed after the card folders moved to families, so it silently fell back to
+  the default box.
+- **`BookCover` takes flat props, not a book object** — passing one renders every
+  tile as an empty placeholder.
+- **Never embed off a view.** PostgREST resolves embeds from foreign keys and a
+  view carries none. This cost a query in `oracleBatch` and again in
+  `genreService`.
+- **The backfill was gated on a boolean, not a version.** `accomplishments_backfilled_at`
+  is set once and never cleared, so changing the ladders would have left every
+  existing reader with no family accomplishments — the redefinition inert for
+  exactly the readers with the most history to honour. The first fix was a
+  version column; the second was to delete the gate. A stamp asserts "this has
+  been done", which is only ever as true as the write it was recorded beside —
+  and when the write failed, the stamp made the failure permanent. Recomputing
+  every mount is O(library) of redundant, conflict-ignored inserts, which is a
+  cheaper problem than a cache that can lie. The visible cost is a short gap
+  before the family rows appear; that gap is now a skeleton.
+- **`female_authors_count` has never persisted.** It was added to
+  `EARNABLE_TYPES` in v0.55 and never added to the
+  `reading_accomplishments_kind_check` constraint, so every insert 400'd. The
+  error is logged and swallowed and the share card renders from the in-memory
+  moment, so the milestone was celebrated and never recorded. Found because the
+  family kinds hit the same wall. The backfill replay recovers them.
+- **`earnAccomplishments` reported success on a failed write.** It logged the
+  upsert error and returned `undefined` either way, so the backfill stamped its
+  version over a rejected insert and marked profiles as backfilled against
+  ladders they had never computed. It now returns `{ ok, written, error }` and
+  nothing stamps anything any more. This is the same shape as the four
+  earlier instances — a failed request rendering as an ordinary empty result —
+  and it is the reason the "loud on failure" rule keeps earning its place.
 
 # Update Notes — v0.66 → v0.66.1: the app had no links in it
 

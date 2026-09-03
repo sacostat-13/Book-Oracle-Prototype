@@ -5,6 +5,29 @@ Text is fully dynamic; the only static per-slug assets are `frame.png` + `art.pn
 (+ generated `art-trim.png`). `moment-book` is frame-only — the reader's cover
 fills the slot.
 
+## One frame + one art PER FAMILY (v0.67)
+
+Assets used to be per genre. That ended at 167 genres growing weekly — 93 had no
+folder and fell to the generic card, and the gap only widened. There are now
+**16 family folders**, one per row of `genre_families`, plus `generic` and the
+five `moment-*` folders.
+
+A genre resolves to its family's folder through `GENRE_CARD_META`, which is now
+**generated from the database** rather than hand-maintained:
+
+```
+node scripts/build-genre-cards.mjs     # DB  -> src/lib/genreCards.js
+node scripts/build-share-cards.mjs     # PNGs -> cardGenres.js + cardBoxes.js
+```
+
+Run the first after any taxonomy or family-assignment change, the second after
+adding or replacing any frame/art. They are separate on purpose: the asset script
+is offline and portable, so a designer can re-measure frames without database
+credentials.
+
+`slug` is an asset path, not an identity — a dozen genres share one family's
+frame by design, and the card still names the specific genre in type.
+
 ## Build step (run in the repo, on your machine)
 The sandbox that generated the code can't reliably read every asset folder, so the
 prep is a portable Node script that runs where the files live:
@@ -31,7 +54,9 @@ Re-run it any time you add or replace a frame/art. Commit the regenerated
   `book_completed` additionally needs a cover.
 
 ## Files
-- `src/lib/genreCards.js` — 49 genres: name → { slug, sub } (sub = English card line)
+- `src/lib/genreCards.js` — GENERATED. Every genre: name → { slug, sub }, where
+  slug is the family folder and sub is the first sentence of the genre's own
+  description.
 - `src/lib/cardGenres.js` — ready slugs (generated)
 - `src/lib/cardBoxes.js` — per-frame opening boxes (generated)
 - `src/lib/cardResolve.js` — frameSlugFor() + isFramedMoment() + MOMENT_SLUGS
@@ -41,10 +66,22 @@ Re-run it any time you add or replace a frame/art. Commit the regenerated
 - `src/lib/shareCardImage.js` — momentCardUrl() passes `frame`, `box`, and (book) `cover`.
 - `netlify/functions/share-card.mjs` — framed path: loads `/cards/<frame>/frame.png`
   + art-trim (or the cover for book), renders at the passed box.
-- `src/lib/genreDescriptions.js` — ORPHANED (superseded by genreCards.js); safe to delete.
+- `src/lib/genreDescriptions.js` — a stale doc line claimed this was orphaned
+  while `ShareCard.jsx` still imported it as the second fallback in `genreSub()`.
+  It is now genuinely dead: the generated `genreCards.js` covers every genre in
+  the catalogue, so `GENRE_DESCRIPTIONS[genre]` is unreachable. Delete the file
+  and its import together, after the first generator run — not before.
+
+## Housekeeping in the asset folders
+
+`resolveAsset()` prefers `.png` over `.jpg`/`.jpeg`, so a folder holding both is
+not broken — but it is ambiguous to a human, and the loser is dead weight in the
+bundle. Currently `comedy/`, `ideas/` and `romance/` carry both, and `gothic/`
+has a stray `milestone.png` the build ignores. Worth a tidy.
 
 ## Prompts
-- `_PROMPTS-all-genres.md` — 49 genre frame+art prompts (self-contained)
+- `_PROMPTS-all-genres.md` — the per-genre prompts, superseded by the 16 family
+  frames but kept for reference
 - `_MOMENT-PROMPTS.md` — series / milestone / goal / plan (frame+art) + book (frame only)
 
 ## Test

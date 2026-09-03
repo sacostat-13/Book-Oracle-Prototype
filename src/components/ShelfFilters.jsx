@@ -13,9 +13,10 @@
 // (pages, prose, depth, author) attach to this component in a later step; see
 // docs/shelf-filters-v1-spec.md.
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useT } from '../lib/I18nContext';
 import { PAGE_OPTIONS, GENDER_OPTIONS, LEVELS } from '../lib/useShelfFilters';
+import GenreSelect from './GenreSelect';
 
 // Endpoint labels only. The 1-5 scales are defined canonically in
 // src/lib/oracleCategorizationService.js (COMPLEXITY RULES / DEPTH RULES) and
@@ -39,6 +40,21 @@ const LEVEL_HINTS = {
 };
 
 export default function ShelfFilters({ state, context = 'wishlist' }) {
+  // GenreSelect speaks { norm, name }; the hook speaks { normalizedName, name }.
+  // Mapped here rather than renaming either side: the hook's key is the column
+  // it compares against, and the component is shared with callers that never
+  // saw a shelf.
+  const genreSelectOptions = useMemo(
+    () => (state?.options?.genres || []).map((o) => ({
+      norm: o.normalizedName,
+      name: o.name,
+      familySlug: o.familySlug,
+      familyName: o.familyName,
+      familySort: o.familySort,
+    })),
+    [state?.options?.genres]
+  );
+
   const t = useT();
   const {
     values, set, options, hasCategoryFilter,
@@ -62,6 +78,7 @@ export default function ShelfFilters({ state, context = 'wishlist' }) {
       <div className="sf-chips" role="group" aria-label={t(`shelfFilters.${which}`)}>
         {LEVELS.map((lvl) => {
           const on = values[which].includes(lvl);
+
           return (
             <button
               key={lvl}
@@ -108,18 +125,18 @@ export default function ShelfFilters({ state, context = 'wishlist' }) {
         />
       </div>
 
-      <select
-        className="select"
+      {/* v0.67 — was a native <select>. GenreSelect was written in v0.63 to fix
+          exactly this (the OS popup unmoors itself from the trigger once the
+          option list is taller than the viewport) but was only ever adopted in
+          OracleCategories, so both shelves kept the broken control. It now also
+          groups by family and lets a family be picked as a filter of its own. */}
+      <GenreSelect
         value={values.genre}
-        onChange={(e) => set.genre(e.target.value)}
-      >
-        <option value="all">{k('allGenres')}</option>
-        {options.genres.map((o) => (
-          <option key={o.normalizedName} value={o.normalizedName}>
-            ☩ {o.name}
-          </option>
-        ))}
-      </select>
+        onChange={(v) => set.genre(v)}
+        options={genreSelectOptions}
+        allLabel={k('allGenres')}
+        placeholder={k('searchGenres')}
+      />
 
       {hasCategoryFilter && (
         <select

@@ -97,7 +97,13 @@ function injectMeta(html, {
   imageWidth,
   imageHeight,
   url,
-  jsonLd
+  jsonLd,
+  // v0.67 — a genre page below the index floor is reachable and linked but not
+  // advertised. index.html ships a static robots meta with
+  // max-image-preview/max-snippet; that is stripped below along with everything
+  // else this function restates, so a noindex page has to emit its own — and a
+  // page that does NOT set this keeps the permissive default it always had.
+  noindex = false,
 }) {
   const tags = [
     `<title>${escapeHtml(title)}</title>`,
@@ -114,6 +120,12 @@ function injectMeta(html, {
     `<meta name="twitter:description" content="${escapeHtml(description || '')}">`,
     image ? `<meta name="twitter:image" content="${escapeHtml(image)}">` : '',
     `<link rel="canonical" href="${escapeHtml(url)}">`,
+    // Emitted ONLY for noindex. index.html ships
+    // `index, follow, max-image-preview:large, max-snippet:-1` and every other
+    // prerendered page should keep it untouched — restating it here would put
+    // two robots tags on ~1,700 pages, the exact duplication the strip below
+    // exists to prevent.
+    noindex ? `<meta name="robots" content="noindex, follow">` : '',
     jsonLd ? `<script type="application/ld+json">${JSON.stringify(jsonLd)}</script>` : '',
   ].filter(Boolean).join('\n    ');
 
@@ -136,6 +148,11 @@ function injectMeta(html, {
     .replace(/<meta\s+name="twitter:(?:card|title|description|image)"[^>]*>/gi, '')
     .replace(/<link\s+rel="canonical"[^>]*>/gi, '')
     .replace(/<link\s+rel="alternate"\s+hreflang="[^"]*"[^>]*>/gi, '');
+
+  // Strip the static robots meta only when this page is replacing it. Leaving
+  // both would serve `index, follow` and `noindex` on the same page, and a bot
+  // taking the first tag it sees would index the thin page anyway.
+  if (noindex) out = out.replace(/<meta\s+name="robots"[^>]*>/gi, '');
 
   return out.replace('</head>', `    ${tags}\n  </head>`);
 }
@@ -269,6 +286,129 @@ export default async (request, context) => {
     const planMatch = url.pathname.match(/^\/plans\/([^/]+)$/);
     const clubMatch = url.pathname.match(/^\/clubs\/([^/]+)$/);
     const profileMatch = url.pathname.match(/^\/u\/([^/]+)$/);
+    // v0.67 — the genre surface. /genres itself is static enough to need no
+    // prerender; the two dynamic shapes below do.
+    const familyMatch = url.pathname.match(/^\/genres\/([^/]+)$/);
+    const genreMatch = url.pathname.match(/^\/genre\/([^/]+)$/);
+
+    // ── Family page ──────────────────────────────────────────────────────
+    // Sixteen hubs, each linking down to ~10 genre pages. This is the internal
+    // link graph the 2026-08-24 postmortem found entirely absent — every
+    // prerendered page then carried exactly one link, `<a href="/">`.
+    if (familyMatch) {
+      const slug = decodeURIComponent(familyMatch[1]);
+      const famRes = await fetch(
+        `${supabaseUrl}/rest/v1/genre_families?slug=eq.${encodeURIComponent(slug)}` +
+        `&select=id,name,description&limit=1`,
+        { headers: restHeaders }
+      );
+      const fam = famRes.ok ? (await famRes.json())[0] : null;
+      if (fam) {
+        const gRes = await fetch(
+          `${supabaseUrl}/rest/v1/genres?family_id=eq.${fam.id}` +
+          `&select=name,normalized_name,description,usage_count&order=usage_count.desc&limit=40`,
+          { headers: restHeaders }
+        );
+        const genres = gRes.ok ? await gRes.json() : [];
+        const body = [
+          `<h1>${escapeHtml(fam.name)}</h1>`,
+          fam.description ? `<p>${escapeHtml(fam.description)}</p>` : '',
+          genres.length
+            ? `<h2>Genres on this shelf</h2><ul>${genres.map((g) =>
+                `<li><a href="/genre/${encodeURIComponent(g.normalized_name)}">${escapeHtml(g.name)}</a>` +
+                `${g.description ? ` — ${escapeHtml(g.description)}` : ''}</li>`).join('')}</ul>`
+            : '',
+          `<p><a href="/genres">All sixteen shelves</a> · <a href="/">The Books Oracle</a></p>`,
+        ].filter(Boolean).join('');
+
+        return respond({
+          title: `${fam.name} books — every genre on the shelf | The Books Oracle`,
+          description: (fam.description || `Every genre on the ${fam.name} shelf.`).slice(0, 200),
+          url: SITE + url.pathname,
+          jsonLd: {
+            '@context': 'https://schema.org',
+            '@type': 'CollectionPage',
+            name: fam.name,
+            ...(fam.description ? { description: fam.description.slice(0, 300) } : {}),
+            hasPart: genres.slice(0, 20).map((g) => ({
+              '@type': 'CollectionPage',
+              name: g.name,
+              url: `${SITE}/genre/${encodeURIComponent(g.normalized_name)}`,
+            })),
+          },
+        }, body);
+      }
+    }
+
+    // ── Genre page ───────────────────────────────────────────────────────
+    if (genreMatch) {
+      const slug = decodeURIComponent(genreMatch[1]);
+      const gRes = await fetch(
+        `${supabaseUrl}/rest/v1/genres?normalized_name=eq.${encodeURIComponent(slug)}` +
+        `&select=id,name,description,usage_count,family_id,genre_families(slug,name)&limit=1`,
+        { headers: restHeaders }
+      );
+      const genre = gRes.ok ? (await gRes.json())[0] : null;
+      if (genre) {
+        // Siblings and a sample of the shelf. Both are links, which is the
+        // entire point: a genre page that lists no books and no siblings is the
+        // thin page Google declined to index in August.
+        const [bRes, sRes] = await Promise.all([
+          fetch(
+            `${supabaseUrl}/rest/v1/book_genres_view?genre_id=eq.${genre.id}` +
+            `&select=books:book_id(share_key,title,author)&limit=24`,
+            { headers: restHeaders }
+          ),
+          genre.family_id
+            ? fetch(
+                `${supabaseUrl}/rest/v1/genres?family_id=eq.${genre.family_id}&id=neq.${genre.id}` +
+                `&select=name,normalized_name&order=usage_count.desc&limit=12`,
+                { headers: restHeaders }
+              )
+            : Promise.resolve(null),
+        ]);
+        const books = bRes && bRes.ok ? (await bRes.json()).map((r) => r.books).filter(Boolean) : [];
+        const siblings = sRes && sRes.ok ? await sRes.json() : [];
+        const fam = genre.genre_families || null;
+
+        const body = [
+          `<h1>${escapeHtml(genre.name)} books</h1>`,
+          genre.description ? `<p>${escapeHtml(genre.description)}</p>` : '',
+          fam ? `<p>On the <a href="/genres/${encodeURIComponent(fam.slug)}">${escapeHtml(fam.name)}</a> shelf.</p>` : '',
+          books.length
+            ? `<h2>Books shelved as ${escapeHtml(genre.name)}</h2><ul>${books.map((b) =>
+                `<li><a href="/book/${encodeURIComponent(b.share_key)}">${escapeHtml(b.title)}</a>` +
+                `${b.author ? ` — ${escapeHtml(b.author)}` : ''}</li>`).join('')}</ul>`
+            : '',
+          siblings.length
+            ? `<h2>Related genres</h2><ul>${siblings.map((g) =>
+                `<li><a href="/genre/${encodeURIComponent(g.normalized_name)}">${escapeHtml(g.name)}</a></li>`).join('')}</ul>`
+            : '',
+          `<p><a href="/genres">All sixteen shelves</a> · <a href="/">The Books Oracle</a></p>`,
+        ].filter(Boolean).join('');
+
+        return respond({
+          title: `${genre.name} books — what to read | The Books Oracle`,
+          description: (genre.description || `Books shelved as ${genre.name}.`).slice(0, 200),
+          url: SITE + url.pathname,
+          // Under the floor this page is reachable and linked but not
+          // advertised — and the sitemap agrees, because a submitted URL that
+          // answers with noindex is a contradiction Google reports as an error.
+          noindex: (genre.usage_count || 0) < 5,
+          jsonLd: {
+            '@context': 'https://schema.org',
+            '@type': 'CollectionPage',
+            name: `${genre.name} books`,
+            ...(genre.description ? { description: genre.description.slice(0, 300) } : {}),
+            hasPart: books.slice(0, 20).map((b) => ({
+              '@type': 'Book',
+              name: b.title,
+              ...(b.author ? { author: { '@type': 'Person', name: b.author } } : {}),
+            })),
+          },
+        }, body);
+      }
+    }
 
     if (bookMatch) {
       const wantedKey = decodeURIComponent(bookMatch[1]);

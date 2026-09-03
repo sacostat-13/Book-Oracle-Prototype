@@ -3,7 +3,7 @@
 
 import { useMemo, useState } from 'react';
 import { useData } from '../lib/DataContext';
-import { useRouter } from '../lib/RouterContext';
+import { useRouter, RouteLink } from '../lib/RouterContext';
 import { useT, useI18n } from '../lib/I18nContext';
 import { openBookTab, bookKey, shelfStateOf, shelfKeySets } from '../lib/bookHelpers';
 import { moodTitleKey } from '../lib/moods';
@@ -285,7 +285,11 @@ export default function ListDetail() {
                       return genres && genres.length > 0 ? (
                         <div className="cover-grid-hover-genres">
                           {genres.slice(0, 3).map((g) => (
+                            g.normalizedName ? (
+                            <RouteLink key={g.genreId} to="genre-page" params={{ genreSlug: g.normalizedName }} className="li-genre-pill">{g.name}</RouteLink>
+                          ) : (
                             <span key={g.genreId} className="li-genre-pill">{g.name}</span>
+                          )
                           ))}
                         </div>
                       ) : null;

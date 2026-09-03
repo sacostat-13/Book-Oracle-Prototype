@@ -18,24 +18,35 @@
 import { bookKey } from './bookHelpers';
 import {
   YEAR_MILESTONES,
-  GENRE_MILESTONES,
   NEW_GENRE_MIN_LIBRARY,
-  genreNamesFor,
   FEMALE_AUTHOR_MILESTONES,
   countsAsFemaleAuthored,
+  FAMILY_MILESTONES,
+  FAMILY_BREADTH_MILESTONES,
+  familyForBook,
+  familyGenreNamesFor,
 } from './shareMoments';
 
 // Only these moment types become persistent accomplishments. The plain
 // `book_completed` fallback is a share card, not a milestone — it never earns.
+// v0.67: 'genre_count' and 'new_genre' are NOT here. They are retired, not
+// deleted — rows already earned under them stay in the table and on the shelf
+// forever (v1 spec, rule 3: "earned once, kept forever"). They are simply never
+// minted again, by the live path or the backfill.
 export const EARNABLE_TYPES = new Set([
   'nth_book',
-  'genre_count',
-  'new_genre',
+  'family_count',
+  'family_breadth',
+  'new_family',
   'series_completed',
   'plan_completed',
   'goal_completed',
   'female_authors_count',
 ]);
+
+// Kinds no longer awarded, but still rendered and still shareable. The ledger
+// reads this to group them apart and collapse them past the first few.
+export const LEGACY_TYPES = new Set(['genre_count', 'new_genre']);
 
 // A trimmed book snapshot, enough for ShareCard to render the plaque later
 // without re-resolving the book from the library.
@@ -58,6 +69,10 @@ export function keyForMoment(m) {
     case 'series_completed': return `series:${m.seriesName}`;
     case 'plan_completed':   return `plan:${m.planId || m.planTitle}`;
     case 'nth_book':         return `nth_book:${m.year}:${m.n}`;
+    case 'family_count':     return `family_count:${m.family}:${m.n}`;
+    case 'family_breadth':   return `family_breadth:${m.family}:${m.n}`;
+    case 'new_family':       return `new_family:${m.family}`;
+    // Retired: kept so a stored row can still be re-keyed if anything asks.
     case 'genre_count':      return `genre_count:${m.genre}:${m.n}`;
     case 'new_genre':        return `new_genre:${m.genre}`;
     case 'female_authors_count': return `female_authors_count:${m.n}`;
@@ -70,7 +85,7 @@ export function keyForMoment(m) {
 // lookup. Carries the earning book snapshot plus the type-specific fields.
 export function momentToMeta(m) {
   const meta = { book: cardBook(m.book) };
-  for (const f of ['n', 'year', 'genre', 'seriesName', 'total', 'planTitle', 'planId', 'count', 'goal']) {
+  for (const f of ['n', 'year', 'genre', 'family', 'familyName', 'seriesName', 'total', 'planTitle', 'planId', 'count', 'goal']) {
     if (m[f] !== undefined && m[f] !== null) meta[f] = m[f];
   }
   return meta;
@@ -108,8 +123,9 @@ export function computeBackfillAccomplishments({ library = [], genresByBookId = 
   const undated = library.filter((b) => !b.dateRead);
   const ordered = [...dated, ...undated];
 
-  const perYearCount = {}; // year → books read that calendar year, so far
-  const genreCount = {};   // genre → all-time count, so far
+  const perYearCount = {};  // year → books read that calendar year, so far
+  const familyCount = {};   // family slug → all-time count, so far
+  const familyGenres = {};  // family slug → Set of distinct genres read within it
   let libSoFar = 0;
   let femaleAuthorCount = 0; // all-time count of books by women, so far
 
@@ -128,14 +144,44 @@ export function computeBackfillAccomplishments({ library = [], genresByBookId = 
       }
     }
 
-    // ── Genre count / first-in-genre (all-time) ──────────────────────────
-    for (const genre of genreNamesFor(book, genresByBookId)) {
-      genreCount[genre] = (genreCount[genre] || 0) + 1;
-      const c = genreCount[genre];
-      if (GENRE_MILESTONES.includes(c)) {
-        out.push({ key: `genre_count:${genre}:${c}`, kind: 'genre_count', bookId: book.bookId || null, meta: { n: c, genre, book: snap }, earnedAt });
+    // ── Family count / breadth / first-in-family (all-time) ──────────────
+    // v0.67: replays the family ladders in read order, exactly as the genre
+    // ones were replayed, so each rung is dated to the book that crossed it.
+    // The retired genre ladders are deliberately NOT replayed — existing rows
+    // survive because nothing deletes them, and no new ones are minted.
+    const fam = familyForBook(book, genresByBookId);
+    if (fam) {
+      familyCount[fam.slug] = (familyCount[fam.slug] || 0) + 1;
+      const c = familyCount[fam.slug];
+      const meta = { n: c, family: fam.slug, familyName: fam.name, book: snap };
+
+      if (FAMILY_MILESTONES.includes(c)) {
+        out.push({ key: `family_count:${fam.slug}:${c}`, kind: 'family_count', bookId: book.bookId || null, meta, earnedAt });
       } else if (c === 1 && libSoFar >= NEW_GENRE_MIN_LIBRARY) {
-        out.push({ key: `new_genre:${genre}`, kind: 'new_genre', bookId: book.bookId || null, meta: { genre, book: snap }, earnedAt });
+        out.push({
+          key: `new_family:${fam.slug}`, kind: 'new_family', bookId: book.bookId || null,
+          meta: { family: fam.slug, familyName: fam.name, book: snap }, earnedAt,
+        });
+      }
+
+      const set = (familyGenres[fam.slug] = familyGenres[fam.slug] || new Set());
+      const before = set.size;
+      for (const g of familyGenreNamesFor(book, genresByBookId, fam.slug)) set.add(g);
+      // Crossing check on the SIZE, not on membership: a book adding two new
+      // genres at once can step over a rung, and a rung stepped over is a rung
+      // never earned. Award every rung the size passed through.
+      // Same cap as the live path: breadth cannot exceed the number of books
+      // in the family, or one multi-tagged book earns a breadth rung alone.
+      const capBefore = Math.min(before, c - 1);
+      const capAfter = Math.min(set.size, c);
+      for (const rung of FAMILY_BREADTH_MILESTONES) {
+        if (capBefore < rung && capAfter >= rung) {
+          out.push({
+            key: `family_breadth:${fam.slug}:${rung}`, kind: 'family_breadth',
+            bookId: book.bookId || null,
+            meta: { n: rung, family: fam.slug, familyName: fam.name, book: snap }, earnedAt,
+          });
+        }
       }
     }
 

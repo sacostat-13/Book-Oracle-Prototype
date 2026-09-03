@@ -7,6 +7,7 @@ import { callClaude, QuotaExceededError, parseJSONResponse } from '../lib/claude
 import { useT, useI18n, langDirective } from '../lib/I18nContext';
 import { useOracleQuota } from '../lib/OracleQuotaContext';
 import { goalDirective } from '../lib/matchHelpers';
+import GenreSelect from '../components/GenreSelect';
 
 const LEVEL_NAMES = ['', '', '', 'Devoted', 'Literary', 'Voracious'];
 const LEVEL_BLURB = {
@@ -23,6 +24,29 @@ export default function PlanCreate() {
   const { handleQuotaError, onCallSucceeded, confirmOracleCall } = useOracleQuota();
   const [type, setType] = useState(null);
   const [target, setTarget] = useState(route.params?.seriesName || null);
+
+  // GenreSelect keys on normalized_name; a Passage's `target` is the genre NAME,
+  // because that is what the prompt interpolates and what the catalogue filter
+  // compares against. Bridge here rather than changing either — the stored
+  // plans already hold names.
+  const planGenreOptions = useMemo(
+    () => (state.genres || []).map((g) => ({
+      norm: g.normalizedName,
+      name: g.name,
+      familySlug: g.familySlug,
+      familyName: g.familyName,
+      familySort: g.familySort,
+    })),
+    [state.genres]
+  );
+  const genreNameByNorm = useMemo(
+    () => new Map(planGenreOptions.map((o) => [o.norm, o.name])),
+    [planGenreOptions]
+  );
+  const targetNorm = useMemo(
+    () => planGenreOptions.find((o) => o.name === target)?.norm || 'all',
+    [planGenreOptions, target]
+  );
   const [timeline, setTimeline] = useState(6);
   const [seriesSearch, setSeriesSearch] = useState('');
   const [seriesSearchResult, setSeriesSearchResult] = useState(null);
@@ -373,12 +397,20 @@ Return ONLY valid JSON in this exact format:
           <>
             <div className="onb-eyebrow plan-step-eyebrow">2 · Which genre?</div>
             <h2 className="onb-title">Explore:</h2>
-            <select className="select" value={target || ''} onChange={(e) => setTarget(e.target.value || null)} >
-              <option value="">— Choose a genre —</option>
-              {(state.genres || []).slice().sort((a, b) => a.name.localeCompare(b.name)).map((g) => (
-                <option key={g.id} value={g.name} title={g.description || undefined}>{g.name}</option>
-              ))}
-            </select>
+            {/* v0.67 — was a native <select> holding the whole taxonomy: the third
+                copy of the bug GenreSelect was written for in v0.63. At 167
+                options the browser draws its popup pinned to the top of the
+                window, detached from the field, and no CSS here can reach it.
+                Families are headings only — a Passage is a tour of ONE genre,
+                and the prompt filters the catalogue on that exact name. */}
+            <GenreSelect
+              value={targetNorm}
+              onChange={(norm) => setTarget(norm === 'all' ? null : (genreNameByNorm.get(norm) || null))}
+              options={planGenreOptions}
+              allLabel="— Choose a genre —"
+              placeholder="Search genres…"
+              selectableFamilies={false}
+            />
             {target && (() => {
               const g = (state.genres || []).find((x) => x.name === target);
               return g?.description ? (

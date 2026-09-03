@@ -103,7 +103,18 @@ export function useShelfFilters(books, { genresByBookId, getCategoriesForBook, s
       for (const g of genres) {
         const existing = map.get(g.normalizedName);
         if (existing) existing.count++;
-        else map.set(g.normalizedName, { name: g.name, normalizedName: g.normalizedName, count: 1 });
+        else map.set(g.normalizedName, {
+          name: g.name,
+          normalizedName: g.normalizedName,
+          count: 1,
+          // v0.67 — carried so the picker can group. Null is legitimate: a genre
+          // curation has not yet filed. The picker puts those under a fallback
+          // heading rather than dropping them, because one of them may hold the
+          // only copy of a book on this shelf.
+          familySlug: g.familySlug || null,
+          familyName: g.familyName || null,
+          familySort: g.familySort ?? 999,
+        });
       }
     }
     return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name));
@@ -193,7 +204,15 @@ export function useShelfFilters(books, { genresByBookId, getCategoriesForBook, s
   const { filtered, unmeasuredCount } = useMemo(() => {
     let result = books;
 
-    if (genre !== 'all') {
+    // v0.67 — `family:<slug>` matches any genre on that shelf. "Show me my
+    // Horror" is one choice rather than seventeen, and it stays correct as the
+    // family gains genres without anyone updating a saved filter.
+    if (typeof genre === 'string' && genre.startsWith('family:')) {
+      const slug = genre.slice('family:'.length);
+      result = result.filter((b) =>
+        (genresByBookId[b.bookId] || []).some((g) => g.familySlug === slug)
+      );
+    } else if (genre !== 'all') {
       result = result.filter((b) => {
         const genres = genresByBookId[b.bookId] || [];
         return genres.some((g) => g.normalizedName === genre);

@@ -274,6 +274,7 @@
     "emptyText": "Buscá libros o explorá el Oráculo para empezar tu lista.",
     "searchPlaceholder": "Buscar título o autora…",
     "allGenres": "— Todos los géneros —",
+    "searchGenres": "Buscar géneros…",
     "allCategories": "— Todas las categorías —",
     "sortNewest": "Más reciente primero",
     "sortOldest": "Más antiguo primero",
@@ -330,6 +331,7 @@
     "emptyCta": "Agregar leídos en lote",
     "searchPlaceholder": "Buscar título o autora…",
     "allGenres": "— Todos los géneros —",
+    "searchGenres": "Buscar géneros…",
     "allCategories": "— Todas las categorías —",
     "sortNewest": "Más reciente primero",
     "sortOldest": "Más antiguo primero",
@@ -771,7 +773,8 @@
     "curatorRequestSend": "Enviar solicitud",
     "curatorRequestPending": "Solicitud enviada — te contactaremos.",
     "curatorRequestGranted": "Eres curador.",
-    "curatorRequestDenied": "Esta solicitud no fue concedida."
+    "curatorRequestDenied": "Esta solicitud no fue concedida.",
+    "tabLedger": "La Bitácora"
   },
   "onboarding": {
     "step1Eyebrow": "Paso 2 de 6 · Perfil lector",
@@ -1010,7 +1013,8 @@
       "series": "Sagas completadas",
       "plans": "Planes de lectura",
       "years": "Hitos",
-      "genres": "Géneros",
+      "families": "Estantes",
+      "genres": "Géneros (anteriores)",
       "authors": "Autoras"
     },
     "goalLabel": "Objetivo {year} · {goal} libros",
@@ -1019,7 +1023,12 @@
     "nthLabel": "Libro n.º {n} de {year}",
     "genreCountLabel": "{n} en {genre}",
     "newGenreLabel": "Primero en {genre}",
-    "femaleAuthorsLabel": "{n} libros de autoras"
+    "femaleAuthorsLabel": "{n} libros de autoras",
+    "familyCountLabel": "{n} libros en {family}",
+    "familyBreadthLabel": "{n} rincones de {family}",
+    "newFamilyLabel": "Primero en el estante {family}",
+    "showAll": "Ver los {n}",
+    "empty": "Todavía no hay nada. Terminá un libro y esto se completa, incluido todo lo que tu biblioteca ya se había ganado antes de hoy."
   },
   "coachmark": {
     "dismiss": "Cerrar",
@@ -1187,6 +1196,7 @@
       "subtitle": "Sumate a lectores que están con los mismos libros. Algunos clubes te dejan entrar al toque — otros revisan las solicitudes primero.",
       "searchPlaceholder": "Buscá clubes por nombre…",
       "allGenres": "Todos los géneros",
+      "searchGenres": "Buscar géneros…",
       "moodLabel": "Onda",
       "allMoods": "Todas",
       "searching": "Buscando…",
@@ -1538,7 +1548,15 @@
       "sessionCreatedEyebrow": "Club de lectura — leyendo ahora",
       "sessionCreatedSub": "Sumate a {club} y leé con nosotros.",
       "sessionDoneEyebrow": "Club de lectura — sesión terminada",
-      "sessionDoneSub": "Leído en conjunto con {club}."
+      "sessionDoneSub": "Leído en conjunto con {club}.",
+      "familyCountEyebrow": "Un lector devoto",
+      "familyCountHeadline": "{n} libros en {family}",
+      "familyCountSub": "Hay estantes que se vuelven a visitar.",
+      "familyBreadthEyebrow": "Un lector amplio",
+      "familyBreadthHeadline": "{n} rincones de {family}",
+      "familyBreadthSub": "No un estante, sino la sala entera.",
+      "newFamilyEyebrow": "Territorio nuevo",
+      "newFamilySub": "Un primer paso en un estante sin leer."
     },
     "text": {
       "book": "Acabo de terminar \"{title}\" de {author} en The Books Oracle.",
@@ -1555,7 +1573,10 @@
       "list": "\"{title}\" — una lista de lectura de {count} libros en The Books Oracle.",
       "planPage": "\"{title}\" — un plan de lectura de {count} libros en The Books Oracle.",
       "club": "Sumate a mi club de lectura \"{name}\" en The Books Oracle.",
-      "profile": "El perfil de lectura de {name} en The Books Oracle."
+      "profile": "El perfil de lectura de {name} en The Books Oracle.",
+      "familyCount": "{n} libros en {family}. The Books Oracle lleva la cuenta.",
+      "familyBreadth": "{n} rincones de {family}. The Books Oracle lleva la cuenta.",
+      "newFamily": "Primer paso en {family}. The Books Oracle me llevó ahí."
     }
   },
   "shelfScene": {

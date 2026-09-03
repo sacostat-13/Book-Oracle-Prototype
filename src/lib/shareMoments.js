@@ -16,7 +16,31 @@ import { bookKey } from './bookHelpers';
 
 // Milestone ladders. Exact-crossing checks mean each fires at most once.
 export const YEAR_MILESTONES = [5, 10, 25, 50, 75, 100, 150, 200];
+
+// v0.67 — RETIRED, not deleted. These fired per GENRE, and the Oracle assigns
+// 2-5 genres to every book (specific plus umbrella, deliberately, so both
+// readers find it). At 167 genres that is 668 possible genre_count plaques and
+// 167 new_genre ones, and worse: one necromancer novel minted "First book in
+// Necromancy", "First book in Dark Fantasy" AND "First book in Fantasy" — three
+// trophies for one evening, two of which the reader did nothing separate to
+// earn. The ladders below replace them on the family axis.
+//
+// The constant stays exported because accomplishments already earned under it
+// are kept forever (v1 spec, rule 3) and the ledger still renders them.
 export const GENRE_MILESTONES = [5, 10, 25, 50];
+
+// v0.67 — the family ladders.
+//
+// Starts at 10, not 5: five books in a GENRE was a real appetite (Folk Horror
+// is specific), five in a FAMILY is week two. Runs to 1000 because a rung costs
+// one array entry and a reader with a thousand fantasy novels should have
+// somewhere left to go. The tail keeps the ~2-2.5x ratio every earlier step has.
+export const FAMILY_MILESTONES = [10, 25, 50, 100, 250, 500, 1000];
+
+// Distinct genres read WITHIN one family. The only place genre-level detail
+// still earns anything, and the only ladder a reader can finish — which is what
+// the small families are for: Verse & Stage holds four genres, so 3 is reachable.
+export const FAMILY_BREADTH_MILESTONES = [3, 5, 10];
 
 // v0.55: books by women, counted across the WHOLE library regardless of
 // genre — this is deliberately not a genre ladder. Author gender lives on
@@ -30,7 +54,7 @@ export function countsAsFemaleAuthored(book) {
   return book.ag === 'female' || book.ag === 'mixed';
 }
 
-// Don't announce "first book in a new genre" until the library is big enough
+// Don't announce "first book in a new family" until the library is big enough
 // for it to mean something — otherwise every early read triggers it.
 // Exported so the persistent-accomplishments backfill (accomplishments.js)
 // replays the exact same rule as the live moment computation.
@@ -48,6 +72,33 @@ export function genreNamesFor(book, genresByBookId) {
   const rows = book.bookId ? genresByBookId?.[book.bookId] : null;
   if (rows && rows.length) return rows.map((r) => r.name);
   return book.g ? [book.g] : [];
+}
+
+// familyForBook: the ONE family a book counts toward, or null.
+//
+// A book carries several genres; a book earns at most one family plaque. The
+// rule is the first genre that has a family, and rollupGenres already sorts a
+// book's genres by usage_count desc — so that is the broadest shelf the book
+// sits on. Same choice getPrimaryGenre and useShelfGrouping make; one rule,
+// three consumers, and the live path and the backfill cannot drift apart
+// because they both call this.
+//
+// Returns { slug, name } or null. Null for guest/unenriched books and for
+// genres curation has not filed yet — those simply earn no family milestone,
+// which is correct: we do not know which shelf they are on.
+export function familyForBook(book, genresByBookId) {
+  const rows = book.bookId ? genresByBookId?.[book.bookId] : null;
+  if (!rows || !rows.length) return null;
+  const hit = rows.find((r) => r.familySlug);
+  return hit ? { slug: hit.familySlug, name: hit.familyName || hit.familySlug } : null;
+}
+
+// The distinct genres a book contributes within its own family — the input to
+// the breadth ladder.
+export function familyGenreNamesFor(book, genresByBookId, slug) {
+  const rows = book.bookId ? genresByBookId?.[book.bookId] : null;
+  if (!rows || !rows.length) return [];
+  return rows.filter((r) => r.familySlug === slug).map((r) => r.normalizedName || r.name);
 }
 
 // computeCompletionMoments({ book, library, genresByBookId, goal, plans })
@@ -105,17 +156,62 @@ export function computeCompletionMoments({ book, library, genresByBookId, goal, 
     moments.push({ type: 'nth_book', n: thisYear.length, year, book });
   }
 
-  // ── Genre milestones: X books in one genre / first book in a new genre ─
-  // Counted against canonical Oracle genres of the completed book only.
-  const bookGenres = genreNamesFor(book, genresByBookId);
-  for (const genre of bookGenres) {
-    const count = library.filter((b) =>
-      genreNamesFor(b, genresByBookId).includes(genre)
-    ).length;
-    if (GENRE_MILESTONES.includes(count)) {
-      moments.push({ type: 'genre_count', genre, n: count, book });
+  // ── Family milestones ──────────────────────────────────────────────────
+  // v0.67: replaced the per-genre ladders. One family per book, so one plaque
+  // at most — see FAMILY_MILESTONES for why the genre version had to go.
+  const family = familyForBook(book, genresByBookId);
+  if (family) {
+    const inFamily = library.filter(
+      (b) => familyForBook(b, genresByBookId)?.slug === family.slug
+    );
+    const count = inFamily.length;
+
+    if (FAMILY_MILESTONES.includes(count)) {
+      moments.push({ type: 'family_count', family: family.slug, familyName: family.name, n: count, book });
     } else if (count === 1 && library.length >= NEW_GENRE_MIN_LIBRARY) {
-      moments.push({ type: 'new_genre', genre, book });
+      moments.push({ type: 'new_family', family: family.slug, familyName: family.name, book });
+    }
+
+    // Breadth: distinct genres read within this family. Counted over every book
+    // whose family is this one — not just the completed book — because breadth
+    // is a property of the shelf, not of the last thing put on it.
+    //
+    // NOT an exact-crossing check, unlike every other ladder here. Counts rise
+    // by exactly one per book; a distinct-genre SET can rise by two or three at
+    // once, because the completed book may be the first folk horror AND the
+    // first slasher on the shelf. `includes(size)` would step straight over
+    // rung 3 and that rung would never be earned by anyone. So: award every
+    // rung the set passed through, which is also exactly what the backfill in
+    // accomplishments.js does — the two must agree or a live earn and a
+    // retroactive one produce different keys.
+    const after = new Set();
+    for (const b of inFamily) {
+      for (const g of familyGenreNamesFor(b, genresByBookId, family.slug)) after.add(g);
+    }
+    const before = new Set();
+    for (const b of inFamily) {
+      if (b === book || (book.bookId && b.bookId === book.bookId)) continue;
+      for (const g of familyGenreNamesFor(b, genresByBookId, family.slug)) before.add(g);
+    }
+    // GUARD: breadth is capped by the number of books in the family, because a
+    // single book carries its specific genre AND its umbrellas — one necromancer
+    // novel is tagged Necromancy, Dark Fantasy and Fantasy, and without this it
+    // would earn "3 genres in Fantasy & the Invented" on its own. That is the
+    // exact inflation the family ladders exist to remove, one level down.
+    // Three genres has to mean three books.
+    // `before` is capped by the book count BEFORE this book, `after` by the
+    // count after. Capping both by the same number would let a shelf of
+    // multi-tagged books drift from what the backfill computes, and the two
+    // must produce identical keys.
+    const capBefore = Math.min(before.size, count - 1);
+    const capAfter = Math.min(after.size, count);
+    for (const rung of FAMILY_BREADTH_MILESTONES) {
+      if (capBefore < rung && capAfter >= rung) {
+        moments.push({
+          type: 'family_breadth', family: family.slug, familyName: family.name,
+          n: rung, book,
+        });
+      }
     }
   }
 
@@ -135,6 +231,11 @@ export function computeCompletionMoments({ book, library, genresByBookId, goal, 
     'series_completed',
     'plan_completed',
     'nth_book',
+    'family_count',
+    'family_breadth',
+    'new_family',
+    // Retired in v0.67 — kept in the ordering so a legacy accomplishment
+    // reconstructed from a stored row still sorts sensibly.
     'genre_count',
     'new_genre',
     'female_authors_count',

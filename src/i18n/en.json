@@ -274,6 +274,7 @@
     "emptyText": "Search for books or browse the Oracle to start building your list.",
     "searchPlaceholder": "Search title or author…",
     "allGenres": "— All genres —",
+    "searchGenres": "Search genres…",
     "allCategories": "— All categories —",
     "sortNewest": "Newest first",
     "sortOldest": "Oldest first",
@@ -330,6 +331,7 @@
     "emptyCta": "Bulk add read books",
     "searchPlaceholder": "Search title or author…",
     "allGenres": "— All genres —",
+    "searchGenres": "Search genres…",
     "allCategories": "— All categories —",
     "sortNewest": "Newest first",
     "sortOldest": "Oldest first",
@@ -771,7 +773,8 @@
     "curatorRequestSend": "Send request",
     "curatorRequestPending": "Request sent — we'll be in touch.",
     "curatorRequestGranted": "You're a curator.",
-    "curatorRequestDenied": "This request wasn't granted."
+    "curatorRequestDenied": "This request wasn't granted.",
+    "tabLedger": "The Ledger"
   },
   "onboarding": {
     "step1Eyebrow": "Step 2 of 6 · Reader profile",
@@ -1010,7 +1013,8 @@
       "series": "Series completed",
       "plans": "Reading plans",
       "years": "Milestones",
-      "genres": "Genres",
+      "families": "Shelves",
+      "genres": "Genres (earlier)",
       "authors": "Women writers"
     },
     "goalLabel": "{year} reading goal · {goal} books",
@@ -1019,7 +1023,12 @@
     "nthLabel": "{n}th book of {year}",
     "genreCountLabel": "{n} in {genre}",
     "newGenreLabel": "First in {genre}",
-    "femaleAuthorsLabel": "{n} books by women"
+    "femaleAuthorsLabel": "{n} books by women",
+    "familyCountLabel": "{n} books in {family}",
+    "familyBreadthLabel": "{n} corners of {family}",
+    "newFamilyLabel": "First on the {family} shelf",
+    "showAll": "Show all {n}",
+    "empty": "Nothing here yet. Finish a book and this fills in — including everything your library already earned before today."
   },
   "coachmark": {
     "dismiss": "Dismiss",
@@ -1187,6 +1196,7 @@
       "subtitle": "Join readers moving through the same books. Some clubs let you in right away — others review requests first.",
       "searchPlaceholder": "Search clubs by name…",
       "allGenres": "All genres",
+      "searchGenres": "Search genres…",
       "moodLabel": "Mood",
       "allMoods": "All moods",
       "searching": "Searching…",
@@ -1538,7 +1548,15 @@
       "sessionCreatedEyebrow": "Book club — now reading",
       "sessionCreatedSub": "Join {club} and read along.",
       "sessionDoneEyebrow": "Book club — session finished",
-      "sessionDoneSub": "Read together with {club}."
+      "sessionDoneSub": "Read together with {club}.",
+      "familyCountEyebrow": "A devoted reader",
+      "familyCountHeadline": "{n} books in {family}",
+      "familyCountSub": "Some shelves earn a return visit.",
+      "familyBreadthEyebrow": "A wide reader",
+      "familyBreadthHeadline": "{n} corners of {family}",
+      "familyBreadthSub": "Not one shelf, but the whole room.",
+      "newFamilyEyebrow": "New territory",
+      "newFamilySub": "A first step onto an unread shelf."
     },
     "text": {
       "book": "I just finished \"{title}\" by {author} on The Books Oracle.",
@@ -1555,7 +1573,10 @@
       "list": "\"{title}\" — a reading list of {count} books on The Books Oracle.",
       "planPage": "\"{title}\" — a reading plan of {count} books on The Books Oracle.",
       "club": "Join my book club \"{name}\" on The Books Oracle.",
-      "profile": "{name}'s reading profile on The Books Oracle."
+      "profile": "{name}'s reading profile on The Books Oracle.",
+      "familyCount": "{n} books in {family}. The Books Oracle keeps count.",
+      "familyBreadth": "{n} corners of {family}. The Books Oracle keeps count.",
+      "newFamily": "First step into {family}. The Books Oracle led me there."
     }
   },
   "shelfScene": {

@@ -101,16 +101,26 @@ export default function OracleCategories({ onOpenBook }) {
       const genres = genresByBookId[b.bookId] || [];
       if (genres.length > 0) {
         for (const g of genres) {
-          if (!seen.has(g.normalizedName)) seen.set(g.normalizedName, g.name);
+          // v0.67: carry the family through. GenreSelect groups on it, and an
+          // option arriving without it lands under "Everything else" — which
+          // would have quietly ungrouped this whole screen.
+          if (!seen.has(g.normalizedName)) {
+            seen.set(g.normalizedName, {
+              name: g.name,
+              familySlug: g.familySlug || null,
+              familyName: g.familyName || null,
+              familySort: g.familySort ?? 999,
+            });
+          }
         }
       } else if (b.g) {
         // fallback for uncategorized books
         const norm = b.g.toLowerCase().replace(/[^a-z0-9]/g, '');
-        if (!seen.has(norm)) seen.set(norm, b.g);
+        if (!seen.has(norm)) seen.set(norm, { name: b.g, familySlug: null, familyName: null, familySort: 999 });
       }
     }
     return Array.from(seen.entries())
-      .map(([norm, name]) => ({ norm, name }))
+      .map(([norm, v]) => ({ norm, ...v }))
       .sort((a, b) => a.name.localeCompare(b.name));
   }, [sourceBooks, genresByBookId]);
 
@@ -125,6 +135,9 @@ export default function OracleCategories({ onOpenBook }) {
       .map((g) => ({
         norm: g.normalizedName || g.name.toLowerCase().replace(/[^a-z0-9]/g, ''),
         name: g.name,
+        familySlug: g.familySlug || null,
+        familyName: g.familyName || null,
+        familySort: g.familySort ?? 999,
       }))
       .sort((a, b) => a.name.localeCompare(b.name));
   }, [state.genres]);
@@ -393,6 +406,10 @@ Return ONLY valid JSON in this format:
             options={sourceGenres}
             allLabel={`— All books ${sourceDesc} —`}
             placeholder={t('oracle.categoriesSearchGenres')}
+            /* Headings, not selectable rows: the Oracle draws for one genre,
+               and "draw me a Horror & the Uncanny" is not a question it can
+               answer any better than "draw me a book". */
+            selectableFamilies={false}
           />
         </div>
         <button className="btn-primary" onClick={handleDraw} disabled={loading || (mode === 'ai' && quotaExhausted)}>

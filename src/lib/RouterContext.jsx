@@ -21,6 +21,12 @@ const ROUTE_DEFS = [
   { name: 'reader-profile',    path: '/u/:username' },
   { name: 'book-page',         path: '/book/:bookKey' },
   { name: 'series-page',       path: '/series/:seriesName' },
+  // v0.67 — the genre surface. /genres is the sixteen-family index, and both
+  // dynamic routes below are public and prerendered: until now the app had NO
+  // genre URL at all, so 167 genres were unreachable to a reader and invisible
+  // to a crawler.
+  { name: 'family-page',       path: '/genres/:familySlug' },
+  { name: 'genre-page',        path: '/genre/:genreSlug' },
   { name: 'plan-view',         path: '/plans/:planId' },
   { name: 'list-view',         path: '/l/:listId' },          // public share link
   { name: 'list-detail',       path: '/lists/:listId' },      // owner management view
@@ -39,6 +45,7 @@ const ROUTE_DEFS = [
   { name: 'about',              path: '/about' },
   { name: 'changelog',          path: '/changelog' },
   { name: 'stacks',             path: '/stacks' },
+  { name: 'genres-index',       path: '/genres' },
   { name: 'oracle',             path: '/oracle' },
   { name: 'oracle-categories',  path: '/oracle/categories' },
   { name: 'oracle-similar',     path: '/oracle/similar' },
@@ -163,6 +170,42 @@ function parseLocation() {
 // Builds a real path + query string for { name, params }. Params consumed by
 // the path template are substituted in; everything else becomes a query
 // string, same as the old hash router's behavior.
+// ── Transient params — v0.67 ─────────────────────────────────────────────────
+//
+// Route params come in two kinds and, until now, both were serialised into the
+// query string by buildPath().
+//
+//   ADDRESSABLE — describes WHICH page this is, and must survive a reload,
+//   a bookmark, a paste into Slack: `tab`, `anchor`, `auth`, `scrollTo`, `lang`.
+//
+//   TRANSIENT — an in-app handoff between two views. `snap` is a base64 blob of
+//   the whole book so BookPage can paint before its fetch returns; `from` and
+//   `fromLabel` are the back-breadcrumb; `plan` is an entire plan object.
+//
+// Serialising the second kind produced URLs like
+//
+//   /book/galahadandthegrail%7Cmalcolmgui?from=app&snap=JTdCJTIyYm9va0lkJTIy…
+//                                                       …600 more characters
+//
+// which is what a reader copies when they mean to share a book. It also invites
+// Google to treat every entry path to the same book as a different document —
+// with 3,742 book URLs already sitting in "Discovered – currently not indexed",
+// multiplying them is the last thing this catalogue needs.
+//
+// These stay in `route.params` — every consumer keeps working on the click that
+// set them — they are simply never written to the address bar. On a reload they
+// are gone, which is correct and already handled: BookPage checks
+// `route.params?.snap` and fetches when it is absent, because /book/:key has
+// always been a public shareable URL that arrives without one.
+const TRANSIENT_PARAMS = new Set([
+  'snap',
+  'from',
+  'fromLabel',
+  'plan',
+  'prefillTitle',
+  'prefillAuthor',
+]);
+
 function buildPath(name, params) {
   const dynamicDef = DYNAMIC_DEFS.find((d) => d.name === name);
   const staticPath = STATIC_BY_NAME.get(name);
@@ -188,7 +231,7 @@ function buildPath(name, params) {
   }
 
   const qs = Object.entries(params || {})
-    .filter(([k]) => !usedKeys.has(k))
+    .filter(([k, v]) => !usedKeys.has(k) && !TRANSIENT_PARAMS.has(k) && v != null && v !== '')
     .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`)
     .join('&');
 
@@ -199,6 +242,32 @@ export function RouterProvider({ children }) {
   const [route, setRouteState] = useState(parseLocation);
   // Guard against the popstate listener echoing our own writes
   const writingRef = useRef(false);
+
+  // Scrub transient params out of an address bar that already has them.
+  //
+  // buildPath() stops NEW ones being written, but every link shared before this
+  // shipped — and every back-button return to a history entry written before
+  // it — still carries `?from=app&snap=…`. Rewriting once on mount means what
+  // the reader copies is clean even when what they opened was not.
+  //
+  // replaceState, not pushState: this is a correction to the current entry, not
+  // a navigation, and it must not put a back-button step between the reader and
+  // wherever they came from. It runs AFTER parseLocation has already read the
+  // params into state, so a snap that arrived in the URL still paints this view
+  // before it disappears from the bar.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const current = new URLSearchParams(window.location.search);
+    let dirty = false;
+    for (const k of TRANSIENT_PARAMS) {
+      if (current.has(k)) { current.delete(k); dirty = true; }
+    }
+    if (!dirty) return;
+    const qs = current.toString();
+    window.history.replaceState(
+      null, '', window.location.pathname + (qs ? `?${qs}` : '') + window.location.hash
+    );
+  }, []);
 
   const go = useCallback((name, params = {}) => {
     writingRef.current = true;

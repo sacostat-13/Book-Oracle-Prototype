@@ -134,6 +134,10 @@
 .stack-card__inner {
   position: absolute;
   inset: 0;
+  // iOS Safari needs the prefix here. Without it the container is flattened,
+  // both faces render in the same plane, and the "hidden" one shows through
+  // MIRRORED — which is the reported "the Want/Read text is flipped".
+  -webkit-transform-style: preserve-3d;
   transform-style: preserve-3d;
   transition: transform .45s cubic-bezier(.2, .7, .3, 1);
 }
@@ -146,16 +150,50 @@
   .stack-card__inner { transition: none; }
   .stack-card.is-flipped .stack-card__inner { transform: none; }
   .stack-card.is-flipped .stack-card__front { opacity: 0; pointer-events: none; }
-  .stack-card.is-flipped .stack-card__back { opacity: 1; transform: none; }
-  .stack-card__back { transform: none; opacity: 0; }
+  .stack-card.is-flipped .stack-card__back { opacity: 1; -webkit-transform: none; transform: none; }
+  // Cross-fade instead of spinning, so the back must not carry its rotation —
+  // including the -webkit- copy added for the iOS fix above, or Safari keeps
+  // rendering it rotated while the unprefixed rule says otherwise.
+  .stack-card__back { -webkit-transform: none; transform: none; opacity: 0; }
+  .stack-card__face { -webkit-backface-visibility: visible; backface-visibility: visible; }
+}
+
+// ── iOS Safari and the flip ──────────────────────────────────────────────────
+//
+// Reported v0.67: on a real iPhone, tapping Want/Read showed the label mirrored
+// and drew the coloured border wrong. Chrome's responsive mode was fine, which
+// is the tell — this is a Safari compositing bug, not a viewport-width bug, and
+// no amount of resizing a desktop browser will reproduce it.
+//
+// Three things, all needed:
+//
+//   1. `-webkit-backface-visibility`. Safari still honours the prefixed
+//      property in a preserve-3d subtree; unprefixed alone is not reliably
+//      applied, and the hidden face leaks through mirrored.
+//   2. `overflow: hidden` + `border-radius` on a preserve-3d CHILD is the
+//      specific trigger. Safari rasterises the rounded, clipped layer and, in
+//      doing so, drops it out of the 3D context — so the two faces z-fight and
+//      the "border" is really the back face's 1px edge bleeding through the
+//      front. Clipping moves to the card, and the faces stop being clip roots.
+//   3. `translateZ(0)` separates the faces in depth so there is nothing left to
+//      z-fight over, and forces each onto its own compositing layer.
+.stack-card {
+  // The clip that used to live on each face. Radius here, not there.
+  border-radius: 12px;
 }
 
 .stack-card__face {
   position: absolute;
   inset: 0;
+  -webkit-backface-visibility: hidden;
   backface-visibility: hidden;
   border-radius: 12px;
-  overflow: hidden;
+  // Not `overflow: hidden` — see (2) above. `clip-path` rounds the corners
+  // without creating the rasterised clip layer that breaks the 3D context.
+  -webkit-clip-path: inset(0 round 12px);
+  clip-path: inset(0 round 12px);
+  -webkit-transform: translateZ(0);
+  transform: translateZ(0);
 }
 
 .stack-card__front {
@@ -222,7 +260,10 @@
 
 // ── Back ─────────────────────────────────────────────────────────────────────
 .stack-card__back {
-  transform: rotateY(180deg);
+  // translateZ pairs with the front's, so the faces sit 1px apart in depth
+  // instead of exactly coplanar — coplanar faces are what Safari z-fights over.
+  -webkit-transform: rotateY(180deg) translateZ(1px);
+  transform: rotateY(180deg) translateZ(1px);
   background: var(--ro-surface-2);
   border: 1px solid var(--ro-border-strong);
   display: flex;

@@ -60,6 +60,9 @@ import SessionCreate from './views/SessionCreate';
 import SessionDetail from './views/SessionDetail';
 import JoinClub from './views/JoinClub';
 import Footer from './components/Footer';
+import GenresIndex from './views/GenresIndex';
+import FamilyPage from './views/FamilyPage';
+import GenrePage from './views/GenrePage';
 
 export default function App() {
   const { state, loading } = useData();
@@ -93,6 +96,9 @@ export default function App() {
     changelog: { title: 'What’s New — The Books Oracle', description: 'Every release of The Books Oracle: new features, improvements, and fixes across the reading app.' },
     oracle: { title: 'Oracle — The Books Oracle' },
     'stacks': { title: 'Wander the Stacks — The Books Oracle' },
+    // family-page and genre-page set their own meta from the row they load —
+    // a static title here would override the specific one on first paint.
+    'genres-index': { title: 'Browse by Genre — The Books Oracle', description: 'Sixteen shelves and every genre on them — find your next book by the kind of book it is.' },
     'oracle-categories': { title: 'Explore by Genre — The Books Oracle' },
     'oracle-similar': { title: 'Find Similar Books — The Books Oracle' },
     'oracle-ask': { title: 'Ask the Oracle — The Books Oracle' },
@@ -212,7 +218,7 @@ export default function App() {
   //
   // 'book-page' was public from the start; the series route simply never got
   // the same treatment when v0.39 introduced path routing.
-  const PUBLIC_ROUTES = new Set(['book-page', 'series-page', 'list-view', 'plan-view', 'join-club', 'privacy', 'terms', 'refund', 'not-found', 'sitemap', 'lists-discover']);
+  const PUBLIC_ROUTES = new Set(['book-page', 'series-page', 'list-view', 'plan-view', 'join-club', 'privacy', 'terms', 'refund', 'not-found', 'sitemap', 'lists-discover', 'genres-index', 'family-page', 'genre-page']);
   if (PUBLIC_ROUTES.has(route.name)) {
     // During the brief auth check (~100ms), treat as loading not signed-out.
     // This prevents the sign-in prompt flashing before the session is confirmed.
@@ -245,6 +251,24 @@ export default function App() {
     //
     // While authPending, isAuthed is false and this renders the public view with
     // its CTA suppressed — no sign-in flash — then hands over once auth resolves.
+    // v0.67 — the genre surface, following the series-page pattern exactly: a
+    // signed-out visitor gets the public shell, a signed-in reader falls
+    // through to the main switch and keeps the full app chrome. These pages are
+    // catalogue-only, so the two renders differ in navigation, never in
+    // content — which is what makes the prerender honest.
+    if ((route.name === 'genres-index' || route.name === 'family-page' || route.name === 'genre-page') && !isAuthed) {
+      const View = route.name === 'genres-index' ? GenresIndex
+        : route.name === 'family-page' ? FamilyPage
+        : GenrePage;
+      return (
+        <div className="app">
+          <View />
+          <Footer />
+          <Toast />
+        </div>
+      );
+    }
+
     if (route.name === 'series-page' && !isAuthed) {
       return (
         <div className="app">
@@ -416,6 +440,9 @@ export default function App() {
     case 'refund': page = <Refund />; break;
     case 'oracle': page = <OracleFork />; break;
     case 'stacks': page = <Stacks />; break;
+    case 'genres-index': page = <GenresIndex />; break;
+    case 'family-page': page = <FamilyPage />; break;
+    case 'genre-page': page = <GenrePage />; break;
     case 'oracle-categories': page = <OracleCategories onOpenBook={openBook} />; break;
     case 'oracle-similar': page = <OracleSimilar onOpenBook={openBook} />; break;
     case 'oracle-ask': page = <OracleAsk onOpenBook={openBook} />; break;

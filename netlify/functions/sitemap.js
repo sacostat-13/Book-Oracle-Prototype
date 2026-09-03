@@ -80,6 +80,10 @@ const STATIC_ENTRIES = [
   urlEntry('/about', { priority: '0.6' }),
   urlEntry('/changelog', { changefreq: 'weekly', priority: '0.5' }),
   urlEntry('/sitemap', { changefreq: 'monthly', priority: '0.3' }),
+  // v0.67 — the sixteen-family index. High priority because it is the hub every
+  // genre page hangs off: 16 pages each linking to ~10 more is the internal
+  // link graph this file's own note below says the app does not emit.
+  urlEntry('/genres', { changefreq: 'weekly', priority: '0.8' }),
   urlEntry('/privacy', { changefreq: 'yearly', priority: '0.2' }),
   urlEntry('/terms', { changefreq: 'yearly', priority: '0.2' }),
   urlEntry('/refund', { changefreq: 'yearly', priority: '0.2' }),
@@ -214,7 +218,48 @@ export async function handler() {
       urlEntry(`/series/${encodeURIComponent(name)}`, { priority: '0.6' })
     );
 
-    return xmlResponse([...STATIC_ENTRIES, ...bookEntries, ...seriesEntries]);
+    // ── v0.67: families and genres ────────────────────────────────────────
+    //
+    // Advertised with a FLOOR. A genre page with one book on it is precisely
+    // the thin page Search Console fetched and declined in August; submitting
+    // it teaches Google that this site's genre pages are not worth crawling,
+    // which is the opposite of what these pages exist to do. Below the floor a
+    // genre stays reachable and linked from its family page but carries
+    // `noindex` (set in GenrePage.jsx) and is not submitted here. The two must
+    // agree — a URL in the sitemap that answers with noindex is a contradiction
+    // Google reports as an error.
+    const INDEX_FLOOR = 5;
+    let familyEntries = [];
+    let genreEntries = [];
+    try {
+      const restHeaders = { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` };
+      const [famRes, genRes] = await Promise.all([
+        fetch(`${supabaseUrl}/rest/v1/genre_families?select=slug&order=sort_order.asc`, { headers: restHeaders }),
+        fetch(
+          `${supabaseUrl}/rest/v1/genres?select=normalized_name,usage_count` +
+          `&usage_count=gte.${INDEX_FLOOR}&order=usage_count.desc`,
+          { headers: restHeaders }
+        ),
+      ]);
+      const fams = famRes.ok ? await famRes.json() : [];
+      const gens = genRes.ok ? await genRes.json() : [];
+      familyEntries = (fams || []).map((f) =>
+        urlEntry(`/genres/${encodeURIComponent(f.slug)}`, { changefreq: 'weekly', priority: '0.7' })
+      );
+      genreEntries = (gens || []).map((g) =>
+        urlEntry(`/genre/${encodeURIComponent(g.normalized_name)}`, { changefreq: 'weekly', priority: '0.6' })
+      );
+    } catch (e) {
+      // Never fail the whole sitemap over the genre half. A sitemap missing its
+      // genre URLs is a smaller problem than no sitemap, and the log says which
+      // happened rather than leaving a short file looking deliberate.
+      console.error('[sitemap] genre entries failed:', e?.message || e);
+    }
+
+    return xmlResponse([
+      ...STATIC_ENTRIES, ...bookEntries, ...seriesEntries,
+      ...familyEntries, ...genreEntries,
+    ]);
   } catch (err) {
     // Loud on purpose. This catch previously turned any failure — including a
     // hard crash in createClient — into a valid-looking 7-entry sitemap, and

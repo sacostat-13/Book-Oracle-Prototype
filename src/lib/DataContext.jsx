@@ -69,10 +69,12 @@ const defaultState = {
   // Books not in this map have no categories (empty array, not null).
   categoriesByBookId: {},
   // v0.15 phase 2.3: canonical genre taxonomy. keyed by book_id (uuid) →
-  // array of { genreId, name, normalizedName, source, usageCount, assignedBySource, description }.
+  // array of { genreId, name, normalizedName, source, usageCount, assignedBySource,
+  // description, familySlug, familyName, familySort }.
   // Global (not user-scoped). Populated from book_genres_view on load.
   genresByBookId: {},
-  // Full genre catalog: [{ id, name, normalizedName, source, usageCount, description }]
+  // Full genre catalog: [{ id, name, normalizedName, source, usageCount, description,
+  //   familySlug, familyName, familySort }]
   // Sorted alphabetically. Used by PlanCreate genre select and genre browsers.
   genres: [],
   // v0.22: books currently being read. Each entry is a full book client object
@@ -396,6 +398,12 @@ function rollupGenres(rows) {
         usageCount: r.usage_count,
         description: r.genre_description || null,
         assignedBySource: r.assigned_by_source,
+        // v0.67 — the browsing axis. Null until curation assigns a family, which
+        // is the state every Oracle-invented genre is born in; the UI groups
+        // those under a fallback heading rather than dropping them.
+        familySlug: r.family_slug || null,
+        familyName: r.family_name || null,
+        familySort: r.family_sort ?? 999,
       };
     }
   }
@@ -813,7 +821,7 @@ async function loadFromSupabase(userId) {
       genreChunks.map((chunk) =>
         supabase
           .from('book_genres_view')
-          .select('book_id, genre_id, genre_name, normalized_name, genre_source, usage_count, genre_description, assigned_by_source')
+          .select('book_id, genre_id, genre_name, normalized_name, genre_source, usage_count, genre_description, assigned_by_source, family_slug, family_name, family_sort')
           .in('book_id', chunk)
       )
     );
@@ -833,7 +841,7 @@ async function loadFromSupabase(userId) {
   let genres = [];
   const { data: genreRows, error: genreErr } = await supabase
     .from('genres')
-    .select('id, name, normalized_name, source, usage_count, description')
+    .select('id, name, normalized_name, source, usage_count, description, family_id, genre_families ( slug, name, sort_order )')
     .order('name', { ascending: true });
   if (!genreErr && genreRows) {
     genres = genreRows.map((g) => ({
@@ -843,6 +851,12 @@ async function loadFromSupabase(userId) {
       source: g.source,
       usageCount: g.usage_count,
       description: g.description || null,
+      // v0.67 — the family this genre is shelved under. PostgREST embeds it as
+      // an object (or null when family_id is null), so flatten it here rather
+      // than teaching every consumer the embed shape.
+      familySlug: g.genre_families?.slug || null,
+      familyName: g.genre_families?.name || null,
+      familySort: g.genre_families?.sort_order ?? 999,
     }));
   }
 
@@ -974,6 +988,13 @@ export function DataProvider({ children }) {
   // v0.45: guards the one-time accomplishments backfill against re-running
   // within a session (belt-and-braces on top of the persisted stamp).
   const backfillRanRef = useRef(false);
+  // v0.67: true while the replay is in flight. Now that nothing is gated on a
+  // stamp, the recompute runs on every mount, so the Ledger has a real gap
+  // between "shelves loaded" and "family rows exist" — this is what lets it
+  // draw placeholders in that gap instead of an empty panel that looks final.
+  // Deliberately NOT part of `state`: it is session-scoped UI status, and
+  // persisting it to localStorage would recreate the stamp we just deleted.
+  const [backfillPending, setBackfillPending] = useState(false);
 
   // ---------- Initial load ----------
   useEffect(() => {
@@ -1437,7 +1458,11 @@ export function DataProvider({ children }) {
   const earnAccomplishments = useCallback(
     async (entries) => {
       const earnable = (entries || []).filter((e) => e && e.key);
-      if (!earnable.length) return;
+      // Returns whether the rows are SAFELY PERSISTED. Callers that record
+      // "this has been done" — the backfill's version stamp — must not treat a
+      // failed write as done. Until v0.67 this returned undefined either way,
+      // and the backfill stamped success over a 400.
+      if (!earnable.length) return { ok: true, written: 0 };
 
       setState((s) => {
         const have = new Set((s.accomplishments || []).map((a) => a.key));
@@ -1473,8 +1498,15 @@ export function DataProvider({ children }) {
         const { error } = await supabase
           .from('reading_accomplishments')
           .upsert(rows, { onConflict: 'user_id,key', ignoreDuplicates: true });
-        if (error) console.warn('reading_accomplishments upsert failed', error);
+        if (error) {
+          console.warn('reading_accomplishments upsert failed', error);
+          return { ok: false, written: 0, error };
+        }
+        return { ok: true, written: rows.length };
       }
+      // Guest mode: local state IS the store, so the optimistic update above is
+      // the write.
+      return { ok: true, written: earnable.length };
     },
     [user]
   );
@@ -1518,14 +1550,34 @@ export function DataProvider({ children }) {
   // has no backfill stamp, replay the milestone ladders over the existing
   // library (dated to each crossing read) and earn everything already implied —
   // pre-feature history and Goodreads imports included. Idempotent against the
-  // DB unique key; the stamp is only an optimisation to skip the recompute.
+  // DB unique key, which is what makes running it every mount safe.
   useEffect(() => {
     if (loading) return;
     if (user && !supabaseLoadedRef.current) return;        // wait for real data
     if (!user && loadedUserIdRef.current !== null) return; // guest not loaded yet
-    if (state.profile.accomplishmentsBackfilledAt) return;
+    // v0.67: NO GATE. This used to check a stamp — first a timestamp, then a
+    // version — and skip the recompute when it was set.
+    //
+    // The stamp was only ever an optimisation (the v1 spec says so), and it
+    // cost more than it saved. A stamp records "this has been done", so it is
+    // only true if the write actually landed; when the kind-check constraint
+    // rejected the family rows, the stamp was written anyway and every profile
+    // was permanently marked as backfilled against ladders it had never
+    // computed. Fixing that meant a version column, a migration to add it, and
+    // a second migration to repair the values the flaw had already written.
+    //
+    // Recomputing every mount is genuinely wasteful — O(library), and it
+    // re-sends rows that already exist — and it is entirely safe: every insert
+    // is `on conflict (user_id, key) do nothing`. A few hundred redundant rows
+    // on load is a cheaper problem than a cache that can lie about work being
+    // finished. If this ever becomes a real cost, the fix is to make the write
+    // cheaper, not to reintroduce a flag that can be wrong.
+    //
+    // backfillRanRef stays: it stops the replay firing more than once per
+    // mount, which is a different job from remembering across sessions.
     if (backfillRanRef.current) return;
     backfillRanRef.current = true;
+    setBackfillPending(true);
     (async () => {
       try {
         const entries = computeBackfillAccomplishments({
@@ -1534,27 +1586,25 @@ export function DataProvider({ children }) {
           plans: state.plans,
           goal: state.readingGoalCount,
         });
-        await earnAccomplishments(entries);
-        const stamp = new Date().toISOString();
-        if (user) {
-          await supabase
-            .from('profiles')
-            .update({ accomplishments_backfilled_at: stamp })
-            .eq('id', user.id);
+        const result = await earnAccomplishments(entries);
+        // Nothing gates on this any more, but the check stays: an error path
+        // that returns what the success path returns is the failure shape that
+        // cost three rounds of debugging here, and a warning is the point.
+        if (!result?.ok) {
+          backfillRanRef.current = false; // try again on the next mount
         }
-        setState((s) => ({
-          ...s,
-          profile: { ...s.profile, accomplishmentsBackfilledAt: stamp },
-        }));
       } catch (e) {
         console.warn('accomplishments backfill failed', e);
         backfillRanRef.current = false; // allow a retry on the next mount
+      } finally {
+        // finally, not the try tail: a skeleton that outlives its failure is a
+        // spinner that never stops, which is worse than an empty panel.
+        setBackfillPending(false);
       }
     })();
   }, [
     user,
     loading,
-    state.profile.accomplishmentsBackfilledAt,
     state.library,
     state.genresByBookId,
     state.plans,
@@ -3407,6 +3457,8 @@ export function DataProvider({ children }) {
     deleteReadingMemory,
     // v0.45: reading accomplishments (the Ledger)
     accomplishments: state.accomplishments || [],
+    // v0.67: the Ledger draws skeleton rows while this is true.
+    accomplishmentsBackfilling: backfillPending,
     shareAccomplishment,
     // v0.46: feature-discovery coach-marks
     coachmarksSeen: state.coachmarksSeen || [],

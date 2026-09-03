@@ -620,3 +620,178 @@
 .pf-avatar-choice--active {
   border-color: var(--ro-gold);
 }
+
+// ── v0.67 — the family Ledger row ────────────────────────────────────────────
+//
+// One row per shelf, replacing what would otherwise be five separate plaques
+// for the same family. The count ladder is a TRACK: dots are stops made, and
+// the line ends where the reading ended. It is deliberately not a progress bar —
+// a bar filled toward a target is a picture of what the reader has not done,
+// which is the habit-app grammar rule 1 of the accomplishments spec refuses.
+.pf-family-rows {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ro-space-4);
+}
+
+.pf-family-row {
+  padding: var(--ro-space-3) 0;
+  border-bottom: 1px solid var(--ro-border);
+
+  &:last-child { border-bottom: 0; }
+
+  &__name {
+    font-family: var(--ro-font-display);
+    font-size: 15px;
+    color: var(--ro-gold-text);
+    margin-bottom: var(--ro-space-3);
+  }
+
+  &__aside {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--ro-space-2) var(--ro-space-4);
+    margin-top: var(--ro-space-3);
+  }
+}
+
+.pf-family-track {
+  display: flex;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 0;
+}
+
+// Each stop draws its own connector to the LEFT, so the line stops naturally
+// after the last earned rung rather than running on to a target.
+.pf-family-track__stop {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  min-width: 62px;
+  padding: 0 2px;
+  background: none;
+  border: 0;
+  color: inherit;
+  cursor: pointer;
+  text-align: center;
+
+  & + .pf-family-track__stop::before {
+    content: '';
+    position: absolute;
+    left: -50%;
+    top: 5px;
+    width: 100%;
+    height: 1px;
+    background: var(--ro-border-strong);
+  }
+
+  // The connector into the NEXT (unearned) rung is dashed and faint: it marks
+  // a rung that exists, not a distance to close.
+  &.is-next {
+    cursor: default;
+
+    &::before { background: none; border-top: 1px dashed var(--ro-border); }
+    .pf-family-track__n { opacity: .5; }
+  }
+
+  &:not(.is-next):hover .pf-family-track__dot,
+  &:not(.is-next):focus-visible .pf-family-track__dot {
+    box-shadow: 0 0 0 3px var(--ro-surface-3);
+  }
+}
+
+.pf-family-track__dot {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: var(--ro-gold);
+  border: 1px solid var(--ro-gold);
+  z-index: 1;
+
+  &--hollow {
+    background: transparent;
+    border-color: var(--ro-border-strong);
+  }
+}
+
+.pf-family-track__n {
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: var(--ro-text-2);
+}
+
+.pf-family-track__date {
+  font-size: 10px;
+  letter-spacing: .4px;
+  text-transform: uppercase;
+  color: var(--ro-muted);
+}
+
+// new_family and each family_breadth rung — everything that is not the count
+// ladder, kept beside the track rather than minced into its own plaques.
+.pf-family-mark {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--ro-space-2);
+  padding: 0;
+  background: none;
+  border: 0;
+  color: inherit;
+  cursor: pointer;
+  font-size: 13px;
+
+  &__ornament { color: var(--ro-gold); }
+  &__label { color: var(--ro-text-2); }
+  &__date {
+    font-size: 10px;
+    letter-spacing: .4px;
+    text-transform: uppercase;
+    color: var(--ro-muted);
+  }
+
+  &:hover &__label,
+  &:focus-visible &__label { color: var(--ro-gold-text); }
+}
+
+// Fold, do not delete. A reader who earned thirty genre plaques under the
+// retired ladders still has thirty; they are simply collapsed past the first
+// few. A record you can fold is still a record.
+.pf-ledger-more {
+  margin-top: var(--ro-space-3);
+  padding: 0;
+  background: none;
+  border: 0;
+  color: var(--ro-text-2);
+  font-size: 13px;
+  text-decoration: underline;
+  cursor: pointer;
+
+  &:hover { color: var(--ro-gold-text); }
+}
+
+// v0.67: placeholder family rows, shown while the accomplishments replay is in
+// flight. The replay used to be gated on a stamp, so the rows were either there
+// on load or never; without the gate there is a real gap, and an empty families
+// group during that gap reads as a definite "none" rather than "not yet".
+//
+// The overrides below exist because the shared `.skeleton` primitive's --block
+// variant is a 120px slab and these stand in for 11px dots. Specificity, not
+// source order, decides that — a plain `.skeleton--block` would win or lose
+// depending on which stylesheet was concatenated last, which is the kind of
+// coin-flip that shows up only in a production build.
+.pf-family-row--skeleton {
+  pointer-events: none;
+
+  .pf-family-track__dot {
+    width: 11px;
+    height: 11px;
+    border-radius: 50%;
+  }
+
+  // The label lines inside a stop are centred by the stop itself; the skeleton
+  // bars need to be told, since they are block elements with an explicit width.
+  .pf-family-track__stop .skeleton--text { margin: 2px auto; }
+}

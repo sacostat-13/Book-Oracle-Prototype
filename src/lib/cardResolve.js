@@ -47,6 +47,23 @@ export const GENERIC_CARD_SLUG = 'generic';
 // would silently become invisible to a future art-coverage report.
 export function frameSlugFor(moment, { exact = false } = {}) {
   if (!moment) return null;
+
+  // v0.67 — family moments. Shorter than the genre branch they replace,
+  // because a family moment IS its asset folder: `moment.family` is the slug
+  // in genre_families, and public/cards/<slug>/ is named for it. There is no
+  // lookup and no coverage gap — every family has art by construction, where
+  // 93 genres never did.
+  if (moment.type === 'family_count' || moment.type === 'family_breadth' || moment.type === 'new_family') {
+    if (moment.family && CARD_GENRES.includes(moment.family)) return moment.family;
+    if (exact) return null;
+    return moment.family ? GENERIC_CARD_SLUG : null;
+  }
+
+  // Retired in v0.67, still resolved: accomplishments earned under the genre
+  // ladders are kept forever and stay shareable, so their cards must still
+  // find a folder. GENRE_CARD_META now maps every genre to its FAMILY folder,
+  // so a legacy genre card renders on its family's art rather than falling to
+  // the generic frame.
   if (moment.type === 'genre_count' || moment.type === 'new_genre') {
     const meta = GENRE_CARD_META[moment.genre];
     if (meta && CARD_GENRES.includes(meta.slug)) return meta.slug;

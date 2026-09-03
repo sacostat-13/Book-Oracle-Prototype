@@ -16,9 +16,28 @@
 
 // The version label shown as "current" — keep in sync with package.json and
 // the README version line.
-export const CURRENT_VERSION = 'v0.66.1';
+export const CURRENT_VERSION = 'v0.67';
 
 export const RELEASES = [{
+    version: 'v0.67',
+    date: '2026-09-03',
+    titleEn: 'Sixteen shelves',
+    titleEs: 'Dieciséis estantes',
+    bodyEn: [
+      'Genres have pages now. Every genre in the catalogue has its own page with a description and a wall of books, and the genre tags on a book are real links that take you there — before this they looked clickable and did nothing.',
+      'The 167 genres are grouped into 16 shelves. The genre picker opens on those sixteen and expands one at a time, so finding "Folk Horror" no longer means scrolling an alphabet — and typing still jumps straight to it.',
+      'Your Wishlist and Library group by shelf, and stop re-grouping once you have filtered: pick Science Fiction and you get a plain list of your science fiction, not your science fiction sorted by something else.',
+      'The Ledger records shelves rather than individual genres, so one book stops earning three separate marks for the same evening of reading.',
+      'Links you copy are clean again. Sharing a book used to hand out a URL with several hundred characters of internal state attached to it.',
+    ],
+    bodyEs: [
+      'Los géneros ahora tienen página propia. Cada género del catálogo tiene su descripción y su muro de libros, y las etiquetas de género de un libro son enlaces de verdad que te llevan ahí: antes parecían clickeables y no hacían nada.',
+      'Los 167 géneros están agrupados en 16 estantes. El selector abre con esos dieciséis y se despliega de a uno, así que encontrar "Folk Horror" ya no es scrollear un abecedario. Y si escribís, sigue yendo directo.',
+      'Tu Lista de deseos y tu Biblioteca se agrupan por estante, y dejan de reagrupar cuando ya filtraste: elegís Ciencia Ficción y ves tu ciencia ficción, no tu ciencia ficción ordenada por otra cosa.',
+      'La Bitácora registra estantes en vez de géneros sueltos, así un solo libro deja de ganar tres marcas distintas por la misma noche de lectura.',
+      'Los enlaces que copiás vuelven a ser limpios. Compartir un libro entregaba una URL con varios cientos de caracteres de estado interno pegados atrás.',
+    ],
+  }, {
     version: 'v0.66.1',
     date: '2026-09-01',
     titleEn: 'Links that behave like links',

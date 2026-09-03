@@ -13,6 +13,7 @@ import { usePagedList } from '../lib/usePagedList';
 import EmptyState from '../components/EmptyState';
 import ShelfFilters from '../components/ShelfFilters';
 import { useShelfFilters } from '../lib/useShelfFilters';
+import { useShelfGrouping } from '../lib/useShelfGrouping';
 
 // v0.15 phase 2.5: two-dropdown filter (genres + categories).
 // v0.16 DS pass: migrated to .lv-* / .btn-* / .select tokens.
@@ -70,19 +71,14 @@ export default function Wishlist({ onOpenBook }) {
 
   const sel = useSelection(wl);
 
-  // Group the FULL filtered set first, so every genre section carries all its
-  // titles and an accurate count — independent of scroll position.
-  const grouped = useMemo(() => {
-    const g = {};
-    for (const b of filtered) {
-      const genre = primaryGenreOf(b);
-      if (!g[genre]) g[genre] = [];
-      g[genre].push(b);
-    }
-    return g;
-  }, [filtered, primaryGenreOf]);
-
-  const allGenreKeys = useMemo(() => Object.keys(grouped).sort(), [grouped]);
+  // v0.67 — sectioning moved to useShelfGrouping. Each level of filtering
+  // reveals the next level of grouping: unfiltered groups by family, a family
+  // filter groups by genre, a genre filter shows a flat list. Sections were
+  // keyed on the PRIMARY genre before, so filtering to Science Fiction still
+  // produced an "Adventure" heading — the reader had already said what they
+  // wanted and we regrouped their answer by a different axis.
+  const { mode: groupMode, keys: allGenreKeys, grouped, labels: groupLabels } =
+    useShelfGrouping(filtered, { genresByBookId, genre: filters.values.genre, primaryGenreOf });
 
   // Paginate over whole genre sections — each loaded section is complete.
   const { visible: genreKeys, hasMore, loadMore } = usePagedList(
@@ -223,6 +219,8 @@ export default function Wishlist({ onOpenBook }) {
           <LibraryCoverGrid
             grouped={grouped}
             genreKeys={genreKeys}
+            labels={groupLabels}
+            showHeads={groupMode !== 'flat'}
             genresByBookId={genresByBookId}
             onOpenBook={onOpenBook}
             selectionMode={sel.active}
@@ -240,7 +238,11 @@ export default function Wishlist({ onOpenBook }) {
         <>
           {genreKeys.map((g) => (
             <div className="lv-section" key={g}>
-              <div className="lv-section__head">{g}<span className="count">· {grouped[g].length}</span></div>
+              {groupMode !== 'flat' && (
+                <div className="lv-section__head">
+                  {groupLabels[g]}<span className="count">· {grouped[g].length}</span>
+                </div>
+              )}
               <div className="lv-list">
                 {grouped[g].map((b, i) => {
                   const k = bookKey(b);

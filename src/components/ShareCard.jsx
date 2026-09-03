@@ -73,6 +73,34 @@ function baseCopy(moment, t, lang) {
         ornament: '✺',
         ...bookLine,
       };
+    // v0.67 — the family ladders. The sub-line is the family's own description
+    // from genre_families, passed through on the moment, so the card says
+    // something specific under a shared frame. Falls back to the generic
+    // i18n line in Spanish, same rule the genre cards used.
+    case 'family_count':
+      return {
+        eyebrow: t('share.card.familyCountEyebrow'),
+        headline: t('share.card.familyCountHeadline', { n: moment.n, family: moment.familyName || moment.family }),
+        sub: t('share.card.familyCountSub'),
+        ornament: '⚜',
+        ...bookLine,
+      };
+    case 'family_breadth':
+      return {
+        eyebrow: t('share.card.familyBreadthEyebrow'),
+        headline: t('share.card.familyBreadthHeadline', { n: moment.n, family: moment.familyName || moment.family }),
+        sub: t('share.card.familyBreadthSub'),
+        ornament: '✦',
+        ...bookLine,
+      };
+    case 'new_family':
+      return {
+        eyebrow: t('share.card.newFamilyEyebrow'),
+        headline: moment.familyName || moment.family,
+        sub: t('share.card.newFamilySub'),
+        ornament: '✧',
+        ...bookLine,
+      };
     case 'genre_count': {
       const meta = GENRE_CARD_META[moment.genre];
       return {

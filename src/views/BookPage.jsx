@@ -1001,10 +1001,29 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
             </div>
           ) : genres.length > 0 && (
             <div className="bp-meta">
+              {/* v0.67 — the chip is a LINK now. It had a cursor and no href
+                  since genres shipped, which meant the catalogue's richest
+                  internal link surface — every book page, 2-5 genres each —
+                  pointed nowhere. This one change is most of the link graph the
+                  2026-08-24 postmortem found missing.
+                  normalizedName can be absent on guest/unenriched rows; those
+                  stay plain spans rather than linking to a route that 404s. */}
               {genres.map((g) => (
-                <span key={g.name} className="chip" title={g.description || undefined}>
-                  {g.name}
-                </span>
+                g.normalizedName ? (
+                  <RouteLink
+                    key={g.name}
+                    to="genre-page"
+                    params={{ genreSlug: g.normalizedName }}
+                    className="chip"
+                    title={g.description || undefined}
+                  >
+                    {g.name}
+                  </RouteLink>
+                ) : (
+                  <span key={g.name} className="chip" title={g.description || undefined}>
+                    {g.name}
+                  </span>
+                )
               ))}
             </div>
           )}

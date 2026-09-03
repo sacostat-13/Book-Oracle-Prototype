@@ -31,6 +31,11 @@ function momentShareText(moment, t) {
     case 'series_completed': return t('share.text.series', { series: moment.seriesName });
     case 'plan_completed': return t('share.text.plan', { plan: moment.planTitle });
     case 'nth_book': return t('share.text.nth', { n: moment.n, year: moment.year });
+    case 'family_count': return t('share.text.familyCount', { n: moment.n, family: moment.familyName || moment.family });
+    case 'family_breadth': return t('share.text.familyBreadth', { n: moment.n, family: moment.familyName || moment.family });
+    case 'new_family': return t('share.text.newFamily', { family: moment.familyName || moment.family });
+    // Retired in v0.67 — still shareable, because earned accomplishments are
+    // kept forever and every one of them is a card someone may still post.
     case 'genre_count': return t('share.text.genreCount', { n: moment.n, genre: moment.genre });
     case 'new_genre': return t('share.text.newGenre', { genre: moment.genre });
     case 'female_authors_count': return t('share.text.femaleAuthors', { n: moment.n });

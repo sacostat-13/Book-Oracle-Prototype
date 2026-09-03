@@ -147,3 +147,37 @@ export function CardGridSkeleton({ count = 6, className = 'directory-grid' }) {
     </div>
   );
 }
+
+/**
+ * Family rows on the Ledger — a family name over a milestone track.
+ *
+ * v0.67. Dropping the backfill stamp means the family ladders are recomputed on
+ * every mount, so there is now a real interval where the persisted groups
+ * (Series, Milestones, Genres-earlier) are already on screen and the family
+ * rows are not. Without a placeholder that interval reads as "you have no
+ * families", which is a wrong answer stated confidently — the worst kind.
+ *
+ * The dots mirror `.pf-family-track__stop`: same count as a typical early row
+ * (three rungs plus the hollow next), so nothing shifts when the real track
+ * lands.
+ */
+export function FamilyRowsSkeleton({ count = 3 }) {
+  return (
+    <div className="pf-family-rows" aria-busy="true" aria-live="polite">
+      {Array.from({ length: count }, (_, i) => (
+        <div key={i} className="pf-family-row pf-family-row--skeleton">
+          <Skeleton variant="text" width="34%" />
+          <div className="pf-family-track">
+            {Array.from({ length: 4 }, (_, j) => (
+              <div key={j} className="pf-family-track__stop">
+                <Skeleton variant="block" className="pf-family-track__dot" />
+                <Skeleton variant="text" width="24px" />
+                <Skeleton variant="text" width="40px" />
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}

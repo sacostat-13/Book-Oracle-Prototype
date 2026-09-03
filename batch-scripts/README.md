@@ -102,6 +102,24 @@ Five things worth knowing before touching genre code:
    express and exposes `needs_genres` / `needs_description` / `needs_depth` as
    filterable booleans. Any new pass over the catalogue should start there.
 
+### Accomplishment kinds live in two places
+
+`EARNABLE_TYPES` in `src/lib/accomplishments.js` and the
+`reading_accomplishments_kind_check` constraint in Postgres are the same list,
+and they cannot see each other. **Add a moment type to one and you must add it
+to the other in the same change.**
+
+A kind missing from the constraint fails in the quietest possible way: the
+insert 400s, `DataContext` logs it and swallows it, and the share card renders
+from the in-memory moment regardless. So the reader sees the card, shares it, and
+the row is never written. `female_authors_count` shipped in v0.55 and did exactly
+this until v0.67 — every women-authors milestone was celebrated and none was
+recorded.
+
+Retired kinds stay in the constraint forever. Rows already earned are kept
+(accomplishments spec, rule 3), and dropping a kind would break the next write to
+an old row.
+
 ### Merging and renaming genres
 
 Never by hand. `merge_genres(loser, winner)` and `rename_genre(normalized_from,
@@ -368,6 +386,7 @@ A book with no cover never appears in The Stacks, which filters on
 | `manual/oracleBatch.mjs` 💸 | Bulk Oracle categorisation — genres, series, complexity, depth, author gender. Also invoked nightly by `nightly-curation.yml` at a capped limit; run it by hand only to clear a backlog faster than the cron will. |
 | `manual/authorGenderBackfill.mjs` 💸 | One-shot backfill of `books.author_gender`, keyed on **author** rather than book. Batched Sonnet, no web search. Only touches rows where `author_gender_checked_at IS NULL`, so it is safe to re-run and drains to zero. Writes `output/author-gender.csv`. |
 | `manual/genreDescriptions.mjs` 💸 | Writes the description for every genre that has none, in the house voice, with the rest of the catalogue and sample titles from the shelf as context. Rarest genre first — the one with one book is the one most likely to be re-invented. Never overwrites: the update carries `.is('description', null)`, so a hand-written description wins even mid-run. Also step 3 of `nightly-curation.yml`. |
+| `manual/splitCompoundGenre.mjs` 💸 | Splits one compound genre into two by asking the Oracle which half each book belongs to. Only for compounds that are genuinely **two different ideas** — `Feminist & Sapphic Gothic` is the one case. Compounds that are one idea in two words (`Comedy & Wit`, `Demons & Monsters`) are left alone, and one idea said twice (`Japanese & East Asian Horror`) is a rename, not a split. Creates the halves, classifies, and leaves the compound intact; `--retire` is a separate run that refuses to fold it away while any book would be left on neither half. |
 | `manual/fixBook.mjs` | Repair a single book by id — surgical, for when one row is wrong. |
 | `manual/fixBadCovers.mjs` | Remove covers that resolve to placeholders or dead URLs. |
 

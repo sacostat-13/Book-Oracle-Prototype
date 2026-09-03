@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useData } from '../lib/DataContext';
-import { useRouter } from '../lib/RouterContext';
+import { useRouter, RouteLink } from '../lib/RouterContext';
 import { useT, useTNode, useI18n } from '../lib/I18nContext';
 import { openBookTab } from '../lib/bookHelpers';
 import BookCover from '../components/BookCover';
@@ -214,7 +214,11 @@ export default function Lists() {
                             return genres && genres.length > 0 ? (
                               <div className="cover-grid-hover-genres">
                                 {genres.slice(0, 3).map((g) => (
-                                  <span key={g.genreId} className="li-genre-pill">{g.name}</span>
+                                  g.normalizedName ? (
+                            <RouteLink key={g.genreId} to="genre-page" params={{ genreSlug: g.normalizedName }} className="li-genre-pill">{g.name}</RouteLink>
+                          ) : (
+                            <span key={g.genreId} className="li-genre-pill">{g.name}</span>
+                          )
                                 ))}
                               </div>
                             ) : null;
