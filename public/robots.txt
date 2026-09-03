@@ -1,0 +1,14 @@
+# Lives in public/, NOT the repo root.
+#
+# It sat at the root until v0.68, and Vite only copies public/ into dist —
+# which netlify.toml publishes — so this file was never deployed. A request for
+# /robots.txt fell through to the SPA catch-all and returned the 404 PAGE with a
+# 200 status: an HTML body where a crawler expects text/plain. That parses as no
+# rules (so nothing was ever blocked, which is why it went unnoticed) but it
+# also meant the Sitemap: line below never reached any crawler that looks for it
+# here rather than in Search Console.
+
+User-agent: *
+Allow: /
+
+Sitemap: https://www.thebooksoracle.com/sitemap.xml

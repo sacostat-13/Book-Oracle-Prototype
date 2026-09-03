@@ -1843,6 +1843,7 @@
     "product": "Producto",
     "legal": "Legal",
     "sitemap": "Mapa del sitio",
+    "genres": "Explorar por género",
     "pricing": "Precios"
   },
   "notifications": {
@@ -1965,7 +1966,8 @@
     "intro": "Todo lo que The Books Oracle tiene para ofrecer. Las páginas de lista de deseos, biblioteca y perfil son personales de cada lector, así que no las vas a encontrar acá — iniciá sesión para ver las tuyas.",
     "section": {
       "explore": "Explorar",
-      "legal": "Legal"
+      "legal": "Legal",
+      "shelves": "Los dieciséis estantes"
     }
   },
   "landing": {

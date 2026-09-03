@@ -2875,6 +2875,142 @@
   }
 }
 
+// ── v0.68: the family page's above-the-fold rework ──────────────────────────
+//
+// The page opened with ten genre rows, each carrying a full description —
+// roughly 900px of prose before the first cover, which is two screens on a
+// phone. Sub-category navigation belongs above the listing (Baymard, NN/g both
+// find that, and both name "pushed below the fold" as the damaging mistake);
+// what did not belong there was the PROSE attached to it. Chips keep the
+// navigation and give the fold back.
+
+// WRAP, CLAMPED TO TWO ROWS. Three shapes were tried:
+//
+//   scroll   — every family the same fixed height, but a horizontal scroller is
+//              not obvious on a desktop trackpad and hides genres behind a
+//              gesture nobody performs. Rejected on use, not on measurement.
+//   wrap     — obvious, and fine on desktop (Fantasy's 21 genres take 3 rows).
+//              On a 390px phone the same 21 chips take ELEVEN rows and 506px,
+//              putting the first cover at y=821 against an 844px fold: a sliver
+//              of one cover. That is the bug this section was written to fix,
+//              reintroduced on the five largest families.
+//   wrap + clamp — wrapping, bounded to two rows, with a toggle that opens the
+//              rest in place. Obvious like wrap, fixed-height like scroll.
+//
+// The clamp is only applied when the chips actually overflow, and that is
+// measured in the DOM (scrollHeight vs clientHeight) rather than guessed from a
+// genre count — 21 chips overflow two rows on a phone and not on a desktop, so
+// any threshold based on the number of genres is wrong at one of the two.
+.shelf-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--shelf-chip-gap, 8px);
+  margin: 18px 0 8px;
+
+  // Two rows exactly. A partial third row peeking out would read as a rendering
+  // fault rather than as an invitation, which is what the toggle is for.
+  &.is-collapsed {
+    max-height: calc(var(--shelf-chip-h, 38px) * 2 + var(--shelf-chip-gap, 8px));
+    overflow: hidden;
+  }
+}
+
+// The chips are <button>s here and <a>s on the genre page. Reset what the
+// button user-agent style brings and the shared .genre-chip does not.
+button.genre-chip {
+  font-family: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+// The toggle sits OUTSIDE the wrapping container on purpose: inside it, it would
+// wrap onto whichever row it landed on and be clipped by the very clamp it
+// exists to release.
+.shelf-filter__toggle {
+  margin: 0 0 14px;
+  padding: 0;
+  background: none;
+  border: 0;
+  font-family: inherit;
+  font-size: 13px;
+  color: var(--ro-text-2);
+  cursor: pointer;
+  border-bottom: 1px solid var(--ro-border-strong);
+
+  &:hover,
+  &:focus-visible {
+    color: var(--ro-gold-text);
+    border-bottom-color: var(--ro-gold);
+  }
+}
+
+// Filled, not merely outlined. An active filter has to survive a glance at a
+// row that is partly scrolled off — a border-colour change alone does not.
+//
+// --ro-gold-on is the design system's paired foreground for a gold fill, the
+// same one .btn-primary uses. The first draft invented --ro-on-gold, which does
+// not exist: with a var() fallback that failure is SILENT — the chip would have
+// rendered with body-background text on gold, which is invisible in one theme
+// and merely wrong in the other, and nothing would have errored.
+.genre-chip.is-active {
+  background: var(--ro-gold);
+  border-color: var(--ro-gold);
+  color: var(--ro-gold-on);
+
+  &:hover,
+  &:focus-visible {
+    background: var(--ro-gold);
+    border-color: var(--ro-gold);
+    color: var(--ro-gold-on);
+  }
+}
+
+.shelf-wall {
+  margin-top: 6px;
+
+  &__head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 6px 16px;
+  }
+
+  // The way through to the genre's own page. Quiet — it is an offer, not the
+  // action the page is for.
+  &__through {
+    font-size: 13px;
+    color: var(--ro-text-2);
+    text-decoration: none;
+    border-bottom: 1px solid var(--ro-border-strong);
+
+    &:hover,
+    &:focus-visible {
+      color: var(--ro-gold-text);
+      border-bottom-color: var(--ro-gold);
+    }
+  }
+
+  &__note {
+    margin: 6px 0 14px;
+    color: var(--ro-text-2);
+    font-size: 13px;
+    line-height: 1.6;
+    max-width: 68ch;
+  }
+}
+
+// Three lines at the top; the full text is repeated in the annotated list at
+// the foot of the page, so this clamp hides nothing. -webkit-line-clamp is the
+// only cross-browser way to do this and is supported everywhere current,
+// including Firefox since 68.
+.page-head__sub--clamp {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
 .genre-page__oracle {
   margin: 30px 0;
 

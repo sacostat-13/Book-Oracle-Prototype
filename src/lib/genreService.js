@@ -102,6 +102,12 @@ export async function fetchFamily(slug) {
     .select('id, slug, name, description, sort_order')
     .eq('slug', slug)
     .maybeSingle();
+  // `error || !fam` collapses two different answers into one. Returning null is
+  // right — the page degrades to "No such shelf" rather than crashing — but
+  // doing it SILENTLY on a rejected query means a schema change or an RLS
+  // mistake tells every reader that Horror does not exist, and logs nothing.
+  // Found by tests/failure-is-not-empty.test.js on its first run.
+  if (error) console.warn(`[genreService] family "${slug}" query failed:`, error.message);
   if (error || !fam) return null;
 
   const { data: genres } = await supabase
@@ -123,6 +129,11 @@ export async function fetchGenre(normalizedName) {
     .select('id, name, normalized_name, description, usage_count, family_id, parent_id, genre_families ( slug, name, description )')
     .eq('normalized_name', normalizedName)
     .maybeSingle();
+  // Same shape as fetchFamily above: null is the right degradation, silence is
+  // not. "No such genre" is a claim about the catalogue; a 400 is a claim about
+  // the query, and the reader should never be shown the first when it was the
+  // second.
+  if (error) console.warn(`[genreService] genre "${normalizedName}" query failed:`, error.message);
   if (error || !genre) return null;
 
   let siblings = [];
@@ -162,6 +173,57 @@ export async function fetchGenreShelf(genreId, seedKey) {
     if (!data || data.length < PAGE) break;
   }
   return dailyShuffle(ids, seedKey || String(genreId));
+}
+
+// Every book on a FAMILY's shelf — the union across all its genres, plus the
+// genre membership needed to filter it in place.
+//
+// v0.68. The family page used to list sub-genres and nothing else, which made
+// it unable to answer the question it is the best-placed page to answer: "what
+// should I read in horror?" A shelf of ten links is a menu, not an answer.
+//
+// DEDUPE IS THE WHOLE JOB of `all`. A book carries several genres and they are
+// often on the same family — a haunted-house novel is plausibly Horror, Haunted
+// Houses and Paranormal at once, all three on Horror & the Uncanny. Without the
+// Set it would appear three times on the wall, and the More button would page
+// through a shelf whose length is the sum of usage counts rather than the
+// number of books. The Set also runs BEFORE the shuffle, so the daily ordering
+// is over distinct books and stays stable while paging.
+//
+// `byGenre` keeps the membership the dedupe would otherwise throw away, so the
+// chip row can filter the wall WITHOUT a second round trip: the rows are
+// already here, and re-querying per chip would turn a free interaction into a
+// network wait on every press.
+//
+// One `.in()` over the family's genre ids rather than a query per genre: a
+// family has at most ~15 genres, so this is one round trip instead of fifteen.
+export async function fetchFamilyShelf(genreIds, seedKey) {
+  if (!genreIds || !genreIds.length) return { all: [], byGenre: {} };
+  const seen = new Set();
+  const byGenre = {};
+  const PAGE = 1000;
+  for (let from = 0; from < MAX_SHELF; from += PAGE) {
+    const { data, error } = await supabase
+      .from('book_genres')
+      .select('book_id, genre_id')
+      .in('genre_id', genreIds)
+      .order('book_id')          // stable base order, so the shuffle is the only randomness
+      .range(from, from + PAGE - 1);
+    if (error) { console.warn('[genreService] family shelf ids:', error.message); break; }
+    for (const r of data || []) {
+      if (!r.book_id) continue;
+      seen.add(r.book_id);
+      (byGenre[r.genre_id] = byGenre[r.genre_id] || new Set()).add(r.book_id);
+    }
+    if (!data || data.length < PAGE) break;
+    if (from + PAGE >= MAX_SHELF) {
+      // Loud, because a silently short shelf is indistinguishable from a small
+      // family. This ceiling exists to stop a runaway query, not to trim a
+      // legitimate result — if it ever fires, raise it.
+      console.warn(`[genreService] family shelf hit the ${MAX_SHELF} ceiling — the wall is truncated.`);
+    }
+  }
+  return { all: dailyShuffle([...seen], seedKey || 'family'), byGenre };
 }
 
 // Hydrate one page of ids into book rows.

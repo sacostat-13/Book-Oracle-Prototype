@@ -286,10 +286,158 @@ export default async (request, context) => {
     const planMatch = url.pathname.match(/^\/plans\/([^/]+)$/);
     const clubMatch = url.pathname.match(/^\/clubs\/([^/]+)$/);
     const profileMatch = url.pathname.match(/^\/u\/([^/]+)$/);
-    // v0.67 — the genre surface. /genres itself is static enough to need no
-    // prerender; the two dynamic shapes below do.
+    // v0.68 — the genre surface, all three shapes.
+    //
+    // /genres was previously left to pass through, on the reasoning that it is
+    // "static enough to need no prerender". It is not static: its sixteen links
+    // come from a fetch at runtime, so a crawler that does not execute JS saw an
+    // empty shell — on the page sitemap.js submits at priority 0.8 and describes
+    // as "the hub every genre page hangs off". The top of an internal link graph
+    // is the last page that should depend on JavaScript.
+    // The index floor, in the THIRD of three places it is written down — the
+    // others are INDEX_FLOOR in src/lib/genreService.js (which GenrePage uses
+    // for its client-side noindex) and a local const in
+    // netlify/functions/sitemap.js (which uses it to decide what to submit).
+    // All three must agree: a URL in the sitemap that answers with noindex is a
+    // contradiction Search Console reports as an error. It was a bare `5` here
+    // until v0.68, which is the version of this that is easiest to miss.
+    const INDEX_FLOOR = 5;
+
+    // Books on one or more genres, deduped, newest-cover-first — as TWO
+    // QUERIES, which is the entire point of this helper.
+    //
+    // v0.67 asked `book_genres_view?select=book_id,title,author`. That view has
+    // NO title and NO author column: it is book_genres joined to genres, and it
+    // carries the GENRE's name and description, not the book's. PostgREST
+    // answered 400 "column book_genres_view.title does not exist" on every
+    // request, the caller did `bRes.ok ? await bRes.json() : []`, and every
+    // prerendered genre page shipped with an empty book list — for two weeks,
+    // silently, because an empty list and a rejected query look identical.
+    //
+    // That is the SIXTH time this codebase has turned a failed request into an
+    // ordinary empty result, and the second time specifically on this view:
+    // genreService.js carries a fifteen-line comment about the same trap, ending
+    // "it will happen a third time." It did. Hence: one place, loud on failure,
+    // and a probe whose stub rejects unknown columns the way PostgREST does.
+    async function booksForGenres(genreIds, label) {
+      if (!genreIds || !genreIds.length) return [];
+      const linkRes = await fetch(
+        `${supabaseUrl}/rest/v1/book_genres?genre_id=in.(${genreIds.join(',')})` +
+        `&select=book_id&order=book_id&limit=400`,
+        { headers: restHeaders }
+      );
+      if (!linkRes.ok) {
+        console.warn(`[og-prerender] book_genres query failed: ${linkRes.status} ${label}`);
+        return [];
+      }
+      const ids = [...new Set((await linkRes.json()).map((r) => r.book_id).filter(Boolean))].slice(0, 24);
+      if (!ids.length) return [];
+      const bookRes = await fetch(
+        `${supabaseUrl}/rest/v1/books?id=in.(${ids.join(',')})&select=id,title,author,cover_url`,
+        { headers: restHeaders }
+      );
+      if (!bookRes.ok) {
+        console.warn(`[og-prerender] books hydrate failed: ${bookRes.status} ${label}`);
+        return [];
+      }
+      return (await bookRes.json()).filter((b) => b && b.title);
+    }
+
+    const genresHub = url.pathname === '/genres';
     const familyMatch = url.pathname.match(/^\/genres\/([^/]+)$/);
     const genreMatch = url.pathname.match(/^\/genre\/([^/]+)$/);
+
+    // Breadcrumbs, shared by both entity shapes below. Google reads these to
+    // draw the hierarchy in the result itself, which for a three-level browse
+    // surface is most of the point of having the hierarchy.
+    const crumbs = (trail) => ({
+      '@context': 'https://schema.org',
+      '@type': 'BreadcrumbList',
+      itemListElement: trail.map((c, i) => ({
+        '@type': 'ListItem',
+        position: i + 1,
+        name: c.name,
+        item: SITE + c.path,
+      })),
+    });
+
+    // ── /genres — the sixteen-shelf hub ──────────────────────────────────
+    if (genresHub) {
+      const [famRes, genRes] = await Promise.all([
+        fetch(
+          `${supabaseUrl}/rest/v1/genre_families?select=id,slug,name,description&order=sort_order.asc`,
+          { headers: restHeaders }
+        ),
+        fetch(
+          `${supabaseUrl}/rest/v1/genres?select=name,normalized_name,family_id,usage_count` +
+          `&order=usage_count.desc&limit=200`,
+          { headers: restHeaders }
+        ),
+      ]);
+      const fams = famRes.ok ? await famRes.json() : [];
+      const gens = genRes.ok ? await genRes.json() : [];
+      if (fams.length) {
+        // Each shelf lists its three most-read genres inline. Sixteen links was
+        // the minimum; sixteen shelves times three is a hub that hands the
+        // crawler ~64 destinations on one fetch, which is what makes the pages
+        // below it discoverable without waiting for a sitemap crawl.
+        const topFor = (famId) => gens.filter((g) => g.family_id === famId).slice(0, 3);
+        const body = [
+          `<h1>Every shelf in the library</h1>`,
+          `<p>Sixteen families, and every genre on them. Start broad and narrow, or go straight to the one you already know you want.</p>`,
+          `<ul>${fams.map((f) => {
+            const top = topFor(f.id);
+            return `<li><a href="/genres/${encodeURIComponent(f.slug)}">${escapeHtml(f.name)}</a>` +
+              `${f.description ? ` — ${escapeHtml(f.description)}` : ''}` +
+              (top.length
+                ? ` <span>${top.map((g) =>
+                    `<a href="/genre/${encodeURIComponent(g.normalized_name)}">${escapeHtml(g.name)}</a>`
+                  ).join(' · ')}</span>`
+                : '') +
+              `</li>`;
+          }).join('')}</ul>`,
+          `<p><a href="/">The Books Oracle</a></p>`,
+        ].join('');
+
+        return respond({
+          // v0.68 — branded preview card. Every other entity page on the site
+          // has had one since v0.48; the genre surface shipped without, so a
+          // shelf pasted into Slack or WhatsApp was a bare grey text row next to
+          // a book link that renders a card. Nothing to do with ranking — it is
+          // the difference between a link that gets clicked and one that does
+          // not.
+          image: ogCardImage(url.origin, {
+            ornament: '☩',
+            eyebrow: 'Browse by genre',
+            headline: 'Every shelf in the library',
+            sub: `${fams.length} shelves · ${gens.length} genres`,
+          }),
+          imageWidth: 1200,
+          imageHeight: 630,
+          title: 'Browse by genre — what to read | The Books Oracle',
+          description:
+            'Sixteen shelves and every genre on them — fantasy, horror, gothic, crime, poetry and more. Find your next book by the kind of book it is.',
+          url: SITE + url.pathname,
+          jsonLd: [
+            {
+              '@context': 'https://schema.org',
+              '@type': 'CollectionPage',
+              name: 'Browse by genre',
+              mainEntity: {
+                '@type': 'ItemList',
+                itemListElement: fams.map((f, i) => ({
+                  '@type': 'ListItem',
+                  position: i + 1,
+                  name: f.name,
+                  url: `${SITE}/genres/${encodeURIComponent(f.slug)}`,
+                })),
+              },
+            },
+            crumbs([{ name: 'The Books Oracle', path: '/' }, { name: 'Genres', path: '/genres' }]),
+          ],
+        }, body);
+      }
+    }
 
     // ── Family page ──────────────────────────────────────────────────────
     // Sixteen hubs, each linking down to ~10 genre pages. This is the internal
@@ -306,36 +454,96 @@ export default async (request, context) => {
       if (fam) {
         const gRes = await fetch(
           `${supabaseUrl}/rest/v1/genres?family_id=eq.${fam.id}` +
-          `&select=name,normalized_name,description,usage_count&order=usage_count.desc&limit=40`,
+          `&select=id,name,normalized_name,description,usage_count&order=usage_count.desc&limit=40`,
           { headers: restHeaders }
         );
         const genres = gRes.ok ? await gRes.json() : [];
+
+        // v0.68 — books, not just sub-genre links. The page shipped as a list of
+        // ten links and no book, which is a menu rather than an answer to "what
+        // to read in horror" — the query this page is the best-placed one on the
+        // site to win. `genre_id=in.()` over the shelf's genres, deduped, because
+        // a book carries several genres and they are often on the same family.
+        let books = [];
+        if (genres.length) {
+          books = await booksForGenres(genres.map((g) => g.id), `family="${slug}"`);
+        }
+
+        // Books BEFORE the annotated genre list, mirroring the client DOM after
+        // the v0.68 reorder. The two do not have to agree — a crawler reads the
+        // whole document either way — but when they disagree it is because
+        // someone changed one and forgot the other, and the prerendered body is
+        // the half nobody looks at.
         const body = [
           `<h1>${escapeHtml(fam.name)}</h1>`,
-          fam.description ? `<p>${escapeHtml(fam.description)}</p>` : '',
+          books.length
+            ? `<h2>Books across every ${escapeHtml(fam.name)} genre</h2><ul>${books.map((b) =>
+                `<li>${escapeHtml(b.title)}${b.author ? ` — ${escapeHtml(b.author)}` : ''}</li>`).join('')}</ul>`
+            : '',
           genres.length
-            ? `<h2>Genres on this shelf</h2><ul>${genres.map((g) =>
+            ? `<h2>Every genre on this shelf</h2><ul>${genres.map((g) =>
                 `<li><a href="/genre/${encodeURIComponent(g.normalized_name)}">${escapeHtml(g.name)}</a>` +
                 `${g.description ? ` — ${escapeHtml(g.description)}` : ''}</li>`).join('')}</ul>`
             : '',
+          fam.description ? `<p>${escapeHtml(fam.description)}</p>` : '',
           `<p><a href="/genres">All sixteen shelves</a> · <a href="/">The Books Oracle</a></p>`,
         ].filter(Boolean).join('');
 
         return respond({
-          title: `${fam.name} books — every genre on the shelf | The Books Oracle`,
+          // MUST MATCH src/views/FamilyPage.jsx's useDocumentMeta call.
+          //
+          // THE COLLISION. Six of the sixteen families share a name with a genre
+          // on them — horror, fantasy, science fiction, gothic, romance,
+          // adventure — so /genres/horror and /genre/horror are one character
+          // apart and both plausibly "horror books". Left alone they compete for
+          // the same query and Google picks one, usually the weaker.
+          //
+          // The family wins the intent phrase ("what to read") because it spans
+          // every sub-genre AND now carries books; the genre page keeps the
+          // plain noun. Deliberately NOT a cross-page canonical: these are not
+          // duplicates — different content, different jobs — and Google ignores
+          // a canonical between pages it can see are different, so it would buy
+          // nothing and hide the hierarchy the breadcrumbs state honestly.
+          image: ogCardImage(url.origin, {
+            ornament: '☩',
+            eyebrow: 'A shelf',
+            headline: fam.name,
+            sub: `${genres.length} ${genres.length === 1 ? 'genre' : 'genres'}`,
+            // The first covered book on the shelf, so the card shows a book
+            // rather than only type. undefined when the wall is empty — the
+            // card layout handles its absence, an empty string does not.
+            cover: (books.find((b) => b.cover_url) || {}).cover_url || undefined,
+          }),
+          imageWidth: 1200,
+          imageHeight: 630,
+          title: `${fam.name} — what to read | The Books Oracle`,
           description: (fam.description || `Every genre on the ${fam.name} shelf.`).slice(0, 200),
           url: SITE + url.pathname,
-          jsonLd: {
-            '@context': 'https://schema.org',
-            '@type': 'CollectionPage',
-            name: fam.name,
-            ...(fam.description ? { description: fam.description.slice(0, 300) } : {}),
-            hasPart: genres.slice(0, 20).map((g) => ({
+          jsonLd: [
+            {
+              '@context': 'https://schema.org',
               '@type': 'CollectionPage',
-              name: g.name,
-              url: `${SITE}/genre/${encodeURIComponent(g.normalized_name)}`,
-            })),
-          },
+              name: fam.name,
+              ...(fam.description ? { description: fam.description.slice(0, 300) } : {}),
+              // mainEntity/ItemList, not hasPart: ItemList is the shape Google
+              // documents for a list page, and it is the one that can carry
+              // position. hasPart parsed but told it nothing about order.
+              mainEntity: {
+                '@type': 'ItemList',
+                itemListElement: genres.slice(0, 20).map((g, i) => ({
+                  '@type': 'ListItem',
+                  position: i + 1,
+                  name: g.name,
+                  url: `${SITE}/genre/${encodeURIComponent(g.normalized_name)}`,
+                })),
+              },
+            },
+            crumbs([
+              { name: 'The Books Oracle', path: '/' },
+              { name: 'Genres', path: '/genres' },
+              { name: fam.name, path: url.pathname },
+            ]),
+          ],
         }, body);
       }
     }
@@ -350,35 +558,33 @@ export default async (request, context) => {
       );
       const genre = gRes.ok ? (await gRes.json())[0] : null;
       if (genre) {
-        // Siblings and a sample of the shelf. Both are links, which is the
+        // Books and sibling genres in parallel — the links ARE the page's
         // entire point: a genre page that lists no books and no siblings is the
-        // thin page Google declined to index in August.
-        const [bRes, sRes] = await Promise.all([
-          fetch(
-            `${supabaseUrl}/rest/v1/book_genres_view?genre_id=eq.${genre.id}` +
-            `&select=books:book_id(share_key,title,author)&limit=24`,
-            { headers: restHeaders }
-          ),
+        // thin page Search Console declined in August.
+        const [books, sRes] = await Promise.all([
+          booksForGenres([genre.id], `genre="${slug}"`),
           genre.family_id
             ? fetch(
                 `${supabaseUrl}/rest/v1/genres?family_id=eq.${genre.family_id}&id=neq.${genre.id}` +
-                `&select=name,normalized_name&order=usage_count.desc&limit=12`,
+                `&select=name,normalized_name&order=usage_count.desc&limit=24`,
                 { headers: restHeaders }
               )
             : Promise.resolve(null),
         ]);
-        const books = bRes && bRes.ok ? (await bRes.json()).map((r) => r.books).filter(Boolean) : [];
         const siblings = sRes && sRes.ok ? await sRes.json() : [];
         const fam = genre.genre_families || null;
 
         const body = [
-          `<h1>${escapeHtml(genre.name)} books</h1>`,
+          // `genre.name`, not "<name> books" — the client renders the bare
+          // name and Google runs the JS, so the rendered h1 is the bare name
+          // whatever this says. "books" earns its keyword in the <title>, the
+          // h2 and the description, where nothing overwrites it.
+          `<h1>${escapeHtml(genre.name)}</h1>`,
           genre.description ? `<p>${escapeHtml(genre.description)}</p>` : '',
           fam ? `<p>On the <a href="/genres/${encodeURIComponent(fam.slug)}">${escapeHtml(fam.name)}</a> shelf.</p>` : '',
           books.length
             ? `<h2>Books shelved as ${escapeHtml(genre.name)}</h2><ul>${books.map((b) =>
-                `<li><a href="/book/${encodeURIComponent(b.share_key)}">${escapeHtml(b.title)}</a>` +
-                `${b.author ? ` — ${escapeHtml(b.author)}` : ''}</li>`).join('')}</ul>`
+                `<li>${escapeHtml(b.title)}${b.author ? ` — ${escapeHtml(b.author)}` : ''}</li>`).join('')}</ul>`
             : '',
           siblings.length
             ? `<h2>Related genres</h2><ul>${siblings.map((g) =>
@@ -388,28 +594,53 @@ export default async (request, context) => {
         ].filter(Boolean).join('');
 
         return respond({
-          title: `${genre.name} books — what to read | The Books Oracle`,
+          // MUST MATCH src/views/GenrePage.jsx. The plain noun, not the intent
+          // phrase — the family page owns that; see the collision note above.
+          image: ogCardImage(url.origin, {
+            ornament: '☩',
+            eyebrow: fam ? fam.name : 'A genre',
+            headline: genre.name,
+            sub: `${genre.usage_count || 0} ${(genre.usage_count || 0) === 1 ? 'book' : 'books'}`,
+            cover: (books.find((b) => b.cover_url) || {}).cover_url || undefined,
+          }),
+          imageWidth: 1200,
+          imageHeight: 630,
+          title: `${genre.name} books | The Books Oracle`,
           description: (genre.description || `Books shelved as ${genre.name}.`).slice(0, 200),
           url: SITE + url.pathname,
           // Under the floor this page is reachable and linked but not
           // advertised — and the sitemap agrees, because a submitted URL that
           // answers with noindex is a contradiction Google reports as an error.
-          noindex: (genre.usage_count || 0) < 5,
-          jsonLd: {
-            '@context': 'https://schema.org',
-            '@type': 'CollectionPage',
-            name: `${genre.name} books`,
-            ...(genre.description ? { description: genre.description.slice(0, 300) } : {}),
-            hasPart: books.slice(0, 20).map((b) => ({
-              '@type': 'Book',
-              name: b.title,
-              ...(b.author ? { author: { '@type': 'Person', name: b.author } } : {}),
-            })),
-          },
+          noindex: (genre.usage_count || 0) < INDEX_FLOOR,
+          jsonLd: [
+            {
+              '@context': 'https://schema.org',
+              '@type': 'CollectionPage',
+              name: `${genre.name} books`,
+              ...(genre.description ? { description: genre.description.slice(0, 300) } : {}),
+              mainEntity: {
+                '@type': 'ItemList',
+                itemListElement: books.slice(0, 20).map((b, i) => ({
+                  '@type': 'ListItem',
+                  position: i + 1,
+                  item: {
+                    '@type': 'Book',
+                    name: b.title,
+                    ...(b.author ? { author: { '@type': 'Person', name: b.author } } : {}),
+                  },
+                })),
+              },
+            },
+            crumbs([
+              { name: 'The Books Oracle', path: '/' },
+              { name: 'Genres', path: '/genres' },
+              ...(fam ? [{ name: fam.name, path: `/genres/${encodeURIComponent(fam.slug)}` }] : []),
+              { name: genre.name, path: url.pathname },
+            ]),
+          ],
         }, body);
       }
     }
-
     if (bookMatch) {
       const wantedKey = decodeURIComponent(bookMatch[1]);
 
@@ -747,6 +978,15 @@ export default async (request, context) => {
   return context.next();
 };
 
+// netlify.toml ALSO registers this function at `/*`, and that is what has
+// actually been routing the genre paths since v0.67 — this list did not mention
+// them. Two declarations of one function's routes is a standing invitation for
+// them to disagree, and a path present in only one of them works by accident.
+// Kept in step deliberately; if the toml entry is ever narrowed, this is the
+// list that has to be right.
 export const config = {
-  path: ['/book/*', '/series/*', '/l/*', '/plans/*', '/clubs/*', '/u/*'],
+  path: [
+    '/book/*', '/series/*', '/l/*', '/plans/*', '/clubs/*', '/u/*',
+    '/genres', '/genres/*', '/genre/*',
+  ],
 };

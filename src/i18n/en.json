@@ -1843,6 +1843,7 @@
     "product": "Product",
     "legal": "Legal",
     "sitemap": "Sitemap",
+    "genres": "Browse by genre",
     "pricing": "Pricing"
   },
   "notifications": {
@@ -1965,7 +1966,8 @@
     "intro": "Everything The Books Oracle has to offer. Wishlist, library, and profile pages are personal to each reader, so you won't find those listed here — sign in to see your own.",
     "section": {
       "explore": "Explore",
-      "legal": "Legal"
+      "legal": "Legal",
+      "shelves": "The sixteen shelves"
     }
   },
   "landing": {

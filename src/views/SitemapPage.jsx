@@ -1,6 +1,8 @@
+import { useEffect, useState } from 'react';
 import { RouteLink } from '../lib/RouterContext';
 import { useT } from '../lib/I18nContext';
 import { useDocumentMeta } from '../lib/useDocumentMeta';
+import { fetchFamilies } from '../lib/genreService';
 
 // A plain link list, grouped. Deliberately excludes personal/auth-gated
 // views (wishlist, library, currently-reading, profile settings) — those
@@ -21,6 +23,12 @@ const SECTIONS = [
       { route: 'oracle-ask', label: 'Ask the Oracle' },
       { route: 'plan-list', label: 'Reading plans' },
       { route: 'book-clubs', label: 'Book clubs' },
+      // v0.68: both public routes, both missing from this page since they
+      // shipped. /genres especially — it is the highest-priority non-home URL
+      // in the XML sitemap, and this page is where a reader (and a crawler
+      // following the footer) would look for it.
+      { route: 'genres-index', label: 'Browse by genre' },
+      { route: 'lists-discover', label: 'Reading lists' },
     ],
   },
   {
@@ -36,6 +44,19 @@ const SECTIONS = [
 
 export default function SitemapPage() {
   const t = useT();
+  // The sixteen shelves, listed by name. A "Sitemap" page that names its
+  // sections but not the sixteen hubs beneath them is a map with the largest
+  // region left blank — and these are sixteen real links from a page Google
+  // already crawls, which is the cheapest internal linking on the site.
+  //
+  // Degrades to nothing on failure: fetchFamilies() warns and returns [], the
+  // section disappears, and the rest of the map still renders.
+  const [families, setFamilies] = useState([]);
+  useEffect(() => {
+    let alive = true;
+    fetchFamilies().then((f) => { if (alive) setFamilies(f); });
+    return () => { alive = false; };
+  }, []);
 
   useDocumentMeta({
     title: t('sitemapPage.title') || 'Sitemap — The Books Oracle',
@@ -53,6 +74,27 @@ export default function SitemapPage() {
           {t('sitemapPage.intro') || "Everything The Books Oracle has to offer. Wishlist, library, and profile pages are personal to each reader, so you won't find those listed here — sign in to see your own."}
         </p>
       </div>
+      {families.length > 0 && (
+        <section className="about-section">
+          <h2 className="about-section__title">
+            {t('sitemapPage.section.shelves') || 'The sixteen shelves'}
+          </h2>
+          <ul className="legal-list">
+            {families.map((f) => (
+              <li className="legal-list__item" key={f.slug}>
+                <RouteLink
+                  to="family-page"
+                  params={{ familySlug: f.slug }}
+                  className="footer-link lv-hl"
+                >
+                  {f.name}
+                </RouteLink>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
       {SECTIONS.map((section) => (
         <section className="about-section" key={section.heading}>
           <h2 className="about-section__title">

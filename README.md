@@ -4,7 +4,7 @@ A reading companion — wishlist, library, Passages (reading plans), Anthologies
 lists), book clubs, Kindred (follows), and an AI-powered "oracle" for book discovery. Built with React + Vite + SCSS, backed by Supabase for auth
 and cross-device sync, and Netlify Functions for API proxying.
 
-> Current version: **v0.67** — see [Releases](#releases) below for changelog.
+> Current version: **v0.68** — see [Releases](#releases) below for changelog.
 > Upgrading from an earlier version? Check the matching `MIGRATION_*.md` / `UPDATE_*.md`.
 
 ---
@@ -372,6 +372,215 @@ and forward requests. Locally you need `netlify dev` to make them work.
 ---
 
 ## Releases
+
+# Update Notes — v0.67 → v0.68: the genre surface, findable
+
+**No migrations. No env vars. Deploy the bundle, then resubmit the sitemap.**
+
+`public/app-version.json` bumped to `0.68` (the `vite.config.js` guard fails the
+build otherwise), `critical` false.
+
+## What was wrong
+
+v0.67 built the genre surface and then left it hard to find. Six things, all of
+them the same class of problem — a page that exists and cannot be reached, or a
+signal that says one thing to a crawler and another to a browser.
+
+- **`/genres` was an orphan.** `sitemap.js` submits it at priority 0.8 and its
+  own comment calls it "the hub every genre page hangs off". Nothing in the app
+  linked to it: the genre pages linked *up* to the hub, and no page linked *in*.
+  A hub with no inbound links has no internal weight, and for a reader it simply
+  did not exist. Now in both footers and on the sitemap page.
+- **The client overwrote the SEO title.** The prerender emitted
+  `Horror books — what to read | The Books Oracle`; `useDocumentMeta` in
+  `GenrePage.jsx` then set `Horror books — The Books Oracle`. Google fetches the
+  prerendered head *and* runs the JS, so the phrase written to catch the query
+  was not reliably the one indexed. The strings now live in two files and say
+  the same thing, with a comment in each pointing at the other.
+- **The family page had no books on it.** It listed its ten sub-genres and
+  stopped. That is a menu, not an answer to "what to read in horror" — the query
+  this page is the best-placed one on the site to win, because it spans every
+  genre on the shelf. It now carries the same cover wall the genre page does,
+  over the deduped union of its genres' books, plus the Oracle hand-off.
+- **`/genres` was not prerendered**, on the reasoning that it is "static enough".
+  It is not static: its sixteen links come from a fetch at runtime, so a crawler
+  that does not execute JS got an empty shell on the site's top genre hub. The
+  new branch also lists each shelf's three most-read genres inline, which turns
+  one fetch into ~64 discoverable destinations.
+- **Six families share a name with a genre on them** — horror, fantasy, science
+  fiction, gothic, romance, adventure — so `/genres/horror` and `/genre/horror`
+  are one character apart and both read as "horror books". Left alone they
+  compete and Google picks one, usually the weaker. The family now owns the
+  intent phrase ("— what to read"), the genre keeps the plain noun
+  ("Horror books"). Deliberately **not** a cross-page canonical: these are not
+  duplicates, and Google ignores a canonical between pages it can see are
+  different, so it would buy nothing and hide a hierarchy the breadcrumbs state
+  honestly.
+- **The family page opened with 900px of prose.** The first pass put the books
+  under ten genre rows, each carrying a full description — measured at a
+  headless 390×844, the first cover sat at **y=1227px**, half a screen past the
+  fold on a phone. The layout said "read about horror"; the page is for finding
+  a horror novel.
+
+  The fix is not to demote the genres. Baymard and NN/g both find sub-category
+  navigation belongs *above* the listing on a page like this, and both name
+  pushing it below the fold as the common damaging mistake. What ate the fold
+  was not the LINKS but the DESCRIPTIONS attached to them — and Baymard's
+  guidance on category intro copy is explicit: put it at the bottom, because
+  Google indexes it wherever it sits, so the move costs nothing in search.
+
+  So: chips (navigation, compact) → books → the full annotated genre list.
+
+  The chip row itself took three tries, and the measurements are why. A
+  horizontal scroller gives every family the same fixed height but hides genres
+  behind a gesture nobody performs on a trackpad. Plain `flex-wrap` is obvious
+  and fine on desktop — Fantasy's 21 chips take three rows — but on a 390px
+  phone the same 21 chips take **eleven rows and 506px**, putting the first
+  cover at y=821 against an 844px fold: a sliver of one cover, which is the
+  original bug reintroduced on the five largest families. What ships is wrap
+  **clamped to two rows** with a "Show all 21 genres" toggle: obvious like wrap,
+  fixed-height like scroll. First cover at **y=444px** on the worst family, on
+  a phone, in portrait or landscape.
+
+  Whether the toggle appears at all is **measured in the DOM**
+  (`scrollHeight > clientHeight`, re-measured through a `ResizeObserver`), not
+  inferred from the number of genres: 21 chips overflow two rows on a phone and
+  not on a desktop, so any threshold on genre count is wrong at one of the two
+  breakpoints. The chips filter in
+  place rather than navigate, because every genre's rows are already loaded —
+  going to `/genre/folkhorror` for a subset already in memory would be a network
+  round trip to show less — and the active chip offers the way through to the
+  real page. The genre page got the same treatment: its sibling-genre chips sat
+  between the description and the first cover, leading *away* from the genre the
+  reader had just chosen.
+- **No breadcrumbs, and the wrong list shape.** `BreadcrumbList` added to all
+  three genre shapes; `CollectionPage` moved from `hasPart` to
+  `mainEntity`/`ItemList`, which is the shape Google documents for a list page
+  and the only one that can carry position.
+
+- **`robots.txt` was never deployed.** It sat at the repo root; Vite only copies
+  `public/` into `dist`, which is what netlify.toml publishes. A request for
+  `/robots.txt` fell through the SPA catch-all and returned the **404 page with a
+  200 status** — verified live before the fix. Nothing was ever blocked (an
+  unparseable robots file reads as no rules), so it went unnoticed, but the
+  `Sitemap:` directive never reached any crawler that looks for it there rather
+  than in Search Console. Moved to `public/robots.txt`. `index.html`'s own
+  comment already listed robots.txt as one of four places the domain is written
+  down, which is how a file nobody had fetched stayed believed-in.
+- **The genre prerender had been listing no books since v0.67.** It asked
+  `book_genres_view?select=book_id,title,author`. That view is `book_genres`
+  joined to `genres` — it carries the GENRE's name and description and has **no
+  title, author or cover_url**. PostgREST answered
+  `400 column book_genres_view.title does not exist` on every request; the caller
+  did `bRes.ok ? await bRes.json() : []`, so every prerendered genre page shipped
+  an empty book list for two weeks. Confirmed against the production database,
+  not inferred from the migration.
+
+  This is the **sixth** time this codebase has turned a failed request into an
+  ordinary empty result, and the second on this exact view — `genreService.js`
+  carries a fifteen-line comment about the same trap ending "it will happen a
+  third time." It did, in the file that comment was written to warn. Both
+  branches now use one `booksForGenres()` helper: ids from `book_genres`,
+  hydrate from `books`, loud on either failure.
+- **No `og:image` on any of the three genre shapes.** Every other entity page has
+  had a branded card since v0.48, so a shelf pasted into Slack or WhatsApp was a
+  bare text row next to a book link that renders a card. Nothing to do with
+  ranking; everything to do with whether the link gets clicked.
+- **`INDEX_FLOOR` was a bare `5` here** and a named constant in the other two
+  places that must agree with it. Named, with the other two listed by path.
+
+## Verify
+
+```
+node batch-scripts/probes/genrePrerender.probe.mjs
+```
+
+New probe. It runs the three genre branches through the **real**
+`injectMeta`/`injectBody` with Supabase stubbed and no network, and asserts on
+the injected HTML: title parity, one robots tag (not two), noindex below the
+floor and the permissive default above it, breadcrumbs present, and — the one
+that needs stub data to prove — that a book on two genres of the same family
+appears **once** on the family wall.
+
+**The stub enforces the real schema.** It carries the column list for each
+table and answers `400 column X.y does not exist` exactly as PostgREST would.
+That is the half that matters: the probe's first version returned whatever the
+caller asked for, so it passed *while the bug above was live in production*. A
+stub that answers questions the database would refuse is not a test, it is a
+second implementation that agrees with the bug.
+
+Every bug listed above is invisible in a passing build and invisible in a
+browser; you see them only by asserting on the bytes the crawler receives.
+
+## Tests
+
+`npm run test` (Vitest — Jest needs babel and ESM workarounds on a Vite project;
+Vitest reuses `vite.config.js`). `npm run verify` runs lint, build and test in
+that order, which is the order CI uses and the order that matters: the
+build-output tests assert on `dist/` and **skip themselves when it is absent**,
+so running them before a build makes them quietly do nothing.
+
+Four files, chosen by what has actually gone wrong here rather than by coverage:
+
+| File | Catches |
+|---|---|
+| `tests/contracts.test.js` | Lists written down in two files that cannot see each other: `EARNABLE_TYPES` vs the SQL kind-check, `INDEX_FLOOR` across three files, client vs prerendered `<title>`. |
+| `tests/failure-is-not-empty.test.js` | A rejected query returning what an empty result returns. |
+| `tests/prerender.test.js` | The head and body a crawler receives, against a **schema-aware** Supabase stub. |
+| `tests/build-output.test.js` | Files that must reach `dist/`, not merely exist in the repo. |
+
+Only two of the six expensive bugs on this project were rendering faults; the
+rest were contract drift, which no component test can see, because each file is
+individually correct and it is their disagreement that is the bug. That is why
+there are no React tests yet and no jsdom — they can be added when a rendering
+bug costs a day, not before.
+
+**The suite was verified by reintroducing the bugs.** Each of the six was put
+back and the suite confirmed red, then reverted:
+
+| Reintroduced bug | Result |
+|---|---|
+| `female_authors_count` dropped from the constraint (the v0.55 bug) | 1 failed |
+| Client title drifts from the prerendered one (v0.67) | 1 failed |
+| `INDEX_FLOOR` raised in one file only | 1 failed |
+| Prerender asks `book_genres_view` for `title` (v0.67) | 4 failed |
+| A read swallows its error again | 1 failed |
+| `robots.txt` not in `dist/` | 2 failed |
+
+A test suite nobody has seen fail is a suite of unverified claims. The first
+attempt at the fourth mutation **passed**, because it put `title` in a filter
+rather than the `select` and so was not the bug it claimed to reproduce —
+worth recording, since a mutation that does not reproduce the bug proves
+nothing about the test.
+
+The prerender stub carries each table's real column list and answers
+`400 column X.y does not exist` exactly as PostgREST would. Keep it in step with
+`supabase/migrations` when a view changes: a stub that answers questions the
+database would refuse is not a test, it is a second implementation that agrees
+with the bug.
+
+## CI
+
+`.github/workflows/ci.yml` — lint, build, test on every push to `main` and every
+pull request. Nothing ran automatically before v0.68; the other three workflows
+are batch jobs and none of them looks at the code. Node is pinned to 20 to match
+`netlify.toml`; if those drift, CI is testing a runtime the site does not deploy
+on.
+
+## After deploying
+
+Search Console → Sitemaps → resubmit `https://www.thebooksoracle.com/sitemap.xml`.
+Google retired the anonymous sitemap ping endpoint in 2023, so there is no URL
+to curl — resubmitting in the console is the request. The sixteen family URLs
+and the above-floor genre URLs were already in the file from v0.67; what changed
+is that they now lead somewhere worth crawling.
+
+Worth watching in Search Console over the next month, in this order: whether
+`/genres` starts accruing impressions at all (it had no inbound links, so a flat
+line there was expected), and whether `/genres/horror` or `/genre/horror` is the
+URL Google surfaces for broad horror queries. If it picks the genre page over
+the family page, the title split above is the lever to pull again — not a
+canonical.
 
 # Update Notes — v0.66.1 → v0.67: the genre layer
 

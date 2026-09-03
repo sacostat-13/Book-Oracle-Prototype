@@ -17,7 +17,10 @@
     "dump:db": "npx supabase db dump -f supabase/dump/schema.sql",
     "dump:data": "npx supabase db dump --data-only -f supabase/dump/data.sql",
     "reset:db": "npx supabase db reset",
-    "lint": "eslint src"
+    "lint": "eslint src",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "verify": "npm run lint && npm run build && npm run test"
   },
   "dependencies": {
     "@gsap/react": "^2.1.2",
@@ -42,6 +45,7 @@
     "supabase": "^2.22.6",
     "vite": "^5.3.0",
     "vite-plugin-pwa": "^0.20.0",
+    "vitest": "^2.1.9",
     "workbox-window": "^7.0.0"
   }
 }

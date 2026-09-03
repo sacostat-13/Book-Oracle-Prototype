@@ -30,6 +30,12 @@ export default function Footer({ guestMode = false }) {
     { label: t('footer.about') || 'About', route: 'about' },
     { label: t('nav.oracle') || 'The Oracle', route: 'oracle' },
     { label: t('nav.readNext') || 'Reading plans', route: 'read-next' },
+    // v0.68. /genres was submitted to Google at priority 0.8 and described in
+    // sitemap.js as "the hub every genre page hangs off" while nothing in the
+    // app linked to it: the genre pages linked UP to the hub and no page linked
+    // IN. A hub with no inbound links is a hub in the sitemap only — for a
+    // reader it did not exist, and for a crawler it had no internal weight.
+    { label: t('footer.genres') || 'Browse by genre', route: 'genres-index' },
     // v0.65: was routing to 'profile' — the subscription tab, which is where
     // you MANAGE a plan, not where you read what the plans are. Pricing lives
     // on About; the anchor param drives the deep-link scroll it already

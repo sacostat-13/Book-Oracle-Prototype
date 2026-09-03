@@ -16,9 +16,26 @@
 
 // The version label shown as "current" — keep in sync with package.json and
 // the README version line.
-export const CURRENT_VERSION = 'v0.67';
+export const CURRENT_VERSION = 'v0.68';
 
 export const RELEASES = [{
+    version: 'v0.68',
+    date: '2026-09-03',
+    titleEn: 'A shelf you can actually read from',
+    titleEs: 'Un estante del que se puede leer',
+    bodyEn: [
+      'Shelf pages have books on them. Open Horror & the Uncanny and you now get a wall of books drawn from every genre on that shelf, not just a list of the ten genres — and the Oracle is there if you would rather be asked than choose.',
+      'The genres are a row of filters at the top. Tap Folk Horror and the wall narrows to Folk Horror without leaving the page; tap it again and the whole shelf comes back. On the bigger shelves the row shows two lines and opens the rest on request, so the covers start near the top instead of a screen and a half down.',
+      'Browse by genre is in the footer and on the sitemap. It was reachable only if you were already inside a genre page, which is a strange thing to say about the page the whole genre section hangs off.',
+      'The sitemap page lists all sixteen shelves by name.',
+    ],
+    bodyEs: [
+      'Las páginas de estante ahora tienen libros. Abrí Terror y lo Extraño y vas a ver un muro de libros de todos los géneros de ese estante, no solo la lista de los diez géneros. Y está el Oráculo, por si preferís que te pregunten en vez de elegir.',
+      'Los géneros son una fila de filtros arriba. Tocá Folk Horror y el muro se achica a Folk Horror sin salir de la página; tocá de nuevo y vuelve el estante entero. En los estantes grandes la fila muestra dos líneas y despliega el resto si lo pedís, así las portadas empiezan cerca de arriba y no a pantalla y media.',
+      'Explorar por género está en el pie de página y en el mapa del sitio. Antes solo se llegaba estando ya dentro de una página de género, lo cual es raro para la página de la que cuelga toda la sección.',
+      'El mapa del sitio lista los dieciséis estantes por nombre.',
+    ],
+  }, {
     version: 'v0.67',
     date: '2026-09-03',
     titleEn: 'Sixteen shelves',

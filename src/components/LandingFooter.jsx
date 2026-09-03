@@ -34,6 +34,9 @@ export default function LandingFooter() {
     { label: t('footer.refund') || 'Refund Policy', route: 'refund' },
     { label: t('footer.sitemap') || 'Sitemap', route: 'sitemap' },
     { label: t('footer.about') || 'About', route: 'about' },
+    // The logged-out footer especially: this is the footer a crawler sees on
+    // the homepage, and /genres is the page it should reach from there.
+    { label: t('footer.genres') || 'Browse by genre', route: 'genres-index' },
   ];
 
   const current = LANGS.find((l) => l.code === lang) || LANGS[0];
