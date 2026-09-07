@@ -227,8 +227,7 @@
     border: 1px solid rgba(201, 162, 75, .3);
     border-radius: 2px;
     color: var(--text-secondary);
-    font-family: Cormorant Garamond, serif;
-    font-style: italic;
+    font-family: var(--ro-font-display);
     font-size: .95rem;
     cursor: pointer;
     white-space: nowrap;
@@ -326,7 +325,6 @@
 
       .cover-grid-hover-author {
         font-family: var(--ro-font-display);
-        font-style: italic;
         font-size: 13px;
         line-height: 1.1;
         color: var(--ro-gold-text);
@@ -577,7 +575,6 @@
 // Row list container (mirrors the DS Action Bar .lv-list reference markup)
 .lv-list {
   background: var(--ro-surface);
-  border: 1px solid var(--ro-border);
   border-radius: var(--ro-radius-lg);
   overflow: hidden;
 }
@@ -820,7 +817,7 @@
   }
 
   .cr-pages {
-    font: 400 12px / 1.4 "Inter";
+    font: 400 12px / 1.4 var(--ro-font-body);
     color: var(--ro-muted);
   }
 }
@@ -1018,7 +1015,6 @@
   background: transparent;
   color: var(--ro-text);
   font-family: var(--ro-font-display);
-  font-style: italic;
   font-size: 16px;
   cursor: pointer;
   text-decoration: none;
@@ -1320,7 +1316,6 @@
 
   &__title {
     font-family: var(--ro-font-display);
-    font-style: italic;
     font-size: 24px;
     line-height: 1.15;
     color: var(--ro-text);
@@ -1389,7 +1384,6 @@
 
 .plan-hero__title {
   font-family: var(--ro-font-display);
-  font-style: italic;
   font-size: 34px;
   line-height: 1.15;
   color: var(--ro-text);
@@ -1606,7 +1600,6 @@
 
 .plan-month-card__author {
   font-family: var(--ro-font-display);
-  font-style: italic;
   font-size: 16px;
   color: var(--ro-gold-text);
   margin-top: 5px;
@@ -1907,7 +1900,6 @@
 
 .oracle-fork-card__label {
   font-family: var(--ro-font-display);
-  font-style: italic;
   font-weight: 600;
   font-size: 24px;
   color: var(--ro-text);
@@ -1966,7 +1958,6 @@
 
 .oracle-cat-card__name {
   font-family: var(--ro-font-display);
-  font-style: italic;
   font-size: 18px;
   color: var(--ro-text);
   margin-bottom: 8px;
@@ -2031,7 +2022,6 @@
 
 .oracle-results-title {
   font-family: var(--ro-font-display);
-  font-style: italic;
   font-size: 28px;
   color: var(--ro-text);
 
@@ -2076,7 +2066,6 @@
 }
 
 .oracle-ask-box {
-  border: 1px solid var(--ro-border-strong);
   border-radius: var(--ro-radius-lg);
   background: var(--ro-surface);
   padding: 4px 4px 10px;
@@ -2402,7 +2391,6 @@
 
 .series-page-progress {
   background: var(--ro-surface);
-  border: 1px solid var(--ro-border);
   border-radius: var(--ro-radius-lg);
   padding: 18px 22px;
   margin-top: 6px;
@@ -2700,7 +2688,6 @@
   }
 
   .rn-author {
-    font-style: italic;
     font-size: .9rem;
     color: var(--ro-muted);
     opacity: .75;

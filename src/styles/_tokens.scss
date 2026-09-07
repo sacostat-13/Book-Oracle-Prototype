@@ -20,7 +20,7 @@ $ro-forest:      #5C8264;  // the READ pill, some covers
 
 // ---- Typography (serif voice + serif body + mono labels) ---
 $ro-font-display: 'Instrument Serif', Georgia, 'Times New Roman', serif; // display / the Oracle's voice
-$ro-font-body:    'Inter', 'EB Garamond', Georgia, 'Times New Roman', serif;      // body, headings, buttons (italic for emphasis)
+$ro-font-body:    'EB Garamond', Georgia, 'Times New Roman', serif;      // body, headings, buttons (italic for emphasis)
 $ro-font-mono:    'IBM Plex Mono', ui-monospace, 'SFMono-Regular', monospace; // labels, overlines, metadata
 
 // Type ramp  (name: (size, line-height, weight, family))
@@ -29,13 +29,16 @@ $ro-type: (
   h1:        (36px, 1.06, 400, $ro-font-display),
   h2:        (28px, 1.10, 400, $ro-font-display),
   section:   (24px, 1.15, 400, $ro-font-display),
-  quote:     (20px, 1.40, 400, $ro-font-body),    // use font-style: italic
-  title:     (18px, 1.25, 600, $ro-font-body),
-  body-lg:   (16px, 1.60, 400, $ro-font-body),
-  body:      (14px, 1.55, 400, $ro-font-body),
-  button:    (15px, 1.00, 600, $ro-font-body),    // often font-style: italic
+  // EB Garamond's x-height is 0.43 of its em box against Inter's 0.57, so the
+  // body-font steps carry ~1.15x the size Inter needed for the same reading
+  // colour. Display (Instrument Serif) and label (Plex Mono) steps are unchanged.
+  quote:     (21px, 1.40, 400, $ro-font-body),    // the Oracle speaking; italic
+  title:     (19px, 1.25, 600, $ro-font-body),
+  body-lg:   (18px, 1.55, 400, $ro-font-body),
+  body:      (16px, 1.50, 400, $ro-font-body),
+  button:    (16px, 1.00, 600, $ro-font-body),
   label:     (13px, 1.20, 600, $ro-font-mono),    // mono, UPPERCASE
-  caption:   (12px, 1.30, 500, $ro-font-body),
+  caption:   (13px, 1.30, 500, $ro-font-body),
   overline:  (10px, 1.00, 600, $ro-font-mono),    // letter-spacing: .18em; text-transform: uppercase
 );
 

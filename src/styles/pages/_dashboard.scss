@@ -2,18 +2,18 @@
 @use "../components/buttons"; // dependency for cross-file @extend
 
 // pages/_dashboard.scss — The Books Oracle R3
-// Dashboard hero + all widget patterns. Exact to the V2 homewidgets DS spec.
-// Every widget card uses the gradient surface treatment:
-//   background: linear-gradient(150deg, var(--ro-surface), var(--ro-surface-3))
-//   border: 1px solid var(--ro-border)   border-radius: 13–16px
-// Section eyebrows use IBM Plex Mono, 11px, 0.2em tracking, gold, with a small gold glyph.
+// Dashboard hero + all widget patterns.
+// Widget cards are a flat surface with no stroke and a single radius from the ramp:
+//   background: var(--ro-surface)   border-radius: var(--ro-radius-lg)
+// Widget headings are real <h2>s in Instrument Serif roman, with a small gold glyph.
+// Italic is reserved for book titles, the Oracle's voice, and quiet asides — never
+// for numbers, author names, or button labels.
 
 // ── Shared surface mixin ──────────────────────────────────────────────────────
 // Applied to every widget card background.
 %widget-surface {
-  background: linear-gradient(150deg, var(--ro-surface), var(--ro-surface-3));
-  border: 1px solid var(--ro-border);
-  border-radius: 14px;
+  background: var(--ro-surface);
+  border-radius: var(--ro-radius-lg);
 }
 
 // ── Widget section wrapper ────────────────────────────────────────────────────
@@ -23,8 +23,11 @@
   gap: 14px;
 }
 
-// ── Section eyebrow (glyph + mono label) ─────────────────────────────────────
-.db-eyebrow {
+// ── Mono overline ─────────────────────────────────────────────────
+// Retained for genuine metadata labels only (hero kicker, AI label, the line
+// above an Oracle result, settings group labels) — no longer the device that
+// carries section hierarchy. Widget headings are .db-widget-title below.
+%eyebrow {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -36,7 +39,21 @@
   color: var(--ro-gold);
 }
 
-.db-eyebrow__glyph {
+// ── Widget heading (glyph + serif roman h2) ──────────────────────
+.db-widget-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  font-family: var(--ro-font-display);
+  font-style: normal;
+  font-weight: 400;
+  font-size: 20px;
+  line-height: 1.15;
+  color: var(--ro-text);
+}
+
+.db-widget-title__glyph {
   font-size: 11px;
   line-height: 1;
   color: var(--ro-gold);
@@ -103,7 +120,7 @@
 }
 
 .db-hero__eyebrow {
-  @extend .db-eyebrow;
+  @extend %eyebrow;
   margin-bottom: 12px;
 }
 
@@ -209,7 +226,7 @@
 }
 
 .db-ai__label {
-  @extend .db-eyebrow;
+  @extend %eyebrow;
   font-size: 11px;
 }
 
@@ -291,7 +308,6 @@
 
 .db-cr-author {
   font-family: var(--ro-font-body);
-  font-style: italic;
   font-size: 14px;
   line-height: 1.2;
   color: var(--ro-text-2);
@@ -349,7 +365,7 @@
 }
 
 .db-spark__result-eyebrow {
-  @extend .db-eyebrow;
+  @extend %eyebrow;
   margin-bottom: 6px;
   font-size: 10px;
 }
@@ -365,7 +381,6 @@
 
 .db-spark__result-author {
   font-family: var(--ro-font-body);
-  font-style: italic;
   font-size: 14px;
   color: var(--ro-muted);
   margin-top: 4px;
@@ -470,7 +485,6 @@
 
 .db-cta-label {
   font-family: var(--ro-font-body);
-  font-style: italic;
   font-weight: 700;
   font-size: 23px;
   line-height: 1.1;
@@ -510,7 +524,7 @@
 
 .db-stat-value {
   font-family: var(--ro-font-display);
-  font-style: italic;
+  font-variant-numeric: tabular-nums;
   font-size: 34px;
   line-height: 1;
   color: var(--ro-text);
@@ -789,7 +803,7 @@
 
 .db-streak__num {
   font-family: var(--ro-font-display);
-  font-style: italic;
+  font-variant-numeric: tabular-nums;
   font-size: 40px;
   line-height: 1;
   color: var(--ro-gold-text);
@@ -820,7 +834,6 @@
 
 .db-streak__label {
   font-family: var(--ro-font-display);
-  font-style: italic;
   font-size: 21px;
   line-height: 1.1;
   color: var(--ro-text);
@@ -887,7 +900,6 @@
 
 .db-plan-title {
   font-family: var(--ro-font-display);
-  font-style: italic;
   font-size: 19px;
   line-height: 1.1;
   color: var(--ro-text);
@@ -905,7 +917,6 @@
 
 .db-plan-cta {
   font-family: var(--ro-font-body);
-  font-style: italic;
   font-weight: 600;
   font-size: 14px;
   color: var(--ro-gold-text);
@@ -950,7 +961,6 @@
   flex: 1;
   min-width: 0;
   font-family: var(--ro-font-display);
-  font-style: italic;
   font-size: 19px;
   color: var(--ro-text);
   overflow: hidden;
@@ -1027,7 +1037,6 @@
 
 .db-club-cta {
   font-family: var(--ro-font-body);
-  font-style: italic;
   font-weight: 600;
   font-size: 14px;
   color: var(--ro-gold-text);
@@ -1156,7 +1165,7 @@
 }
 
 .db-ff-text {
-  font: 400 16px / 1.4 "Inter";
+  font: 400 16px / 1.4 var(--ro-font-body);
   line-height: 1.4;
 }
 
@@ -1169,7 +1178,6 @@
 
 .db-ff-verb {
   font-family: var(--ro-font-body);
-  font-style: italic;
   color: var(--ro-muted);
 }
 
@@ -1234,13 +1242,12 @@
 }
 
 .db-settings__eyebrow {
-  @extend .db-eyebrow;
+  @extend %eyebrow;
   margin-bottom: 4px;
 }
 
 .db-settings__sub {
   font-family: var(--ro-font-body);
-  font-style: italic;
   font-size: 13px;
   color: var(--ro-muted);
 }
@@ -1293,7 +1300,6 @@
 .db-settings__name {
   flex: 1;
   font-family: var(--ro-font-display);
-  font-style: italic;
   font-size: 16px;
   color: var(--ro-text);
 }
@@ -1426,9 +1432,8 @@
       padding-top: 8px;
 
       .feed-verb {
-        font: 400 16px / 1.4 "Inter";
+        font: 400 16px / 1.4 var(--ro-font-body);
         color: var(--ro-text);
-        font-style: italic;
       }
 
       .feed-title {

@@ -4,7 +4,7 @@ A reading companion — wishlist, library, Passages (reading plans), Anthologies
 lists), book clubs, Kindred (follows), and an AI-powered "oracle" for book discovery. Built with React + Vite + SCSS, backed by Supabase for auth
 and cross-device sync, and Netlify Functions for API proxying.
 
-> Current version: **v0.68** — see [Releases](#releases) below for changelog.
+> Current version: **v0.69** — see [Releases](#releases) below for changelog.
 > Upgrading from an earlier version? Check the matching `MIGRATION_*.md` / `UPDATE_*.md`.
 
 ---
@@ -372,6 +372,83 @@ and forward requests. Locally you need `netlify dev` to make them work.
 ---
 
 ## Releases
+
+# Update Notes — v0.68 → v0.69: the design system, applied
+
+**No migrations. No env vars. No schema changes. Deploy the bundle.**
+
+`public/app-version.json` bumped to `0.69`, `critical` false.
+
+## What was wrong
+
+The site was being read as AI-generated. Auditing the source against the usual
+list of tells found that most of the accusations did not stick — the type stack,
+the parchment palette, the gradient count and the landing page's narrative
+structure are all fine, and the landing page in particular was already doing the
+right thing. The problem was the app pages, and it was one problem wearing four
+costumes: **a design system that is declared and then not followed.**
+
+- **The body font was Inter.** `$ro-font-body` led with `'Inter'` while
+  `_typography.scss` two files away documented `Body = EB Garamond`. EB Garamond
+  was in the stack but only as a fallback, so it never rendered, and the italic
+  the system calls "the Oracle's softer voice" was Inter italic. Six families
+  were loaded across three link tags; two of them (Cormorant Garamond, Special
+  Elite) had one CSS rule each.
+- **Every widget card was the same composite.** `_dashboard.scss` opened with a
+  spec comment mandating `linear-gradient(150deg, …)` + `1px solid` +
+  `border-radius: 13–16px` on every card, and implemented it as one placeholder
+  `@extend`ed eleven times. Gradient fill, thin stroke and soft radius applied
+  uniformly is the single most-cited generated-UI signature. Note the spec gave a
+  *range*, which is why this file alone carried seven different radii.
+- **The eyebrow had replaced headings.** `Dashboard.jsx` is 1,346 lines with one
+  `<h1>` and zero `<h2>`. All section hierarchy was a 11px gold mono overline,
+  rendered by `WidgetShell` for every widget — twelve of them down one column. A
+  document-outline problem as much as a visual one.
+- **Italic had no meaning.** 27 declarations in `_dashboard.scss` alone, on stat
+  numbers, streak counts, author names, button labels and empty states. Book
+  titles were italic too, correctly — and invisibly, because the author name
+  beside them was italic as well.
+- **Every page title was one formula.** `<em class="accent">` inside 39 i18n
+  strings, splitting each title into a plain half and a burgundy italic half,
+  often on an arbitrary word (`Privacy <em>Policy</em>`, `Books I've <em>Read</em>`).
+  Invisible to a CSS audit because it lived in the catalogs.
+
+## What changed
+
+- `$ro-font-body` and `--ro-font-body` lead with EB Garamond; the five hardcoded
+  `"Inter"` faces use the token. `index.html` drops Inter and Cormorant Garamond
+  and adds `0,600`/`1,500` to EB Garamond so the ramp's 600 steps stop
+  synthesizing bold. Six families across three link tags → four across two.
+- Body-font ramp steps up ~1.15×. Measured with canvas `TextMetrics`, EB
+  Garamond's x-height is 6.0px at 14px against Inter's 8.0px, so matching sizes
+  read markedly smaller. Display (Instrument Serif) and label (Plex Mono) steps
+  are untouched — different faces, different metrics. The ratio is recorded in a
+  comment in `_tokens.scss`.
+- `%widget-surface` is a flat `var(--ro-surface)` at one `var(--ro-radius-lg)`,
+  no gradient and no stroke. The same stroke came off 14 further card blocks in
+  `_book-pages`, `_social`, `_clubs` and `_misc`; popovers, modals, inputs and
+  cover art keep theirs, where an edge is doing real work.
+- Widget headings are real `<h2>`s (`.db-widget-title`) in Instrument Serif
+  roman. The mono overline survives as a `%eyebrow` placeholder for the four
+  genuine metadata labels — hero kicker, AI label, Oracle result line, settings
+  groups.
+- Italic is rationed to book, series and edition titles, the Oracle's voice,
+  quiet asides, `::placeholder` and inline `<em>`. Stat values and streak counts
+  are roman with `font-variant-numeric: tabular-nums`. 106 declarations → 57
+  across the five page files.
+- The accent is colour-only (`<span class="accent">`, never `<em>`) and lands on
+  the noun the page is about, one per heading — including the seven dashboard
+  quick actions, which read too plain without it once the cards went flat.
+
+## Note for the next pass
+
+The type ramp in `_tokens.scss` is used 25 times, 19 of them for `overline`.
+There are **488 hardcoded `font-size: Npx` declarations** in the SCSS. The ramp
+change above is therefore nearly a no-op in practice, and the real type scale of
+this app is those 488 values. Same shape as the radius ramp (~90 ad-hoc values),
+the breakpoint map (`ro-up`/`ro-down`/`ro-between` used 4 times against 19
+hardcoded `@media` widths) and the `13–16px` spec range. Consolidating them is
+the remaining half of this release's premise.
 
 # Update Notes — v0.67 → v0.68: the genre surface, findable
 

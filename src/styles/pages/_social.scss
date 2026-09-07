@@ -23,7 +23,6 @@
 
 .pf-stat-card {
   background: var(--ro-surface);
-  border: 1px solid var(--ro-border);
   border-radius: 14px;
   padding: 22px;
 }
@@ -82,7 +81,6 @@
 // ── Pace chart panel ──────────────────────────────────────────────────────────
 .pf-pace-panel {
   background: var(--ro-surface);
-  border: 1px solid var(--ro-border);
   border-radius: 14px;
   padding: 24px;
 }
@@ -175,7 +173,6 @@
 
 .pf-pace-drill__title {
   font-family: var(--ro-font-display);
-  font-style: italic;
   font-size: 17px;
   color: var(--ro-text);
   line-height: 1.2;
@@ -257,7 +254,6 @@
 
 .pf-author-name {
   font-family: var(--ro-font-display);
-  font-style: italic;
   font-size: 26px;
   color: var(--ro-text);
 }
@@ -341,7 +337,6 @@
 .pf-account-card {
   position: relative;
   background: var(--ro-surface);
-  border: 1px solid var(--ro-border-strong);
   border-radius: 18px;
   padding: 28px; // v0.43.1: was 34px — tightened with the pf-section spacing pass
   box-shadow: var(--ro-shadow);
@@ -350,7 +345,6 @@
 
 .pf-account-card__title {
   font-family: var(--ro-font-display);
-  font-style: italic;
   font-size: 26px;
   color: var(--ro-text);
 }
@@ -379,7 +373,6 @@
 
 .pf-account-card__section-title {
   font-family: var(--ro-font-display);
-  font-style: italic;
   font-size: 21px;
   color: var(--ro-text);
 }
@@ -403,7 +396,6 @@
 
 .pf-username-value {
   font-family: var(--ro-font-display);
-  font-style: italic;
   font-size: 18px;
   color: var(--ro-gold-text);
 }
@@ -508,7 +500,6 @@
   align-items: center;
   gap: 16px;
   background: var(--ro-surface);
-  border: 1px solid var(--ro-border);
   border-radius: 12px;
   padding: 14px 18px;
   position: relative;
@@ -522,7 +513,6 @@
 
 .friend-bar__name {
   font-family: var(--ro-font-display);
-  font-style: italic;
   font-size: 19px;
   color: var(--ro-text);
 }
@@ -608,7 +598,6 @@
 
 .friends-suggest-card {
   background: var(--ro-surface);
-  border: 1px solid var(--ro-border);
   border-radius: 12px;
   padding: 20px;
   display: flex;
@@ -620,7 +609,6 @@
 
 .friends-suggest-card__name {
   font-family: var(--ro-font-display);
-  font-style: italic;
   font-size: 18px;
   color: var(--ro-text);
 }
@@ -676,7 +664,6 @@
 
 .fp-hero__name {
   font-family: var(--ro-font-display);
-  font-style: italic;
   font-size: 34px;
   line-height: 1.05;
   color: var(--ro-text);
@@ -797,7 +784,6 @@
 
 .ls-dash-title {
   font-family: var(--ro-font-display);
-  font-style: italic;
   font-size: 46px;
   line-height: 1.02;
   color: var(--ro-text);
@@ -805,7 +791,6 @@
   em,
   .accent {
     color: var(--ro-burgundy);
-    font-style: italic;
   }
 
   @include tokens.ro-down(mobile) {
@@ -846,7 +831,6 @@
 
 .ls-page-title {
   font-family: var(--ro-font-display);
-  font-style: italic;
   font-size: 44px;
   line-height: 1.02;
   color: var(--ro-text);
@@ -1229,7 +1213,6 @@
 
 .rating-modal__title {
   font-family: var(--ro-font-display);
-  font-style: italic;
   font-size: 28px;
   line-height: 1.15;
   color: var(--ro-text);
@@ -1412,7 +1395,6 @@
   gap: var(--ro-space-4);
   margin: var(--ro-space-4) 0 var(--ro-space-6);
   padding: var(--ro-space-4);
-  border: 1px solid var(--ro-border);
   border-radius: var(--ro-radius-lg);
   background: var(--ro-surface-2);
 }
