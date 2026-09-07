@@ -29,11 +29,11 @@
     "more": "···",
     "lightMode": "Light mode",
     "darkMode": "Dark mode",
-    "currentlyReadingFull": "Currently <em class=\"accent\">Reading</em>",
+    "currentlyReadingFull": "Currently Reading",
     "myLists": "Anthologies",
     "bookClubs": "Book Clubs",
     "oracleNav": "Oracle",
-    "currentlyReadingLabel": "Currently <em class=\"accent\">Reading</em>",
+    "currentlyReadingLabel": "Currently Reading",
     "listsLabel": "Anthologies",
     "bookClubsLabel": "Book Clubs",
     "oracleLabel": "Oracle",
@@ -104,7 +104,7 @@
   "dashboard": {
     "eyebrow": "Your Library",
     "greeting": "Good to see you, ",
-    "greetingBack": "Welcome <em class=\"accent\">back</em>",
+    "greetingBack": "Welcome back",
     "levelPill": "{level} reader",
     "booksRead": "{count} read",
     "inWishlist": "{count} in wishlist",
@@ -129,19 +129,19 @@
     "emptyFeedText": "Your reading story starts here.",
     "emptyFeedSub": "Mark a book as read or add one to your wishlist.",
     "showMore": "Show {count} more updates",
-    "ctaOracle": "The <em class=\"accent\">Oracle</em>",
+    "ctaOracle": "The Oracle",
     "ctaOracleSub": "Draw from the vault by mood or genre",
-    "ctaPlan": "Create a <em class=\"accent\">Passage</em>",
+    "ctaPlan": "Create a Passage",
     "ctaPlanSub": "A curated path to your next obsession",
-    "ctaWishlist": "Browse <em class=\"accent\">Wishlist</em>",
+    "ctaWishlist": "Browse Wishlist",
     "ctaWishlistSub": "Your queue of books to read",
-    "ctaLibrary": "View <em class=\"accent\">Library</em>",
+    "ctaLibrary": "View Library",
     "ctaLibrarySub": "Everything you've read",
-    "ctaStacks": "Wander the <em class=\"accent\">Stacks</em>",
+    "ctaStacks": "Wander the Stacks",
     "ctaStacksSub": "A wall of covers to turn over",
-    "ctaList": "Curate a <em class=\"accent\">Anthology</em>",
+    "ctaList": "Curate a Anthology",
     "ctaListSub": "Gather books around an idea, and share it",
-    "ctaClubs": "Find a <em class=\"accent\">Book Club</em>",
+    "ctaClubs": "Find a Book Club",
     "ctaClubsSub": "Read the same book alongside other people",
     "feedFinished": "Finished",
     "feedStarted": "Started reading",
@@ -249,7 +249,7 @@
     "markFinished": "✓ Finished",
     "remove": "Remove",
     "confirmRemove": "Remove \"{title}\" from currently reading?",
-    "pageTitle": "Currently <em class=\"accent\">Reading</em>"
+    "pageTitle": "Currently Reading"
   },
   "readNext": {
     "breadcrumb": "Dashboard",
@@ -263,7 +263,7 @@
     "start": "▶ Start",
     "markRead": "✓ Read",
     "remove": "Remove",
-    "pageTitle": "To Read <em class=\"accent\">Next</em>"
+    "pageTitle": "To Read Next"
   },
   "wishlist": {
     "eyebrow": "Wishlist",
@@ -297,7 +297,7 @@
     "markRead": "✓ Mark as read",
     "addToNext": "→ Read next",
     "remove": "Remove",
-    "pageTitle": "My <em class=\"accent\">Wishlist</em>"
+    "pageTitle": "My Wishlist"
   },
   "shelfFilters": {
     "more": "More filters",
@@ -344,17 +344,17 @@
     "bulkImport": "Bulk Import",
     "finishedOn": "Finished {date}",
     "stars": "{count} ★",
-    "pageTitle": "Books I've <em class=\"accent\">Read</em>"
+    "pageTitle": "Books I've Read"
   },
   "oracle": {
     "breadcrumbDashboard": "Dashboard",
     "forkEyebrow": "Wishlist Oracle",
     "forkSubtitle": "Three ways to draw books from the vault.",
-    "forkByGenres": "<em class=\"accent\">By genres</em>",
+    "forkByGenres": "By genres",
     "forkByGenresDesc": "Pick a temperament — folk horror, gothic, sapphic, Latin American — and draw three books to choose from.",
-    "forkBySimilar": "<em class=\"accent\">Based on other books</em>",
+    "forkBySimilar": "Based on other books",
     "forkBySimilarDesc": "Tell us 1–3 books you've loved. We'll find others with the same blood in them.",
-    "forkByAsk": "<em class=\"accent\">Ask the Oracle</em>",
+    "forkByAsk": "Ask the Oracle",
     "forkByAskDesc": "Tell it what you're after, in your own words — a mood, a moment, a question. It'll answer with three books.",
     "categoriesEyebrow": "By genres",
     "categoriesSubtitle": "Three books drawn fresh, {source}.",
@@ -392,11 +392,11 @@
     "quotaEmptyMonth": "Monthly limit reached",
     "quotaWallEyebrowMonth": "Monthly limit reached",
     "quotaWallBodyMonth": "Free accounts include {limit} AI calls per month.",
-    "forkPageTitle": "How shall we <em class=\"accent\">divine</em>?",
-    "categoriesPageTitle": "Choose a <em class=\"accent\">temperament</em>",
-    "similarPageTitle": "Pick <em class=\"accent\">1–3 books</em> you've loved",
+    "forkPageTitle": "How shall we <span class=\"accent\">divine</span>?",
+    "categoriesPageTitle": "Choose a temperament",
+    "similarPageTitle": "Pick 1–3 books you've loved",
     "askEyebrow": "Ask the Oracle",
-    "askPageTitle": "Ask for <em class=\"accent\">anything</em>",
+    "askPageTitle": "Ask for anything",
     "askSubtitle": "A mood, a moment, a question — tell the Oracle what you're after, in your own words.",
     "askNudgeText": "Set your favorite genres and mood in your profile — the Oracle leans on them to answer better.",
     "askNudgeCta": "Set genres & mood →",
@@ -404,7 +404,7 @@
     "askButton": "Ask the Oracle ☩",
     "askAsking": "The Oracle is listening…",
     "askError": "Couldn't reach the Oracle. Try rephrasing your question.",
-    "askResultsTitle": "Found <em class=\"accent\">{count}</em> books for you",
+    "askResultsTitle": "Found {count} books for you",
     "curationPending": "☩ {count} book is waiting to be read by the Oracle. Genres and details arrive overnight.",
     "curationPendingPlural": "☩ {count} books are waiting to be read by the Oracle. Genres and details arrive overnight."
   },
@@ -437,7 +437,7 @@
     "createOwnPlan": "Create my own passage",
     "yourPlanBreadcrumb": "Your Passage",
     "createPlanBreadcrumb": "Create Passage",
-    "createPageTitle": "Chart a <em class=\"accent\">path</em>",
+    "createPageTitle": "Chart a path",
     "listEyebrow": "Passages",
     "listTitle": "Your {accent}",
     "listTitleAccent": "passages",
@@ -489,7 +489,7 @@
     "emptyList": "Empty anthology — click to add books",
     "selectMode": "Select",
     "descPlaceholder2": "What's this anthology about?",
-    "pageTitle": "Your <em class=\"accent\">Anthologies</em>",
+    "pageTitle": "Your Anthologies",
     "listsSubtitle": "Anthologies you've curated — thematic shelves, gift guides, deep dives.",
     "moreBooks": "+{count} more",
     "myListsEyebrow": "My Anthologies",
@@ -506,7 +506,7 @@
     "followerCount": "{count} following",
     "curatedTitle": "Anthologies",
     "curatedEyebrow": "Anthologies",
-    "curatedPageTitle": "Discover <em class=\"accent\">Anthologies</em>",
+    "curatedPageTitle": "Discover Anthologies",
     "curatedSubtitle": "Shelves made by hand — yours, and the ones you follow.",
     "discoverBtn": "Discover anthologies",
     "myListsBtn": "My anthologies",
@@ -524,7 +524,7 @@
     "followError": "Couldn't do that just now — try again in a moment.",
     "followSignIn": "Sign in to follow an anthology.",
     "discoverEyebrow": "Discover",
-    "discoverPageTitle": "Discover <em class=\"accent\">Anthologies</em>",
+    "discoverPageTitle": "Discover Anthologies",
     "discoverSubtitle": "Anthologies made by other readers. Filter by genre and mood, and follow the ones worth keeping.",
     "discoverBreadcrumb": "Discover",
     "discoverSearchPlaceholder": "Search anthologies by name or description…",
@@ -717,7 +717,7 @@
     "privacyEmailNotifs": "Email me about activity",
     "shareProfile": "Your profile link",
     "copyLink": "Copy",
-    "pageTitle": "Your <em class=\"accent\">reading profile</em>",
+    "pageTitle": "Your reading profile",
     "labelFavoriteGenres": "Favourite genres",
     "labelCurrentMood": "Looking for right now",
     "editFavoriteGenres": "Edit favorite genres",
@@ -1171,8 +1171,8 @@
     "createNewBreadcrumb": "New Club",
     "confirmLeaveText": "Leave this club?",
     "memberBadge": "Member",
-    "pageTitle": "Book <em class=\"accent\">Clubs</em>",
-    "createPageTitle": "New <em class=\"accent\">Book Club</em>",
+    "pageTitle": "Book Clubs",
+    "createPageTitle": "New Book Club",
     "discoverClubs": "Discover clubs",
     "fieldVisibility": "Visibility",
     "visibilityPrivate": "Private",
@@ -1192,7 +1192,7 @@
     "directory": {
       "breadcrumb": "Discover",
       "eyebrow": "Discover",
-      "pageTitle": "Find a Book <em class=\"accent\">Club</em>",
+      "pageTitle": "Find a Book Club",
       "subtitle": "Join readers moving through the same books. Some clubs let you in right away — others review requests first.",
       "searchPlaceholder": "Search clubs by name…",
       "allGenres": "All genres",
@@ -1289,7 +1289,7 @@
     "backToClubs": "Back to clubs",
     "loadingSession": "Loading session…",
     "saveBookError": "Could not save book — try again",
-    "createPageTitle": "New <em class=\"accent\">Session</em>"
+    "createPageTitle": "New Session"
   },
   "discussion": {
     "questionsLabel": "Discussion questions",
@@ -1373,9 +1373,9 @@
     "signInToJoin": "Sign in to join",
     "needAccount": "You need an account to join a book club.",
     "joinError": "Could not join — the link may have expired.",
-    "invalidPageTitle": "Invalid <em class=\"accent\">invitation</em>",
-    "joinedPageTitle": "You've joined <em class=\"accent\">{name}</em>",
-    "previewPageTitle": "Join <em class=\"accent\">{name}</em>"
+    "invalidPageTitle": "Invalid invitation",
+    "joinedPageTitle": "You've joined <span class=\"accent\">{name}</span>",
+    "previewPageTitle": "Join <span class=\"accent\">{name}</span>"
   },
   "search": {
     "placeholder": "Search books…",
@@ -1502,7 +1502,7 @@
     "privacyLink": "Privacy Policy",
     "termsLink": "Terms of Service",
     "refundLink": "Refund Policy",
-    "pageTitle": "About the <em class=\"accent\">Oracle</em>"
+    "pageTitle": "About the <span class=\"accent\">Oracle</span>"
   },
   "share": {
     "modalEyebrow": "Share",
@@ -1877,7 +1877,7 @@
   },
   "privacy": {
     "breadcrumbs": "Privacy Policy",
-    "title": "Privacy <em class=\"accent\">Policy</em>",
+    "title": "Privacy Policy",
     "lastUpdated": "Last updated: July 30, 2026",
     "whoWeAreTitle": "Who we are",
     "whoWeArePara1": "The Books Oracle (accessible at thebooksoracle.com) is a personal reading companion application operated by an individual developer based in Costa Rica. ",
@@ -1909,7 +1909,7 @@
   },
   "terms": {
     "breadcrumbs": "Terms & Conditions",
-    "title": "<em class=\"accent\">Terms</em> & Conditions",
+    "title": "Terms & Conditions",
     "lastUpdated": "Last updated: June 25, 2026",
     "acceptanceTitle": "Acceptance",
     "acceptancePara1": "By creating an account or using The Books Oracle (thebooksoracle.com), you agree to these Terms. If you do not agree, please do not use the service. These terms form a binding agreement between you and the operator of The Books Oracle, an individual developer based in Costa Rica.",
@@ -1934,7 +1934,7 @@
   },
   "refunds": {
     "breadcrumbs": "Refund Policy",
-    "title": "<em class=\"accent\">Refund</em> Policy",
+    "title": "Refund Policy",
     "lastUpdated": "Last updated: June 25, 2026",
     "ourApproachTitle": "Our approach",
     "ourApproachPara1": "We want you to be happy with The Books Oracle Pro. If you subscribed and feel it isn't right for you, we will make it right.",

@@ -215,7 +215,6 @@
 
 .directory-card__name {
   font-family: var(--ro-font-display);
-  font-style: italic;
   font-size: 1.2rem;
   line-height: 1.15;
   color: var(--ro-text);
@@ -326,7 +325,6 @@
   gap: 10px;
   padding: 10px;
   background: var(--ro-surface);
-  border: 1px solid var(--ro-border);
   border-radius: var(--ro-radius-md);
 }
 
@@ -454,7 +452,6 @@
 
 .club-card__name {
   font-family: var(--ro-font-display);
-  font-style: italic;
   font-size: 1.2rem;
   color: var(--ro-text);
 }
@@ -557,7 +554,6 @@
 
 .session-card__title {
   font-family: var(--ro-font-display);
-  font-style: italic;
   font-size: 1.05rem;
   color: var(--ro-text);
   line-height: 1.2;
@@ -743,7 +739,6 @@
 
 .session-hero__title {
   font-family: var(--ro-font-display);
-  font-style: italic;
   font-size: 1.7rem;
   line-height: 1.15;
   color: var(--ro-text);
@@ -979,7 +974,6 @@
 // Individual comment
 .comment-item {
   background: var(--ro-surface);
-  border: 1px solid var(--ro-border);
   border-radius: var(--ro-radius-lg);
   padding: 22px 24px;
   display: flex;
@@ -1110,7 +1104,6 @@
 
 .poll-card {
   padding: 1.25rem;
-  border: 1px solid var(--ro-border);
   border-radius: var(--ro-radius-md);
   margin-bottom: 1rem;
   background: var(--ro-surface);
@@ -1126,7 +1119,6 @@
 
 .poll-card__question {
   font-family: var(--ro-font-display);
-  font-style: italic;
   font-size: 1.05rem;
   color: var(--ro-text);
   line-height: 1.3;
