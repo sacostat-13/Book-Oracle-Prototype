@@ -29,11 +29,11 @@
     "more": "···",
     "lightMode": "Modo claro",
     "darkMode": "Modo oscuro",
-    "currentlyReadingFull": "Leyendo ahora",
+    "currentlyReadingFull": "<span class=\"accent\">Leyendo</span> ahora",
     "myLists": "Mis antologías",
     "bookClubs": "Clubs",
     "oracleNav": "Oráculo",
-    "currentlyReadingLabel": "Leyendo ahora",
+    "currentlyReadingLabel": "<span class=\"accent\">Leyendo</span> ahora",
     "listsLabel": "Mis antologías",
     "bookClubsLabel": "Clubs",
     "oracleLabel": "Oráculo",
@@ -249,7 +249,7 @@
     "markFinished": "✓ Terminado",
     "remove": "Quitar",
     "confirmRemove": "¿Quitás \"{title}\" de leyendo ahora?",
-    "pageTitle": "Leyendo ahora"
+    "pageTitle": "<span class=\"accent\">Leyendo</span> ahora"
   },
   "readNext": {
     "breadcrumb": "Inicio",
@@ -263,7 +263,7 @@
     "start": "▶ Empezar",
     "markRead": "✓ Leído",
     "remove": "Quitar",
-    "pageTitle": "Leer después"
+    "pageTitle": "<span class=\"accent\">Leer después</span>"
   },
   "wishlist": {
     "eyebrow": "Lista de deseos",
@@ -297,7 +297,7 @@
     "markRead": "✓ Marcar como leído",
     "addToNext": "→ Por leer",
     "remove": "Quitar",
-    "pageTitle": "Mi lista de deseos"
+    "pageTitle": "Mi <span class=\"accent\">lista de deseos</span>"
   },
   "shelfFilters": {
     "more": "Más filtros",
@@ -344,7 +344,7 @@
     "bulkImport": "Agregar varios",
     "finishedOn": "Terminado el {date}",
     "stars": "{count} ★",
-    "pageTitle": "Libros que he leído"
+    "pageTitle": "<span class=\"accent\">Libros</span> que he leído"
   },
   "oracle": {
     "breadcrumbDashboard": "Inicio",
@@ -393,10 +393,10 @@
     "quotaWallEyebrowMonth": "Límite mensual alcanzado",
     "quotaWallBodyMonth": "Las cuentas gratuitas incluyen {limit} consultas de IA por mes.",
     "forkPageTitle": "¿Cómo vamos a <span class=\"accent\">adivinar</span>?",
-    "categoriesPageTitle": "Elige un temperamento",
-    "similarPageTitle": "Elige 1–3 libros que hayas amado",
+    "categoriesPageTitle": "Elige un <span class=\"accent\">temperamento</span>",
+    "similarPageTitle": "Elige <span class=\"accent\">1–3 libros</span> que hayas amado",
     "askEyebrow": "Preguntale al Oráculo",
-    "askPageTitle": "Pedí lo que sea",
+    "askPageTitle": "Pedí lo que <span class=\"accent\">sea</span>",
     "askSubtitle": "Un estado de ánimo, un momento, una pregunta — contale al Oráculo qué buscás, con tus propias palabras.",
     "askNudgeText": "Configurá tus géneros favoritos y tu estado de ánimo en tu perfil — el Oráculo los usa para responder mejor.",
     "askNudgeCta": "Configurar géneros y ánimo →",
@@ -404,7 +404,7 @@
     "askButton": "Preguntale al Oráculo ☩",
     "askAsking": "El Oráculo está escuchando…",
     "askError": "No se pudo contactar al Oráculo. Intentá reformular tu pregunta.",
-    "askResultsTitle": "Encontramos {count} libros para vos",
+    "askResultsTitle": "Encontramos <span class=\"accent\">{count} libros</span> para vos",
     "curationPending": "☩ {count} libro espera la lectura del Oráculo. Los géneros y los detalles llegan durante la noche.",
     "curationPendingPlural": "☩ {count} libros esperan la lectura del Oráculo. Los géneros y los detalles llegan durante la noche."
   },
@@ -437,7 +437,7 @@
     "createOwnPlan": "Crear mi propio pasaje",
     "yourPlanBreadcrumb": "Tu pasaje",
     "createPlanBreadcrumb": "Crear pasaje",
-    "createPageTitle": "Trazar un camino",
+    "createPageTitle": "Trazar un <span class=\"accent\">camino</span>",
     "listEyebrow": "Pasajes",
     "listTitle": "Tus {accent}",
     "listTitleAccent": "pasajes",
@@ -489,7 +489,7 @@
     "emptyList": "Antología vacía — hacer clic para agregar libros",
     "selectMode": "Seleccionar",
     "descPlaceholder2": "¿De qué trata esta antología?",
-    "pageTitle": "Antologías curadas",
+    "pageTitle": "<span class=\"accent\">Antologías</span> curadas",
     "listsSubtitle": "Antologías que curaste — estanterías temáticas, guías de regalo, inmersiones profundas.",
     "moreBooks": "+{count} más",
     "myListsEyebrow": "Mis Antologías",
@@ -506,7 +506,7 @@
     "followerCount": "{count} siguiendo",
     "curatedTitle": "Antologías",
     "curatedEyebrow": "Antologías",
-    "curatedPageTitle": "Antologías curadas",
+    "curatedPageTitle": "<span class=\"accent\">Antologías</span> curadas",
     "curatedSubtitle": "Estantes armados a mano — los tuyos, y los que seguís.",
     "discoverBtn": "Descubrir antologías",
     "myListsBtn": "Mis antologías",
@@ -524,7 +524,7 @@
     "followError": "No pudimos hacerlo ahora — probá de nuevo en un momento.",
     "followSignIn": "Entrá para seguir una antología.",
     "discoverEyebrow": "Descubrir",
-    "discoverPageTitle": "Descubrir antologías",
+    "discoverPageTitle": "Descubrir <span class=\"accent\">antologías</span>",
     "discoverSubtitle": "Antologías armadas por otras personas. Filtrá por género y ánimo, y seguí las que valgan la pena.",
     "discoverBreadcrumb": "Descubrir",
     "discoverSearchPlaceholder": "Buscá antologías por nombre o descripción…",
@@ -717,7 +717,7 @@
     "privacyEmailNotifs": "Avisarme por correo de la actividad",
     "shareProfile": "Tu link de perfil",
     "copyLink": "Copiar",
-    "pageTitle": "Tu perfil lector",
+    "pageTitle": "Tu <span class=\"accent\">perfil lector</span>",
     "labelFavoriteGenres": "Géneros favoritos",
     "labelCurrentMood": "Buscando ahora mismo",
     "editFavoriteGenres": "Editar géneros favoritos",
@@ -1171,8 +1171,8 @@
     "createNewBreadcrumb": "Nuevo grupo",
     "confirmLeaveText": "¿Salir de este grupo?",
     "memberBadge": "Miembro",
-    "pageTitle": "Clubes de lectura",
-    "createPageTitle": "Nuevo club de lectura",
+    "pageTitle": "<span class=\"accent\">Clubes</span> de lectura",
+    "createPageTitle": "Nuevo <span class=\"accent\">club de lectura</span>",
     "discoverClubs": "Descubrir clubes",
     "fieldVisibility": "Visibilidad",
     "visibilityPrivate": "Privado",
@@ -1192,7 +1192,7 @@
     "directory": {
       "breadcrumb": "Descubrir",
       "eyebrow": "Descubrir",
-      "pageTitle": "Encontrá un Club de Lectura",
+      "pageTitle": "Encontrá un <span class=\"accent\">Club de Lectura</span>",
       "subtitle": "Sumate a lectores que están con los mismos libros. Algunos clubes te dejan entrar al toque — otros revisan las solicitudes primero.",
       "searchPlaceholder": "Buscá clubes por nombre…",
       "allGenres": "Todos los géneros",
@@ -1289,7 +1289,7 @@
     "backToClubs": "Volver a clubs",
     "loadingSession": "Cargando sesión…",
     "saveBookError": "No se pudo guardar el libro — intentá de nuevo",
-    "createPageTitle": "Nueva sesión"
+    "createPageTitle": "Nueva <span class=\"accent\">sesión</span>"
   },
   "discussion": {
     "questionsLabel": "Preguntas de debate",
@@ -1373,7 +1373,7 @@
     "signInToJoin": "Entrá para unirte",
     "needAccount": "Necesitás una cuenta para unirte a un club de lectura.",
     "joinError": "No se pudo unir — el enlace puede haber expirado.",
-    "invalidPageTitle": "Invitación inválida",
+    "invalidPageTitle": "<span class=\"accent\">Invitación</span> inválida",
     "joinedPageTitle": "Te has unido a <span class=\"accent\">{name}</span>",
     "previewPageTitle": "Únete a <span class=\"accent\">{name}</span>"
   },
@@ -1877,7 +1877,7 @@
   },
   "privacy": {
     "breadcrumbs": "Política de privacidad",
-    "title": "Política de privacidad",
+    "title": "<span class=\"accent\">Política</span> de privacidad",
     "lastUpdated": "Última actualización: 30 de julio de 2026",
     "whoWeAreTitle": "Quiénes somos",
     "whoWeArePara1": "The Books Oracle (accesible en thebooksoracle.com) es una aplicación de acompañamiento de lectura personal operada por un desarrollador individual basado en Costa Rica.",
@@ -1909,7 +1909,7 @@
   },
   "terms": {
     "breadcrumbs": "Términos y Condiciones",
-    "title": "Términos y Condiciones",
+    "title": "<span class=\"accent\">Términos</span> y Condiciones",
     "lastUpdated": "Última actualización: 25 de junio de 2026",
     "acceptanceTitle": "Aceptación",
     "acceptancePara1": "Al crear una cuenta o utilizar The Books Oracle (thebooksoracle.com), aceptas estas Condiciones. Si no estás de acuerdo, por favor no utilices el servicio. Estas condiciones constituyen un acuerdo vinculante entre tú y el operador de The Books Oracle, un desarrollador individual basado en Costa Rica.",
@@ -1934,7 +1934,7 @@
   },
   "refunds": {
     "breadcrumbs": "Política de Reembolsos",
-    "title": "Política de Reembolsos",
+    "title": "<span class=\"accent\">Política</span> de Reembolsos",
     "lastUpdated": "Última actualización: 25 de junio de 2026",
     "ourApproachTitle": "Nuestro enfoque",
     "ourApproachPara1": "Queremos que estés conforme con The Books Oracle Pro. Si te has suscrito y sientes que no es para ti, buscaremos una solución.",

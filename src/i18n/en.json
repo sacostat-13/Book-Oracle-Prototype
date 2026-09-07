@@ -29,11 +29,11 @@
     "more": "···",
     "lightMode": "Light mode",
     "darkMode": "Dark mode",
-    "currentlyReadingFull": "Currently Reading",
+    "currentlyReadingFull": "Currently <span class=\"accent\">Reading</span>",
     "myLists": "Anthologies",
     "bookClubs": "Book Clubs",
     "oracleNav": "Oracle",
-    "currentlyReadingLabel": "Currently Reading",
+    "currentlyReadingLabel": "Currently <span class=\"accent\">Reading</span>",
     "listsLabel": "Anthologies",
     "bookClubsLabel": "Book Clubs",
     "oracleLabel": "Oracle",
@@ -249,7 +249,7 @@
     "markFinished": "✓ Finished",
     "remove": "Remove",
     "confirmRemove": "Remove \"{title}\" from currently reading?",
-    "pageTitle": "Currently Reading"
+    "pageTitle": "Currently <span class=\"accent\">Reading</span>"
   },
   "readNext": {
     "breadcrumb": "Dashboard",
@@ -263,7 +263,7 @@
     "start": "▶ Start",
     "markRead": "✓ Read",
     "remove": "Remove",
-    "pageTitle": "To Read Next"
+    "pageTitle": "To <span class=\"accent\">Read Next</span>"
   },
   "wishlist": {
     "eyebrow": "Wishlist",
@@ -297,7 +297,7 @@
     "markRead": "✓ Mark as read",
     "addToNext": "→ Read next",
     "remove": "Remove",
-    "pageTitle": "My Wishlist"
+    "pageTitle": "My <span class=\"accent\">Wishlist</span>"
   },
   "shelfFilters": {
     "more": "More filters",
@@ -344,7 +344,7 @@
     "bulkImport": "Bulk Import",
     "finishedOn": "Finished {date}",
     "stars": "{count} ★",
-    "pageTitle": "Books I've Read"
+    "pageTitle": "<span class=\"accent\">Books</span> I've Read"
   },
   "oracle": {
     "breadcrumbDashboard": "Dashboard",
@@ -393,10 +393,10 @@
     "quotaWallEyebrowMonth": "Monthly limit reached",
     "quotaWallBodyMonth": "Free accounts include {limit} AI calls per month.",
     "forkPageTitle": "How shall we <span class=\"accent\">divine</span>?",
-    "categoriesPageTitle": "Choose a temperament",
-    "similarPageTitle": "Pick 1–3 books you've loved",
+    "categoriesPageTitle": "Choose a <span class=\"accent\">temperament</span>",
+    "similarPageTitle": "Pick <span class=\"accent\">1–3 books</span> you've loved",
     "askEyebrow": "Ask the Oracle",
-    "askPageTitle": "Ask for anything",
+    "askPageTitle": "Ask for <span class=\"accent\">anything</span>",
     "askSubtitle": "A mood, a moment, a question — tell the Oracle what you're after, in your own words.",
     "askNudgeText": "Set your favorite genres and mood in your profile — the Oracle leans on them to answer better.",
     "askNudgeCta": "Set genres & mood →",
@@ -404,7 +404,7 @@
     "askButton": "Ask the Oracle ☩",
     "askAsking": "The Oracle is listening…",
     "askError": "Couldn't reach the Oracle. Try rephrasing your question.",
-    "askResultsTitle": "Found {count} books for you",
+    "askResultsTitle": "Found <span class=\"accent\">{count} books</span> for you",
     "curationPending": "☩ {count} book is waiting to be read by the Oracle. Genres and details arrive overnight.",
     "curationPendingPlural": "☩ {count} books are waiting to be read by the Oracle. Genres and details arrive overnight."
   },
@@ -437,7 +437,7 @@
     "createOwnPlan": "Create my own passage",
     "yourPlanBreadcrumb": "Your Passage",
     "createPlanBreadcrumb": "Create Passage",
-    "createPageTitle": "Chart a path",
+    "createPageTitle": "Chart a <span class=\"accent\">path</span>",
     "listEyebrow": "Passages",
     "listTitle": "Your {accent}",
     "listTitleAccent": "passages",
@@ -489,7 +489,7 @@
     "emptyList": "Empty anthology — click to add books",
     "selectMode": "Select",
     "descPlaceholder2": "What's this anthology about?",
-    "pageTitle": "Your Anthologies",
+    "pageTitle": "Your <span class=\"accent\">Anthologies</span>",
     "listsSubtitle": "Anthologies you've curated — thematic shelves, gift guides, deep dives.",
     "moreBooks": "+{count} more",
     "myListsEyebrow": "My Anthologies",
@@ -506,7 +506,7 @@
     "followerCount": "{count} following",
     "curatedTitle": "Anthologies",
     "curatedEyebrow": "Anthologies",
-    "curatedPageTitle": "Discover Anthologies",
+    "curatedPageTitle": "Discover <span class=\"accent\">Anthologies</span>",
     "curatedSubtitle": "Shelves made by hand — yours, and the ones you follow.",
     "discoverBtn": "Discover anthologies",
     "myListsBtn": "My anthologies",
@@ -524,7 +524,7 @@
     "followError": "Couldn't do that just now — try again in a moment.",
     "followSignIn": "Sign in to follow an anthology.",
     "discoverEyebrow": "Discover",
-    "discoverPageTitle": "Discover Anthologies",
+    "discoverPageTitle": "Discover <span class=\"accent\">Anthologies</span>",
     "discoverSubtitle": "Anthologies made by other readers. Filter by genre and mood, and follow the ones worth keeping.",
     "discoverBreadcrumb": "Discover",
     "discoverSearchPlaceholder": "Search anthologies by name or description…",
@@ -717,7 +717,7 @@
     "privacyEmailNotifs": "Email me about activity",
     "shareProfile": "Your profile link",
     "copyLink": "Copy",
-    "pageTitle": "Your reading profile",
+    "pageTitle": "Your <span class=\"accent\">reading profile</span>",
     "labelFavoriteGenres": "Favourite genres",
     "labelCurrentMood": "Looking for right now",
     "editFavoriteGenres": "Edit favorite genres",
@@ -1171,8 +1171,8 @@
     "createNewBreadcrumb": "New Club",
     "confirmLeaveText": "Leave this club?",
     "memberBadge": "Member",
-    "pageTitle": "Book Clubs",
-    "createPageTitle": "New Book Club",
+    "pageTitle": "Book <span class=\"accent\">Clubs</span>",
+    "createPageTitle": "New <span class=\"accent\">Book Club</span>",
     "discoverClubs": "Discover clubs",
     "fieldVisibility": "Visibility",
     "visibilityPrivate": "Private",
@@ -1192,7 +1192,7 @@
     "directory": {
       "breadcrumb": "Discover",
       "eyebrow": "Discover",
-      "pageTitle": "Find a Book Club",
+      "pageTitle": "Find a <span class=\"accent\">Book Club</span>",
       "subtitle": "Join readers moving through the same books. Some clubs let you in right away — others review requests first.",
       "searchPlaceholder": "Search clubs by name…",
       "allGenres": "All genres",
@@ -1289,7 +1289,7 @@
     "backToClubs": "Back to clubs",
     "loadingSession": "Loading session…",
     "saveBookError": "Could not save book — try again",
-    "createPageTitle": "New Session"
+    "createPageTitle": "New <span class=\"accent\">Session</span>"
   },
   "discussion": {
     "questionsLabel": "Discussion questions",
@@ -1373,7 +1373,7 @@
     "signInToJoin": "Sign in to join",
     "needAccount": "You need an account to join a book club.",
     "joinError": "Could not join — the link may have expired.",
-    "invalidPageTitle": "Invalid invitation",
+    "invalidPageTitle": "<span class=\"accent\">Invalid invitation</span>",
     "joinedPageTitle": "You've joined <span class=\"accent\">{name}</span>",
     "previewPageTitle": "Join <span class=\"accent\">{name}</span>"
   },
@@ -1877,7 +1877,7 @@
   },
   "privacy": {
     "breadcrumbs": "Privacy Policy",
-    "title": "Privacy Policy",
+    "title": "Privacy <span class=\"accent\">Policy</span>",
     "lastUpdated": "Last updated: July 30, 2026",
     "whoWeAreTitle": "Who we are",
     "whoWeArePara1": "The Books Oracle (accessible at thebooksoracle.com) is a personal reading companion application operated by an individual developer based in Costa Rica. ",
@@ -1909,7 +1909,7 @@
   },
   "terms": {
     "breadcrumbs": "Terms & Conditions",
-    "title": "Terms & Conditions",
+    "title": "<span class=\"accent\">Terms</span> & Conditions",
     "lastUpdated": "Last updated: June 25, 2026",
     "acceptanceTitle": "Acceptance",
     "acceptancePara1": "By creating an account or using The Books Oracle (thebooksoracle.com), you agree to these Terms. If you do not agree, please do not use the service. These terms form a binding agreement between you and the operator of The Books Oracle, an individual developer based in Costa Rica.",
@@ -1934,7 +1934,7 @@
   },
   "refunds": {
     "breadcrumbs": "Refund Policy",
-    "title": "Refund Policy",
+    "title": "Refund <span class=\"accent\">Policy</span>",
     "lastUpdated": "Last updated: June 25, 2026",
     "ourApproachTitle": "Our approach",
     "ourApproachPara1": "We want you to be happy with The Books Oracle Pro. If you subscribed and feel it isn't right for you, we will make it right.",
