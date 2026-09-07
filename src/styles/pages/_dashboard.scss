@@ -1165,7 +1165,7 @@
 }
 
 .db-ff-text {
-  font: 400 16px / 1.4 "Inter";
+  font: 400 16px / 1.4 var(--ro-font-body);
   line-height: 1.4;
 }
 
@@ -1432,7 +1432,7 @@
       padding-top: 8px;
 
       .feed-verb {
-        font: 400 16px / 1.4 "Inter";
+        font: 400 16px / 1.4 var(--ro-font-body);
         color: var(--ro-text);
       }
 
