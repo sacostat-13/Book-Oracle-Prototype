@@ -6,7 +6,7 @@ export const CARD_BOXES = {
   "adventure": { x: 286, y: 213, w: 506, h: 853 },
   "comedy": { x: 265, y: 270, w: 550, h: 810 },
   "crime": { x: 285, y: 245, w: 509, h: 750 },
-  "fantasy": { x: 299, y: 241, w: 482, h: 786 },
+  "fantasy": { x: 291, y: 256, w: 485, h: 782 },
   "generic": { x: 330, y: 305, w: 418, h: 677 },
   "gothic": { x: 291, y: 256, w: 485, h: 782 },
   "horror": { x: 287, y: 221, w: 507, h: 795 },

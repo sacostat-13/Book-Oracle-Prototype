@@ -20,6 +20,7 @@ supabase/.branches
 supabase/dump
 .scripts
 scripts
+Claude outputs
 # batch-scripts is NOT ignored (v0.60.1).
 #
 # It used to be, wholesale, and that quietly broke the weekly catalog
