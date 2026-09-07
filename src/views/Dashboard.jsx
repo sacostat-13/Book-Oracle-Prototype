@@ -120,13 +120,15 @@ function Cover({ book, w = 60, h, onClick }) {
   );
 }
 
-// ─── Section eyebrow ──────────────────────────────────────────────────────────
-function Eyebrow({ icon, label }) {
+// ─── Widget heading ──────────────────────────────────────────────
+// Real <h2> so the dashboard has a document outline; styled serif roman rather
+// than a mono overline. The small gold glyph is the one decorative carry-over.
+function WidgetTitle({ icon, label }) {
   return (
-    <div className="db-eyebrow">
-      {icon && <span className="db-eyebrow__glyph">{icon}</span>}
+    <h2 className="db-widget-title">
+      {icon && <span className="db-widget-title__glyph">{icon}</span>}
       {label}
-    </div>
+    </h2>
   );
 }
 
@@ -134,7 +136,7 @@ function Eyebrow({ icon, label }) {
 function WidgetShell({ icon, label, children }) {
   return (
     <section className="db-section">
-      {label && <Eyebrow icon={icon} label={label} />}
+      {label && <WidgetTitle icon={icon} label={label} />}
       {children}
     </section>
   );
