@@ -16,9 +16,40 @@
 
 // The version label shown as "current" — keep in sync with package.json and
 // the README version line.
-export const CURRENT_VERSION = 'v0.68';
+export const CURRENT_VERSION = 'v0.69';
 
 export const RELEASES = [{
+    version: 'v0.69',
+    date: '2026-09-06',
+    titleEn: 'Set like a book',
+    titleEs: 'Compuesto como un libro',
+    bodyEn: [
+      'The app is set in the typeface it talks about. Every paragraph, button and',
+      'blurb used to be in a UI sans while the headings were serif; now the whole',
+      'page is EB Garamond, and it reads like a page instead of a dashboard.',
+      'Cards lost their outlines. The panels on your dashboard were each drawn as a',
+      'gradient inside a thin border; they are flat now, and the sections above them',
+      'are real headings rather than small gold capitals.',
+      'Italics mean something again. They were on author names, button labels and the',
+      'numbers in your reading stats. They are now for a book title, a series, and',
+      'the Oracle speaking — so when something is italic, it is telling you why.',
+      'The page you are on is named once, in colour, on the thing it is about: your',
+      'Wishlist, your Library, the Oracle.',
+    ],
+    bodyEs: [
+      'La app está compuesta con la tipografía de la que habla. Cada párrafo, botón y',
+      'reseña estaba en una sans de interfaz mientras los títulos eran serif; ahora',
+      'toda la página es EB Garamond y se lee como una página, no como un tablero.',
+      'Las tarjetas perdieron el contorno. Los paneles de tu panel principal estaban',
+      'dibujados como un degradado dentro de un borde fino; ahora son planos, y los',
+      'títulos de sección son títulos de verdad en vez de versalitas doradas.',
+      'Las itálicas vuelven a significar algo. Estaban en los nombres de autor, en los',
+      'botones y en los números de tus estadísticas. Ahora son para el título de un',
+      'libro, una saga, y para cuando habla el Oráculo.',
+      'La página en la que estás se nombra una sola vez, en color, sobre aquello de lo',
+      'que trata: tu Lista de deseos, tu Biblioteca, el Oráculo.',
+    ],
+  }, {
     version: 'v0.68',
     date: '2026-09-03',
     titleEn: 'A shelf you can actually read from',
