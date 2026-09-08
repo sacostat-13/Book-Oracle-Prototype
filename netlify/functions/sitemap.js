@@ -133,7 +133,12 @@ export async function handler() {
     // select on a column the view lacks is a 400 that takes the WHOLE sitemap
     // down to its seven static entries. Add it here once that migration is
     // applied and verified, not before.
-    const select = 'share_key,series_name,cover_url';
+    // position_in_series joins the select so a series can be counted by VOLUME
+    // rather than by row -- two editions at position 2 are one volume, and the
+    // floor below has to agree with what series_volumes renders. Safe to select:
+    // the column reached this view in migration 20260824120000. `description`
+    // still does not, per the note above.
+    const select = 'share_key,series_name,cover_url,position_in_series';
     const query = `${supabaseUrl}/rest/v1/books_share_key` +
       `?select=${encodeURIComponent(select)}` +
       `&status=in.(verified,oracle_categorized)`;
@@ -160,7 +165,10 @@ export async function handler() {
     console.log(`[sitemap] ${books.length} catalog rows fetched`);
 
     const bookEntries = [];
-    const seriesNames = new Set();
+    // series name -> the distinct volumes under it. Same volume key the
+    // series_volumes view uses: the position when there is one, the book's own
+    // key when there is not.
+    const seriesVolumes = new Map();
 
     for (const b of books || []) {
       const key = b.share_key;
@@ -181,7 +189,11 @@ export async function handler() {
 
       // A series page is worth advertising even when the volume rows under it
       // are not, so collect the name BEFORE the book-level quality bar.
-      if (b.series_name) seriesNames.add(b.series_name);
+      if (b.series_name) {
+        let vols = seriesVolumes.get(b.series_name);
+        if (!vols) { vols = new Set(); seriesVolumes.set(b.series_name, vols); }
+        vols.add(b.position_in_series != null ? `p:${b.position_in_series}` : `k:${key}`);
+      }
 
       // ── Quality bar, 2026-08-24 ─────────────────────────────────────────
       //
@@ -214,8 +226,25 @@ export async function handler() {
       bookEntries.push(urlEntry(`/book/${encodeURIComponent(key)}`, { priority: '0.7' }));
     }
 
-    const seriesEntries = [...seriesNames].map((name) =>
-      urlEntry(`/series/${encodeURIComponent(name)}`, { priority: '0.6' })
+    // ── The series index floor, 2026-09-08 ───────────────────────────────
+    //
+    // THIRD of the three places this number is written down; the others are
+    // SERIES_INDEX_FLOOR in src/lib/seriesService.js and a local const in
+    // og-prerender.js, and all three must agree because a URL submitted here
+    // that answers with noindex is a contradiction Google reports as an error.
+    //
+    // The diagnostic run on 2026-09-08 found 116 of the 175 series pages with
+    // impressions holding exactly one book -- pages promising "every book" and
+    // listing one. Submitting them is what the genre floor above exists to
+    // prevent, one page type over.
+    const SERIES_INDEX_FLOOR = 2;
+    const seriesEntries = [...seriesVolumes.entries()]
+      .filter(([, vols]) => vols.size >= SERIES_INDEX_FLOOR)
+      .map(([name]) => urlEntry(`/series/${encodeURIComponent(name)}`, { priority: '0.6' }));
+
+    console.log(
+      `[sitemap] ${seriesEntries.length} series submitted, ` +
+      `${seriesVolumes.size - seriesEntries.length} held back below the floor of ${SERIES_INDEX_FLOOR}`
     );
 
     // ── v0.67: families and genres ────────────────────────────────────────

@@ -141,6 +141,15 @@ export default function App() {
   // that `/` and `/?lang=en` were two pages competing for the same content.
   // See src/lib/siteUrl.js.
   useEffect(() => {
+    // 2026-09-08: series-page owns its canonical and this effect must not fight
+    // it. Two spellings of one series ("Chronicles of Narnia" / "The Chronicles
+    // of Narnia") resolve to the same row, so the canonical has to come from
+    // the catalog's series.name rather than from whichever spelling was
+    // requested. SeriesPage passes it to useDocumentMeta; effects commit
+    // child-before-parent, so without this guard the parent would overwrite the
+    // child's correct value a moment later -- the same ordering hazard the
+    // ROUTE_META comment above describes.
+    if (route.name === 'series-page') return;
     const canonical = canonicalUrl();
     let link = document.querySelector('link[rel="canonical"]');
     if (!link) {

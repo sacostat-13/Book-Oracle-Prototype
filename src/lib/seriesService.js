@@ -70,6 +70,29 @@ function rowToSeriesBook(r, series) {
   };
 }
 
+// The index floor for a series page, in the FIRST of three places it is written
+// down -- the others are a local const in netlify/edge-functions/og-prerender.js
+// (which sets the noindex meta a crawler reads) and one in
+// netlify/functions/sitemap.js (which decides what to submit). All three must
+// agree: a URL in the sitemap that answers with noindex is a contradiction
+// Search Console reports as an error. tests/contracts.test.js checks that they do.
+//
+// WHY 2, AND WHY THERE IS A FLOOR AT ALL
+//
+// The diagnostic on 2026-09-08 measured the 175 series pages that earned
+// impressions in the previous 28 days: 116 of them (66%) hold exactly ONE book,
+// and only 12 of the 105 claiming a total_books hold them all. A page titled
+// "<series> series in order -- every book" that lists one volume cannot answer
+// the query it ranks for, and submitting it teaches Google that this site's
+// series pages are not worth crawling -- the same reasoning that produced the
+// genre floor in genreService.js.
+//
+// Two, not three: one volume cannot express an order at all, which is the
+// smallest defensible line. A page below the floor stays reachable and linked
+// and keeps `follow`, so it still passes its links on; it is simply not
+// advertised until the catalog can back it up.
+export const SERIES_INDEX_FLOOR = 2;
+
 // Fetch all known books in a series by name. Joins the books table on series_id.
 //
 // 2026-08-24: this function existed, was exported, and was called from NOWHERE.

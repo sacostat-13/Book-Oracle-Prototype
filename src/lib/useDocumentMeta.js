@@ -40,7 +40,19 @@ function upsertMeta(attr, key, content) {
 // conservative defaults.
 const DEFAULT_ROBOTS = 'index, follow, max-image-preview:large, max-snippet:-1';
 
-export function useDocumentMeta({ title, description, image, noindex = false }) {
+// `canonicalPath` — a route that knows its own canonical URL passes it here.
+//
+// 2026-09-08: /series/:name is the case. normalizeSeriesName() strips a leading
+// "the ", so /series/Chronicles of Narnia and /series/The Chronicles of Narnia
+// resolve to ONE series row and serve identical content -- and each declared
+// ITSELF canonical, because both this hook's og:url and App.jsx's canonical
+// link were built from window.location.pathname. That is a duplicate pair
+// handed to Google for every spelling that normalises alike, and Search Console
+// currently reports 355 URLs as "Duplicate, Google chose a different canonical".
+//
+// Given a canonicalPath, this hook sets BOTH og:url and <link rel=canonical>
+// from it, and App.jsx's generic canonical effect stands aside for that route.
+export function useDocumentMeta({ title, description, image, noindex = false, canonicalPath }) {
   useEffect(() => {
     if (title) document.title = title;
     if (description) upsertMeta('name', 'description', description);
@@ -48,7 +60,17 @@ export function useDocumentMeta({ title, description, image, noindex = false }) 
     if (title) upsertMeta('property', 'og:title', title);
     if (description) upsertMeta('property', 'og:description', description);
     if (image) upsertMeta('property', 'og:image', image);
-    upsertMeta('property', 'og:url', canonicalUrl());
+    const canonical = canonicalUrl(canonicalPath);
+    upsertMeta('property', 'og:url', canonical);
+    if (canonicalPath) {
+      let link = document.querySelector('link[rel="canonical"]');
+      if (!link) {
+        link = document.createElement('link');
+        link.setAttribute('rel', 'canonical');
+        document.head.appendChild(link);
+      }
+      link.setAttribute('href', canonical);
+    }
 
     // Keep Twitter in step with OG. These used to be set once in index.html
     // and never touched again, so every route after the landing page served
@@ -68,5 +90,5 @@ export function useDocumentMeta({ title, description, image, noindex = false }) 
       document.head.appendChild(robotsMeta);
     }
     robotsMeta.setAttribute('content', noindex ? 'noindex, nofollow' : DEFAULT_ROBOTS);
-  }, [title, description, image, noindex]);
+  }, [title, description, image, noindex, canonicalPath]);
 }

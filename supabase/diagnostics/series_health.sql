@@ -251,19 +251,35 @@ dupes as (
     having count(*) > 1
   ) d group by series_id
 ),
+-- ONE ROW PER SERIES, not per GSC row.
+--
+-- 2026-09-08: this CTE selected from `matched` and was keyed on series_id. Two
+-- GSC URLs can resolve to the SAME series -- /series/Chronicles of Narnia and
+-- /series/The Chronicles of Narnia both normalise to 'chroniclesofnarnia' --
+-- so `matched` held two rows with one series_id, and the final join on
+-- series_id then fanned each of them out again. Narnia came back four times,
+-- which read like duplicate rows in public.series. There are none, and there
+-- cannot be: series_normalized_name_idx is UNIQUE on normalized_name. The
+-- duplication was this query's, not the data's.
+--
+-- (That two URLs answer to one series IS a real finding -- both serve identical
+-- content and each declares itself canonical -- but it is a canonicalisation
+-- bug, not a data one. See the series canonical fix in og-prerender.js.)
+sids as (
+  select distinct series_id from matched where series_id is not null
+),
 gaps as (
   select
-    m.series_id,
+    s.series_id,
     (select string_agg(n::text, ',' order by n)
        from generate_series(1, coalesce(v.max_pos::int, 0)) n
       where not exists (
         select 1 from public.series_volumes x
-         where x.series_id = m.series_id
+         where x.series_id = s.series_id
            and x.position_in_series = n
       )) as missing
-  from matched m
-  left join vols v on v.series_id = m.series_id
-  where m.series_id is not null
+  from sids s
+  left join vols v on v.series_id = s.series_id
 )
 select
   m.impressions,

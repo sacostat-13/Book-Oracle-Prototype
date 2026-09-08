@@ -872,12 +872,27 @@ export default async (request, context) => {
         `<p><a href="/">The Books Oracle</a> — track the series you are partway through, and see what to read next.</p>`,
       ].filter(Boolean).join('');
 
+      // The canonical is built from the CATALOG's name, not from the spelling
+      // that was requested. normalizeSeriesName() strips a leading "the ", so
+      // /series/Chronicles of Narnia and /series/The Chronicles of Narnia both
+      // resolve here to one series and served byte-identical bodies, each
+      // naming ITSELF canonical -- a duplicate pair per spelling. Both of those
+      // URLs are in the Search Console Pages export for the last 28 days.
+      const canonicalPath = `/series/${encodeURIComponent(match.name)}`;
+
+      // The index floor, in the SECOND of three places -- see the note on
+      // SERIES_INDEX_FLOOR in src/lib/seriesService.js for why it is 2 and what
+      // the other two are. `held` is the catalog count after series_volumes
+      // collapses editions, which is the same number SeriesPage decides on.
+      const SERIES_INDEX_FLOOR = 2;
+
       return respond({
         // Front-load the words people actually type. "X series — The Books
         // Oracle" said nothing a searcher was looking for.
         title: `${match.name} series in order — every book | The Books Oracle`,
         description: seriesDesc.slice(0, 200),
-        url: SITE + url.pathname,
+        url: SITE + canonicalPath,
+        noindex: held < SERIES_INDEX_FLOOR,
         jsonLd: {
           '@context': 'https://schema.org',
           '@type': 'BookSeries',

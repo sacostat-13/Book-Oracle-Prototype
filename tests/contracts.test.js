@@ -206,3 +206,58 @@ describe('series volume lists: three callers, one source', () => {
     }
   });
 });
+
+describe('the series index floor: three files, one number', () => {
+  // THE BUG THIS EXISTS FOR: not one yet, and that is the point. The genre
+  // floor already lives in three places -- genreService.js, og-prerender.js and
+  // sitemap.js -- and og-prerender.js carries a comment saying so, ending "All
+  // three must agree: a URL in the sitemap that answers with noindex is a
+  // contradiction Search Console reports as an error." It was a bare `5` in one
+  // of them until v0.68.
+  //
+  // The series floor added on 2026-09-08 has exactly the same shape, so it gets
+  // the check the genre floor never had. Both are asserted here: a drift in
+  // either is the same error.
+  const floors = (label, sources) => {
+    const found = sources.map(([file, re]) => {
+      const m = read(file).match(re);
+      if (!m) throw new Error(`${label}: no floor found in ${file} — was it renamed?`);
+      return { file, value: Number(m[1]) };
+    });
+    const distinct = [...new Set(found.map((f) => f.value))];
+    expect(distinct.length,
+      `${label} disagrees across files: ${found.map((f) => `${f.file}=${f.value}`).join(', ')}`
+    ).toBe(1);
+    return distinct[0];
+  };
+
+  it('the series floor is the same number in all three files', () => {
+    const v = floors('SERIES_INDEX_FLOOR', [
+      ['src/lib/seriesService.js', /export const SERIES_INDEX_FLOOR = (\d+)/],
+      ['netlify/edge-functions/og-prerender.js', /const SERIES_INDEX_FLOOR = (\d+)/],
+      ['netlify/functions/sitemap.js', /const SERIES_INDEX_FLOOR = (\d+)/],
+    ]);
+    // A floor of 1 would be a no-op and a floor of 0 a mistake; both would pass
+    // the agreement check above while meaning "there is no floor".
+    expect(v).toBeGreaterThanOrEqual(2);
+  });
+
+  it('the genre floor is the same number in all three files', () => {
+    floors('INDEX_FLOOR', [
+      ['src/lib/genreService.js', /export const INDEX_FLOOR = (\d+)/],
+      ['netlify/edge-functions/og-prerender.js', /const INDEX_FLOOR = (\d+)/],
+      ['netlify/functions/sitemap.js', /const INDEX_FLOOR = (\d+)/],
+    ]);
+  });
+
+  it('a series below the floor is noindexed AND withheld from the sitemap', () => {
+    // The two halves of the contradiction the comments warn about: submitting a
+    // URL that answers noindex. Neither half is useful without the other.
+    expect(read('netlify/edge-functions/og-prerender.js'))
+      .toMatch(/noindex:\s*held\s*<\s*SERIES_INDEX_FLOOR/);
+    expect(read('netlify/functions/sitemap.js'))
+      .toMatch(/vols\.size\s*>=\s*SERIES_INDEX_FLOOR/);
+    expect(read('src/views/SeriesPage.jsx'))
+      .toMatch(/noindex:\s*catalogCount != null && catalogCount < SERIES_INDEX_FLOOR/);
+  });
+});

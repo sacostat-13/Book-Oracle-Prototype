@@ -18,7 +18,7 @@ import { useT } from '../lib/I18nContext';
 import { useDocumentMeta } from '../lib/useDocumentMeta';
 import { bookKey, buildBookPageParams } from '../lib/bookHelpers';
 import { fetchSeriesBooks } from '../lib/enrichmentService';
-import { fetchSeriesDescriptionFromWikipedia, fetchBooksInSeriesByName, normalizeSeriesName } from '../lib/seriesService';
+import { fetchSeriesDescriptionFromWikipedia, fetchBooksInSeriesByName, normalizeSeriesName, SERIES_INDEX_FLOOR } from '../lib/seriesService';
 import BookCover from '../components/BookCover';
 import { openBookTab } from '../lib/bookHelpers';
 
@@ -42,13 +42,41 @@ export default function SeriesPage({ isAuthed = true, authPending = false, dataR
   // — it was reached through series_id, not a name match — so it skips the
   // name-corroboration guard below that exists to catch upstream mismatches.
   const [fromCatalog,    setFromCatalog]    = useState(false);
+  // How many volumes the CATALOG holds, kept separately from what is rendered.
+  // The rendered list can include upstream rows and the reader's own shelf; the
+  // prerendered page a crawler sees cannot -- it has no upstream path. Indexing
+  // has to be decided on the number both sides can see, or a page ends up
+  // noindex for the bot and indexable for the renderer, which is the bot/human
+  // divergence this page has already been fixed for twice.
+  const [catalogCount,   setCatalogCount]   = useState(null);
 
   // v0.39: SEO/share title+description for this series. Not set in App.jsx's
   // generic route-title effect — this is the only place this page's title
   // /description gets set.
+  //
+  // 2026-09-08: this page also owns its CANONICAL, because the URL spelling is
+  // not canonical on its own. normalizeSeriesName() strips a leading "the ", so
+  // /series/Chronicles of Narnia and /series/The Chronicles of Narnia resolve to
+  // one series row and serve the same list -- both are in the last 28 days of
+  // Search Console, and each was telling Google it was the canonical one. The
+  // catalog's own series.name is the tiebreak.
+  //
+  // Only trusted when the list came from the CATALOG. An upstream list carries
+  // whatever name Hardcover or OpenLibrary used, which is not ours to declare
+  // canonical -- and upstream is the path taken whenever the catalog holds 0 or
+  // 1 book, currently two thirds of the series that rank. Falling back to the
+  // requested pathname is exactly today's behaviour, so this can only improve
+  // on it, never regress.
+  const catalogSeriesName = fromCatalog ? seriesBooks[0]?.s?.name : null;
   useDocumentMeta({
     title: seriesName ? `${seriesName} series — The Books Oracle` : 'Series — The Books Oracle',
     description: description ? description.slice(0, 200) : undefined,
+    canonicalPath: catalogSeriesName
+      ? `/series/${encodeURIComponent(catalogSeriesName)}`
+      : (typeof window !== 'undefined' ? window.location.pathname : undefined),
+    // Asserting the floor while the catalog is still loading would ship a
+    // noindex on a page that is about to be fine. Only decide once it answers.
+    noindex: catalogCount != null && catalogCount < SERIES_INDEX_FLOOR,
   });
 
   // ── Fetch series data ───────────────────────────────────────────────────────
@@ -75,6 +103,7 @@ export default function SeriesPage({ isAuthed = true, authPending = false, dataR
         catalogBooks = res.books || [];
       } catch { /* fall through to upstream */ }
       if (cancelled) return;
+      setCatalogCount(catalogBooks.length);
 
       if (catalogBooks.length > 1) {
         setSeriesBooks(catalogBooks);
