@@ -590,6 +590,7 @@
     "openOracle": "Oracle: find more like this",
     "about": "About this series",
     "bookPosition": "Book {n}",
+    "inCatalog": "{n} of {total} in the catalog",
     "bookStatusRead": "Read",
     "bookStatusQueued": "Queued",
     "bookStatusWishlist": "On wishlist",

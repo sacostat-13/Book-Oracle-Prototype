@@ -143,3 +143,66 @@ describe('page titles: client hook vs prerendered head', () => {
     expect(fam).not.toBe(gen);
   });
 });
+
+describe('series volume lists: three callers, one source', () => {
+  // THE BUG THIS EXISTS FOR: on 2026-09-08 the six highest-impression series
+  // pages were sampled live. Five were wrong. Crescent City — the single
+  // highest-impression URL on the site, ranking for "how many books in crescent
+  // city series" — said 3 and listed House of Sky and Breath twice under
+  // "BOOK 2", with neither other volume. Wicked rendered positions
+  // 1,1,1,1,2,3,3,4,4,5. Duplicate editions sharing a position_in_series,
+  // nowhere collapsed.
+  //
+  // Three files list the volumes of a series and all three must return the same
+  // rows: the human page (seriesService), the crawler's series page, and the
+  // "in reading order" block on a book page. The dedupe therefore lives in SQL,
+  // in the series_volumes view, and this test is what stops a fourth caller —
+  // or a revert of one of these three — from quietly going back to raw `books`.
+  //
+  // Same shape as the accomplishment-kinds drift above, and the fourth time
+  // this codebase has paid for one rule written in several places (bookKey in
+  // three copies until v0.63.3; the status filter reconciled by hand on
+  // 2026-08-24; the index floor in three files as of v0.68).
+  const VIEW = 'series_volumes';
+
+  it('the migration defines the view and grants it to anon', () => {
+    const files = readdirSync(join(root, 'supabase/migrations'))
+      .filter((f) => f.endsWith('.sql') && f.includes(VIEW));
+    expect(files.length, `no migration defines ${VIEW}`).toBeGreaterThan(0);
+    const sql = read(`supabase/migrations/${files.sort().at(-1)}`);
+    expect(sql).toMatch(new RegExp(`create or replace view public\\.${VIEW}`, 'i'));
+    // The dedupe itself: one row per series per volume key.
+    expect(sql).toMatch(/row_number\(\)\s*over\s*\(\s*partition by r\.series_id, r\.volume_key/i);
+    expect(sql).toMatch(/edition_rank = 1/i);
+    expect(sql).toMatch(new RegExp(`grant select on public\\.${VIEW} to anon`, 'i'));
+  });
+
+  it('seriesService reads the view, not the books table', () => {
+    const src = read('src/lib/seriesService.js');
+    const fn = src.slice(src.indexOf('export async function fetchBooksInSeriesByName'));
+    const body = fn.slice(0, fn.indexOf('\n}'));
+    expect(body).toContain(`.from('${VIEW}')`);
+    expect(body, 'fetchBooksInSeriesByName went back to raw books').not.toContain(".from('books')");
+  });
+
+  it('every series-scoped query in og-prerender targets the view', () => {
+    const src = read('netlify/edge-functions/og-prerender.js');
+    // A query filtering on series_id is by definition listing the volumes of a
+    // series. The same-genre neighbour query is deliberately NOT caught here:
+    // it filters on `genre`, lists unrelated books, and correctly stays on
+    // books_share_key.
+    //
+    // The series-page query is assembled from several concatenated template
+    // literals, so the table name and the filter are not in the same string.
+    // Match the endpoint, then look ahead over the next few lines for the
+    // filter — which is what "this query is scoped to one series" means here.
+    const seriesQueries = [...src.matchAll(/\/rest\/v1\/([a-z_]+)\?/g)]
+      .filter((m) => /series_id=eq\./.test(src.slice(m.index, m.index + 400)))
+      .map((m) => m[1]);
+    expect(seriesQueries.length, 'no series-scoped queries found — did the URLs change shape?')
+      .toBeGreaterThanOrEqual(2);
+    for (const table of seriesQueries) {
+      expect(table, `a series volume list still reads ${table}`).toBe(VIEW);
+    }
+  });
+});

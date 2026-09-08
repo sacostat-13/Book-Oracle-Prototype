@@ -732,7 +732,11 @@ export default async (request, context) => {
           fetch(`${supabaseUrl}/rest/v1/series?select=name&id=eq.${encodeURIComponent(match.series_id)}&limit=1`, { headers: restHeaders }),
           // status filter added 2026-08-24 to match sitemap.js and the series
           // branch below. All three must list the same rows.
-          fetch(`${supabaseUrl}/rest/v1/books_share_key?select=title,author,share_key,position_in_series&series_id=eq.${encodeURIComponent(match.series_id)}&status=in.(verified,oracle_categorized)&order=position_in_series.asc&limit=30`, { headers: restHeaders }),
+          // 2026-09-08: series_volumes, not books_share_key -- one row per
+          // volume, duplicate editions collapsed. Must stay the same source as
+          // the series branch below and seriesService.fetchBooksInSeriesByName;
+          // all three list the volumes of a series and all three must agree.
+          fetch(`${supabaseUrl}/rest/v1/series_volumes?select=title,author,share_key,position_in_series&series_id=eq.${encodeURIComponent(match.series_id)}&status=in.(verified,oracle_categorized)&order=position_in_series.asc&limit=30`, { headers: restHeaders }),
         ]);
         if (sRes.ok) seriesName = (await sRes.json())[0]?.name || null;
         if (bRes.ok) {
@@ -781,7 +785,7 @@ export default async (request, context) => {
       const seriesName = decodeURIComponent(seriesMatch[1]);
       const normalized = normalizeSeriesName(seriesName);
       const res = await fetch(
-        `${supabaseUrl}/rest/v1/series?select=id,name,description&normalized_name=eq.${encodeURIComponent(normalized)}&limit=1`, {
+        `${supabaseUrl}/rest/v1/series?select=id,name,description,total_books&normalized_name=eq.${encodeURIComponent(normalized)}&limit=1`, {
           headers: restHeaders
         }
       );
@@ -797,7 +801,8 @@ export default async (request, context) => {
       // leaving the entire point of the page unsaid.
       let volumes = [];
       const vUrl =
-        `${supabaseUrl}/rest/v1/books_share_key?select=title,author,share_key,position_in_series,description` +
+        // 2026-09-08: series_volumes. See the note on the siblings query above.
+        `${supabaseUrl}/rest/v1/series_volumes?select=title,author,share_key,position_in_series,description` +
         `&series_id=eq.${encodeURIComponent(match.id)}` +
         // Match the sitemap. It emits /series/:name from rows with these two
         // statuses, so the page behind those URLs must list the same rows --
@@ -822,7 +827,7 @@ export default async (request, context) => {
         console.warn(
           `[og-prerender] series volume query failed: ${vRes.status} ` +
           `series="${match.name}" — the page will render with NO book list. ` +
-          `Check that books_share_key exposes series_id, position_in_series and description.`
+          `Check that series_volumes exists and exposes series_id, position_in_series and description.`
         );
       }
 
@@ -831,12 +836,38 @@ export default async (request, context) => {
         || (first?.description ? first.description.slice(0, 300) : null)
         || `Every book in the ${match.name} series, in reading order.`;
 
+      // The count, stated as a sentence.
+      //
+      // "how many books are in the dragonlance series", "how many godfather
+      // books are there", "how many books in crescent city series" are among
+      // the queries these pages are already matched to. A bare number in a
+      // heading is not an extractable answer to any of them, so the fact goes
+      // in a sentence before the list.
+      //
+      // total_books is how many volumes the series HAS; volumes.length is how
+      // many the catalog holds after series_volumes collapses editions. When
+      // they differ, say both -- claiming "All 2 books" for Crescent City,
+      // which has three, is the failure this whole change is about, and
+      // overclaiming is worse than a short list because it is checkably wrong.
+      const held = volumes.length;
+      const known = Number(match.total_books) || null;
+      const partial = known != null && held > 0 && held < known;
+      const countSentence = known
+        ? `There ${known === 1 ? 'is' : 'are'} ${known} book${known === 1 ? '' : 's'} in the ${match.name} series.`
+        : held
+          ? `The ${match.name} series has ${held} book${held === 1 ? '' : 's'}.`
+          : '';
+      const listHeading = partial
+        ? `${held} of ${known} books, in reading order`
+        : `All ${held} book${held === 1 ? '' : 's'}, in reading order`;
+
       const seriesBody = [
         `<p class="eyebrow">Series</p>`,
         `<h1>${escapeHtml(match.name)} series in reading order</h1>`,
+        countSentence ? `<p>${escapeHtml(countSentence)}</p>` : '',
         `<p>${escapeHtml(seriesDesc)}</p>`,
-        volumes.length
-          ? `<h2>All ${volumes.length} book${volumes.length === 1 ? '' : 's'}</h2><ul>${listItems(volumes)}</ul>`
+        held
+          ? `<h2>${escapeHtml(listHeading)}</h2><ul>${listItems(volumes)}</ul>`
           : '',
         `<p><a href="/">The Books Oracle</a> — track the series you are partway through, and see what to read next.</p>`,
       ].filter(Boolean).join('');

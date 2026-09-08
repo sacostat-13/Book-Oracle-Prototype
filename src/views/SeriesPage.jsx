@@ -157,17 +157,47 @@ export default function SeriesPage({ isAuthed = true, authPending = false, dataR
       merged.push(b);
     }
 
+    // SECOND NET: collapse anything still sharing a position.
+    //
+    // series_volumes dedupes the CATALOG path in SQL (migration 20260908120000).
+    // This list can also carry upstream rows -- Hardcover/OpenLibrary run
+    // whenever the catalog holds 0 or 1 book, which is exactly the thin series
+    // -- and shelf rows, and neither is deduped by anything but bookKey. An
+    // omnibus and a single volume, or two editions whose author strings differ
+    // by a period, still arrive as two "BOOK 2"s.
+    //
+    // A reader's own copy wins the collapse so their read/queued state survives
+    // it. Unnumbered entries are never collapsed: with no position there is
+    // nothing saying they are the same volume.
+    const inCollection = (x) => collectionBooks.some((c) => bookKey(c) === bookKey(x));
+    const atPosition = new Map();
+    const deduped = [];
+    for (const b of merged) {
+      const n = b.s?.n;
+      if (n == null) { deduped.push(b); continue; }
+      const at = atPosition.get(n);
+      if (at === undefined) { atPosition.set(n, deduped.length); deduped.push(b); continue; }
+      if (!inCollection(deduped[at]) && inCollection(b)) deduped[at] = b;
+    }
+
     // `??`, not `||`. Position 0 is the prequel numbering convention (book 0
     // of a series), and `0 || 999` sends it to the BOTTOM of a list whose
     // entire purpose is reading order -- the one ordering error a reader
     // reads as the page being broken.
-    return merged.sort((a, b) => (a.s?.n ?? 999) - (b.s?.n ?? 999));
+    return deduped.sort((a, b) => (a.s?.n ?? 999) - (b.s?.n ?? 999));
   }, [seriesBooks, fromCatalog, state.library, state.wishlist, state.readNext, seriesName]);
 
   // ── Series metadata ─────────────────────────────────────────────────────────
   const firstBook = entries[0];
   const author    = firstBook?.a || '';
-  const total     = entries[0]?.s?.total || entries.length || null;
+  // series.total_books is how many volumes the series HAS; entries.length is how
+  // many we hold. They are different facts and printing only the first is how
+  // the Crescent City page came to say "3" above a list of one book -- on the
+  // site's highest-impression URL, for the query "how many books in crescent
+  // city series". Both are kept, and the label below says so when they differ.
+  const knownTotal = entries[0]?.s?.total || null;
+  const total      = knownTotal || entries.length || null;
+  const isPartial  = knownTotal != null && entries.length > 0 && entries.length < knownTotal;
   const publicationStatus = [...state.library, ...state.wishlist]
     .find((b) => b.s?.name === seriesName)?.s?.publicationStatus || 'unknown';
 
@@ -322,7 +352,11 @@ export default function SeriesPage({ isAuthed = true, authPending = false, dataR
       <div className="series-page-books">
         <div className="bp-section__label">
           {t('seriesPage.booksInSeries')}
-          {total && <span className="lv-hl-muted">· {total}</span>}
+          {total && (
+            <span className="lv-hl-muted">
+              · {isPartial ? t('seriesPage.inCatalog', { n: entries.length, total }) : total}
+            </span>
+          )}
         </div>
 
         {loading && (

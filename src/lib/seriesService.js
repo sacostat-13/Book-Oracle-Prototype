@@ -89,8 +89,14 @@ export async function fetchBooksInSeriesByName(name) {
   const series = await fetchSeriesByName(name);
   if (!series) return { series: null, books: [] };
   const { data, error } = await supabase
-    .from('books')
-    .select('*, series:series(*)')
+    // 2026-09-08: series_volumes, not books. The view collapses duplicate
+    // editions sharing a position_in_series -- the Crescent City page listed
+    // House of Sky and Breath twice under "BOOK 2" and neither other volume,
+    // on the site's highest-impression URL. The embedded `series:series(*)`
+    // went with it: rowToSeriesBook takes the series row as its second
+    // argument and never read the join.
+    .from('series_volumes')
+    .select('*')
     .eq('series_id', series.id)
     .in('status', ['verified', 'oracle_categorized'])
     .order('position_in_series', { ascending: true, nullsFirst: false });

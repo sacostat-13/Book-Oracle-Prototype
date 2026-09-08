@@ -590,6 +590,7 @@
     "openOracle": "Oráculo: encontrar más como este",
     "about": "Sobre esta saga",
     "bookPosition": "Libro {n}",
+    "inCatalog": "{n} de {total} en el catálogo",
     "bookStatusRead": "Leído",
     "bookStatusQueued": "En cola",
     "bookStatusWishlist": "En antología",
