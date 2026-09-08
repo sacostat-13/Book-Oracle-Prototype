@@ -433,8 +433,11 @@ async function propose() {
       console.log(`    ! hardcover calls this "${hc.name}", ours is "${srow.name}" — nothing will be pre-approved`);
     }
 
-    const { byPosition, rejected } = candidatesByPosition(hc.candidates);
-    let proposed = 0, ambiguous = 0;
+    // The held authors go in so the module can drop translations credited to
+    // their translator. Real names, not normalised — it does its own.
+    const heldAuthorNames = [...new Set((held || []).map((b) => b.author).filter(Boolean))];
+    const { byPosition, rejected } = candidatesByPosition(hc.candidates, { seriesAuthors: heldAuthorNames });
+    let proposed = 0, open = 0;
 
     for (const [position, list] of [...byPosition.entries()].sort((a, b) => a[0] - b[0])) {
       if (heldByPos.has(position)) continue;
@@ -478,11 +481,20 @@ async function propose() {
         // from the fields it can safely query. So it states the choice and
         // pre-approves nothing. One candidate, high confidence, and a real
         // action is the only combination that gets a 'y'.
+        // `pick` is the module's answer to "which of these is the original":
+        // a lone candidate, or the one the series' own collection editions
+        // quote. Everything else at the position stays in the file as a
+        // visible, unapproved alternative rather than being deleted — the
+        // signal is good, and it is still a signal.
         if (list.length > 1) {
-          notes.push(`${list.length} candidates at position ${position} — pick one, clear the rest`);
+          notes.push(
+            v.pick
+              ? `chosen over ${list.length - 1} other candidate(s) — quoted in ${v.originality} collection edition(s) of this series`
+              : `alternative at position ${position}, most likely a translation — approve this instead only if the chosen one is wrong`
+          );
         }
         const preApprove =
-          action !== 'skip' && list.length === 1 && confidence >= MIN_CONFIDENCE;
+          action !== 'skip' && v.pick && confidence >= MIN_CONFIDENCE;
 
         out.push({
           approve: preApprove ? 'y' : '',
@@ -503,7 +515,23 @@ async function propose() {
         });
         proposed++;
       }
-      if (list.length > 1) ambiguous++;
+      if (!list.some((c) => c.pick)) open++;
+    }
+
+    // What the series already has. Informational, never approvable — but
+    // without it the CSV shows a proposal for 1 and 3 and simply says nothing
+    // about 2, which reads like the volume went missing rather than like it is
+    // the one book we hold.
+    if (proposed) {
+      for (const b of (held || []).slice().sort((x, y) => (x.position_in_series ?? 999) - (y.position_in_series ?? 999))) {
+        out.push({
+          approve: '', action: 'held', series_name: srow.name,
+          position: b.position_in_series ?? '', candidates: '', title: b.title,
+          author: b.author || '', pages: '', status: b.status, confidence: '',
+          notes: 'already in the catalog — nothing to do', book_id: b.id,
+          series_id: srow.id, hardcover_id: '', cover_url: '',
+        });
+      }
     }
 
     if (SHOW_REJECTED) {
@@ -522,7 +550,7 @@ async function propose() {
       `    holds ${(held || []).length}` +
       `${srow.total_books ? ` of ${srow.total_books}` : ''}` +
       ` · hardcover offered ${hc.candidates.length}, ${rejected.length} filtered out` +
-      ` → ${proposed} proposed${ambiguous ? `, ${ambiguous} position(s) need a choice` : ''}`
+      ` → ${proposed} proposed${open ? `, ${open} position(s) still need a choice` : ''}`
     );
   }
 
