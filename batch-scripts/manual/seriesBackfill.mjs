@@ -26,10 +26,9 @@
 //   2. --apply     reads that CSV back and applies ONLY the rows whose `approve`
 //                  column says so.
 //
-// The CSV is the review surface: open it, read the `action`, `title`, `position`
-// and `notes` columns, set `approve` to y or n, save, apply. Rows left blank are
-// not applied — an unreviewed file is a no-op, which is the safe default when
-// the failure mode is silently inventing books in someone else's library.
+// Rows left blank are not applied — an unreviewed file is a no-op, which is the
+// safe default when the failure mode is silently inventing books in someone
+// else's library.
 //
 //   node batch-scripts/manual/seriesBackfill.mjs --propose
 //   node batch-scripts/manual/seriesBackfill.mjs --propose --series "Crescent City" --verbose
@@ -40,16 +39,72 @@
 //   --propose             pass 1. Read-only. Writes the CSV.
 //   --apply FILE          pass 2. Applies approved rows from FILE.
 //   --series "Name"       one series only (propose). Repeatable.
-//   --all-short           propose for EVERY series short of its total_books,
-//                         not just the ranked list below. Much slower.
+//   --all-short           propose for EVERY series with a total_books, not just
+//                         the ranked list below. Much slower.
 //   --limit N             at most N series (propose) or N rows (apply)
 //   --min-confidence N    below this a proposal is written with approve blank
 //                         rather than pre-filled 'y'. Default 80.
 //   --status S            status for INSERTED books. Default 'unreviewed'.
-//                         See "THE STATUS DECISION" below — it decides whether
-//                         the backfill is visible at all.
+//                         See "THE STATUS DECISION" below.
+//   --show-rejected       also write the candidates the filters threw out, as
+//                         action=rejected rows. Never approvable; for auditing
+//                         the filters when a volume you expected is missing.
 //   --dry-run             with --apply: print every write, perform none
 //   --verbose
+//
+// WHAT HARDCOVER ACTUALLY RETURNS  (the 2026-09-08 lesson)
+// --------------------------------------------------------
+// The first version of this script asked Hardcover for a series' book_series
+// entries, filtered to `position <= primary_books_count`, and proposed every one
+// that sat at a position we did not hold. For Crescent City — a THREE book
+// series — that produced twenty proposals, fifteen of them pre-approved at
+// confidence 100:
+//
+//   position 1    House of Earth and Blood            (x4, four editions)
+//                 House of Earth and Blood, House of Sky and Breath   (omnibus)
+//                 Crescent City ebook Bundle: A 3 Book Bundle  (4,379 pages)
+//                 Crescent City Bundle: A 2-book bundle
+//                 Crescent City Hardcover Box Set
+//                 Dom Ziemi i Krwi                    (Polish translation)
+//                 Toprak ve Kan Hanesi                (Turkish, credited to its
+//                                                      translator)
+//   position 1.1  House of Earth and Blood, Part 1 of 2
+//   position 1.2  House of Earth and Blood, Part 2 of 2
+//   position 3    Huis van vuur & schaduw             (Dutch translation)
+//                 House of Flame and Shadow           (the actual volume)
+//
+// Applying it would have put eight junk rows into a three-book series, and
+// series_volumes would then have picked ONE of them per position by its own
+// preference order — most likely the 4,379-page ebook bundle, on page count.
+// The catalog would have been worse than when it started.
+//
+// A "book" in Hardcover's book_series is not a volume. It is a work record, and
+// translations, omnibuses, box sets and split-volume editions all get their own,
+// all attached to the series, often all at the same position. So the useful
+// output of a propose pass is not "everything upstream has" — it is ONE
+// candidate per missing position, or an honest admission that there are several
+// and a human has to choose.
+//
+// FOUR FILTERS, THEN A CHOICE
+// ---------------------------
+//   1. Integer positions only. 1.1 and 2.2 are split editions of one volume.
+//   2. Bundle/box-set/omnibus titles out, by pattern.
+//   3. Omnibus by containment: a title that contains another candidate's whole
+//      title is a collection of it. Catches "House of Earth and Blood, House of
+//      Sky and Breath" without needing it to say "omnibus".
+//   4. Page-count outliers out: more than 1.6x the median of the candidates at
+//      that position is a collection, whatever it calls itself.
+//
+// Then candidates are deduped by normalised title — four editions of "House of
+// Earth and Blood" are one candidate, keeping the edition with a cover and a
+// page count — and grouped by position.
+//
+// **A position with more than one surviving candidate is never pre-approved.**
+// That is the rule the first version was missing. Translations cannot be told
+// from originals with the fields this script can safely query (Hardcover's
+// language lives on editions, and guessing at a field name would 400 the whole
+// query — see hcGql), so where the choice is real, the CSV states it and a
+// person makes it. `candidates` says how many; `notes` says what they are.
 //
 // THE STATUS DECISION — read before running --apply
 // -------------------------------------------------
@@ -66,8 +121,7 @@
 //
 //   node batch-scripts/manual/oracleBatch.mjs --limit N
 //
-// which categorises `unreviewed` rows properly and costs what it costs. If you
-// decide Hardcover's metadata is good enough on its own, `--status
+// If you decide Hardcover's metadata is good enough on its own, `--status
 // oracle_categorized` is available and the `status` column in the CSV is
 // per-row editable — but make that decision deliberately, not by leaving a flag
 // at its default.
@@ -79,13 +133,13 @@
 // and a note saying why. That guard is not theoretical: our `Wicked` series is
 // Janet Evanovich's (one book, *Wicked Appetite*), while the live page had been
 // showing Nancy Holder's *Witch & Curse* rows pulled from OpenLibrary at render
-// time. Without the guard this script would happily "backfill" one series with
-// another author's books.
+// time.
 
 import { readFileSync, writeFileSync, existsSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { createServiceClient } from '../_shared/supabaseClient.mjs';
+import { candidatesByPosition } from '../_shared/seriesCandidates.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, '..', '..');
@@ -100,6 +154,7 @@ const APPLY_FILE = APPLY ? (args[APPLY_IDX + 1] || CSV_PATH) : null;
 const DRY_RUN = args.includes('--dry-run');
 const VERBOSE = args.includes('--verbose');
 const ALL_SHORT = args.includes('--all-short');
+const SHOW_REJECTED = args.includes('--show-rejected');
 
 function numArg(name, dflt) {
   const i = args.indexOf(name);
@@ -184,6 +239,11 @@ const bookKey = (t, a) =>
   (a || '').toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 10);
 const normTitle = (s) => (s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
 
+// COLLECTION_RE and candidatesByPosition live in _shared/seriesCandidates.mjs.
+// They are the half of this script that got Crescent City wrong, they are pure,
+// and tests/series-candidates.test.js pins them to the exact API payload that
+// broke — which a function defined inside a CLI script cannot be.
+
 // -- Hardcover ----------------------------------------------------------------
 const RATE_LIMIT = 55, WINDOW_MS = 60_000, requestTimes = [];
 async function throttle() {
@@ -201,6 +261,11 @@ async function throttle() {
 // empty result is indistinguishable from a series with no books, and this script
 // would read that as "nothing to propose" and report success having done
 // nothing. tests/failure-is-not-empty.test.js exists for this shape.
+//
+// It is also why the GraphQL selection below is limited to the fields
+// src/lib/hardcoverService.js already proves exist. Asking for a `language` to
+// filter translations would be useful and would 400 the entire query if the
+// field is named something else — and there is no way to check from here.
 async function hcGql(query, variables = {}, attempt = 1) {
   await throttle();
   let resp;
@@ -225,17 +290,16 @@ async function hcGql(query, variables = {}, attempt = 1) {
   return json.data;
 }
 
-// The volume list for a series name, with positions. Mirrors
-// hardcoverFetchSeriesBooks() in src/lib/hardcoverService.js — including its
-// primary_books_count filter, which excludes the novellas and companion volumes
-// that inflate books_count and would otherwise be proposed as missing volumes.
-async function hcSeriesVolumes(name) {
+// Every candidate Hardcover attaches to the series, unfiltered except for the
+// primary_books_count ceiling. Filtering happens in candidatesByPosition() so
+// the reasons are visible and testable rather than buried in the fetch.
+async function hcSeriesCandidates(name) {
   const search = await hcGql(
     `query S($q: String!, $type: String!) { search(query: $q, query_type: $type, per_page: 5, page: 1) { results } }`,
     { q: name, type: 'Series' }
   );
   const hits = search?.search?.results?.hits || search?.search?.results?.results || [];
-  if (!hits.length) return { name: null, volumes: [], total: null };
+  if (!hits.length) return { name: null, candidates: [], total: null };
 
   const want = normSeries(name);
   let best = null, bestScore = -1;
@@ -245,7 +309,7 @@ async function hcSeriesVolumes(name) {
     const score = got === want ? 2 : (got && (got.includes(want) || want.includes(got))) ? 1 : 0;
     if (score > bestScore) { bestScore = score; best = doc; }
   }
-  if (!best?.id) return { name: null, volumes: [], total: null };
+  if (!best?.id) return { name: null, candidates: [], total: null };
 
   const data = await hcGql(
     `query GetSeries($id: Int!) {
@@ -264,30 +328,33 @@ async function hcSeriesVolumes(name) {
     { id: typeof best.id === 'string' ? parseInt(best.id, 10) : best.id }
   );
   const s = data?.series?.[0];
-  if (!s?.book_series) return { name: null, volumes: [], total: null };
+  if (!s?.book_series) return { name: null, candidates: [], total: null };
 
   const primaryTotal = s.primary_books_count || null;
-  const entries = s.book_series.filter(
-    (bs) => bs.position != null && (primaryTotal == null || bs.position <= primaryTotal)
-  );
   return {
     name: s.name || best.name || null,
     total: primaryTotal,
-    volumes: entries.map((bs) => ({
-      position: bs.position,
-      hardcoverId: bs.book?.id ?? null,
-      title: bs.book?.title || '',
-      author: bs.book?.contributions?.[0]?.author?.name || '',
-      pages: bs.book?.pages ?? null,
-      description: bs.book?.description || '',
-      coverUrl: bs.book?.image?.url || '',
-    })).filter((v) => v.title),
+    candidates: s.book_series
+      .filter((bs) => bs.position != null && (primaryTotal == null || bs.position <= primaryTotal))
+      .map((bs) => ({
+        position: Number(bs.position),
+        hardcoverId: bs.book?.id ?? null,
+        // Trimmed: Hardcover has titles with leading and trailing spaces, and an
+        // untrimmed title becomes an untrimmed normalized_key, which is a
+        // permanent identity with a space in it.
+        title: (bs.book?.title || '').trim(),
+        author: (bs.book?.contributions?.[0]?.author?.name || '').trim(),
+        pages: bs.book?.pages ?? null,
+        description: bs.book?.description || '',
+        coverUrl: bs.book?.image?.url || '',
+      }))
+      .filter((v) => v.title),
   };
 }
 
 // -- CSV ----------------------------------------------------------------------
 const COLUMNS = [
-  'approve', 'action', 'series_name', 'position', 'title', 'author',
+  'approve', 'action', 'series_name', 'position', 'candidates', 'title', 'author',
   'pages', 'status', 'confidence', 'notes', 'book_id', 'series_id',
   'hardcover_id', 'cover_url',
 ];
@@ -331,9 +398,9 @@ async function propose() {
 
   console.log(`\n  Proposing for ${targets.length} series. Reading only — no database writes.\n`);
   const out = [];
-  const summary = [];
+  let seriesDone = 0;
 
-  for (const [name, impressions] of targets) {
+  for (const [name] of targets) {
     process.stdout.write(`  ${name}\n`);
 
     const { data: srow, error: sErr } = await supabase
@@ -347,102 +414,124 @@ async function propose() {
       .eq('series_id', srow.id);
     if (hErr) { console.log(`    ! held lookup failed: ${hErr.message}`); continue; }
 
-    const heldByPos = new Map();
-    for (const b of held || []) if (b.position_in_series != null) heldByPos.set(Number(b.position_in_series), b);
+    const heldByPos = new Set(
+      (held || []).filter((b) => b.position_in_series != null).map((b) => Number(b.position_in_series))
+    );
     const heldTitles = new Set((held || []).map((b) => normTitle(b.title)));
+    const heldAuthors = new Set((held || []).map((b) => normTitle(b.author)).filter(Boolean));
 
     let hc;
-    try { hc = await hcSeriesVolumes(name); }
+    try { hc = await hcSeriesCandidates(name); }
     catch (e) { console.log(`    ! hardcover: ${e.message} — skipped, nothing proposed`); continue; }
-    if (!hc.volumes.length) { console.log('    ! hardcover has no volume list — skipped'); continue; }
+    if (!hc.candidates.length) { console.log('    ! hardcover has no volume list — skipped'); continue; }
 
-    // THE CORROBORATION GUARD. See the header: our `Wicked` is Janet
-    // Evanovich's. A mismatch does not skip the series — the rows are still
-    // written so the mismatch is visible in the review file — but every one of
-    // them lands with approve blank and confidence 0.
+    // THE CORROBORATION GUARD. Our `Wicked` is Janet Evanovich's. A mismatch
+    // does not skip the series — the rows are still written so the mismatch is
+    // visible in the review file — but every one lands at confidence 0.
     const nameMatches = normSeries(hc.name) === normSeries(srow.name);
     if (!nameMatches) {
-      console.log(`    ! hardcover calls this "${hc.name}" — ours is "${srow.name}". Proposals will need approving by hand.`);
+      console.log(`    ! hardcover calls this "${hc.name}", ours is "${srow.name}" — nothing will be pre-approved`);
     }
 
-    const heldAuthors = new Set((held || []).map((b) => normTitle(b.author)).filter(Boolean));
-    let added = 0;
+    const { byPosition, rejected } = candidatesByPosition(hc.candidates);
+    let proposed = 0, ambiguous = 0;
 
-    for (const v of hc.volumes) {
-      if (heldByPos.has(Number(v.position))) continue;
+    for (const [position, list] of [...byPosition.entries()].sort((a, b) => a[0] - b[0])) {
+      if (heldByPos.has(position)) continue;
+      if (!list.length) continue;
 
-      // Is it already in the catalog under a different series, or none?
-      const key = bookKey(v.title, v.author);
-      const { data: found, error: fErr } = await supabase
-        .rpc('find_book_by_client_key', { _key: key });
-      if (fErr) vlog(`lookup failed for ${v.title}: ${fErr.message}`);
-      const existing = Array.isArray(found) ? found[0] : found;
+      for (const v of list) {
+        const key = bookKey(v.title, v.author);
+        const { data: found, error: fErr } = await supabase
+          .rpc('find_book_by_client_key', { _key: key });
+        if (fErr) vlog(`lookup failed for ${v.title}: ${fErr.message}`);
+        const existing = Array.isArray(found) ? found[0] : found;
 
-      let action, notes = '', bookId = '';
-      if (existing?.id) {
-        bookId = existing.id;
-        if (!existing.series_id) {
-          action = 'link';
-          notes = 'already in the catalog, unlinked';
-        } else if (existing.series_id === srow.id) {
-          action = 'set-position';
-          notes = 'in this series, no position';
+        let action, notes = [], bookId = '';
+        if (existing?.id) {
+          bookId = existing.id;
+          if (!existing.series_id) { action = 'link'; notes.push('already in the catalog, unlinked'); }
+          else if (existing.series_id === srow.id) { action = 'set-position'; notes.push('in this series, no position'); }
+          else { action = 'skip'; notes.push(`belongs to a different series (${existing.series_id})`); }
+        } else if (heldTitles.has(normTitle(v.title))) {
+          action = 'skip'; notes.push('this title is already in the series');
         } else {
-          action = 'skip';
-          notes = `already belongs to a different series (${existing.series_id})`;
+          action = 'insert';
         }
-      } else if (heldTitles.has(normTitle(v.title))) {
-        action = 'skip';
-        notes = 'a book with this title is already in the series';
-      } else {
-        action = 'insert';
-      }
 
-      // Confidence: does the author agree with the series we already hold, is
-      // the position explicit, is the title substantial. Deliberately blunt —
-      // its only job is to decide which rows get a pre-filled 'y'.
-      let confidence = 100;
-      if (!nameMatches) confidence = 0;
-      if (heldAuthors.size && v.author && !heldAuthors.has(normTitle(v.author))) {
-        confidence -= 40; notes = notes ? `${notes}; author differs from the series` : 'author differs from the series';
-      }
-      if (!v.author) { confidence -= 20; notes = notes ? `${notes}; no author` : 'no author'; }
-      if (normTitle(v.title).length < 3) { confidence -= 40; notes = notes ? `${notes}; title too short` : 'title too short'; }
-      if (srow.total_books && v.position > srow.total_books) {
-        confidence -= 20;
-        notes = notes ? `${notes}; beyond total_books (${srow.total_books})` : `beyond total_books (${srow.total_books})`;
-      }
-      confidence = Math.max(0, confidence);
+        let confidence = 100;
+        if (!nameMatches) { confidence = 0; notes.push('series name does not match ours'); }
+        if (heldAuthors.size && v.author && !heldAuthors.has(normTitle(v.author))) {
+          confidence -= 40; notes.push(`author "${v.author}" differs from the series — often a translator`);
+        }
+        if (!v.author) { confidence -= 20; notes.push('no author'); }
+        if (normTitle(v.title).length < 3) { confidence -= 40; notes.push('title too short'); }
+        if (srow.total_books && position > srow.total_books) {
+          confidence -= 20; notes.push(`beyond total_books (${srow.total_books})`);
+        }
+        confidence = Math.max(0, confidence);
 
-      out.push({
-        approve: action !== 'skip' && confidence >= MIN_CONFIDENCE ? 'y' : '',
-        action,
-        series_name: srow.name,
-        position: v.position,
-        title: v.title,
-        author: v.author,
-        pages: v.pages ?? '',
-        status: action === 'insert' ? INSERT_STATUS : '',
-        confidence,
-        notes,
-        book_id: bookId,
-        series_id: srow.id,
-        hardcover_id: v.hardcoverId ?? '',
-        cover_url: v.coverUrl,
-      });
-      added++;
+        // THE RULE THE FIRST VERSION WAS MISSING.
+        //
+        // More than one candidate at a position is a real choice — an original
+        // and its translations, most often — and this script cannot make it
+        // from the fields it can safely query. So it states the choice and
+        // pre-approves nothing. One candidate, high confidence, and a real
+        // action is the only combination that gets a 'y'.
+        if (list.length > 1) {
+          notes.push(`${list.length} candidates at position ${position} — pick one, clear the rest`);
+        }
+        const preApprove =
+          action !== 'skip' && list.length === 1 && confidence >= MIN_CONFIDENCE;
+
+        out.push({
+          approve: preApprove ? 'y' : '',
+          action,
+          series_name: srow.name,
+          position,
+          candidates: list.length,
+          title: v.title,
+          author: v.author,
+          pages: v.pages ?? '',
+          status: action === 'insert' ? INSERT_STATUS : '',
+          confidence,
+          notes: notes.join('; '),
+          book_id: bookId,
+          series_id: srow.id,
+          hardcover_id: v.hardcoverId ?? '',
+          cover_url: v.coverUrl,
+        });
+        proposed++;
+      }
+      if (list.length > 1) ambiguous++;
     }
 
-    const heldCount = (held || []).length;
-    summary.push({ name: srow.name, impressions, held: heldCount, proposed: added, hcTotal: hc.total });
-    console.log(`    holds ${heldCount}, hardcover lists ${hc.volumes.length}${hc.total ? ` (primary ${hc.total})` : ''} → ${added} proposed`);
+    if (SHOW_REJECTED) {
+      for (const r of rejected) {
+        out.push({
+          approve: '', action: 'rejected', series_name: srow.name, position: r.position,
+          candidates: '', title: r.title, author: r.author, pages: r.pages ?? '',
+          status: '', confidence: 0, notes: r.reason, book_id: '', series_id: srow.id,
+          hardcover_id: r.hardcoverId ?? '', cover_url: '',
+        });
+      }
+    }
+
+    seriesDone++;
+    console.log(
+      `    holds ${(held || []).length}` +
+      `${srow.total_books ? ` of ${srow.total_books}` : ''}` +
+      ` · hardcover offered ${hc.candidates.length}, ${rejected.length} filtered out` +
+      ` → ${proposed} proposed${ambiguous ? `, ${ambiguous} position(s) need a choice` : ''}`
+    );
   }
 
   const body = out.map((r) => COLUMNS.map((c) => csvCell(r[c])).join(',')).join('\n');
   writeFileSync(CSV_PATH, COLUMNS.join(',') + '\n' + body + '\n');
 
   const approvable = out.filter((r) => r.approve === 'y').length;
-  console.log(`\n  ${out.length} proposals across ${summary.length} series — ${approvable} pre-approved, ${out.length - approvable} need a decision.`);
+  const applicable = out.filter((r) => r.action !== 'rejected');
+  console.log(`\n  ${applicable.length} proposals across ${seriesDone} series — ${approvable} pre-approved, ${applicable.length - approvable} need a decision.`);
   console.log(`  Actions: ${['insert', 'link', 'set-position', 'skip'].map((a) => `${a} ${out.filter((r) => r.action === a).length}`).join(', ')}`);
   console.log(`\n  Review:  ${CSV_PATH}`);
   console.log(`  Then:    node batch-scripts/manual/seriesBackfill.mjs --apply ${CSV_PATH} --dry-run\n`);
@@ -454,16 +543,34 @@ async function propose() {
 
 // -- Pass 2: apply ------------------------------------------------------------
 const APPROVED = new Set(['y', 'yes', '1', 'true']);
+const APPLICABLE = new Set(['insert', 'link', 'set-position']);
 
 async function apply() {
   if (!existsSync(APPLY_FILE)) { console.error(`No such file: ${APPLY_FILE}`); process.exit(1); }
   const all = parseCsv(readFileSync(APPLY_FILE, 'utf8'));
-  let rows = all.filter((r) => APPROVED.has((r.approve || '').toLowerCase()) && r.action !== 'skip');
+  let rows = all.filter((r) => APPROVED.has((r.approve || '').toLowerCase()) && APPLICABLE.has(r.action));
   if (LIMIT) rows = rows.slice(0, LIMIT);
 
   console.log(`\n  ${APPLY_FILE}`);
   console.log(`  ${all.length} rows, ${rows.length} approved and applicable.${DRY_RUN ? '  DRY RUN — nothing will be written.' : ''}\n`);
   if (!rows.length) { console.log('  Nothing to do. Set `approve` to y on the rows you want.\n'); return; }
+
+  // An approved position with two approved candidates is a review mistake, and
+  // it would put both into the series at the same position — the exact shape
+  // series_volumes exists to paper over. Refuse rather than half-apply.
+  const seen = new Map();
+  for (const r of rows) {
+    const k = `${r.series_id}::${r.position}`;
+    if (!seen.has(k)) seen.set(k, []);
+    seen.get(k).push(r.title);
+  }
+  const clashes = [...seen.entries()].filter(([, t]) => t.length > 1);
+  if (clashes.length) {
+    console.error('  Two or more approved rows share a position. Approve one per position:\n');
+    for (const [k, titles] of clashes) console.error(`    position ${k.split('::')[1]}: ${titles.join(' | ')}`);
+    console.error('');
+    process.exit(1);
+  }
 
   const counts = { insert: 0, link: 0, 'set-position': 0, skipped: 0, failed: 0 };
 
@@ -517,9 +624,6 @@ async function apply() {
         if (iErr) throw new Error(iErr.message);
         console.log(`  ✓ insert ${label} → ${id}`);
         counts.insert++;
-      } else {
-        console.log(`  - ${label}: unknown action "${r.action}", skipped`);
-        counts.skipped++;
       }
     } catch (e) {
       console.log(`  ! ${label}: ${e.message}`);
@@ -530,7 +634,7 @@ async function apply() {
   console.log(`\n  inserted ${counts.insert}, linked ${counts.link}, positioned ${counts['set-position']}, skipped ${counts.skipped}, failed ${counts.failed}`);
   if (!DRY_RUN) {
     console.log(`\n  Re-run supabase/diagnostics/series_health.sql to see the result.`);
-    if ((rows.some((r) => (r.status || INSERT_STATUS) === 'unreviewed'))) {
+    if (rows.some((r) => (r.status || INSERT_STATUS) === 'unreviewed')) {
       console.log(`  Inserts are 'unreviewed' and will NOT appear on the series page until oracleBatch.mjs runs.`);
     }
   }
