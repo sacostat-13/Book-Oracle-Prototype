@@ -175,6 +175,11 @@ const LIMIT = numArg('--limit', null);
 const MIN_CONFIDENCE = numArg('--min-confidence', 80);
 const INSERT_STATUS = strArg('--status', 'unreviewed');
 const ONLY_SERIES = allStrArgs('--series');
+// The language this CATALOG is written in — not a claim about the work. The
+// Books Oracle holds English titles for Japanese works (Ring, Love Hina, the
+// JoJo volumes), so 'eng' is right there even though it is not the original
+// language. `none` turns the filter off and leaves the bundle heuristic alone.
+const PREFER_LANGUAGE = strArg('--prefer-language', 'eng');
 
 if (PROPOSE === APPLY) {
   console.error('Pass exactly one of --propose or --apply FILE. See the header of this file.');
@@ -245,7 +250,12 @@ const normTitle = (s) => (s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
 // broke — which a function defined inside a CLI script cannot be.
 
 // -- Hardcover ----------------------------------------------------------------
-const RATE_LIMIT = 55, WINDOW_MS = 60_000, requestTimes = [];
+// The probe on 2026-09-09 hit "API rate limit exceeded for tier 'Free'" after
+// about eight requests in quick succession, which left six of its ten
+// candidates untested. 55/min was read off nothing; 20 is a guess with evidence
+// behind it. hcGql already sleeps a full minute on a 429, so the cost of being
+// wrong is slow rather than broken.
+const RATE_LIMIT = 20, WINDOW_MS = 60_000, requestTimes = [];
 async function throttle() {
   for (;;) {
     const now = Date.now();
@@ -290,6 +300,62 @@ async function hcGql(query, variables = {}, attempt = 1) {
   return json.data;
 }
 
+// Language, by a ladder rather than a guess.
+//
+// The probe (batch-scripts/probes/probeHardcoverLanguage.mjs, run 2026-09-09)
+// settled where language lives: NOT on `books` — that type has no language
+// field at all — but on `editions`, which carries both `language : languages`
+// and `language_id : Int`. `books` reaches editions through `editions` and
+// through `default_physical_edition` / `default_ebook_edition` /
+// `default_audio_edition`.
+//
+// It proved `editions { id language_id }` works and returns real values (14 of
+// 25 books, 5 distinct). It could NOT test `language { code3 }`, because
+// Hardcover's free tier started answering 429 half way through the run. So the
+// nicer, self-describing selection is plausible and unproven, and an unproven
+// field name is not a small risk here: Hasura rejects the whole query, so a
+// wrong guess costs the entire series list rather than one column.
+//
+// Hence a ladder. Try the best selection, and on a GraphQL field error drop to
+// the next. Whichever rung works is remembered for the rest of the run, so this
+// costs one wasted request per process, not one per series.
+const LANGUAGE_RUNGS = [
+  {
+    key: 'code3',
+    selection: 'editions(limit: 3) { id language { code3 } }',
+    read: (b) => (b.editions || []).map((e) => e?.language?.code3).find(Boolean) ?? null,
+    want: (pref) => pref,
+  },
+  {
+    key: 'language_id',
+    selection: 'editions(limit: 3) { id language_id }',
+    // 1 is English. Evidence, from the probe's per-book output: every title
+    // carrying id 1 was English (House of Earth and Blood, House of Sky and
+    // Breath, and the English bundles), while the Turkish editions came back
+    // 168, the Portuguese 130 and a Polish one 129. An inference from one
+    // series, so it is named and sourced rather than inlined as a magic number.
+    read: (b) => (b.editions || []).map((e) => e?.language_id).find((v) => v != null) ?? null,
+    want: (pref) => (pref === 'eng' ? 1 : null),
+  },
+  { key: 'none', selection: '', read: () => null, want: () => null },
+];
+let languageRung = null; // resolved on the first series, then reused
+
+const seriesQuery = (languageSelection) => `query GetSeries($id: Int!) {
+  series(where: { id: { _eq: $id } }, limit: 1) {
+    id name books_count primary_books_count
+    book_series(order_by: { position: asc }) {
+      position
+      book {
+        id title pages description
+        image { url }
+        contributions { author { name } }
+        ${languageSelection}
+      }
+    }
+  }
+}`;
+
 // Every candidate Hardcover attaches to the series, unfiltered except for the
 // primary_books_count ceiling. Filtering happens in candidatesByPosition() so
 // the reasons are visible and testable rather than buried in the fetch.
@@ -310,44 +376,64 @@ async function hcSeriesCandidates(name) {
     if (score > bestScore) { bestScore = score; best = doc; }
   }
   if (!best?.id) return { name: null, candidates: [], total: null };
+  const id = typeof best.id === 'string' ? parseInt(best.id, 10) : best.id;
 
-  const data = await hcGql(
-    `query GetSeries($id: Int!) {
-       series(where: { id: { _eq: $id } }, limit: 1) {
-         id name books_count primary_books_count
-         book_series(order_by: { position: asc }) {
-           position
-           book {
-             id title pages description
-             image { url }
-             contributions { author { name } }
-           }
-         }
-       }
-     }`,
-    { id: typeof best.id === 'string' ? parseInt(best.id, 10) : best.id }
-  );
-  const s = data?.series?.[0];
-  if (!s?.book_series) return { name: null, candidates: [], total: null };
+  // Walk the ladder until something answers. A field error is the only thing
+  // worth stepping down for — a 429 or a network failure is hcGql's problem and
+  // it throws, which must stay loud rather than silently costing us language.
+  let data = null;
+  const rungs = languageRung ? [languageRung] : LANGUAGE_RUNGS;
+  for (const rung of rungs) {
+    try {
+      data = await hcGql(seriesQuery(rung.selection), { id });
+      if (!languageRung) {
+        languageRung = rung;
+        if (rung.key === 'none') console.log('    (no usable language field — falling back to title signals alone)');
+        else vlog(`language via ${rung.key}`);
+      }
+      break;
+    } catch (e) {
+      const isFieldError = /not found in type|Cannot query field|unknown field|field '[^']+' not found/i.test(e.message);
+      if (!isFieldError || rung.key === 'none') throw e;
+      vlog(`language rung "${rung.key}" rejected: ${e.message.slice(0, 80)}`);
+    }
+  }
 
-  const primaryTotal = s.primary_books_count || null;
+  const s2 = data?.series?.[0];
+  if (!s2?.book_series) return { name: null, candidates: [], total: null };
+
+  const primaryTotal = s2.primary_books_count || null;
+  const wanted = languageRung.want(PREFER_LANGUAGE === 'none' ? null : PREFER_LANGUAGE);
   return {
-    name: s.name || best.name || null,
+    name: s2.name || best.name || null,
     total: primaryTotal,
-    candidates: s.book_series
+    wantLanguage: PREFER_LANGUAGE === 'none' ? null : wanted,
+    candidates: s2.book_series
       .filter((bs) => bs.position != null && (primaryTotal == null || bs.position <= primaryTotal))
-      .map((bs) => ({
-        position: Number(bs.position),
-        hardcoverId: bs.book?.id ?? null,
-        // Trimmed: Hardcover has titles with leading and trailing spaces, and an
-        // untrimmed title becomes an untrimmed normalized_key, which is a
-        // permanent identity with a space in it.
-        title: (bs.book?.title || '').trim(),
-        author: (bs.book?.contributions?.[0]?.author?.name || '').trim(),
-        pages: bs.book?.pages ?? null,
-        description: bs.book?.description || '',
-        coverUrl: bs.book?.image?.url || '',
-      }))
+      .map((bs) => {
+        const b = bs.book || {};
+        // EVERY contribution, not the first. Hardcover's contributions are not
+        // author-first: the English "House of Sky and Breath" comes back
+        // credited to Elizabeth Evans, who narrates the audiobook. Reading only
+        // [0] threw the real volume out as a translation.
+        const authors = (b.contributions || [])
+          .map((c) => (c?.author?.name || '').trim())
+          .filter(Boolean);
+        return {
+          position: Number(bs.position),
+          hardcoverId: b.id ?? null,
+          // Trimmed: Hardcover has titles with leading and trailing spaces, and
+          // an untrimmed title becomes an untrimmed normalized_key — a
+          // permanent identity with a space in it.
+          title: (b.title || '').trim(),
+          authors,
+          author: authors[0] || '',
+          language: languageRung.read(b),
+          pages: b.pages ?? null,
+          description: b.description || '',
+          coverUrl: b.image?.url || '',
+        };
+      })
       .filter((v) => v.title),
   };
 }
@@ -436,7 +522,10 @@ async function propose() {
     // The held authors go in so the module can drop translations credited to
     // their translator. Real names, not normalised — it does its own.
     const heldAuthorNames = [...new Set((held || []).map((b) => b.author).filter(Boolean))];
-    const { byPosition, rejected } = candidatesByPosition(hc.candidates, { seriesAuthors: heldAuthorNames });
+    const { byPosition, rejected } = candidatesByPosition(hc.candidates, {
+      seriesAuthors: heldAuthorNames,
+      wantLanguage: hc.wantLanguage ?? null,
+    });
     let proposed = 0, open = 0;
 
     for (const [position, list] of [...byPosition.entries()].sort((a, b) => a[0] - b[0])) {
@@ -503,7 +592,7 @@ async function propose() {
           position,
           candidates: list.length,
           title: v.title,
-          author: v.author,
+          author: (v.authors || [v.author]).filter(Boolean).join(' / '),
           pages: v.pages ?? '',
           status: action === 'insert' ? INSERT_STATUS : '',
           confidence,

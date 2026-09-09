@@ -144,3 +144,76 @@ describe('the page-count outlier filter needs a real median', () => {
     expect(byPosition.get(1)).toHaveLength(2);
   });
 });
+
+describe('the author filter reads every contribution', () => {
+  // THE BUG THIS EXISTS FOR: a real propose run, 2026-09-09. Hardcover returned
+  //
+  //   House of Sky and Breath   768pp   credited to "Elizabeth Evans"
+  //
+  // as a candidate at position 2. That is the English volume — Elizabeth Evans
+  // narrates the audiobook — and the filter threw it out as "usually a
+  // translation" because it read contributions[0] and stopped. It did no harm
+  // only because the catalog already held position 2, so the row was never
+  // going to be proposed. With position 2 empty it would have dropped the real
+  // book and left a translation standing.
+  const withNarrator = {
+    position: 2, title: 'House of Sky and Breath', authors: ['Elizabeth Evans', 'Sarah J. Maas'],
+    pages: 768, coverUrl: 'x', description: 'd', hardcoverId: 429093,
+  };
+  const translated = {
+    position: 2, title: 'Gökyüzü ve Nefes Hanesi', authors: ['Seyhan Dönmez'],
+    pages: 840, coverUrl: 'x', description: '', hardcoverId: 2474585,
+  };
+
+  it('keeps a book whose author appears behind a narrator', () => {
+    const { byPosition, rejected } = candidatesByPosition([withNarrator, translated], {
+      seriesAuthors: ['Sarah J. Maas'],
+    });
+    expect(byPosition.get(2).map((c) => c.title)).toEqual(['House of Sky and Breath']);
+    expect(rejected.map((r) => r.title)).toEqual(['Gökyüzü ve Nefes Hanesi']);
+  });
+
+  it('names every contributor when it does reject', () => {
+    const { rejected } = candidatesByPosition([withNarrator, translated], {
+      seriesAuthors: ['Sarah J. Maas'],
+    });
+    expect(rejected[0].reason).toContain('"Seyhan Dönmez"');
+    expect(rejected[0].reason).toContain('none of them the series author');
+  });
+});
+
+describe('the language filter', () => {
+  const eng = { position: 1, title: 'The English One', authors: ['A'], language: 'eng', pages: 300, coverUrl: 'x', description: '', hardcoverId: 1 };
+  const pol = { position: 1, title: 'Ta Polska Ksiazka', authors: ['A'], language: 'pol', pages: 310, coverUrl: 'x', description: '', hardcoverId: 2 };
+  const unknown = { position: 1, title: 'Een Nederlands Boek', authors: ['A'], language: null, pages: 305, coverUrl: 'x', description: '', hardcoverId: 3 };
+
+  it('drops a candidate whose language is known and wrong', () => {
+    const { byPosition, rejected } = candidatesByPosition([eng, pol], { wantLanguage: 'eng' });
+    expect(byPosition.get(1).map((c) => c.title)).toEqual(['The English One']);
+    expect(rejected[0].reason).toMatch(/edition language pol, not eng/);
+  });
+
+  it('never drops a candidate whose language is unknown', () => {
+    // Hardcover answered for 14 of 25 books in the probe run. Treating silence
+    // as "foreign" would throw away more originals than translations.
+    const { byPosition } = candidatesByPosition([eng, unknown], { wantLanguage: 'eng' });
+    expect(byPosition.get(1)).toHaveLength(2);
+  });
+
+  it('a confirmed language beats the bundle inference', () => {
+    // The quotation signal would favour whichever title the collections quote.
+    // A language the API actually reported is a fact, and outranks it.
+    const { byPosition } = candidatesByPosition([
+      { ...unknown, title: 'Quoted Somewhere Else' },
+      eng,
+      { position: 1, title: 'A Collection of Quoted Somewhere Else', authors: ['A'], language: null, pages: 900, coverUrl: 'x', description: '', hardcoverId: 9 },
+    ], { wantLanguage: 'eng' });
+    expect(byPosition.get(1).find((c) => c.pick)?.title).toBe('The English One');
+  });
+
+  it('is inert when the caller supplies no preference', () => {
+    const { byPosition, rejected } = candidatesByPosition([eng, pol], {});
+    expect(rejected).toHaveLength(0);
+    expect(byPosition.get(1)).toHaveLength(2);
+  });
+});

@@ -1,8 +1,8 @@
 // seriesCandidates.mjs — deciding which of Hardcover's "books in this series"
-// are actually volumes, and which of those is the original.
+// are actually volumes, and which of those is the one this catalog wants.
 //
 // Pure. No network, no database, no environment. That is the point: this is the
-// half of seriesBackfill.mjs that keeps getting it wrong, and a pure function is
+// half of seriesBackfill.mjs that kept getting it wrong, and a pure function is
 // the half a test can hold still.
 //
 // WHAT HARDCOVER RETURNS
@@ -10,75 +10,70 @@
 // A "book" in `book_series` is a work record, not a volume. Translations,
 // omnibuses, box sets and split-volume editions each get their own, all attached
 // to the series, often all at the same position. Crescent City — a THREE book
-// series — comes back with twenty.
+// series — comes back with twenty-five.
 //
-// TWO ROUNDS OF THIS, BOTH WORTH REMEMBERING
-// ------------------------------------------
-// Round one (2026-09-08) proposed all twenty, fifteen pre-approved at
-// confidence 100: bundles, box sets, four editions of one volume, three
-// translations, and two halves of a split edition at positions 1.1 and 1.2.
-// Applying it would have put eight junk rows into a three-book series.
-//
-// Round two filtered the bundles and split editions correctly and then offered
-// the translations as equal candidates for a human to choose between — three at
-// position 1, four at position 3. That is not what a reading-order page wants.
-// A series page is the series in its ORIGINAL language: House of Earth and
-// Blood, not Dom Ziemi i Krwi, and not Toprak ve Kan Hanesi.
-//
-// SO: STRUCTURE, THEN AUTHOR, THEN ORIGINALITY
-// --------------------------------------------
+// FILTERS, IN ORDER
 //   1. Integer positions only — 1.1 and 2.2 are halves of one volume.
 //   2. Bundle/box-set/omnibus titles out, by pattern.
 //   3. Omnibus by containment — a title wholly containing another candidate's
 //      title is a collection of it. Catches "House of Earth and Blood, House of
 //      Sky and Breath", which matches no bundle word.
-//   4. Author filter. A translation is very often credited to its TRANSLATOR:
-//      Toprak ve Kan Hanesi to Arif Dursun, Alev ve Gölge Hanesi to Seyhan
-//      Dönmez, Cidade da Lua Crescente to Carolina Candido. Where the series has
-//      a known author and at least one candidate matches, the rest go.
-//   5. Page-count outliers out, per position, against that position's median.
+//   4. Language, when the caller can supply it. Additive: a candidate whose
+//      language is KNOWN and different from the wanted one goes; unknown
+//      language never disqualifies anything.
+//   5. Author. A translation is very often credited to its translator.
+//   6. Page-count outliers, per position, against that position's median.
 //
-// That leaves the translations credited to the original author — Dom Ziemi i
-// Krwi and Huis van vuur & schaduw are both "by Sarah J. Maas". Nothing in the
-// author, title, page count or position separates those from the original.
+// Then the bundle-quotation signal breaks whatever ties remain: a collection
+// edition quotes its volumes in the original language, so a candidate whose
+// title appears inside the collection titles THIS series threw out is what those
+// collections are made of. `House of Earth and Blood` is quoted in two of them;
+// `Dom Ziemi i Krwi` in none. That is what separates an original from a
+// translation credited to the SAME author, which the author filter cannot see.
 //
-// THE ORIGINALITY SIGNAL
+// THE AUTHOR FILTER READS EVERY CONTRIBUTION, NOT THE FIRST
+// ---------------------------------------------------------
+// 2026-09-09, from a real propose run. Hardcover's contributions are not
+// author-first, and for an audiobook the first one can be the NARRATOR:
+//
+//   House of Sky and Breath   768pp   credited to "Elizabeth Evans"
+//
+// That is the English volume — Elizabeth Evans narrates it — and the filter
+// threw it out as "usually a translation". It did no harm only because the
+// catalog already held position 2, so the row was never going to be proposed.
+// Had position 2 been empty, the filter would have dropped the real book and
+// left a translation standing.
+//
+// So a candidate carries `authors` — every contribution — and matches if ANY of
+// them is the series author. A narrator alongside Sarah J. Maas keeps the book;
+// a translator instead of her still loses it.
+//
+// ON "ORIGINAL LANGUAGE"
 // ----------------------
-// The bundles do it. A collection edition quotes its volumes' titles in the
-// original language:
-//
-//   "Crescent City Series Set of 3 Books. House of Earth and Blood, House of
-//    Sky and Breath and House of Flame and Shadow"
-//
-// So a candidate whose title appears INSIDE the collection titles this same
-// series threw out is the one those collections are made of — the original.
-// `Dom Ziemi i Krwi` appears in none of them; `House of Earth and Blood` appears
-// in three.
-//
-// It is a signal, not a proof, so it is used the way a signal should be: the
-// unique highest scorer at a position is marked `pick`, and everything else at
-// that position stays in the output as a visible, unapproved alternative. A
-// series with no collection editions scores every candidate zero, nothing is
-// picked, and the caller falls back to asking a person. Degrading to the
-// previous behaviour is the worst case, not a wrong answer.
+// `wantLanguage` is the language THIS CATALOG is written in, not a claim about
+// the work. The Books Oracle holds English titles for Japanese works — Ring,
+// Love Hina, the JoJo volumes — so English is the right preference there even
+// though it is not the original language. A catalog holding the Spanish edition
+// of a Spanish novel would want something else, and this function takes the
+// answer rather than deciding it.
 
 export const COLLECTION_RE =
   /\b(bundle|box(ed)? ?set|omnibus|anthology|collection|complete (series|collection)|series set|set of \d+|\d+[- ]book|books? \d+\s*[-–—]\s*\d+|part \d+ of \d+|vols?\.? \d+\s*[-–—]\s*\d+)\b/i;
 
 export const normTitle = (s) => (s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
 
+const authorsOf = (c) => (c.authors && c.authors.length ? c.authors : [c.author]).filter(Boolean);
+
 /**
- * @param {Array<{position:number,title:string,author:string,pages:number|null,
- *                description:string,coverUrl:string,hardcoverId:number|null}>} candidates
- * @param {{seriesAuthors?: string[]}} [opts] authors already known for this
- *        series, from the books we hold. Used to drop translations credited to
- *        their translator — only when at least one candidate matches, so a
- *        series whose held author is wrong or missing loses nothing.
+ * @param {Array<{position:number,title:string,author?:string,authors?:string[],
+ *                language?:string|number|null,pages:number|null,description:string,
+ *                coverUrl:string,hardcoverId:number|null}>} candidates
+ * @param {{seriesAuthors?: string[], wantLanguage?: string|number|null}} [opts]
  * @returns {{ byPosition: Map<number, object[]>, rejected: Array<object & {reason:string}> }}
- *          Each surviving candidate carries `originality` (how many collection
- *          titles quote it) and `pick` (the unique best at its position).
+ *          Survivors carry `originality` (how many collection titles quote them)
+ *          and `pick` (the unique best at their position).
  */
-export function candidatesByPosition(candidates, { seriesAuthors = [] } = {}) {
+export function candidatesByPosition(candidates, { seriesAuthors = [], wantLanguage = null } = {}) {
   const rejected = [];
   let keep = [];
 
@@ -86,8 +81,8 @@ export function candidatesByPosition(candidates, { seriesAuthors = [] } = {}) {
   // test. Without the floor, a candidate called "Ring" is "contained in"
   // everything and the whole series rejects itself.
   const allTitles = candidates.map((c) => normTitle(c.title)).filter((t) => t.length > 6);
-  // The corpus for the originality signal below: every title this series threw
-  // out as a collection. Built as we go.
+  // The corpus for the originality signal: every title this series threw out as
+  // a collection. Built as we go.
   const collectionTitles = [];
 
   for (const c of candidates) {
@@ -107,17 +102,31 @@ export function candidatesByPosition(candidates, { seriesAuthors = [] } = {}) {
     keep.push(c);
   }
 
-  // The author filter. Conditional on a match existing: if nothing we hold
-  // agrees with anything upstream, the held author is more likely to be the
-  // wrong one than every candidate to be a translation.
+  // Language. Only ever removes a candidate whose language is KNOWN and wrong —
+  // Hardcover answers for roughly half the books in a series, and treating
+  // "unknown" as "foreign" would throw away more originals than translations.
+  if (wantLanguage != null) {
+    const survivors = [];
+    for (const c of keep) {
+      if (c.language != null && c.language !== wantLanguage) {
+        rejected.push({ ...c, reason: `edition language ${c.language}, not ${wantLanguage}` });
+      } else survivors.push(c);
+    }
+    keep = survivors;
+  }
+
+  // Author. Conditional on a match existing: if nothing upstream agrees with
+  // what we hold, the held author is likelier wrong than every candidate is a
+  // translation, so the filter stands down rather than emptying the series.
   const known = new Set(seriesAuthors.map(normTitle).filter(Boolean));
   if (known.size) {
-    const anyMatch = keep.some((c) => c.author && known.has(normTitle(c.author)));
-    if (anyMatch) {
+    const matches = (c) => authorsOf(c).some((a) => known.has(normTitle(a)));
+    if (keep.some(matches)) {
       const survivors = [];
       for (const c of keep) {
-        if (c.author && !known.has(normTitle(c.author))) {
-          rejected.push({ ...c, reason: `credited to "${c.author}", not the series author — usually a translation` });
+        const names = authorsOf(c);
+        if (names.length && !matches(c)) {
+          rejected.push({ ...c, reason: `credited to ${names.map((n) => `"${n}"`).join(', ')}, none of them the series author — usually a translation` });
         } else survivors.push(c);
       }
       keep = survivors;
@@ -131,7 +140,7 @@ export function candidatesByPosition(candidates, { seriesAuthors = [] } = {}) {
     const k = `${c.position}::${normTitle(c.title)}`;
     const prev = byTitle.get(k);
     if (!prev) { byTitle.set(k, c); continue; }
-    const score = (x) => (x.coverUrl ? 4 : 0) + (x.pages ? 2 : 0) + (x.description ? 1 : 0);
+    const score = (x) => (x.coverUrl ? 4 : 0) + (x.pages ? 2 : 0) + (x.description ? 1 : 0) + (x.language != null ? 1 : 0);
     if (score(c) > score(prev)) byTitle.set(k, c);
   }
 
@@ -166,12 +175,22 @@ export function candidatesByPosition(candidates, { seriesAuthors = [] } = {}) {
       c.pick = false;
     }
     if (list.length === 1) { list[0].pick = true; continue; }
-    const top = Math.max(...list.map((c) => c.originality));
-    const winners = list.filter((c) => c.originality === top);
-    // A tie, or nothing quoted anywhere, is a real question. Leave it open.
-    if (top > 0 && winners.length === 1) winners[0].pick = true;
-    // Best first, so the CSV reads in the order a reviewer should consider it.
-    list.sort((a, b) => (b.originality - a.originality) || a.title.localeCompare(b.title));
+    // A confirmed match on the wanted language outranks the quotation signal:
+    // it is a fact where the other is an inference.
+    const confirmed = list.filter((c) => wantLanguage != null && c.language === wantLanguage);
+    if (confirmed.length === 1) {
+      confirmed[0].pick = true;
+    } else {
+      const pool = confirmed.length ? confirmed : list;
+      const top = Math.max(...pool.map((c) => c.originality));
+      const winners = pool.filter((c) => c.originality === top);
+      // A tie, or nothing quoted anywhere, is a real question. Leave it open.
+      if (top > 0 && winners.length === 1) winners[0].pick = true;
+    }
+    list.sort((a, b) =>
+      (Number(b.pick) - Number(a.pick)) ||
+      (b.originality - a.originality) ||
+      a.title.localeCompare(b.title));
   }
 
   return { byPosition, rejected };

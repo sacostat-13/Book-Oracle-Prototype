@@ -74,8 +74,12 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 // Returns { ok, data, error }. Never throws for a GraphQL-level error, because
 // here an error IS the result: the whole point is finding out which selections
 // the server rejects and why.
-async function gql(query, variables = {}) {
-  await sleep(250); // polite; this probe makes a dozen requests at most
+async function gql(query, variables = {}, retried = false) {
+  // Hardcover's free tier answered 429 after about eight quick requests on the
+  // first run of this probe, which left six of the ten candidates untested and
+  // the most interesting one — language { code3 } — unanswered. A probe that
+  // reports "unknown" because it went too fast is worse than a slow one.
+  await sleep(4000);
   let resp;
   try {
     resp = await fetch('https://api.hardcover.app/v1/graphql', {
@@ -89,6 +93,11 @@ async function gql(query, variables = {}) {
     });
   } catch (e) {
     return { ok: false, error: `unreachable: ${e.message}` };
+  }
+  if (resp.status === 429) {
+    // Wait it out once rather than reporting a rate limit as a missing field.
+    if (!retried) { await sleep(65_000); return gql(query, variables, true); }
+    return { ok: false, error: 'rate limited twice — rerun when the tier resets' };
   }
   if (!resp.ok) return { ok: false, error: `HTTP ${resp.status}: ${(await resp.text()).slice(0, 200)}` };
   const json = await resp.json();
@@ -233,8 +242,15 @@ function extractLanguageish(book) {
       .map((bs) => extractLanguageish(bs.book || {}))
       .filter((v) => v && v.length);
     const distinct = new Set(values.map((v) => v.replace(/^[^=]*=/, '')));
-    console.log(`    ✓ ${label.padEnd(42)} ${values.length}/${rows.length} books answered, ${distinct.size} distinct value(s)`);
-    if (label.startsWith('control')) continue;
+    console.log(label.startsWith('control')
+      ? `    ✓ ${label.padEnd(42)} parses, ${rows.length} books returned (language not read for the control)`
+      : `    ✓ ${label.padEnd(42)} ${values.length}/${rows.length} books answered, ${distinct.size} distinct value(s)`);
+    if (label.startsWith('control')) {
+      // The control exists to prove the query shape and the token, not to
+      // return a language — extractLanguageish deliberately ignores
+      // contributions, so "0 answered" here is correct and means nothing.
+      continue;
+    }
     if (values.length) working.push({ label, selection, answered: values.length, of: rows.length, distinct: distinct.size, rows });
   }
 
