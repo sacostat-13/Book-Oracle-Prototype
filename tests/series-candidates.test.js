@@ -217,3 +217,78 @@ describe('the language filter', () => {
     expect(byPosition.get(1)).toHaveLength(2);
   });
 });
+
+describe('a lone candidate is not evidence', () => {
+  // THE BUG THIS EXISTS FOR: the 25-series run, 2026-09-09. Twelve of the
+  // twenty-four pre-approvals were the only candidate at their position, and
+  // half of those were wrong — Il Dio storpio (Italian) as Malazan 10, Veža
+  // lastovičky (Slovak) as Witcher 4, Gideon: a Nona (a translation) as Locked
+  // Tomb 1. With one candidate, `pick` was set unconditionally: nothing to
+  // compare, so every signal sat idle and the row went out pre-approved because
+  // Hardcover had filed it at that position.
+  //
+  // Translations name the ORIGINAL author alongside the translator, so the
+  // author filter passes them. Only a reported language catches these.
+  const lone = (extra) => [{
+    position: 10, title: 'Il Dio storpio', authors: ['Steven Erikson'],
+    pages: 900, coverUrl: 'x', description: '', hardcoverId: 1, ...extra,
+  }];
+
+  it('does not pick a lone candidate whose language is unknown', () => {
+    const { byPosition } = candidatesByPosition(lone({ language: null }), {
+      seriesAuthors: ['Steven Erikson'], wantLanguage: 'eng',
+    });
+    const c = byPosition.get(10)[0];
+    expect(c.pick).toBe(false);
+    expect(c.pickReason).toMatch(/no language reported/);
+  });
+
+  it('picks a lone candidate once the language is confirmed', () => {
+    const { byPosition } = candidatesByPosition(lone({ language: 'eng' }), {
+      seriesAuthors: ['Steven Erikson'], wantLanguage: 'eng',
+    });
+    expect(byPosition.get(10)[0].pick).toBe(true);
+    expect(byPosition.get(10)[0].pickReason).toMatch(/language confirmed/);
+  });
+
+  it('drops a lone candidate outright when its language is known and wrong', () => {
+    const { byPosition, rejected } = candidatesByPosition(lone({ language: 'ita' }), {
+      seriesAuthors: ['Steven Erikson'], wantLanguage: 'eng',
+    });
+    expect(byPosition.get(10)).toBeUndefined();
+    expect(rejected[0].reason).toMatch(/edition language ita, not eng/);
+  });
+
+  it('picks nothing at all when the caller wants no language filtering', () => {
+    // --prefer-language none. Without a language there is no fact to lean on,
+    // and one candidate still is not evidence, so the honest output is a
+    // question rather than a default.
+    const { byPosition } = candidatesByPosition(lone({ language: null }), {
+      seriesAuthors: ['Steven Erikson'],
+    });
+    expect(byPosition.get(10)[0].pick).toBe(false);
+  });
+});
+
+describe('collections that do not announce themselves in English', () => {
+  it("catches L'Intégrale, and the other usual words", () => {
+    // Sorceleur - L'Intégrale is the complete Witcher saga in French. It was
+    // pre-approved as volume 0 on 2026-09-09.
+    for (const t of [
+      'Sorceleur - L’Intégrale', 'Sorceleur - L\'Integrale',
+      'Il Ciclo di Geralt: edizione integrale', 'Obras completas de Sapkowski',
+      'Die Hexer Gesamtausgabe', 'Coffret Sorceleur',
+    ]) {
+      expect(COLLECTION_RE.test(t), `"${t}" should read as a collection`).toBe(true);
+    }
+  });
+
+  it('does not catch an ordinary volume title', () => {
+    for (const t of [
+      'Hellboy, Vol. 5: Conqueror Worm', 'Baptism of Fire', 'Midnight Tides',
+      'The Complete Sherlock Holmes Novel', 'Integral Calculus for Beginners',
+    ]) {
+      expect(COLLECTION_RE.test(t), `"${t}" should NOT read as a collection`).toBe(false);
+    }
+  });
+});

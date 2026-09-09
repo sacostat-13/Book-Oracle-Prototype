@@ -57,8 +57,11 @@
 // of a Spanish novel would want something else, and this function takes the
 // answer rather than deciding it.
 
+// A collection does not have to say "bundle" in English. `Sorceleur -
+// L'Intégrale` is the complete Witcher saga in French and was pre-approved as
+// volume 0 on 2026-09-09 because nothing here matched it.
 export const COLLECTION_RE =
-  /\b(bundle|box(ed)? ?set|omnibus|anthology|collection|complete (series|collection)|series set|set of \d+|\d+[- ]book|books? \d+\s*[-–—]\s*\d+|part \d+ of \d+|vols?\.? \d+\s*[-–—]\s*\d+)\b/i;
+  /\b(bundle|box(ed)? ?set|omnibus|anthology|collection|complete (series|collection)|series set|set of \d+|\d+[- ]book|books? \d+\s*[-–—]\s*\d+|part \d+ of \d+|vols?\.? \d+\s*[-–—]\s*\d+|int[ée]grale|edizione integrale|obras completas|edici[óo]n completa|gesamtausgabe|opera omnia|samlade|coffret)\b/i;
 
 export const normTitle = (s) => (s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
 
@@ -173,19 +176,52 @@ export function candidatesByPosition(candidates, { seriesAuthors = [], wantLangu
       const nt = normTitle(c.title);
       c.originality = collectionTitles.filter((t) => t !== nt && t.includes(nt)).length;
       c.pick = false;
+      c.pickReason = '';
     }
-    if (list.length === 1) { list[0].pick = true; continue; }
-    // A confirmed match on the wanted language outranks the quotation signal:
-    // it is a fact where the other is an inference.
-    const confirmed = list.filter((c) => wantLanguage != null && c.language === wantLanguage);
+    // A LONE CANDIDATE IS NOT EVIDENCE.
+    //
+    // Until 2026-09-09 `list.length === 1` set pick unconditionally: with one
+    // candidate there is nothing to compare, so every signal sat idle and the
+    // row was pre-approved because Hardcover had filed it at that position.
+    // The 25-series run measured what that is worth. Twelve of twenty-four
+    // pre-approvals were lone candidates, and half of those were wrong:
+    //
+    //   Malazan #10        Il Dio storpio            Italian
+    //   The Witcher #4     Veža lastovičky           Slovak
+    //   The Witcher #0     Sorceleur - L'Intégrale   French omnibus
+    //   The Locked Tomb #1 Gideon: a Nona            a translation
+    //   Red Rising #7      Red God                   beyond total_books
+    //   Night Lords #0     Throne of Lies            position 0
+    //
+    // Every one of them was credited to the real author — translations name the
+    // original author alongside the translator — so the author filter passed
+    // them, the language was unknown, and nothing else was looking.
+    //
+    // So a lone candidate now needs the one thing that is a FACT rather than an
+    // inference: a language the API actually reported, matching the one we
+    // want. Hardcover answers for roughly half the books in a series, so this
+    // gives up perhaps half the automatic picks. That is the correct trade when
+    // the alternative is a 50% error rate on exactly the rows a reader would
+    // trust most.
+    const confirmed = wantLanguage == null ? [] : list.filter((c) => c.language === wantLanguage);
+
     if (confirmed.length === 1) {
       confirmed[0].pick = true;
+      confirmed[0].pickReason = `language confirmed ${confirmed[0].language}`;
+    } else if (list.length === 1) {
+      list[0].pickReason = list[0].language == null
+        ? 'the only candidate, but no language reported — needs a human look'
+        : `the only candidate, and its language is ${list[0].language}, not ${wantLanguage}`;
     } else {
+      // Two or more, none confirmed (or several confirmed): fall back to the
+      // quotation signal, which at least compares them against each other.
       const pool = confirmed.length ? confirmed : list;
       const top = Math.max(...pool.map((c) => c.originality));
       const winners = pool.filter((c) => c.originality === top);
-      // A tie, or nothing quoted anywhere, is a real question. Leave it open.
-      if (top > 0 && winners.length === 1) winners[0].pick = true;
+      if (top > 0 && winners.length === 1) {
+        winners[0].pick = true;
+        winners[0].pickReason = `quoted in ${top} collection edition(s) of this series`;
+      }
     }
     list.sort((a, b) =>
       (Number(b.pick) - Number(a.pick)) ||

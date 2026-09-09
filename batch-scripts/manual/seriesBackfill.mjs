@@ -441,7 +441,11 @@ async function hcSeriesCandidates(name) {
 // -- CSV ----------------------------------------------------------------------
 const COLUMNS = [
   'approve', 'action', 'series_name', 'position', 'candidates', 'title', 'author',
-  'pages', 'status', 'confidence', 'notes', 'book_id', 'series_id',
+  // `language` is what the API reported, blank when it reported nothing. It is
+  // in the file because it is now the difference between a pre-approved row and
+  // one that needs a look, and a reviewer cannot check a decision whose
+  // evidence is not on the page.
+  'language', 'pages', 'status', 'confidence', 'notes', 'book_id', 'series_id',
   'hardcover_id', 'cover_url',
 ];
 const csvCell = (v) => {
@@ -575,15 +579,34 @@ async function propose() {
         // quote. Everything else at the position stays in the file as a
         // visible, unapproved alternative rather than being deleted — the
         // signal is good, and it is still a signal.
-        if (list.length > 1) {
-          notes.push(
-            v.pick
-              ? `chosen over ${list.length - 1} other candidate(s) — quoted in ${v.originality} collection edition(s) of this series`
-              : `alternative at position ${position}, most likely a translation — approve this instead only if the chosen one is wrong`
-          );
+        // Say which signal decided, not which signals exist. The 25-series run
+        // produced "chosen over 1 other candidate(s) — quoted in 0 collection
+        // edition(s)", which reads as a reason and is the absence of one: the
+        // language had picked it and the note described the wrong test.
+        if (v.pickReason) notes.push(v.pick ? `chosen: ${v.pickReason}` : v.pickReason);
+        if (list.length > 1 && !v.pick) {
+          notes.push(`alternative at position ${position} — approve this instead only if the chosen one is wrong`);
         }
+
+        // Two positions that Hardcover uses for things that are not volumes,
+        // and that the run got wrong in both directions:
+        //
+        //   position 0          prequels, omnibuses and oddities. Dragonlance
+        //                       had five, Hellboy five Italian editions, and
+        //                       The Witcher's was a French box set.
+        //   beyond total_books  Red God at 7 of 6, The Second Generation at 4
+        //                       of 3 — a different sub-series entirely.
+        //
+        // Both were confidence penalties that landed on exactly 80 and sailed
+        // through a >= 80 threshold. A penalty that still passes is not a
+        // guard, so these now disqualify the pre-approval outright and leave
+        // the row for review.
+        const structurallyOdd =
+          position === 0 || (srow.total_books && position > srow.total_books);
+        if (structurallyOdd && v.pick) notes.push('not pre-approved: unusual position for a volume');
+
         const preApprove =
-          action !== 'skip' && v.pick && confidence >= MIN_CONFIDENCE;
+          action !== 'skip' && v.pick && !structurallyOdd && confidence >= MIN_CONFIDENCE;
 
         out.push({
           approve: preApprove ? 'y' : '',
@@ -593,6 +616,7 @@ async function propose() {
           candidates: list.length,
           title: v.title,
           author: (v.authors || [v.author]).filter(Boolean).join(' / '),
+          language: v.language ?? '',
           pages: v.pages ?? '',
           status: action === 'insert' ? INSERT_STATUS : '',
           confidence,
@@ -616,7 +640,7 @@ async function propose() {
         out.push({
           approve: '', action: 'held', series_name: srow.name,
           position: b.position_in_series ?? '', candidates: '', title: b.title,
-          author: b.author || '', pages: '', status: b.status, confidence: '',
+          author: b.author || '', language: '', pages: '', status: b.status, confidence: '',
           notes: 'already in the catalog — nothing to do', book_id: b.id,
           series_id: srow.id, hardcover_id: '', cover_url: '',
         });
@@ -627,7 +651,8 @@ async function propose() {
       for (const r of rejected) {
         out.push({
           approve: '', action: 'rejected', series_name: srow.name, position: r.position,
-          candidates: '', title: r.title, author: r.author, pages: r.pages ?? '',
+          candidates: '', title: r.title, author: (r.authors || [r.author]).filter(Boolean).join(' / '),
+          language: r.language ?? '', pages: r.pages ?? '',
           status: '', confidence: 0, notes: r.reason, book_id: '', series_id: srow.id,
           hardcover_id: r.hardcoverId ?? '', cover_url: '',
         });
