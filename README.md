@@ -373,6 +373,151 @@ and forward requests. Locally you need `netlify dev` to make them work.
 
 ## Releases
 
+# Maintenance Notes — 2026-09-10 → 09-18: the series backfill, and the gate that reviews it
+
+**No migrations. No env vars. No schema changes. No version bump —
+`public/app-version.json` stays at `0.69`.** This is catalogue and tooling work:
+`batch-scripts/`, `tests/`, one diagnostic and one hand-run fix file. The bundle
+is unchanged, so the deploy carries nothing user-visible except the series pages
+filling in as volumes land.
+
+## What was wrong
+
+`seriesBackfill.mjs` proposes volumes from Hardcover and pre-approves the ones it
+is confident about. Over eight review passes the pre-approvals were wrong in nine
+distinct ways, none of which the script could see, and each of which was found by
+a human reading the CSV:
+
+| Run | Series | Pre-approved | Wrong | What it was |
+|---|---|---|---|---|
+| 09-10 | 99 | 194 | 0 | — |
+| 09-11 | 99 | 122 | 49 | comics collections into single-issue series; one book into two series; 14 Gibson pulps into Lila Bowen's *The Shadow* |
+| 09-12 | 92 | 289 | 2 | an omnibus picked over *The Crystal Shard*; the Arabic *Ozma of Oz* |
+| 09-13 | 93 | 50 | 0 | — |
+| 09-14 | 96 | 67 | 12 | five *Untitled Stormlight Archive* placeholders; *The Doors of Stone*; *The Winds of Winter* |
+| 09-16 | 98 | 67 | 6 | *Soulless: The Manga* into The Parasol Protectorate; Absolute omnibuses and single issues into The Sandman |
+| 09-17 | 94 | 40 | 37 | 36 episodes of Dan Carlin's podcast into Hardcore History |
+| 09-18 | 92 | 105 | 65 | the 09-11 cohort again, on a run that predates the fix |
+
+The recurring shape is worth stating plainly, because it governs every guard
+below: **every check the script made compared a candidate to something the series
+already claimed.** On a series that claimed nothing — no positioned volume, no
+`total_books` — all of them were inert, and the gate silently degraded to "sole
+candidate, has an English edition, confidence ≥ 80". That is a match test, not a
+gate. Measured on 2026-09-11: 41 pre-approvals in series holding a book, all
+correct; 77 in series holding nothing, 49 wrong.
+
+## What changed
+
+**`batch-scripts/_shared/seriesGate.mjs` (new).** The pre-approval decision,
+extracted from a 700-line function that also talks to Supabase and Hardcover, as
+a pure function over plain data. It was untestable in place; that is the only
+reason the rules below could break silently. Carries:
+
+- `no-frame-of-reference` — refuses a series with no positioned held volume and
+  no claimed total. Replayed across every run: 473 pre-approvals over four
+  consecutive passes untouched, 37 of 40 caught on the pass that produced it. The
+  way out is one human field — number the first volume, or set `total_books`.
+- `disowned` — a candidate that names its authors and names none of ours.
+- `structurally-odd` — position 0, or past the claimed total. Both were
+  confidence penalties that landed on exactly 80 and passed a ≥ 80 threshold.
+- `non-latin-title` — a title in another script is a translated edition whatever
+  its edition list reports. One-directional on purpose: Latin-script
+  translations (*Kış Ustası*, *Anschlag auf den Präsidenten*) are the same error
+  and are still uncaught.
+- `withdrawCrossSeriesDuplicates()` — one book proposed into two series withdraws
+  from both. *Stardust Crusaders* is genuinely part 3 of *JoJo's Bizarre
+  Adventure*, so both rows were right in their own frame; the file was wrong, and
+  with a single `series_id` the apply *order* decided which page kept the book.
+
+**`batch-scripts/_shared/seriesQueue.mjs` (new).** `--stale` served the same
+hundred series every night. The first sort key was a boolean — never-examined
+before examined — which stops discriminating once everything carries a stamp, and
+the order then fell through to two static keys. Wicked, Marvel Zombies and The
+Godfather opened three consecutive runs; 60 of 238 distinct series appeared in
+three or more. Now ordered by recency, nulls first. The next run after the fix
+returned **89 of 98 series that had never been examined**.
+
+**`batch-scripts/_shared/seriesCandidates.mjs`.** `readsAsCollectedSet()` — a
+title ending in a collective noun with no volume number is a collected set
+(9 omnibuses caught across three runs, 12 real volumes kept). `COLLECTION_RE`
+gains collector's and anniversary editions, and `omnibus` outside the word
+boundary so *Venomnibus* matches. `namesADifferentFormat()` refuses a containment
+hit whose residue is only a format qualifier — `manga`, `collectededitions`,
+`singleissues`, a bare year — while keeping `wardstonechronicles`, `trilogy`,
+`quartet`. The series-name tiebreak now needs a name of 4+ characters, because
+`oz` is a substring of every volume in the Oz series and the exclusion left only
+the Arabic edition standing.
+
+**`tests/` — 117 passing**, up from 63. `series-gate.test.js`,
+`series-queue.test.js` and `series-collections.test.js` are transcribed from real
+CSV rows, not invented. The negative cases are the bad pre-approvals; the positive
+cases are what each rule must **not** refuse, which is the measure of whether the
+trade is still the one that was agreed — Dungeon Crawler Carl's unbounded tail,
+the audiobook narrator credit, and Laundry Files, ten Stross novels with no page
+counts anywhere upstream.
+
+The queue test is a different shape from the others on purpose. Every individual
+ordering the queue produced was correct; the defect existed only across runs. So
+it simulates several passes, stamps what each one served, and asserts the
+population rotates.
+
+**`batch-scripts/manual/oracleBatch.mjs` — `--ids-file`.** The drain order is
+`created_at` ascending, which was right when the backlog was the original import
+and is wrong now: an applied volume lands as `unreviewed` and is among the newest
+rows, so the pages just repaired sort behind ~1,300 books. `--ids-file` spends on
+an explicit list instead. It does not widen eligibility — the ids are intersected
+with `books_needing_curation` exactly as the default path is.
+
+**`batch-scripts/probes/pickSeriesEnrichment.mjs` (new).** Writes that list,
+ranked by enrichment debt. It picks and does not enrich, deliberately:
+`buildPrompt()` was already duplicated once into `oracleCategorizationService`
+and the two drifted, so a second enrichment script would be the third copy.
+
+**`supabase/diagnostics/series_enrichment_debt.sql` (new).** `series_completeness`
+has carried `held` and `held_live` since `20260909120000`. Every applied volume
+lands as `unreviewed`, so it counts in `held` and not in `held_live`, and the gap
+is the enrichment backlog seen from the series side. The query that matters is
+`would_fail_a_three_volume_floor`: series complete in the catalogue and invisible
+on the page. **A series floor built on `held_live` would noindex exactly those.**
+
+**`supabase/fixes/2026-09-13-drizzt-oz-undo.sql`.** Two rows applied in error —
+*The Icewind Dale Trilogy* at The Legend of Drizzt 4, the Arabic *Ozma of Oz* at
+Oz 3 — unnumbered by id, with the correct volumes placed via `upsert_book`. Worth
+recording why it needed a hand fix: **a wrong book at a position makes the
+position read as satisfied, so the right book stops being proposed.** *The Crystal
+Shard* appeared nowhere in the 3,209 rows of the following run. A bad row does not
+announce itself afterwards; it removes the evidence that it is wrong.
+
+## Where the catalogue is
+
+502 distinct series examined across eight passes, **340 still queued.** Reviews
+continue; the eight CSVs and their findings are in the project docs, one per run.
+
+## Known state — what this does NOT fix
+
+- **38 series rows are keyed under a rule the app no longer uses.** They store a
+  `normalized_name` that keeps a leading "the", which `normalizeSeriesName()`
+  strips, so they are unreachable by the app's own lookup. Volumes and impressions
+  split across two pages — `Fitz and the Fool` and `The Fitz and the Fool` both
+  hold books. This is the largest single piece of series work outstanding, and no
+  amount of backfilling touches it.
+- **Wanted language is a global `eng`.** *La catedral del mar* had all 18
+  candidates rejected, the Spanish original filtered out of its own series. The
+  Spanish side of the catalogue cannot be served by this pipeline as written.
+- **The `unnumber` note asserts something false.** It says "Hardcover does not
+  list it in this series at all" when what happened is a failed title match —
+  *Blood Rain (novel)* against *Blood Rain*, *Raven of the Inner Palace* against
+  *Raven of the Inner Palace, Vol. 1*. `unnumber` is the one action that removes
+  data and its note argues for approving it.
+- **No placeholder guard.** Two batches produced titles that are literally the
+  word `Untitled`, plus announced-but-unpublished volumes. A publication date
+  would catch all of them; whether Hardcover exposes one is unprobed.
+- **No held-page median.** Would retire both the Drizzt omnibus class and the
+  Sandman issue/collection mix. Needs `pages` on the held query, and a wrong
+  column name 400s the whole query, so it wants a probe first.
+
+
 # Update Notes — v0.68 → v0.69: the design system, applied
 
 **No migrations. No env vars. No schema changes. Deploy the bundle.**

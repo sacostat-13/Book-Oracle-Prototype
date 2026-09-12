@@ -49,9 +49,7 @@
 //   Total:  ~$0.007 per book (~$7 per 1000 books)
 
 import { createServiceClient } from '../_shared/supabaseClient.mjs';
-import {
-  readFileSync
-} from 'fs';
+import { readFileSync, existsSync } from 'fs';
 import {
   dirname,
   join
@@ -91,6 +89,14 @@ const args = process.argv.slice(2);
 const DRY_RUN = args.includes('--dry-run');
 const limitArg = args.find((a) => a.startsWith('--limit'));
 const LIMIT = limitArg ? parseInt(limitArg.split('=')[1] || args[args.indexOf(limitArg) + 1], 10) : null;
+// --ids-file <path>: spend on THESE books, in THIS order, instead of the
+// oldest-first drain. See batch-scripts/probes/pickSeriesEnrichment.mjs for the
+// picker that writes one, and the block above fetchEligibleBooks for why the
+// drain order stopped being the right one.
+const idsFileArg = args.find((a) => a.startsWith('--ids-file'));
+const IDS_FILE = idsFileArg
+  ? (idsFileArg.split('=')[1] || args[args.indexOf(idsFileArg) + 1])
+  : null;
 
 // ── Env ───────────────────────────────────────────────────────────────────────
 const envText = readFileSync(join(__dirname, '..', '..', '.env.local'), 'utf8');
@@ -150,6 +156,20 @@ const supabase = createServiceClient(SUPABASE_URL, SERVICE_KEY);
 // needs_genres (no free API produces this taxonomy) and needs_depth. A book
 // that merely wants a description is metadataBackfill's job and must never
 // reach a billable call.
+// THE DRAIN ORDER STOPPED BEING THE RIGHT ORDER.
+//
+// created_at ascending was correct while the backlog WAS the original import.
+// Since the series backfill started applying volumes, the books that most need
+// enriching are the NEWEST rows in the table: an applied volume lands as
+// 'unreviewed', which series_completeness counts in `held` but not `held_live`,
+// so the page does not list it until a billable call has run. Oldest-first puts
+// those last, behind ~1,300 books nobody is waiting on.
+//
+// --ids-file takes an explicit list instead. It does NOT widen eligibility: the
+// ids are intersected with books_needing_curation exactly as the default path
+// is, so a book that only wants a description still cannot reach a billable
+// call. It only changes WHICH eligible books this run pays for, and in what
+// order.
 async function fetchEligibleBooks() {
   const NEEDED = 'needs_genres.eq.true,needs_depth.eq.true';
 
@@ -169,6 +189,46 @@ async function fetchEligibleBooks() {
   if (countError) {
     console.error('Failed to count eligible books:', countError.message);
     process.exit(1);
+  }
+
+  // An explicit list short-circuits the ordered drain entirely. Chunked because
+  // PostgREST puts the id list in the URL.
+  if (IDS_FILE) {
+    // A missing list is a missing STEP, not a broken script. The raw ENOENT this
+    // used to throw named a path and nothing else, and the path is one nobody
+    // creates by hand -- the picker writes it.
+    if (!existsSync(IDS_FILE)) {
+      console.error(`\n  No id list at ${IDS_FILE}`);
+      console.error('  That file is written by the picker, which chooses what is worth paying for:\n');
+      console.error('    node batch-scripts/probes/pickSeriesEnrichment.mjs --out\n');
+      console.error('  Run it without --out first to see the report and the estimated cost.\n');
+      process.exit(1);
+    }
+    const wantedIds = readFileSync(IDS_FILE, 'utf8')
+      .split('\n').map((l) => l.trim()).filter(Boolean);
+    const seen = new Set();
+    const found = [];
+    for (let i = 0; i < wantedIds.length; i += 200) {
+      const group = wantedIds.slice(i, i + 200);
+      const { data, error } = await scoped(
+        supabase.from('books_needing_curation').select('id, needs_genres').in('id', group)
+      );
+      if (error) {
+        console.error('Failed to fetch ids from --ids-file:', error.message);
+        process.exit(1);
+      }
+      for (const r of data || []) { seen.add(r.id); found.push(r); }
+    }
+    // Keep the picker's order — it groups by series so a page completes at once
+    // rather than half-filling twenty of them.
+    const byId = new Map(found.map((r) => [r.id, r]));
+    let ordered = wantedIds.map((id) => byId.get(id)).filter(Boolean);
+    const dropped = wantedIds.length - ordered.length;
+    if (dropped) {
+      console.log(`  ${dropped} of ${wantedIds.length} ids skipped: not eligible for a billable call.`);
+    }
+    if (LIMIT) ordered = ordered.slice(0, LIMIT);
+    return await hydrate(ordered, eligibleCount ?? ordered.length);
   }
 
   // Never page past what --limit will keep.
@@ -202,6 +262,13 @@ async function fetchEligibleBooks() {
   }
 
   const chosen = picks.slice(0, wanted);
+  return await hydrate(chosen, eligibleCount ?? chosen.length);
+}
+
+// Shared by both paths above: turn a list of picks into the rows the prompt
+// needs. Split out when --ids-file was added so the explicit list and the
+// ordered drain hydrate identically.
+async function hydrate(chosen, eligibleCount) {
   if (chosen.length === 0) return { rows: [], eligible: eligibleCount ?? 0 };
 
   // Hydrate from `books` rather than selecting the whole row from the view:

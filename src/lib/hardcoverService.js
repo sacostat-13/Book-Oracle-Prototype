@@ -9,7 +9,7 @@
 //
 // Schema relevant subset:
 //   books(where, limit, order_by) → [{ id, title, pages, description,
-//     contributions { author { name } }, image { url },
+//     contributions { contribution author { name } }, image { url },
 //     book_series { position, series { id, name, books_count, primary_books_count } },
 //     editions(where, order_by, limit) { isbn_13, isbn_10, asin, reading_format_id,
 //       compilation, edition_format, language_id, users_count } }]
@@ -19,6 +19,9 @@
 //   search(query, query_type, per_page, page) → { results: <json> }
 
 import { cleanTitle, cleanAuthor } from './bookHelpers';
+// Which contributor is the author. See src/lib/contributions.js for the two
+// duplicate catalog rows that came of assuming it was the first one.
+import { pickAuthorName } from './contributions';
 import { pickBestEdition, EDITION_FIELDS } from './editionPicker';
 
 const ENDPOINT = '/.netlify/functions/hardcover';
@@ -57,9 +60,11 @@ async function gql(query, variables = {}) {
 function normalize(node) {
   if (!node) return null;
   const edition = pickBestEdition(node.editions);
-  const author = (node.contributions || [])
-    .map((c) => c?.author?.name)
-    .filter(Boolean)[0] || null;
+  // NOT contributions[0]. That is the narrator on an audiobook record and the
+  // cover artist on some comics, and it put "Death Masks by James Marsters" and
+  // "White Night by Chris McGrath" into the catalog. The `contribution` role
+  // field was proved to work by probeHardcoverContributions.mjs on 2026-09-10.
+  const author = pickAuthorName(node.contributions);
   const bs = (node.book_series || [])[0];
   const series = bs?.series
     ? {
@@ -95,7 +100,7 @@ const BOOK_FIELDS = `
   pages
   description
   image { url }
-  contributions { author { name } }
+  contributions { contribution author { name } }
   book_series { position series { id name books_count primary_books_count } }
   ${EDITION_FIELDS}
 `;
@@ -190,10 +195,21 @@ export async function hardcoverSearch(query, author) {
 function normalizeSearchHit(hit) {
   const doc = hit.document || hit;
   if (!doc) return null;
-  const authors =
-    doc.author_names ||
-    (doc.contributions || []).map((c) => c?.author?.name).filter(Boolean) ||
-    [];
+  // The search index carries `author_names` and no roles, so prefer a
+  // positively-identified author from contributions when the payload has one,
+  // and fall back to the index otherwise. requireRole keeps this from
+  // reintroducing the contributions[0] guess where there is nothing to go on.
+  //
+  // Also fixes a latent bug in the old chain: `doc.author_names || …` treats an
+  // EMPTY array as present, so contributions were never consulted when the
+  // index returned no names.
+  const roled = pickAuthorName(doc.contributions, { requireRole: true });
+  const indexNames = Array.isArray(doc.author_names) ? doc.author_names.filter(Boolean) : [];
+  const authors = roled
+    ? [roled]
+    : indexNames.length
+      ? indexNames
+      : [pickAuthorName(doc.contributions)].filter(Boolean);
   return {
     t: doc.title,
     a: authors[0] || 'Unknown author',

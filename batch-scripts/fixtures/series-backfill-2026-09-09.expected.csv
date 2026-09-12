@@ -1,0 +1,65 @@
+# Golden fixture — Simon's review of the 25-series propose run, 2026-09-09.
+#
+# WHAT THIS IS
+#
+# The run of 2026-09-09 pre-approved 24 rows. Sixteen were right and eight were
+# wrong, and that judgement is the only ground truth this pipeline has: its
+# correctness depends on a live third-party API, so it cannot be unit-tested.
+# The CSV was deliberately NOT applied, so the catalog still stands exactly where
+# it stood when these proposals were made and a fresh run is comparable.
+#
+# HOW TO USE IT
+#
+#   node batch-scripts/probes/checkSeriesProposals.mjs \
+#     --expected batch-scripts/fixtures/series-backfill-2026-09-09.expected.csv \
+#     --actual   batch-scripts/output/series-backfill.csv
+#
+# VERDICTS
+#   approve   this volume must be proposed AND pre-approved. Losing one is a
+#             regression in the other direction: a filter that got too strict.
+#   reject    this title must never be pre-approved at this position.
+#             `expected_title` says what the right answer is, where one exists.
+#   review    a proposal here is legitimate but must not be automatic.
+#   expects   this series must produce at least one proposal. It is short per
+#             the diagnostic and produced nothing, which is the empty-result-
+#             versus-failure trap and needs explaining before it is trusted.
+#   complete  this series must propose nothing. It is already whole.
+#
+# CAVEAT WITH A SHELF LIFE
+#
+# This is only meaningful while the catalog matches the state it was taken in.
+# Applying volumes, or an oracleBatch run that changes a series, invalidates the
+# rows it touches. Crescent City is already absent for exactly that reason: it
+# was applied on 2026-09-09 and is now complete. Retake the fixture after any
+# apply.
+verdict,series_name,position,title,expected_title,note
+approve,Dragonlance Chronicles,2,Dragons of Winter Night,,volume 2 of the trilogy
+approve,Red Rising Saga,4,Iron Gold,,
+approve,Malazan Book of the Fallen,5,Midnight Tides,,
+approve,Malazan Book of the Fallen,7,Reaper's Gale,,
+approve,Malazan Book of the Fallen,9,Dust of Dreams,,
+approve,Hellboy,5,"Hellboy, Vol. 5: Conqueror Worm",,a collected comics volume — COLLECTION_RE must not eat it
+approve,Discworld: Tiffany Aching,4,I Shall Wear Midnight,,
+approve,Discworld: Tiffany Aching,5,The Shepherd's Crown,,
+approve,Dungeon Crawler Carl,5,The Butcher's Masquerade,,action=link — already in the catalog unlinked
+approve,Dungeon Crawler Carl,6,The Eye of the Bedlam Bride,,
+approve,The Witcher,3,Baptism of Fire,,
+approve,The Locked Tomb,4,Alecto the Ninth,,
+approve,John Dies at the End,2,"This Book Is Full of Spiders: Seriously, Dude, Don't Touch It",,
+approve,Ring,2,Spiral,,
+approve,Ring,3,Loop,,
+approve,Hannibal Lecter,3,Hannibal,,
+reject,Malazan Book of the Fallen,10,Il Dio storpio,The Crippled God,Italian translation
+reject,The Witcher,0,Sorceleur - L'Intégrale,,French omnibus at position 0
+reject,The Witcher,4,Veža lastovičky,The Tower of the Swallow,Slovak — right position wrong title
+reject,The Locked Tomb,1,Gideon: a Nona,Gideon the Ninth,translation
+reject,Dragonlance Chronicles,4,The Second Generation,,a different sub-series; beyond total_books 3
+reject,Dungeon Crawler Carl,9,The Beautiful Place,,Dinniman but not a DCC volume
+reject,Night Lords,0,Throne of Lies,,position 0
+review,Red Rising Saga,7,Red God,,beyond total_books 6 — may be legitimate book 7
+expects,Marvel Zombies,,,,short per the diagnostic but proposed nothing
+expects,The Bloodsworn Saga,,,,holds 2 of 3 but proposed nothing
+expects,The Icewind Dale,,,,holds 1 of 3 but proposed nothing
+complete,Fablehaven,,,,5 of 5
+complete,Howl's Moving Castle,,,,3 of 3
+complete,The Shepherd King,,,,2 of 2

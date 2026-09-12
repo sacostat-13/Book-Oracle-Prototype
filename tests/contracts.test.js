@@ -16,8 +16,22 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const root = new URL('..', import.meta.url).pathname;
+// fileURLToPath, NOT .pathname.
+//
+// THE BUG THIS EXISTS FOR: 2026-09-11, the first in-repo vitest run in several
+// days, on Windows:
+//
+//   ENOENT: no such file or directory, open
+//   'C:\C:\Users\manda\source\repos\Book-Oracle-Prototype\netlify\edge-functions\og-prerender.js'
+//
+// A file: URL's `.pathname` is "/C:/Users/..." — URL-shaped, with a leading
+// slash and forward slashes. join() then treats it as a relative segment and
+// pastes it after the drive letter. fileURLToPath is the function that exists
+// to convert the two conventions, and it is a no-op on POSIX, so this suite
+// stops being platform-dependent rather than trading one platform for another.
+const root = fileURLToPath(new URL('..', import.meta.url));
 const read = (p) => readFileSync(join(root, p), 'utf8');
 
 describe('accomplishment kinds: app vs database', () => {
@@ -166,11 +180,26 @@ describe('series volume lists: three callers, one source', () => {
   const VIEW = 'series_volumes';
 
   it('the migration defines the view and grants it to anon', () => {
+    // FIND IT BY WHAT IT DOES, NOT BY WHAT IT IS CALLED.
+    //
+    // THE BUG THIS EXISTS FOR: 2026-09-11. This selected migrations whose
+    // FILENAME contained "series_volumes", sorted, and asserted the newest one
+    // defined the view. Then 20260910120000_series_volumes_stale.sql arrived —
+    // it adds series.volumes_stale and redefines series_COMPLETENESS, and its
+    // name happens to contain "series_volumes" as a substring. It sorted last,
+    // so the test read the wrong file and failed while nothing was wrong.
+    //
+    // The contract is "the newest migration that DEFINES this view still
+    // dedupes and still grants". Selecting on the CREATE statement says exactly
+    // that, and it keeps working when a later migration legitimately redefines
+    // the view — which is the case this heuristic was reaching for.
+    const defines = new RegExp(`create or replace view public\\.${VIEW}\\b`, 'i');
     const files = readdirSync(join(root, 'supabase/migrations'))
-      .filter((f) => f.endsWith('.sql') && f.includes(VIEW));
+      .filter((f) => f.endsWith('.sql'))
+      .filter((f) => defines.test(read(`supabase/migrations/${f}`)));
     expect(files.length, `no migration defines ${VIEW}`).toBeGreaterThan(0);
     const sql = read(`supabase/migrations/${files.sort().at(-1)}`);
-    expect(sql).toMatch(new RegExp(`create or replace view public\\.${VIEW}`, 'i'));
+    expect(sql).toMatch(defines);
     // The dedupe itself: one row per series per volume key.
     expect(sql).toMatch(/row_number\(\)\s*over\s*\(\s*partition by r\.series_id, r\.volume_key/i);
     expect(sql).toMatch(/edition_rank = 1/i);

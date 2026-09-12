@@ -193,8 +193,6 @@ import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { createServiceClient } from '../_shared/supabaseClient.mjs';
 import { candidatesByPosition, rankSeriesHits, normSeries, languagesOf, splitAuthors, cleanTitle } from '../_shared/seriesCandidates.mjs';
-import { preApprovalVerdict, withdrawCrossSeriesDuplicates } from '../_shared/seriesGate.mjs';
-import { orderStaleQueue } from '../_shared/seriesQueue.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, '..', '..');
@@ -687,46 +685,18 @@ async function propose() {
     // exists, order by that instead and delete this. Its rank is used only to
     // sort a queue, never to decide what enters one.
     const rank = new Map(TOP_SERIES.map(([n], i) => [normSeries(n), i]));
-
-    // A BOOLEAN FIRST KEY STOPS BEING A KEY ONCE EVERYTHING IS TRUE.
-    //
-    // THE BUG THIS EXISTS FOR: 2026-09-15. Key 1 used to be
-    // `Number(a.volumes_checked_at != null) - Number(...)` — never-examined
-    // before examined, which is the ordering argued for on 2026-09-10 and still
-    // the right FIRST question. But it only ever distinguishes null from
-    // not-null. Once the queue has been round once and 409 of 410 series carry a
-    // stamp, that term is 0 for every pair and the order collapses onto keys 2
-    // and 3 — TOP_SERIES rank and shelf size, both STATIC.
-    //
-    // So every run served the same head of the queue. Wicked, Marvel Zombies and
-    // The Godfather opened the 09-12, 09-13 and 09-14 runs; 60 of the 238
-    // distinct series seen in four runs appeared in three or more of them. Each
-    // one is a Hardcover request paid again and a block of CSV rows reviewed
-    // again, while the series behind them were never reached.
-    //
-    // Recency, not a boolean. Nulls sort first (0 is before any real timestamp),
-    // so a never-examined series still wins outright; after that the least
-    // recently looked at goes first and a series just stamped goes to the back.
-    // Demand rank keeps its job as the tiebreak WITHIN a cohort — a whole run is
-    // stamped with one `stampedAt`, so the series examined together stay
-    // ordered by demand relative to each other.
-    //
-    // This also retires a series a human keeps declining: it is stamped on every
-    // pass it reaches a verdict on, so it drifts to the back and does not return
-    // until the queue has genuinely rotated.
-    targets = orderStaleQueue(pending, rank, normSeries)
+    targets = pending
+      .sort((a, b) =>
+        // 1. Never looked at.
+        (Number(a.volumes_checked_at != null) - Number(b.volumes_checked_at != null)) ||
+        // 2. Then whatever we know about demand.
+        ((rank.get(normSeries(a.name)) ?? 999) - (rank.get(normSeries(b.name)) ?? 999)) ||
+        // 3. Then the bigger shelf, as a proxy for a series someone cares about.
+        (b.held - a.held))
       .map((r) => [r.name, r.series_id]);
 
     const fresh = pending.filter((r) => r.volumes_checked_at == null).length;
-    const stamps = pending.map((r) => (r.volumes_checked_at ? Date.parse(r.volumes_checked_at) : 0))
-      .filter((t) => Number.isFinite(t) && t > 0).sort((x, y) => x - y);
-    const asDay = (t) => new Date(t).toISOString().slice(0, 10);
     console.log(`  Queue: ${targets.length} series need a look — ${fresh} never examined.`);
-    if (stamps.length) {
-      // Printed so a queue that has stopped rotating is visible from the console
-      // rather than from noticing the same series three runs running.
-      console.log(`  Last looked at: ${asDay(stamps[0])} (oldest) … ${asDay(stamps[stamps.length - 1])} (newest).`);
-    }
     if (!targets.length) {
       console.log('  Nothing due. (If that is a surprise, check that the books trigger exists:');
       console.log("   select tgname from pg_trigger where tgrelid = 'public.books'::regclass;)\n");
@@ -897,9 +867,6 @@ async function propose() {
     const claimedTotal = srow.total_books ?? hc.total ?? null;
     const maxHeldPosition = heldByPos.size ? Math.max(...heldByPos) : null;
     const claimedSource = srow.total_books ? 'total_books' : "Hardcover's primary_books_count";
-
-    // The pre-approval rules — including the empty-series veto that reads
-    // this held list — live in _shared/seriesGate.mjs.
 
     // The held authors go in so the module can drop translations credited to
     // their translator. Real names, not normalised — it does its own.
@@ -1236,28 +1203,125 @@ async function propose() {
           action = 'insert';
         }
 
-        // The decision itself lives in _shared/seriesGate.mjs, as a function
-        // over plain data, so the five rules it carries can be tested without a
-        // live run against live upstream data. See the header there for what a
-        // test at that level does and does not buy.
-        const verdict = preApprovalVerdict({
-          candidate: v,
-          action,
-          position,
-          candidateCount: list.length,
-          structuralMove,
-          exactSeriesMatch: hc.exact,
-          seriesHitName: hc.name,
-          heldAuthors,
-          heldCount: (held || []).length,
-          claimedTotal,
-          claimedSource,
-          maxHeldPosition,
-          minConfidence: MIN_CONFIDENCE,
-        });
-        const confidence = verdict.confidence;
-        notes = notes.concat(verdict.notes);
-        const preApprove = verdict.preApprove;
+        let confidence = 100;
+        if (!hc.exact) { confidence -= 10; notes.push(`series matched by containment ("${hc.name}")`); }
+        // Reads EVERY contribution, as the filter does. It read only v.author —
+        // the first — which is the NARRATOR on an audiobook: DCC's "This
+        // Inevitable Ruin" came back credited to Erik Wilson, took 40 points and
+        // fell under the threshold. The penalty is also small now, because the
+        // per-position author filter has already removed the case it was built
+        // for; what reaches here is a volume with nobody to compare it against,
+        // which is a mild doubt rather than a verdict.
+        const vAuthors = (v.authors || [v.author]).filter(Boolean).flatMap(splitAuthors);
+        if (heldAuthors.size && vAuthors.length && !vAuthors.some((a) => heldAuthors.has(normTitle(a)))) {
+          confidence -= 15;
+          notes.push(`credited to ${vAuthors.map((a) => `"${a}"`).join(', ')}, not the series author`);
+        }
+        if (!v.author) { confidence -= 20; notes.push('no author'); }
+        if (normTitle(v.title).length < 3) { confidence -= 40; notes.push('title too short'); }
+        if (claimedTotal && position > claimedTotal) {
+          confidence -= 20; notes.push(`beyond ${claimedSource} (${claimedTotal})`);
+        }
+        confidence = Math.max(0, confidence);
+
+        // THE RULE THE FIRST VERSION WAS MISSING.
+        //
+        // More than one candidate at a position is a real choice — an original
+        // and its translations, most often — and this script cannot make it
+        // from the fields it can safely query. So it states the choice and
+        // pre-approves nothing. One candidate, high confidence, and a real
+        // action is the only combination that gets a 'y'.
+        // `pick` is the module's answer to "which of these is the original":
+        // a lone candidate, or the one the series' own collection editions
+        // quote. Everything else at the position stays in the file as a
+        // visible, unapproved alternative rather than being deleted — the
+        // signal is good, and it is still a signal.
+        // Say which signal decided, not which signals exist. The 25-series run
+        // produced "chosen over 1 other candidate(s) — quoted in 0 collection
+        // edition(s)", which reads as a reason and is the absence of one: the
+        // language had picked it and the note described the wrong test.
+        if (v.pickReason) notes.push(v.pick ? `chosen: ${v.pickReason}` : v.pickReason);
+        if (list.length > 1 && !v.pick) {
+          notes.push(`alternative at position ${position} — approve this instead only if the chosen one is wrong`);
+        }
+
+        // Two positions that Hardcover uses for things that are not volumes,
+        // and that the run got wrong in both directions:
+        //
+        //   position 0          prequels, omnibuses and oddities. Dragonlance
+        //                       had five, Hellboy five Italian editions, and
+        //                       The Witcher's was a French box set.
+        //   beyond total_books  Red God at 7 of 6, The Second Generation at 4
+        //                       of 3 — a different sub-series entirely.
+        //
+        // Both were confidence penalties that landed on exactly 80 and sailed
+        // through a >= 80 threshold. A penalty that still passes is not a
+        // guard, so these now disqualify the pre-approval outright and leave
+        // the row for review.
+        const structurallyOdd =
+          position === 0 || (claimedTotal && position > claimedTotal);
+        if (structurallyOdd && v.pick) notes.push('not pre-approved: unusual position for a volume');
+
+        // NOTHING BOUNDS THIS SERIES.
+        //
+        // The guard above is only as good as the number it compares against,
+        // and for some series there is no number anywhere. Dungeon Crawler
+        // Carl, 2026-09-09: our row has no total_books and Hardcover reports no
+        // primary_books_count either, so "The Beautiful Place" — Dinniman's
+        // standalone horror novel, which Hardcover files at position 9 — has
+        // nothing at all to fail against, and is pre-approved at 100 by every
+        // test this script can make. Right author, right language, sole
+        // candidate.
+        //
+        // This does not veto it. Refusing every tail volume of every series
+        // with no claimed total would cost far more than it saves, and a
+        // genuine last volume looks exactly like this. It SAYS SO instead, on
+        // the rows where the risk actually lives — past the end of what we
+        // hold, where an appended stranger is indistinguishable from a sequel.
+        //
+        // The fix is a curated total_books on the series row. That is one field
+        // a human fills in once, and it turns this whole class of error back
+        // into the structural guard above.
+        if (!claimedTotal && maxHeldPosition && position > maxHeldPosition) {
+          notes.push(`nothing claims a length for this series — no total_books here or upstream, so position ${position} is unbounded`);
+        }
+
+        // NOBODY WE KNOW WROTE THIS.
+        //
+        // THE BUG THIS EXISTS FOR: 2026-09-09, the run after the language fix.
+        // Forty-six pre-approvals, and exactly two of them wrong — both the
+        // same shape, both a DIFFERENT SERIES that happens to share a name:
+        //
+        //   The Inheritance Trilogy #3  Semper Human        Ian Douglas
+        //     (ours is N. K. Jemisin's; his is military SF)
+        //   Wicked #4                   Spellbound          Nancy Holder
+        //     (ours is Janet Evanovich's — the exact confusion the header of
+        //      this file already warned about, pre-approved anyway)
+        //
+        // Both carried `credited to "X", not the series author` and sailed
+        // through on a 15-point penalty. The per-position author FILTER cannot
+        // help here: it only drops a non-matching candidate when a matching one
+        // stands at the same position, and at these positions there was none.
+        //
+        // So this is a pre-approval veto, not a filter — the row stays in the
+        // file, visible and approvable by hand. A candidate that names its
+        // authors and names none of ours is not something to write into a
+        // shared catalog unattended. It costs nothing measurable: those two
+        // rows were the ONLY pre-approvals in the run carrying that note.
+        //
+        // It fires only when the candidate actually credits somebody. Credited
+        // to nobody is a different doubt and already costs 20 points, and an
+        // outright veto there would take the narrator case with it.
+        const disowned =
+          heldAuthors.size > 0 && vAuthors.length > 0 &&
+          !vAuthors.some((a) => heldAuthors.has(normTitle(a)));
+        if (disowned && v.pick) notes.push('not pre-approved: no author in common with the series');
+
+        if (structuralMove) notes.push('not pre-approved: this moves a volume a human already placed');
+
+        const preApprove =
+          action !== 'skip' && v.pick && !structurallyOdd && !disowned && !structuralMove &&
+          confidence >= MIN_CONFIDENCE;
 
         out.push({
           approve: preApprove ? 'y' : '',
@@ -1406,14 +1470,8 @@ async function propose() {
     console.log(`\n  --dry-run: ${examined.length} series NOT stamped, so the queue is unchanged.`);
   }
 
-  // One book cannot hold two positions; see withdrawCrossSeriesDuplicates.
-  const collisions = withdrawCrossSeriesDuplicates(out);
-
   const body = out.map((r) => COLUMNS.map((c) => csvCell(r[c])).join(',')).join('\n');
   writeFileSync(CSV_PATH, COLUMNS.join(',') + '\n' + body + '\n');
-  if (collisions) {
-    console.log(`\n  ${collisions} pre-approvals withdrawn: the same book was proposed into more than one series.`);
-  }
 
   const approvable = out.filter((r) => r.approve === 'y').length;
   const applicable = out.filter((r) => r.action !== 'rejected');
