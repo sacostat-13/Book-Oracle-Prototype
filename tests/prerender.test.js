@@ -37,6 +37,31 @@ const LINKS = [
   { genre_id: 'g2', book_id: 'b2', title: 'Harvest', author: 'Crace' },
 ];
 
+// SERIES. Two, chosen for the two shapes the page-count line has to tell apart.
+//
+//   Red Rising Saga  — total_books 6, catalog holds 4, EVERY held volume paged.
+//                      Partial shelf, so the total is a total of the list, and
+//                      must not be phrased as the series'.
+//   Fablehaven       — total_books 3, holds all 3, but one row has no page
+//                      count. A total summed over two of three rows is a wrong
+//                      number, so there is no total at all.
+const SERIES = [
+  { id: 's1', name: 'Red Rising Saga', normalized_name: 'redrisingsaga',
+    description: 'Red Rising Saga is a 6-book series by Pierce Brown.', total_books: 6 },
+  { id: 's2', name: 'Fablehaven', normalized_name: 'fablehaven',
+    description: null, total_books: 3 },
+];
+const VOLUMES = [
+  { series_id: 's1', title: 'Red Rising',    author: 'Pierce Brown', share_key: 'redrising|pierceb',    position_in_series: 1, description: 'x', pages: 382 },
+  { series_id: 's1', title: 'Golden Son',    author: 'Pierce Brown', share_key: 'goldenson|pierceb',    position_in_series: 2, description: 'x', pages: 442 },
+  { series_id: 's1', title: 'Morning Star',  author: 'Pierce Brown', share_key: 'morningstar|pierceb',  position_in_series: 3, description: 'x', pages: 518 },
+  { series_id: 's1', title: 'Iron Gold',     author: 'Pierce Brown', share_key: 'irongold|pierceb',     position_in_series: 5, description: 'x', pages: 1_216 },
+  { series_id: 's2', title: 'Fablehaven',    author: 'Brandon Mull', share_key: 'fablehaven|brandonmu', position_in_series: 1, description: 'x', pages: 359 },
+  { series_id: 's2', title: 'Rise of the Evening Star', author: 'Brandon Mull', share_key: 'riseoftheeveningstar|brandonmu', position_in_series: 2, description: 'x', pages: 441 },
+  // No page count. This one row is why Fablehaven prints no total.
+  { series_id: 's2', title: 'Grip of the Shadow Plague', author: 'Brandon Mull', share_key: 'gripoftheshadowplague|brandonmu', position_in_series: 3, description: 'x', pages: null },
+];
+
 // THE SCHEMA, as PostgREST sees it. This is the half of the stub that matters.
 //
 // The first version of this probe returned whatever the caller asked for, so it
@@ -57,6 +82,17 @@ const SCHEMA = {
                      'usage_count', 'genre_description', 'assigned_by_source',
                      'family_id', 'family_slug', 'family_name', 'family_sort'],
   books: ['id', 'title', 'author', 'cover_url', 'status', 'genre'],
+  series: ['id', 'name', 'normalized_name', 'author', 'description', 'description_source',
+           'total_books', 'publication_status', 'volumes_checked_at', 'volumes_stale',
+           'created_at', 'updated_at'],
+  // Exactly the select list of migration 20260908120000. `pages` is on it, and
+  // the series branch now asks for it — this line is what turns "somebody
+  // dropped pages from the view" into a failing test rather than a silently
+  // pageless list in production, which is the failure shape this file already
+  // exists for.
+  series_volumes: ['id', 'title', 'author', 'status', 'cover_url', 'description', 'pages',
+                   'isbn', 'genre', 'series_id', 'position_in_series', 'updated_at',
+                   'series_name', 'share_key', 'edition_count'],
 };
 
 function assertColumns(url) {
@@ -106,6 +142,16 @@ const realStub = async (u) => {
     const inM = url.match(/id=in\.\(([^)]+)\)/);
     const ids = inM ? inM[1].split(',') : [];
     return J(BOOKS.filter((b) => ids.includes(b.id)));
+  }
+  if (url.includes('/series_volumes')) {
+    const m = url.match(/series_id=eq\.([^&]+)/);
+    return J(VOLUMES
+      .filter((v) => m && v.series_id === decodeURIComponent(m[1]))
+      .sort((a, b) => a.position_in_series - b.position_in_series));
+  }
+  if (url.includes('/series?')) {
+    const m = url.match(/normalized_name=eq\.([^&]+)/);
+    return J(m ? SERIES.filter((s) => s.normalized_name === decodeURIComponent(m[1])) : []);
   }
   if (url.includes('/genres?')) {
     const nm = url.match(/normalized_name=eq\.([^&]+)/);
@@ -165,6 +211,10 @@ const fam = await run('/genres/horror');
 const gen = await run('/genre/horror');
 const genHtml = lastHtml;
 const thin = await run('/genre/cosmichorror');
+const rrs = await run('/series/Red Rising Saga');
+const rrsHtml = lastHtml;
+const fab = await run('/series/Fablehaven');
+const fabHtml = lastHtml;
 
 describe('og-prerender: the genre surface as a crawler sees it', () => {
   it('the /genres hub is prerendered with an ItemList and breadcrumbs', () => {
@@ -241,10 +291,82 @@ describe('og-prerender: the genre surface as a crawler sees it', () => {
     expect(fam.booksUnique).toBeGreaterThan(0);
   });
 
+  it('the series pages resolve at all', () => {
+    // Guard for the stub, not the code: if the series lookup returns nothing
+    // the handler falls through to context.next() and every assertion in the
+    // block below would pass against the untouched shell.
+    expect(rrs.title).toBe('Red Rising Saga series in order — every book | The Books Oracle');
+    expect(fab.title).toBe('Fablehaven series in order — every book | The Books Oracle');
+  });
+
   it('no query asked for a column the schema does not have', () => {
     // Belt and braces: the stub logs every rejection it issued, so a swallowed
     // 400 that happens not to change the assertions above still fails here.
     const rejected = lines.filter((l) => l.includes('[stub] 400'));
     expect(rejected, rejected.join('\n')).toEqual([]);
+  });
+});
+
+// ── Page counts on the series page ───────────────────────────────────────────
+//
+// The 28-day query export has `malazan book of the fallen page count` and
+// `red rising series page count by book` against these pages, and `pages` has
+// been on series_volumes since 20260908120000 — the page just never said it.
+//
+// Everything here is really one assertion in two directions: the numbers on the
+// page describe the list on the page. A total summed over the rows that happen
+// to have a page count is not the total of the list above it, and a total
+// phrased as the series' when the shelf is partial is the "All 2 books" error
+// with different arithmetic.
+describe('og-prerender: the series page answers page-count queries', () => {
+  it('prints a page count on each volume it has one for', () => {
+    expect(rrsHtml).toMatch(/1\. <a href="[^"]*">Red Rising<\/a> — Pierce Brown · 382 pages/);
+    expect(rrsHtml).toMatch(/· 442 pages/);
+  });
+
+  it('thousands are grouped', () => {
+    // 1216 in a sentence about page counts reads as a typo.
+    expect(rrsHtml).toMatch(/· 1,216 pages/);
+  });
+
+  it('a volume with no page count simply has none', () => {
+    expect(fabHtml).toMatch(/Grip of the Shadow Plague<\/a> — Brandon Mull<\/li>/);
+    expect(fabHtml).not.toMatch(/0 pages/);
+    expect(fabHtml).not.toMatch(/null pages/);
+  });
+
+  it('totals the shelf when every listed volume is paged', () => {
+    // 382 + 442 + 518 + 1216.
+    expect(rrsHtml).toContain('The 4 books listed here total 2,558 pages.');
+  });
+
+  it('a partial shelf never claims the total is the series total', () => {
+    // Red Rising holds 4 of 6. "All 4 books total…" alongside "There are 6
+    // books in the Red Rising Saga series." is a page disagreeing with itself.
+    expect(rrsHtml).toContain('There are 6 books in the Red Rising Saga series.');
+    expect(rrsHtml).not.toMatch(/All 4 books total/);
+  });
+
+  it('one missing page count means no total at all', () => {
+    // Fablehaven holds all three; two are paged. 359 + 441 is not the length of
+    // the list above it, so the sentence does not appear.
+    expect(fabHtml).not.toMatch(/total \d[\d,]* pages/);
+    expect(fabHtml).not.toContain('800');
+  });
+
+  it('page counts reach the structured data too', () => {
+    const book = rrs.types.length && JSON.parse(
+      (rrsHtml.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/) || [])[1]
+    );
+    const parts = book.hasPart || [];
+    expect(parts.find((p) => p.name === 'Red Rising').numberOfPages).toBe(382);
+    // Absent, not zero: schema.org numberOfPages of 0 is a claim.
+    expect(parts.find((p) => p.name === 'Iron Gold').numberOfPages).toBe(1216);
+  });
+
+  it('the book page list is left alone', () => {
+    // withPages is opt-in. The "More <genre>" and sibling lists on a book page
+    // answer no page-count query and were not asked to change.
+    expect(genHtml).not.toMatch(/ · \d[\d,]* pages/);
   });
 });

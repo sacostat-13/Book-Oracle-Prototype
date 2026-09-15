@@ -203,18 +203,33 @@ function bookLink(row) {
   return `/book/${encodeURIComponent(key)}`;
 }
 
-function listItems(rows) {
+// A page count, or null when the row has none. Never a zero and never a guess:
+// "0 pages" on a volume row reads as a broken page, and an invented number on a
+// list whose entire claim is accuracy is worse than a missing one.
+function pageCount(b) {
+  const n = Number(b?.pages);
+  return Number.isFinite(n) && n > 0 ? n : null;
+}
+const fmtNum = (n) => Number(n).toLocaleString('en-US');
+
+// `withPages` is opt-in rather than automatic because only the series page has
+// a reason to carry it. `malazan book of the fallen page count` and `red rising
+// series page count by book` are in the 28-day query export, and the answer is
+// already in the column; the book page's "More <genre>" list answers nothing of
+// the kind and does not need the noise.
+function listItems(rows, { withPages = false } = {}) {
   return rows.map((b) => {
     const pos = b.position_in_series != null ? `${Number(b.position_in_series)}. ` : '';
+    const pp = withPages ? pageCount(b) : null;
+    const tail = `${b.author ? ` — ${escapeHtml(b.author)}` : ''}` +
+      `${pp ? ` · ${escapeHtml(fmtNum(pp))} pages` : ''}`;
     const href = bookLink(b);
     // An unaddressable row is listed without a link rather than dropped: the
     // title is still useful context, and a dead href is not.
     if (!href) {
-      return `<li>${escapeHtml(pos)}${escapeHtml(b.title)}` +
-        `${b.author ? ` — ${escapeHtml(b.author)}` : ''}</li>`;
+      return `<li>${escapeHtml(pos)}${escapeHtml(b.title)}${tail}</li>`;
     }
-    return `<li>${escapeHtml(pos)}<a href="${escapeHtml(href)}">${escapeHtml(b.title)}</a>` +
-      `${b.author ? ` — ${escapeHtml(b.author)}` : ''}</li>`;
+    return `<li>${escapeHtml(pos)}<a href="${escapeHtml(href)}">${escapeHtml(b.title)}</a>${tail}</li>`;
   }).join('');
 }
 
@@ -802,7 +817,11 @@ export default async (request, context) => {
       let volumes = [];
       const vUrl =
         // 2026-09-08: series_volumes. See the note on the siblings query above.
-        `${supabaseUrl}/rest/v1/series_volumes?select=title,author,share_key,position_in_series,description` +
+        // `pages` is on the view (migration 20260908120000 selects it, and the
+        // edition tie-break orders by it) — added here 2026-09-15 for the page
+        // count line. If it ever leaves the view this query 400s, and the else
+        // branch below is what says so out loud.
+        `${supabaseUrl}/rest/v1/series_volumes?select=title,author,share_key,position_in_series,description,pages` +
         `&series_id=eq.${encodeURIComponent(match.id)}` +
         // Match the sitemap. It emits /series/:name from rows with these two
         // statuses, so the page behind those URLs must list the same rows --
@@ -861,14 +880,41 @@ export default async (request, context) => {
         ? `${held} of ${known} books, in reading order`
         : `All ${held} book${held === 1 ? '' : 's'}, in reading order`;
 
+      // The page-count sentence.
+      //
+      // `malazan book of the fallen page count` and `red rising series page
+      // count by book` are in the 28-day query export, and `pages` has been on
+      // series_volumes the whole time — the page simply never said it. Per
+      // volume it goes in the <li>; the total goes here.
+      //
+      // ONLY WHEN EVERY LISTED VOLUME HAS ONE. A total summed over the rows
+      // that happen to carry a page count is not the total of the list above
+      // it, and printing it as one is the same overclaim as "All 2 books" for
+      // a trilogy: checkably wrong, on a page whose only asset is being right
+      // about counts. When one row is missing its number there is no total.
+      //
+      // And it is phrased about THE BOOKS LISTED HERE, never the series, for
+      // the same reason the count sentence keeps `held` and `known` apart:
+      // when the shelf is partial the sum is a sum of what we hold, and
+      // nothing more.
+      const pageCounts = volumes.map(pageCount);
+      const allPaged = held > 0 && pageCounts.every((n) => n != null);
+      const totalPages = allPaged ? pageCounts.reduce((a, b) => a + b, 0) : null;
+      const pagesSentence = !totalPages
+        ? ''
+        : partial
+          ? `The ${held} book${held === 1 ? '' : 's'} listed here total ${fmtNum(totalPages)} pages.`
+          : `All ${held} book${held === 1 ? '' : 's'} total ${fmtNum(totalPages)} pages.`;
+
       const seriesBody = [
         `<p class="eyebrow">Series</p>`,
         `<h1>${escapeHtml(match.name)} series in reading order</h1>`,
         countSentence ? `<p>${escapeHtml(countSentence)}</p>` : '',
         `<p>${escapeHtml(seriesDesc)}</p>`,
         held
-          ? `<h2>${escapeHtml(listHeading)}</h2><ul>${listItems(volumes)}</ul>`
+          ? `<h2>${escapeHtml(listHeading)}</h2><ul>${listItems(volumes, { withPages: true })}</ul>`
           : '',
+        pagesSentence ? `<p>${escapeHtml(pagesSentence)}</p>` : '',
         `<p><a href="/">The Books Oracle</a> — track the series you are partway through, and see what to read next.</p>`,
       ].filter(Boolean).join('');
 
@@ -904,6 +950,9 @@ export default async (request, context) => {
               name: b.title,
               ...(b.author ? { author: { '@type': 'Person', name: b.author } } : {}),
               ...(b.position_in_series != null ? { position: Number(b.position_in_series) } : {}),
+              // schema.org/Book.numberOfPages. Omitted rather than zeroed when
+              // the row has none — same rule as `url` below.
+              ...(pageCount(b) ? { numberOfPages: pageCount(b) } : {}),
               // v0.63.3: omit `url` rather than emit a broken one — structured
               // data pointing at a 404 is worse for SEO than structured data
               // with one fewer field.

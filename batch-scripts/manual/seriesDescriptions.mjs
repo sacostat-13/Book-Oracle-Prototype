@@ -57,7 +57,7 @@
 
 import { readFileSync } from 'fs';
 import { join, dirname } from 'path';
-import { fileURLToPath } from 'url';
+import { fileURLToPath, pathToFileURL } from 'url';
 import { createServiceClient } from '../_shared/supabaseClient.mjs';
 // cleanTitle is shared with the backfill: the Dresden Files mismatch storm of
 // 2026-09-10 was the same suffix breaking a different comparison.
@@ -85,20 +85,47 @@ const LIMIT = numArg('--limit', null);
 const MIN_HELD = numArg('--min-held', 1);
 const ONLY_SERIES = allStrArgs('--series');
 
-const env = Object.fromEntries(
-  readFileSync(join(ROOT, '.env.local'), 'utf8')
-    .split('\n').filter((l) => l.trim() && !l.startsWith('#'))
-    .map((l) => {
-      const i = l.indexOf('=');
-      return [l.slice(0, i).trim().replace(/^export\s+/, ''), l.slice(i + 1).trim().replace(/^['"]|['"]$/g, '')];
-    })
-);
-const SUPABASE_URL = env['VITE_SUPABASE_URL'] || env['SUPABASE_URL'] || '';
-const SERVICE_KEY = env['SUPABASE_SERVICE_ROLE_KEY'] || '';
-for (const [k, v] of [['VITE_SUPABASE_URL', SUPABASE_URL], ['SUPABASE_SERVICE_ROLE_KEY', SERVICE_KEY]]) {
-  if (!v) { console.error(`Missing ${k} in .env.local`); process.exit(1); }
+// CREDENTIALS ARE READ INSIDE main(), NOT AT IMPORT TIME.
+//
+// tests/series-descriptions.test.js imports composeSeriesDescription from this
+// file, and importing a module runs everything at its top level. Reading
+// .env.local up here meant the whole suite died at collection on any machine
+// without one — i.e. every CI runner — with
+//
+//   Error: ENOENT: no such file or directory, open '…/.env.local'
+//     at batch-scripts/manual/seriesDescriptions.mjs:89
+//
+// and a red deploy, while all 169 tests passed. The composer is pure and needs
+// no database; only main() does. Anything with side effects — file reads,
+// clients, process.exit — belongs behind the CLI guard at the bottom.
+//
+// Same reasoning as the `export`ed composer: if a file is importable, its top
+// level has to be safe to import.
+function loadClient() {
+  let raw = '';
+  try {
+    raw = readFileSync(join(ROOT, '.env.local'), 'utf8');
+  } catch {
+    // No file is not an error here — a shell-exported or CI-provided
+    // credential is just as valid. The missing-key check below is what
+    // decides, and it says the same thing either way.
+  }
+  const env = Object.fromEntries(
+    raw.split('\n').filter((l) => l.trim() && !l.startsWith('#'))
+      .map((l) => {
+        const i = l.indexOf('=');
+        return [l.slice(0, i).trim().replace(/^export\s+/, ''), l.slice(i + 1).trim().replace(/^['"]|['"]$/g, '')];
+      })
+  );
+  const pick = (...keys) => keys.map((k) => env[k] || process.env[k]).find(Boolean) || '';
+  const SUPABASE_URL = pick('VITE_SUPABASE_URL', 'SUPABASE_URL');
+  const SERVICE_KEY = pick('SUPABASE_SERVICE_ROLE_KEY');
+  for (const [k, v] of [['VITE_SUPABASE_URL', SUPABASE_URL], ['SUPABASE_SERVICE_ROLE_KEY', SERVICE_KEY]]) {
+    if (!v) { console.error(`Missing ${k} in .env.local or the environment`); process.exit(1); }
+  }
+  return createServiceClient(SUPABASE_URL, SERVICE_KEY);
 }
-const supabase = createServiceClient(SUPABASE_URL, SERVICE_KEY);
+
 const vlog = (m) => { if (VERBOSE) process.stdout.write('    ' + m + '\n'); };
 
 // Mirrors compute_series_key / normalizeSeriesName: lowercase, strip a leading
@@ -242,6 +269,8 @@ export function composeSeriesDescription({ name, author, totalBooks, publication
 
 // -- Go -----------------------------------------------------------------------
 async function main() {
+  const supabase = loadClient();
+
   let query = supabase
     .from('series')
     .select('id,name,author,total_books,publication_status,description,description_source');
@@ -328,7 +357,9 @@ async function main() {
   }
 }
 
-// Importable for tests without running the CLI.
-if (process.argv[1] && process.argv[1].endsWith('seriesDescriptions.mjs')) {
+// Importable for tests without running the CLI. Compare resolved URLs rather
+// than an endsWith() on argv[1]: a test runner invoked from a path that happens
+// to end in this filename would otherwise start a real database run.
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   main().catch((e) => { console.error(`\n  FAILED: ${e.message}\n`); process.exit(1); });
 }
