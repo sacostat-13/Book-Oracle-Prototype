@@ -12,6 +12,19 @@
   # Worth doing deliberately, on its own, with the `ws` cleanup alongside it.
   NODE_VERSION = "20"
 
+# The @netlify/plugin-emails plugin is installed from the Netlify UI, not from
+# this file, and it generates .netlify/functions-internal/emails/index.js as
+# CommonJS. package.json declares "type": "module", so Node refuses to load it
+# and the build dies before it reaches the site.
+#
+# Forcing esbuild makes that function bundle instead of being copied, which
+# sidesteps the module-type resolution. This is a STOPGAP. The repo has no
+# emails/ template directory and no function that calls the plugin — mail goes
+# out through netlify/functions/send-notification-email.js — so the real fix is
+# to uninstall the plugin in the Netlify UI and delete this block with it.
+[functions."emails"]
+  node_bundler = "esbuild"
+
 [dev]
   command = "npm run dev"
   port = 8888
@@ -26,7 +39,23 @@
     X-Frame-Options = "DENY"
     X-Content-Type-Options = "nosniff"
     Referrer-Policy = "strict-origin-when-cross-origin"
-    Permissions-Policy = "camera=(), microphone=(), geolocation=()"
+    # camera=(self) — same-origin pages may request the camera; every other
+    # origin, including anything we embed, still cannot. Needed for the ISBN
+    # scanner (claude/isbn-scan-v1-spec.md): with camera=() this site gets a
+    # NotAllowedError from getUserMedia before a permission prompt ever
+    # appears, on every browser, with no way for the reader to grant it.
+    # microphone and geolocation stay fully denied — nothing here asks for them.
+    Permissions-Policy = "camera=(self), microphone=(), geolocation=()"
+    # No media-src directive here on purpose. A camera stream is attached with
+    # video.srcObject = stream, which is an object reference rather than a URL
+    # fetch, so CSP never evaluates it. Only the deprecated
+    # URL.createObjectURL(stream) path would need `media-src 'self' blob:`, and
+    # we do not use it. Do not widen this header speculatively.
+    #
+    # The scanner's real CSP constraint is script-src: loading a barcode
+    # decoder from a CDN would be blocked by 'self'. Bundle @zxing/library from
+    # npm as a dynamic import so Vite emits it as a local chunk — no CDN, no
+    # header change, and it stays out of the main bundle either way.
     Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://assets.lemonsqueezy.com https://app.lemonsqueezy.com; style-src 'self' 'unsafe-inline' https://assets.lemonsqueezy.com https://fonts.googleapis.com; img-src 'self' data: blob: https: http:; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.anthropic.com https://*.lemonsqueezy.com https://thebooksoracle.lemonsqueezy.com https://api.lemonsqueezy.com https://openlibrary.org https://covers.openlibrary.org https://www.googleapis.com https://fonts.googleapis.com https://fonts.gstatic.com; frame-src https://*.lemonsqueezy.com https://thebooksoracle.lemonsqueezy.com; font-src 'self' https://fonts.gstatic.com data:; worker-src 'self' blob:;"
 
 # v0.56: the version file must never be cached by anything. The client fetch
