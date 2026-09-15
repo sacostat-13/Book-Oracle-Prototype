@@ -1,0 +1,685 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>Oracle Scan Bench</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Instrument+Serif:ital@0;1&display=swap">
+<script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/umd/index.min.js"></script>
+
+<style>
+  /* Deliberately single-theme. Per the spec: the camera view is a full-bleed
+     dark surface in both app themes — live video behind parchment chrome is
+     unreadable — so this screen is theme-independent by design. */
+  :root {
+    --ink:        #0C0A0F;
+    --ink-raised: #17131D;
+    --ink-edge:   #2A2333;
+    --gold:       #C9A227;
+    --gold-dim:   #6E5A1B;
+    --parchment:  #EDE6D6;
+    --muted:      #8C8397;
+    --wine:       #8E3A46;
+    --sage:       #6F8A6B;
+
+    --font-display: 'Instrument Serif', Georgia, serif;
+    --font-ui: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+
+    --strip-h: 92px;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    background: var(--ink);
+    color: var(--parchment);
+    font-family: var(--font-ui);
+    font-size: 13px;
+    -webkit-font-smoothing: antialiased;
+    overflow: hidden;
+  }
+
+  #app { position: relative; height: 100%; display: flex; flex-direction: column; }
+
+  /* ---------- camera stage ---------- */
+  #stage {
+    position: relative; flex: 1; min-height: 0;
+    background: #000; overflow: hidden;
+  }
+  #video {
+    position: absolute; inset: 0;
+    width: 100%; height: 100%; object-fit: cover;
+    display: block; background: #000;
+  }
+  #scrim {
+    position: absolute; inset: 0;
+    background:
+      radial-gradient(ellipse 78% 46% at 50% 44%, transparent 38%, rgba(8,6,11,.72) 100%);
+    pointer-events: none;
+  }
+
+  /* ---------- reticle ---------- */
+  #reticle {
+    position: absolute; left: 50%; top: 44%;
+    width: min(74vw, 340px); aspect-ratio: 5 / 3;
+    max-width: 100%;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+  }
+  .corner {
+    position: absolute; width: 26px; height: 26px;
+    border: 2px solid var(--gold); border-radius: 2px;
+    transition: border-color .18s ease, transform .18s ease;
+  }
+  .corner.tl { top:0; left:0; border-right:0; border-bottom:0; }
+  .corner.tr { top:0; right:0; border-left:0; border-bottom:0; }
+  .corner.bl { bottom:0; left:0; border-right:0; border-top:0; }
+  .corner.br { bottom:0; right:0; border-left:0; border-top:0; }
+
+  #reticle::after {
+    content:''; position:absolute; left:8%; right:8%; top:50%;
+    height:1px; background: linear-gradient(90deg, transparent, var(--gold), transparent);
+    opacity:.5;
+    animation: breathe 2.6s ease-in-out infinite;
+  }
+  @keyframes breathe {
+    0%,100% { opacity:.18; transform: scaleX(.82); }
+    50%     { opacity:.6;  transform: scaleX(1); }
+  }
+
+  #reticle.locked .corner { border-color: var(--parchment); transform: scale(1.14); }
+  #reticle.dupe   .corner { border-color: var(--wine); }
+  #reticle.locked::after, #reticle.dupe::after { animation: none; opacity: 0; }
+
+  #hint {
+    position: absolute; left: 50%; top: calc(44% + min(37vw, 170px) + 22px);
+    transform: translateX(-50%);
+    font-size: 11px; letter-spacing: .09em; text-transform: uppercase;
+    color: var(--muted); white-space: nowrap; text-align: center;
+    transition: color .2s ease;
+  }
+  #hint.good { color: var(--gold); }
+  #hint.bad  { color: var(--wine); }
+
+  /* ---------- top bar ---------- */
+  #topbar {
+    position: absolute; left: 0; right: 0; top: 0;
+    padding: 12px 14px; padding-top: calc(12px + env(safe-area-inset-top, 0px));
+    display: flex; align-items: center; gap: 10px;
+    background: linear-gradient(180deg, rgba(8,6,11,.85), transparent);
+  }
+  #title { font-family: var(--font-display); font-size: 20px; letter-spacing: .01em; }
+  #title em { font-style: italic; color: var(--gold); }
+  .spacer { flex: 1; }
+
+  button {
+    font-family: var(--font-ui); font-size: 12px;
+    color: var(--parchment); background: rgba(23,19,29,.78);
+    border: 1px solid var(--ink-edge); border-radius: 3px;
+    padding: 7px 11px; cursor: pointer;
+    transition: border-color .15s ease, color .15s ease, background .15s ease;
+  }
+  button:hover { border-color: var(--gold-dim); }
+  button:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+  button[aria-pressed="true"] { color: var(--ink); background: var(--gold); border-color: var(--gold); }
+  button.ghost { background: transparent; }
+
+  /* ---------- flying card ---------- */
+  .flier {
+    position: fixed; z-index: 40; pointer-events: none;
+    width: 46px; height: 68px; border-radius: 2px;
+    border: 1px solid var(--gold-dim);
+    box-shadow: 0 8px 24px rgba(0,0,0,.6);
+  }
+
+  /* ---------- pile strip ---------- */
+  #strip {
+    position: relative; z-index: 20;
+    height: var(--strip-h); flex: none;
+    display: flex; align-items: center; gap: 14px;
+    padding: 0 16px; padding-bottom: env(safe-area-inset-bottom, 0px);
+    background: var(--ink-raised);
+    border-top: 1px solid var(--ink-edge);
+    cursor: pointer;
+  }
+  #thumbs { display: flex; align-items: center; width: 92px; flex: none; }
+  #thumbs .th {
+    width: 38px; height: 56px; border-radius: 2px; flex: none;
+    border: 1px solid rgba(201,162,39,.35);
+    margin-left: -16px;
+    box-shadow: -3px 0 8px rgba(0,0,0,.5);
+    transition: transform .2s ease;
+  }
+  #thumbs .th:first-child { margin-left: 0; }
+  #thumbs .th.pulse { animation: pulse .42s ease; }
+  @keyframes pulse {
+    0%,100% { transform: none; }
+    40% { transform: translateY(-7px) rotate(-3deg); }
+  }
+  #count { font-family: var(--font-display); font-size: 34px; line-height: 1; font-variant-numeric: tabular-nums; }
+  #countLabel { font-size: 10px; letter-spacing: .13em; text-transform: uppercase; color: var(--muted); margin-top: 4px; }
+  #review { font-size: 11px; color: var(--gold); }
+  #stripEmpty { color: var(--muted); font-size: 12px; }
+
+  /* ---------- sheet (staging list / debug) ---------- */
+  .sheet {
+    position: absolute; inset: 0; z-index: 30;
+    background: var(--ink); overflow-y: auto;
+    padding: 16px; padding-top: calc(16px + env(safe-area-inset-top, 0px));
+    padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+  }
+  .sheet h2 { font-family: var(--font-display); font-weight: 400; font-size: 26px; margin: 0 0 2px; }
+  .sheet .sub { color: var(--muted); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; margin-bottom: 18px; }
+  .sheet .close { position: absolute; right: 14px; top: calc(14px + env(safe-area-inset-top, 0px)); }
+
+  .row {
+    display: flex; gap: 12px; align-items: center;
+    padding: 10px 0; border-bottom: 1px solid var(--ink-edge);
+  }
+  .row .cov { width: 36px; height: 52px; border-radius: 2px; flex: none; border: 1px solid var(--ink-edge); }
+  .row .meta { flex: 1; min-width: 0; }
+  .row .t { font-family: var(--font-display); font-size: 17px; line-height: 1.2; }
+  .row .t.skel { color: var(--muted); font-family: var(--font-ui); font-size: 13px; }
+  .row .i { font-size: 11px; color: var(--muted); letter-spacing: .04em; font-variant-numeric: tabular-nums; }
+  .tag { font-size: 10px; letter-spacing: .09em; text-transform: uppercase; padding: 3px 6px; border-radius: 2px; border: 1px solid; flex: none; }
+  .tag.exact      { color: var(--sage);  border-color: rgba(111,138,107,.5); }
+  .tag.normalized { color: var(--gold);  border-color: var(--gold-dim); }
+  .tag.new        { color: var(--wine);  border-color: rgba(142,58,70,.6); }
+  .tag.pending    { color: var(--muted); border-color: var(--ink-edge); }
+
+  .dest { display: flex; flex-wrap: wrap; gap: 8px; margin: 20px 0 8px; }
+  .note { color: var(--muted); font-size: 11px; line-height: 1.6; margin-top: 18px; border-top: 1px solid var(--ink-edge); padding-top: 14px; }
+
+  /* ---------- debug ---------- */
+  #debug { position: absolute; left: 0; right: 0; bottom: 0; z-index: 25;
+    background: rgba(12,10,15,.94); border-top: 1px solid var(--ink-edge);
+    padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0px)); }
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(74px, 1fr)); gap: 10px; }
+  .stat .v { font-size: 17px; font-variant-numeric: tabular-nums; }
+  .stat .k { font-size: 9px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); margin-top: 2px; }
+  .ctl { display: flex; align-items: center; gap: 10px; margin-top: 12px; font-size: 11px; color: var(--muted); }
+  input[type=range] { flex: 1; accent-color: var(--gold); }
+  input[type=text] {
+    width: 100%; font-family: var(--font-ui); font-size: 15px; letter-spacing: .05em;
+    background: var(--ink-raised); border: 1px solid var(--ink-edge); border-radius: 3px;
+    color: var(--parchment); padding: 11px 12px;
+  }
+  input[type=text]:focus { outline: none; border-color: var(--gold-dim); }
+
+  #fatal { padding: 22px 18px; color: var(--muted); font-size: 13px; line-height: 1.7; }
+  #fatal strong { color: var(--parchment); font-weight: 500; }
+
+  @media (prefers-reduced-motion: reduce) {
+    #reticle::after, #thumbs .th.pulse { animation: none; }
+  }
+</style>
+
+</head>
+<body>
+<div id="app">
+  <div id="stage">
+    <video id="video" playsinline muted></video>
+    <div id="scrim"></div>
+
+    <div id="reticle">
+      <span class="corner tl"></span><span class="corner tr"></span>
+      <span class="corner bl"></span><span class="corner br"></span>
+    </div>
+    <div id="hint">Point at the barcode on the back cover</div>
+
+    <div id="topbar">
+      <div id="title">Scan <em>Bench</em></div>
+      <div class="spacer"></div>
+      <button id="torchBtn" class="ghost" aria-pressed="false" hidden>Light</button>
+      <button id="keyBtn" class="ghost">Type</button>
+      <button id="dbgBtn" class="ghost" aria-pressed="true">Stats</button>
+    </div>
+
+    <div id="fatal" hidden></div>
+
+    <div id="debug">
+      <div class="stats">
+        <div class="stat"><div class="v" id="sEngine">—</div><div class="k">Engine</div></div>
+        <div class="stat"><div class="v" id="sRate">0</div><div class="k">Reads/s</div></div>
+        <div class="stat"><div class="v" id="sFmt">0</div><div class="k">Not EAN13</div></div>
+        <div class="stat"><div class="v" id="sPre">0</div><div class="k">Bad prefix</div></div>
+        <div class="stat"><div class="v" id="sSum">0</div><div class="k">Bad sum</div></div>
+        <div class="stat"><div class="v" id="sDup">0</div><div class="k">Dupes</div></div>
+      </div>
+      <div class="ctl">
+        <span>Lookup latency</span>
+        <input type="range" id="lat" min="0" max="3000" step="100" value="600">
+        <span id="latV" style="width:52px;text-align:right;font-variant-numeric:tabular-nums">600ms</span>
+      </div>
+    </div>
+  </div>
+
+  <div id="strip" role="button" tabindex="0" aria-label="Open the pile">
+    <div id="thumbs"></div>
+    <div>
+      <div id="count">0</div>
+      <div id="countLabel">in the pile</div>
+    </div>
+    <div class="spacer"></div>
+    <div id="review"></div>
+    <div id="stripEmpty">Scan to begin</div>
+  </div>
+
+  <div class="sheet" id="pileSheet" hidden>
+    <button class="close ghost" id="pileClose">Back to camera</button>
+    <h2>The pile</h2>
+    <div class="sub" id="pileSub">Nothing scanned yet</div>
+    <div id="pileList"></div>
+    <div class="dest" id="destRow" hidden>
+      <button>Library</button><button>Wishlist</button>
+      <button>Currently reading</button><button>An Anthology</button>
+    </div>
+    <div class="note">
+      Lookups are <strong>simulated</strong> — an artifact page cannot call Hardcover or
+      Google Books, so titles are stand-ins and the confidence tier is derived from the
+      check digit so all three states appear. What is real: the camera, the decode loop,
+      the four filters, the dedupe, the haptics, and every timing you can feel.
+    </div>
+  </div>
+
+  <div class="sheet" id="keySheet" hidden>
+    <button class="close ghost" id="keyClose">Back to camera</button>
+    <h2>Type an ISBN</h2>
+    <div class="sub">Also the keyboard-wedge path</div>
+    <input type="text" id="keyInput" inputmode="numeric" autocomplete="off"
+           placeholder="9780060883287" aria-label="ISBN">
+    <div class="note">
+      A USB barcode scanner types digits and presses Enter, so this one focused input
+      supports real counter hardware with no code path of its own. ISBN-10 is converted
+      to 13 on the way in. Paste a newline-separated list to add several at once.
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  var $ = function (id) { return document.getElementById(id); };
+  var reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  // ---------------------------------------------------------------- state
+  var pile = [];                 // {isbn, tier, title, resolved}
+  var seen = new Set();
+  var stats = { fmt: 0, pre: 0, sum: 0, dup: 0, reads: 0 };
+  var lastCandidate = null, candidateHits = 0;
+  var cooldownUntil = 0;
+  var running = false, engine = null, zxReader = null, canvas = null, ctx = null;
+  var track = null, torchOn = false;
+
+  // ---------------------------------------------------------- ISBN helpers
+  function isbn13Valid(s) {
+    if (!/^\d{13}$/.test(s)) return false;
+    var sum = 0;
+    for (var i = 0; i < 12; i++) sum += (+s[i]) * (i % 2 ? 3 : 1);
+    return ((10 - (sum % 10)) % 10) === (+s[12]);
+  }
+  function isbn10to13(s) {
+    var core = '978' + s.slice(0, 9), sum = 0;
+    for (var i = 0; i < 12; i++) sum += (+core[i]) * (i % 2 ? 3 : 1);
+    return core + String((10 - (sum % 10)) % 10);
+  }
+  function normalize(raw) {
+    var s = String(raw).replace(/[^0-9Xx]/g, '').toUpperCase();
+    if (s.length === 10) return isbn10to13(s);
+    return s;
+  }
+
+  // Deterministic stand-ins so the three confidence tiers are all visible.
+  function tierFor(isbn) {
+    var d = +isbn[12];
+    if (d % 7 === 0) return 'new';
+    if (d % 3 === 0) return 'normalized';
+    return 'exact';
+  }
+  function swatch(isbn) {
+    var h = 0;
+    for (var i = 0; i < isbn.length; i++) h = (h * 31 + +isbn[i]) % 360;
+    return 'linear-gradient(150deg, hsl(' + h + ' 34% 26%), hsl(' + ((h + 40) % 360) + ' 28% 13%))';
+  }
+  function standInTitle(isbn) {
+    return 'Edition ' + isbn.slice(3, 6) + '·' + isbn.slice(9, 13);
+  }
+
+  // ------------------------------------------------------------- feedback
+  function buzz(pattern) { try { navigator.vibrate && navigator.vibrate(pattern); } catch (e) {} }
+
+  function flash(cls, text) {
+    var r = $('reticle'), h = $('hint');
+    r.classList.remove('locked', 'dupe');
+    h.classList.remove('good', 'bad');
+    if (cls) { r.classList.add(cls); h.classList.add(cls === 'dupe' ? 'bad' : 'good'); }
+    h.textContent = text;
+    clearTimeout(flash._t);
+    flash._t = setTimeout(function () {
+      r.classList.remove('locked', 'dupe');
+      h.classList.remove('good', 'bad');
+      h.textContent = 'Point at the barcode on the back cover';
+    }, 700);
+  }
+
+  function fly(isbn, done) {
+    var stage = $('reticle').getBoundingClientRect();
+    var target = $('thumbs').getBoundingClientRect();
+    if (reduceMotion) { done(); return; }
+
+    var el = document.createElement('div');
+    el.className = 'flier';
+    el.style.background = swatch(isbn);
+    el.style.left = (stage.left + stage.width / 2 - 23) + 'px';
+    el.style.top = (stage.top + stage.height / 2 - 34) + 'px';
+    document.body.appendChild(el);
+
+    var dx = (target.left + 19) - (stage.left + stage.width / 2);
+    var dy = (target.top + 28) - (stage.top + stage.height / 2);
+
+    var anim = el.animate([
+      { transform: 'translate(0,0) scale(1) rotate(0deg)', opacity: 1 },
+      { transform: 'translate(' + (dx * 0.5) + 'px,' + (dy * 0.42 - 26) + 'px) scale(.92) rotate(-7deg)', opacity: 1, offset: .55 },
+      { transform: 'translate(' + dx + 'px,' + dy + 'px) scale(.78) rotate(2deg)', opacity: .9 }
+    ], { duration: 260, easing: 'cubic-bezier(.32,.72,.35,1)' });
+
+    anim.onfinish = function () { el.remove(); done(); };
+  }
+
+  function bounce(isbn) {
+    if (reduceMotion) return;
+    var idx = pile.findIndex(function (b) { return b.isbn === isbn; });
+    var ths = $('thumbs').children;
+    var pos = pile.length - 1 - idx;                 // strip shows newest first
+    var th = ths[pos];
+    if (th) { th.classList.remove('pulse'); void th.offsetWidth; th.classList.add('pulse'); }
+  }
+
+  // ----------------------------------------------------------- the accept
+  function accept(isbn, viaCamera) {
+    if (seen.has(isbn)) {
+      stats.dup++;
+      buzz([8, 40, 8]);
+      flash('dupe', 'Already in the pile');
+      bounce(isbn);
+      renderStats();
+      return;
+    }
+    seen.add(isbn);
+
+    var book = { isbn: isbn, tier: tierFor(isbn), title: null, resolved: false };
+    pile.push(book);
+
+    buzz(12);
+    flash('locked', 'Added');
+
+    var land = function () { renderStrip(); renderPile(); };
+    if (viaCamera) fly(isbn, land); else land();
+
+    // The card lands now; the lookup resolves whenever it resolves.
+    var latency = +$('lat').value;
+    setTimeout(function () {
+      book.resolved = true;
+      book.title = standInTitle(isbn);
+      renderPile(); renderStrip();
+    }, latency + Math.random() * 300);
+
+    renderStats();
+  }
+
+  // --------------------------------------------------------------- render
+  function renderStrip() {
+    $('count').textContent = pile.length;
+    $('stripEmpty').hidden = pile.length > 0;
+    $('countLabel').hidden = pile.length === 0;
+    $('count').hidden = pile.length === 0;
+
+    var thumbs = $('thumbs');
+    thumbs.innerHTML = '';
+    pile.slice(-3).reverse().forEach(function (b) {
+      var d = document.createElement('div');
+      d.className = 'th';
+      d.style.background = swatch(b.isbn);
+      thumbs.appendChild(d);
+    });
+
+    var needs = pile.filter(function (b) { return b.tier !== 'exact'; }).length;
+    $('review').textContent = needs ? needs + ' need a check' : '';
+  }
+
+  function renderPile() {
+    var list = $('pileList');
+    list.innerHTML = '';
+    pile.slice().reverse().forEach(function (b) {
+      var row = document.createElement('div');
+      row.className = 'row';
+
+      var cov = document.createElement('div');
+      cov.className = 'cov';
+      cov.style.background = b.resolved ? swatch(b.isbn) : 'var(--ink-raised)';
+
+      var meta = document.createElement('div');
+      meta.className = 'meta';
+      var t = document.createElement('div');
+      t.className = 't' + (b.resolved ? '' : ' skel');
+      t.textContent = b.resolved ? b.title : 'Resolving…';
+      var i = document.createElement('div');
+      i.className = 'i';
+      i.textContent = b.isbn;
+      meta.appendChild(t); meta.appendChild(i);
+
+      var tag = document.createElement('span');
+      if (!b.resolved) { tag.className = 'tag pending'; tag.textContent = 'Pending'; }
+      else if (b.tier === 'exact') { tag.className = 'tag exact'; tag.textContent = 'Exact'; }
+      else if (b.tier === 'normalized') { tag.className = 'tag normalized'; tag.textContent = 'Check'; }
+      else { tag.className = 'tag new'; tag.textContent = 'New to the Oracle'; }
+
+      row.appendChild(cov); row.appendChild(meta); row.appendChild(tag);
+      list.appendChild(row);
+    });
+
+    $('pileSub').textContent = pile.length
+      ? pile.length + ' book' + (pile.length === 1 ? '' : 's') + ' · destination applies to all'
+      : 'Nothing scanned yet';
+    $('destRow').hidden = pile.length === 0;
+  }
+
+  function renderStats() {
+    $('sFmt').textContent = stats.fmt;
+    $('sPre').textContent = stats.pre;
+    $('sSum').textContent = stats.sum;
+    $('sDup').textContent = stats.dup;
+  }
+
+  // ------------------------------------------------------ the four filters
+  function consider(raw, fmt) {
+    var s = String(raw).replace(/\D/g, '');
+
+    if (s.length !== 13) { stats.fmt++; renderStats(); return; }          // 1 format
+    if (!/^97[89]/.test(s)) { stats.pre++; renderStats(); return; }        // 2 bookland
+    if (!isbn13Valid(s)) { stats.sum++; renderStats(); return; }           // 3 checksum
+
+    if (s === lastCandidate) { candidateHits++; }                          // 4 double-read
+    else { lastCandidate = s; candidateHits = 1; }
+    if (candidateHits < 2) return;
+
+    if (performance.now() < cooldownUntil) return;
+    cooldownUntil = performance.now() + 700;
+    lastCandidate = null; candidateHits = 0;
+
+    accept(s, true);
+  }
+
+  // -------------------------------------------------------- decode engine
+  var lastTick = 0, rateWindow = [], raf = null;
+
+  function loop(now) {
+    if (!running) return;
+    raf = requestAnimationFrame(loop);
+    if (now - lastTick < 125) return;                                      // ~8/s
+    lastTick = now;
+
+    rateWindow.push(now);
+    while (rateWindow.length && now - rateWindow[0] > 1000) rateWindow.shift();
+    $('sRate').textContent = rateWindow.length;
+
+    detectOnce();
+  }
+
+  function detectOnce() {
+    var v = $('video');
+    if (!v.videoWidth) return;
+
+    if (engine === 'native') {
+      detectOnce._d.detect(v).then(function (codes) {
+        for (var i = 0; i < codes.length; i++) consider(codes[i].rawValue, codes[i].format);
+      }).catch(function () {});
+      return;
+    }
+
+    if (engine === 'zxing') {
+      canvas.width = v.videoWidth; canvas.height = v.videoHeight;
+      ctx.drawImage(v, 0, 0);
+      try {
+        var res = zxReader.decodeFromCanvas(canvas);
+        if (res) consider(res.getText(), 'ean_13');
+      } catch (e) { /* NotFoundException every frame without a code */ }
+    }
+  }
+
+  // ---------------------------------------------------------------- start
+  function fatal(html) {
+    $('fatal').hidden = false;
+    $('fatal').innerHTML = html;
+    $('reticle').hidden = true;
+    $('hint').hidden = true;
+  }
+
+  function pickEngine() {
+    if ('BarcodeDetector' in window) {
+      try {
+        detectOnce._d = new window.BarcodeDetector({ formats: ['ean_13'] });
+        engine = 'native';
+        $('sEngine').textContent = 'native';
+        return true;
+      } catch (e) { /* fall through */ }
+    }
+    if (window.ZXing && window.ZXing.BrowserMultiFormatReader) {
+      var hints = new Map();
+      hints.set(window.ZXing.DecodeHintType.POSSIBLE_FORMATS, [window.ZXing.BarcodeFormat.EAN_13]);
+      hints.set(window.ZXing.DecodeHintType.TRY_HARDER, true);
+      zxReader = new window.ZXing.BrowserMultiFormatReader(hints);
+      canvas = document.createElement('canvas');
+      ctx = canvas.getContext('2d', { willReadFrequently: true });
+      engine = 'zxing';
+      $('sEngine').textContent = 'zxing';
+      return true;
+    }
+    $('sEngine').textContent = 'none';
+    return false;
+  }
+
+  function startCamera() {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      fatal('<strong>No camera API here.</strong> This pane does not expose ' +
+            'getUserMedia. Open this page directly in your phone browser, or use ' +
+            '<strong>Type</strong> to exercise the rest of the flow.');
+      return;
+    }
+    navigator.mediaDevices.getUserMedia({
+      video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 } }
+    }).then(function (stream) {
+      var v = $('video');
+      v.srcObject = stream;
+      v.play();
+      track = stream.getVideoTracks()[0];
+
+      var caps = track.getCapabilities ? track.getCapabilities() : {};
+      if (caps && 'torch' in caps) $('torchBtn').hidden = false;
+
+      if (!pickEngine()) {
+        fatal('<strong>No barcode decoder available.</strong> This browser has no ' +
+              'BarcodeDetector and the ZXing bundle did not load. The camera works; ' +
+              'decoding does not. Use <strong>Type</strong> to test the rest.');
+        return;
+      }
+      running = true;
+      raf = requestAnimationFrame(loop);
+    }).catch(function (err) {
+      fatal('<strong>Camera blocked.</strong> ' + (err && err.name ? err.name : '') +
+            '<br>If this is inside a panel, open the page directly in your phone ' +
+            'browser — camera access needs a top-level HTTPS page. Meanwhile, ' +
+            '<strong>Type</strong> exercises the filters, the pile and the haptics.');
+    });
+  }
+
+  // ---------------------------------------------------------------- chrome
+  $('torchBtn').addEventListener('click', function () {
+    if (!track) return;
+    torchOn = !torchOn;
+    track.applyConstraints({ advanced: [{ torch: torchOn }] }).then(function () {
+      $('torchBtn').setAttribute('aria-pressed', String(torchOn));
+    }).catch(function () { torchOn = !torchOn; });
+  });
+
+  $('dbgBtn').addEventListener('click', function () {
+    var open = $('debug').hidden;
+    $('debug').hidden = !open;
+    $('dbgBtn').setAttribute('aria-pressed', String(open));
+  });
+
+  $('lat').addEventListener('input', function () { $('latV').textContent = this.value + 'ms'; });
+
+  function openSheet(id) { $(id).hidden = false; running = false; if (raf) cancelAnimationFrame(raf); }
+  function closeSheet(id) {
+    $(id).hidden = true;
+    if (engine && $('video').srcObject) { running = true; raf = requestAnimationFrame(loop); }
+  }
+
+  $('strip').addEventListener('click', function () { renderPile(); openSheet('pileSheet'); });
+  $('strip').addEventListener('keydown', function (e) {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); renderPile(); openSheet('pileSheet'); }
+  });
+  $('pileClose').addEventListener('click', function () { closeSheet('pileSheet'); });
+
+  $('keyBtn').addEventListener('click', function () {
+    openSheet('keySheet');
+    setTimeout(function () { $('keyInput').focus(); }, 60);
+  });
+  $('keyClose').addEventListener('click', function () { closeSheet('keySheet'); });
+
+  $('keyInput').addEventListener('keydown', function (e) {
+    if (e.key !== 'Enter') return;
+    var parts = this.value.split(/[\s,;]+/).filter(Boolean);
+    var added = 0;
+    parts.forEach(function (p) {
+      var s = normalize(p);
+      if (s.length !== 13) { stats.fmt++; return; }
+      if (!/^97[89]/.test(s)) { stats.pre++; return; }
+      if (!isbn13Valid(s)) { stats.sum++; return; }
+      accept(s, false); added++;
+    });
+    renderStats();
+    this.value = '';
+    if (!added) { this.placeholder = 'Not a valid ISBN — try again'; }
+  });
+
+  document.addEventListener('visibilitychange', function () {
+    if (document.hidden) { running = false; if (raf) cancelAnimationFrame(raf); }
+    else if (engine && $('pileSheet').hidden && $('keySheet').hidden && $('video').srcObject) {
+      running = true; raf = requestAnimationFrame(loop);
+    }
+  });
+
+  renderStrip(); renderPile(); renderStats();
+  startCamera();
+})();
+</script>
+
+</body>
+</html>
