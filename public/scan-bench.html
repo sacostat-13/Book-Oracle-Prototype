@@ -210,6 +210,16 @@
   }
   input[type=text]:focus { outline: none; border-color: var(--gold-dim); }
 
+  #raw {
+    margin-top: 10px; padding: 8px 10px; border-radius: 3px;
+    background: rgba(0,0,0,.45); border: 1px solid var(--ink-edge);
+    font-size: 11px; line-height: 1.55; color: var(--muted);
+    max-height: 74px; overflow-y: auto;
+  }
+  #raw .ok   { color: var(--sage); }
+  #raw .rej  { color: var(--wine); }
+  #raw b     { color: var(--parchment); font-weight: 500; font-variant-numeric: tabular-nums; }
+
   #fatal { padding: 22px 18px; color: var(--muted); font-size: 13px; line-height: 1.7; }
   #fatal strong { color: var(--parchment); font-weight: 500; }
 
@@ -249,7 +259,9 @@
         <div class="stat"><div class="v" id="sPre">0</div><div class="k">Bad prefix</div></div>
         <div class="stat"><div class="v" id="sSum">0</div><div class="k">Bad sum</div></div>
         <div class="stat"><div class="v" id="sDup">0</div><div class="k">Dupes</div></div>
+        <div class="stat"><div class="v" id="sSize">—</div><div class="k">Decode px</div></div>
       </div>
+      <div id="raw">Waiting for a decode…</div>
       <div class="ctl">
         <span>Lookup latency</span>
         <input type="range" id="lat" min="0" max="3000" step="100" value="600">
@@ -497,12 +509,23 @@
   }
 
   // ------------------------------------------------------ the four filters
+  var rawLog = [];
+  function logRaw(value, fmt, verdict, ok) {
+    rawLog.unshift({ v: value, f: fmt || '?', d: verdict, ok: !!ok });
+    if (rawLog.length > 6) rawLog.pop();
+    $('raw').innerHTML = rawLog.map(function (r) {
+      return '<div><b>' + r.v + '</b> <span style="opacity:.6">' + r.f + '</span> ' +
+             '<span class="' + (r.ok ? 'ok' : 'rej') + '">' + r.d + '</span></div>';
+    }).join('');
+  }
+
   function consider(raw, fmt) {
     var s = String(raw).replace(/\D/g, '');
 
-    if (s.length !== 13) { stats.fmt++; renderStats(); return; }          // 1 format
-    if (!/^97[89]/.test(s)) { stats.pre++; renderStats(); return; }        // 2 bookland
-    if (!isbn13Valid(s)) { stats.sum++; renderStats(); return; }           // 3 checksum
+    if (s.length !== 13) { stats.fmt++; logRaw(raw, fmt, 'not 13 digits', false); renderStats(); return; }
+    if (!/^97[89]/.test(s)) { stats.pre++; logRaw(s, fmt, 'not a book (prefix)', false); renderStats(); return; }
+    if (!isbn13Valid(s)) { stats.sum++; logRaw(s, fmt, 'checksum failed', false); renderStats(); return; }
+    logRaw(s, fmt, 'valid ISBN', true);
 
     if (s === lastCandidate) { candidateHits++; }                          // 4 double-read
     else { lastCandidate = s; candidateHits = 1; }
@@ -531,24 +554,50 @@
     detectOnce();
   }
 
-  function detectOnce() {
+  // Draw only the reticle region into the work canvas: it is what the reader is
+  // aiming at, it is 4x less pixels to decode, and it makes the reticle mean the
+  // same thing to both engines.
+  function grab() {
     var v = $('video');
-    if (!v.videoWidth) return;
+    if (!v.videoWidth) return false;
+    var cw = Math.round(v.videoWidth * 0.8);
+    var ch = Math.round(cw * 3 / 5);
+    if (ch > v.videoHeight) { ch = Math.round(v.videoHeight * 0.9); cw = Math.round(ch * 5 / 3); }
+    var sx = Math.round((v.videoWidth - cw) / 2), sy = Math.round((v.videoHeight - ch) / 2);
+    if (canvas.width !== cw) { canvas.width = cw; canvas.height = ch; }
+    ctx.drawImage(v, sx, sy, cw, ch, 0, 0, cw, ch);
+    $('sSize').textContent = cw + '×' + ch;
+    return true;
+  }
+
+  var nativeErrs = 0;
+
+  function detectOnce() {
+    if (!grab()) return;
 
     if (engine === 'native') {
-      detectOnce._d.detect(v).then(function (codes) {
+      detectOnce._d.detect(canvas).then(function (codes) {
         for (var i = 0; i < codes.length; i++) consider(codes[i].rawValue, codes[i].format);
-      }).catch(function () {});
+      }).catch(function (e) {
+        nativeErrs++;
+        if (nativeErrs === 4) {
+          note('Native detector is failing (' + (e && e.name) + ') — falling back to ZXing.');
+          useZxing();
+        }
+      });
       return;
     }
 
     if (engine === 'zxing') {
-      canvas.width = v.videoWidth; canvas.height = v.videoHeight;
-      ctx.drawImage(v, 0, 0);
       try {
-        var res = zxReader.decodeFromCanvas(canvas);
-        if (res) consider(res.getText(), 'ean_13');
-      } catch (e) { /* NotFoundException every frame without a code */ }
+        var src = new window.ZXing.HTMLCanvasElementLuminanceSource(canvas);
+        var bmp = new window.ZXing.BinaryBitmap(new window.ZXing.HybridBinarizer(src));
+        var res = zxReader.decode(bmp);
+        if (res) {
+          var f = res.getBarcodeFormat();
+          consider(res.getText(), window.ZXing.BarcodeFormat[f] || String(f));
+        }
+      } catch (e) { /* NotFoundException on every frame without a code */ }
     }
   }
 
@@ -560,28 +609,49 @@
     $('hint').hidden = true;
   }
 
+  function note(msg) { logRaw('—', 'engine', msg, false); }
+
+  function useZxing() {
+    var Z = window.ZXing;
+    if (!Z || !Z.MultiFormatReader) { engine = null; $('sEngine').textContent = 'none'; return false; }
+    var hints = new Map();
+    // Deliberately wider than EAN-13. Filter 1 rejects the rest, and seeing
+    // *what* the camera found is the whole diagnostic: a library loan sticker
+    // is usually Codabar or Code 39, so this is how the sticker question gets
+    // an answer instead of an anecdote.
+    hints.set(Z.DecodeHintType.POSSIBLE_FORMATS, [
+      Z.BarcodeFormat.EAN_13, Z.BarcodeFormat.EAN_8,
+      Z.BarcodeFormat.UPC_A, Z.BarcodeFormat.UPC_E,
+      Z.BarcodeFormat.CODE_128, Z.BarcodeFormat.CODE_39, Z.BarcodeFormat.CODABAR
+    ]);
+    hints.set(Z.DecodeHintType.TRY_HARDER, true);
+    zxReader = new Z.MultiFormatReader();
+    zxReader.setHints(hints);
+    engine = 'zxing';
+    $('sEngine').textContent = 'zxing';
+    return true;
+  }
+
   function pickEngine() {
-    if ('BarcodeDetector' in window) {
-      try {
-        detectOnce._d = new window.BarcodeDetector({ formats: ['ean_13'] });
-        engine = 'native';
-        $('sEngine').textContent = 'native';
-        return true;
-      } catch (e) { /* fall through */ }
+    canvas = document.createElement('canvas');
+    ctx = canvas.getContext('2d', { willReadFrequently: true });
+
+    // 'BarcodeDetector' in window is NOT enough. On Windows, Chrome exposes the
+    // constructor but ships no barcode backend, so detect() rejects forever and
+    // the scanner looks dead. getSupportedFormats() is the only honest check.
+    if ('BarcodeDetector' in window && window.BarcodeDetector.getSupportedFormats) {
+      return window.BarcodeDetector.getSupportedFormats().then(function (fmts) {
+        if (fmts && fmts.length && fmts.indexOf('ean_13') !== -1) {
+          detectOnce._d = new window.BarcodeDetector({ formats: fmts });
+          engine = 'native';
+          $('sEngine').textContent = 'native';
+          return true;
+        }
+        note('No native ean_13 support (normal on Windows) — using ZXing.');
+        return useZxing();
+      }).catch(function () { return useZxing(); });
     }
-    if (window.ZXing && window.ZXing.BrowserMultiFormatReader) {
-      var hints = new Map();
-      hints.set(window.ZXing.DecodeHintType.POSSIBLE_FORMATS, [window.ZXing.BarcodeFormat.EAN_13]);
-      hints.set(window.ZXing.DecodeHintType.TRY_HARDER, true);
-      zxReader = new window.ZXing.BrowserMultiFormatReader(hints);
-      canvas = document.createElement('canvas');
-      ctx = canvas.getContext('2d', { willReadFrequently: true });
-      engine = 'zxing';
-      $('sEngine').textContent = 'zxing';
-      return true;
-    }
-    $('sEngine').textContent = 'none';
-    return false;
+    return Promise.resolve(useZxing());
   }
 
   function startCamera() {
@@ -602,14 +672,17 @@
       var caps = track.getCapabilities ? track.getCapabilities() : {};
       if (caps && 'torch' in caps) $('torchBtn').hidden = false;
 
-      if (!pickEngine()) {
-        fatal('<strong>No barcode decoder available.</strong> This browser has no ' +
-              'BarcodeDetector and the ZXing bundle did not load. The camera works; ' +
-              'decoding does not. Use <strong>Type</strong> to test the rest.');
-        return;
-      }
-      running = true;
-      raf = requestAnimationFrame(loop);
+      pickEngine().then(function (ok) {
+        if (!ok) {
+          fatal('<strong>No barcode decoder available.</strong> This browser has no ' +
+                'usable BarcodeDetector and the ZXing bundle did not load — check that ' +
+                'cdn.jsdelivr.net is reachable. The camera works; decoding does not. ' +
+                'Use <strong>Type</strong> to test the rest of the flow.');
+          return;
+        }
+        running = true;
+        raf = requestAnimationFrame(loop);
+      });
     }).catch(function (err) {
       fatal('<strong>Camera blocked.</strong> ' + (err && err.name ? err.name : '') +
             '<br>If this is inside a panel, open the page directly in your phone ' +
