@@ -111,6 +111,40 @@
 // RELEASE NOTES MODAL
 // ══════════════════════════════════════════════════════════════════════════════
 
+// v0.70 — the announcement variant of the release-notes modal.
+//
+// Narrower than the changelog on purpose: this is four paragraphs someone is
+// reading cold, so it wants a reading measure rather than the full 640px the
+// changelog uses for scanning many versions at once.
+.rn-announce {
+  max-width: 540px;
+}
+
+.rn-prose {
+  margin: 0;
+
+  p {
+    margin: 0 0 1rem;
+    font-family: var(--ro-font-body);
+    font-size: 17px;
+    line-height: 1.65;
+    color: var(--ro-text-2);
+    max-width: 62ch;
+
+    &:last-child { margin-bottom: 0; }
+
+    // The opening paragraph carries the announcement; the rest is detail.
+    &:first-child {
+      font-size: 18px;
+      color: var(--ro-text);
+    }
+  }
+}
+
+.rn-cta {
+  min-width: 190px;
+}
+
 .rn-section {
   margin-bottom: 1.5rem;
 

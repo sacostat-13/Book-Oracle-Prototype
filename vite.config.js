@@ -130,6 +130,18 @@ export default defineConfig({
     },
   },
 
+  // v0.70: vitest was walking the whole repo, which meant `Claude outputs/` —
+  // a scratch folder of CSVs, screenshots and working copies — ran in `npm
+  // test` alongside the real suite. A stale copy of a test file there failed
+  // against the live module and looked like a regression in shipped code.
+  //
+  // Scoped to `tests/` rather than excluding the scratch folder by name: a
+  // second scratch folder should not be able to reintroduce this. Anything
+  // worth running lives in tests/.
+  test: {
+    include: ['tests/**/*.{test,spec}.{js,mjs,jsx}'],
+  },
+
   plugins: [
     react(),
     avatarManifest(),

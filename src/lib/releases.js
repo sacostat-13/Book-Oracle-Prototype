@@ -16,9 +16,33 @@
 
 // The version label shown as "current" — keep in sync with package.json and
 // the README version line.
-export const CURRENT_VERSION = 'v0.69';
+export const CURRENT_VERSION = 'v0.70';
 
 export const RELEASES = [{
+    version: 'v0.70',
+    date: '2026-09-16',
+    // Announced on load, once, to readers who have not seen v0.70 yet.
+    // Scanning is a camera feature behind a nav icon — there is no way to
+    // stumble onto it, which is the entire justification for interrupting.
+    major: true,
+    ctaEn: 'Scan a book',
+    ctaEs: 'Escanear un libro',
+    ctaAction: 'scan',
+    titleEn: 'The shelf in your hands',
+    titleEs: 'El estante en tus manos',
+    bodyEn: [
+      'You can add books by showing them to a camera — the one on your phone, or the webcam on your computer. Open Scan, hold the back cover up, and the barcode does the typing. Keep going without touching anything between books — the pile builds as you scan, and you choose where it all lands at the end.',
+      'Each book confirms itself the moment it is read. The cover and title appear over the camera without interrupting the next scan, and if the book is already on one of your shelves it says so — which is the thing worth knowing while you are standing in a shop holding it.',
+      'A barcode that will not cooperate has two ways round it. Type the ISBN, or hand it a photo of the cover and let that be read instead; older books with no barcode at all still go in by hand.',
+      'Scanning lives in the top bar and beside the title importer. Nothing else about adding books changed — scanned titles go through the same lookup and the same shelves as everything else.',
+    ],
+    bodyEs: [
+      'Ahora podés agregar libros mostrándoselos a una cámara — la del celular o la webcam de la computadora. Abrí Escanear, sostené la contratapa y el código de barras escribe por vos. Seguí sin tocar nada entre libro y libro: la pila se arma sola y al final elegís dónde va todo.',
+      'Cada libro se confirma apenas se lee. La portada y el título aparecen sobre la cámara sin interrumpir el escaneo siguiente, y si el libro ya está en alguno de tus estantes te lo avisa — que es justo lo que querés saber cuando lo tenés en la mano en una librería.',
+      'Si un código no coopera hay dos salidas. Escribí el ISBN, o pasale una foto de la contratapa y que se lea de ahí; los libros viejos sin código de barras siguen entrando a mano.',
+      'Escanear está en la barra superior y al lado del importador de títulos. Nada más cambió: los libros escaneados pasan por la misma búsqueda y los mismos estantes que siempre.',
+    ],
+  }, {
     version: 'v0.69',
     date: '2026-09-06',
     titleEn: 'Set like a book',
@@ -1672,6 +1696,12 @@ export const RELEASES = [{
 ];
 
 // Filter out placeholder entries (future releases we've sketched but not shipped).
+// The release the app is currently on, or null. `major` on it is what makes
+// the what's-new modal open by itself instead of waiting to be asked.
+export function currentRelease() {
+  return RELEASES.find((r) => r.version === CURRENT_VERSION && !r.placeholder) || null;
+}
+
 export function publishedReleases() {
   return RELEASES.filter((r) => !r.placeholder);
 }

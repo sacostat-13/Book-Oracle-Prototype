@@ -1640,7 +1640,8 @@
     "current": "☩ current",
     "currentVersion": "current version",
     "seeAllReleases": "See all releases ❦",
-    "currentBadge": "☩ current"
+    "currentBadge": "☩ current",
+    "later": "Not now"
   },
   "addToList": {
     "title": "Add to an anthology",
@@ -2180,9 +2181,9 @@
     "open": "Scan",
     "close": "Done",
     "gateTitle": "Scan your books",
-    "gateCopy": "Hold the back cover about 15 cm from the lens and let the camera focus. Keep scanning — the pile builds as you go, and you choose where it all lands at the end.",
+    "gateCopy": "Hold the back cover up to the camera — on your phone, or your computer's webcam — and give it a moment to focus. Keep scanning: the pile builds as you go, and you choose where it all lands at the end.",
     "start": "Start scanning",
-    "hint": "Point at the barcode on the back cover",
+    "hint": "Show the barcode on the back cover",
     "torch": "Light",
     "photo": "Photo",
     "added": "Added",
@@ -2215,7 +2216,7 @@
     "manualInvalid": "That isn't a valid ISBN.",
     "photoNoCode": "No barcode found in that photo.",
     "errCameraDenied": "The camera is blocked. Check that this site is allowed to use the camera in your browser settings, then try again.",
-    "errNoCamera": "This browser can't reach a camera.",
+    "errNoCamera": "This browser can't reach a camera. On a computer, check that no other app is using the webcam.",
     "errNoDecoder": "The barcode reader couldn't start on this device.",
     "problemAlt": "You can still type an ISBN or add one from a photo below."
   }

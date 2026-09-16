@@ -19,7 +19,7 @@
 // it stopped catching.
 
 import { describe, it, expect } from 'vitest';
-import { candidatesByPosition, COLLECTION_RE, resolveSeriesHit, rankSeriesHits, splitAuthors, cleanTitle } from '../batch-scripts/_shared/seriesCandidates.mjs';
+import { candidatesByPosition, COLLECTION_RE, PLACEHOLDER_TITLE_RE, resolveSeriesHit, rankSeriesHits, splitAuthors, cleanTitle } from '../batch-scripts/_shared/seriesCandidates.mjs';
 
 // Hardcover's book_series for "Crescent City", 2026-09-08. Positions and page
 // counts verbatim; description/cover reduced to what the scoring reads.
@@ -774,5 +774,57 @@ describe('a Goodreads suffix is not a disagreement', () => {
     expect(cleanTitle('Storm Front')).toBe('Storm Front');
     expect(cleanTitle('')).toBe('');
     expect(cleanTitle(null)).toBe('');
+  });
+});
+
+describe('a placeholder is not a volume', () => {
+  it('catches every "Untitled" the batches produced', () => {
+    for (const t of [
+      'Untitled Stormlight Archive #6',
+      'Untitled Stormlight Archive #10',
+      'Untitled Mercy Thompson Novel 15',
+      'Untitled',
+      'untitled',
+      '  Untitled Thursday Murder Club Novel',
+    ]) expect(PLACEHOLDER_TITLE_RE.test(t), `"${t}" should read as a placeholder`).toBe(true);
+  });
+
+  it('is anchored, so a real title keeping the word is safe', () => {
+    // The pattern only ever fires at the START of a title. Across 1,112
+    // pre-approvals it matched those nine rows and nothing else; these are the
+    // shapes that would break it if it were widened.
+    for (const t of [
+      'An Untitled Life',
+      'The Untitled Manuscript',
+      'Portrait, Untitled',
+      'Untitledness',            // \b stops it mid-word
+      'Titled',
+    ]) expect(PLACEHOLDER_TITLE_RE.test(t), `"${t}" should NOT read as a placeholder`).toBe(false);
+  });
+
+  it('rejects the placeholder and keeps the real volume beside it', () => {
+    const S = (position, title, pages) => ({
+      position, title, author: 'Brandon Sanderson', authors: ['Brandon Sanderson'],
+      pages, coverUrl: 'x', description: '', languages: ['eng'],
+    });
+    const { byPosition, rejected } = candidatesByPosition(
+      [S(5, 'Wind and Truth', 1344), S(6, 'Untitled Stormlight Archive #6', null)],
+      { wantLanguage: 'eng', seriesAuthors: ['Brandon Sanderson'], seriesName: 'The Stormlight Archive' }
+    );
+    expect(rejected.map((r) => r.reason)).toEqual(['title is a placeholder for an unpublished book']);
+    expect(byPosition.get(6)).toBeUndefined();
+    expect(byPosition.get(5)[0].title).toBe('Wind and Truth');
+    expect(byPosition.get(5)[0].pick).toBe(true);
+  });
+
+  it('rejects it before the collection test, so the reason names the real problem', () => {
+    // "Untitled Wheel of Time Omnibus" is both. The placeholder reason is the
+    // useful one — the collection reason would send someone looking for a
+    // bundle that has not been published either.
+    const { rejected } = candidatesByPosition(
+      [{ position: 4, title: 'Untitled Anthology', author: 'A', authors: ['A'], pages: null, coverUrl: 'x', description: '', languages: ['eng'] }],
+      { wantLanguage: 'eng', seriesAuthors: ['A'] }
+    );
+    expect(rejected[0].reason).toBe('title is a placeholder for an unpublished book');
   });
 });

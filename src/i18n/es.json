@@ -9,7 +9,7 @@
     "brandAccent": "El Oráculo de los Libros"
   },
   "nav": {
-    "wishlist": "Lista de Deseos",
+    "wishlist": "Antología",
     "library": "Biblioteca",
     "readNext": "Por leer",
     "profile": "Perfil",
@@ -108,7 +108,7 @@
     "greetingBack": "Bienvenido/a de vuelta",
     "levelPill": "Lector Nivel {level}",
     "booksRead": "{count} leídos",
-    "inWishlist": "{count} en Lista de Deseos",
+    "inWishlist": "{count} en antología",
     "readingNow": "{count} leyendo ahora",
     "currentlyReading": "Leyendo ahora",
     "readingPlans": "Pasajes",
@@ -128,7 +128,7 @@
     "recentActivity": "Actividad reciente",
     "emptyFeedOrnament": "❦",
     "emptyFeedText": "Tu historia lectora empieza acá.",
-    "emptyFeedSub": "Marcá un libro como leído o agregá uno a tu Lista de Deseos.",
+    "emptyFeedSub": "Marcá un libro como leído o agregá uno a tu antología.",
     "showMore": "Mostrar {count} actualizaciones más",
     "ctaOracle": "El <span class=\"accent\">Oráculo</span>",
     "ctaOracleSub": "Invocá libros por estado de ánimo o género",
@@ -146,8 +146,8 @@
     "ctaClubsSub": "Leé el mismo libro que otras personas",
     "feedFinished": "Terminó",
     "feedStarted": "Empezó a leer",
-    "feedAddedOne": "Agregó a la Lista de Deseos",
-    "feedAddedMany": "Agregó {count} libros a la Lista de Deseos",
+    "feedAddedOne": "Agregó a la antología",
+    "feedAddedMany": "Agregó {count} libros a la antología",
     "feedPlanCreated": "Creó un pasaje",
     "feedBy": "de",
     "today": "Hoy",
@@ -594,7 +594,7 @@
     "inCatalog": "{n} de {total} en el catálogo",
     "bookStatusRead": "Leído",
     "bookStatusQueued": "En cola",
-    "bookStatusWishlist": "En Lista de Deseos",
+    "bookStatusWishlist": "En antología",
     "addToWishlist": "❦ Agregar",
     "addToNext": "→ Siguiente",
     "markRead": "✓ Leído",
@@ -609,11 +609,11 @@
     "queued": "· {count} en cola",
     "finished": "✓ ¡Completa!",
     "createPlan": "✦ Crear pasaje",
-    "addFirstBook": "+ Agregar libro 1 a la Lista de Deseos",
+    "addFirstBook": "+ Agregar libro 1 a la antología",
     "booksInSeries": "Libros de la saga",
     "noBooks": "No se encontraron libros para esta saga.",
     "bookN": "Libro {n}",
-    "wishlisted": "En Lista de Deseos"
+    "wishlisted": "En antología"
   },
   "profile": {
     "eyebrow": "Perfil",
@@ -632,7 +632,7 @@
     "importGoodreads": "Importar CSV de Goodreads",
     "importing": "Importando…",
     "resetAll": "Reiniciar todo",
-    "confirmReset": "Esto borra tu biblioteca, tu Lista de Deseos, tus pasajes y tus antologías en esta cuenta. No se puede deshacer. ¿Continuar?",
+    "confirmReset": "Esto borra tu biblioteca, tu antología, tus pasajes y tus antologías en esta cuenta. No se puede deshacer. ¿Continuar?",
     "readingLevel": "Nivel de lectura",
     "levelNames": {
       "1": "Lectora casual",
@@ -1640,7 +1640,8 @@
     "current": "☩ actual",
     "currentVersion": "versión actual",
     "seeAllReleases": "Ver todas las versiones ❦",
-    "currentBadge": "☩ actual"
+    "currentBadge": "☩ actual",
+    "later": "Ahora no"
   },
   "addToList": {
     "title": "Agregar a una antología",
@@ -2180,9 +2181,9 @@
     "open": "Escanear",
     "close": "Listo",
     "gateTitle": "Escaneá tus libros",
-    "gateCopy": "Sostené la contratapa a unos 15 cm del lente y dejá que la cámara enfoque. Seguí escaneando — la pila se arma sola y al final elegís dónde va todo.",
+    "gateCopy": "Sostené la contratapa frente a la cámara — la del celular o la webcam de la computadora — y dale un momento para enfocar. Seguí escaneando: la pila se arma sola y al final elegís dónde va todo.",
     "start": "Empezar a escanear",
-    "hint": "Apuntá al código de barras de la contratapa",
+    "hint": "Mostrá el código de barras de la contratapa",
     "torch": "Luz",
     "photo": "Foto",
     "added": "Agregado",
@@ -2215,7 +2216,7 @@
     "manualInvalid": "Ese ISBN no es válido.",
     "photoNoCode": "No se encontró un código de barras en esa foto.",
     "errCameraDenied": "La cámara está bloqueada. Revisá que este sitio tenga permiso para usarla en la configuración del navegador y probá de nuevo.",
-    "errNoCamera": "Este navegador no puede acceder a una cámara.",
+    "errNoCamera": "Este navegador no puede acceder a una cámara. En la computadora, revisá que ninguna otra app esté usando la webcam.",
     "errNoDecoder": "El lector de códigos no pudo iniciarse en este dispositivo.",
     "problemAlt": "Igual podés escribir un ISBN o agregarlo desde una foto acá abajo."
   }

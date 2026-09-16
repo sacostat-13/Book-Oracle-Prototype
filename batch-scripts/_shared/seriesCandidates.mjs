@@ -83,6 +83,33 @@
 // The cost was not noise in the CSV. Hellboy #7 is a REAL missing volume -- the
 // gap the 2026-09-09 diagnostic reported -- and it went unproposed because a
 // collection of it was standing at the same position.
+// A BOOK THAT DOES NOT EXIST YET.
+//
+// THE BUG THIS EXISTS FOR: the first 100-series batch pre-approved five volumes
+// of The Stormlight Archive at confidence 100 --
+//
+//   #6  "Untitled Stormlight Archive #6"
+//   #7  "Untitled Stormlight Archive #7"    ... through #10
+//
+// -- plus "Untitled Mercy Thompson Novel 15", and later batches added a bare
+// "Untitled" for Fae & Alchemy #3, The Empyrean #4 and Thursday Murder Club #6.
+// Nine rows in all, every one of them a book Hardcover is holding a slot for
+// because the author has announced it. They are not editions, not translations
+// and not collections, so nothing here caught them, and they pre-approved
+// cleanly: real author, real position, series matched exactly.
+//
+// A series page that lists "Untitled Stormlight Archive #7" as volume 7 looks
+// broken to a reader and reads as filler to a crawler, which is the whole
+// problem these pages have. And there is nothing to fix later: the row cannot
+// gain a title until the book gets one, upstream, whereupon the ordinary
+// backfill will propose it properly.
+//
+// The pattern is deliberately narrow -- ANCHORED at the start, and "untitled"
+// only. Across 1,112 pre-approvals in 400 series it fired on exactly those nine
+// rows and nothing else, and a real book with "Untitled" in the middle of its
+// title ("An Untitled Life") is untouched.
+export const PLACEHOLDER_TITLE_RE = /^\s*untitled\b/i;
+
 export const COLLECTION_RE =
   /\b(bundle|box(ed)? ?set|omnibus|anthology|collection|complete (series|collection)|series set|set of \d+|\d+[- ]book|set books?\b|books? #?\d+\s*[-–—]\s*#?\d+|part \d+ of \d+|vols?\.? \d+\s*[-–—]\s*\d+|int[ée]grale|edizione integrale|obras completas|edici[óo]n completa|gesamtausgabe|opera omnia|samlade|coffret|library edition|deluxe edition|collector['’]?s edition|anniversary edition|compendium|treasury)\b|omnibus/i;
 
@@ -341,6 +368,12 @@ export function candidatesByPosition(candidates, { seriesAuthors = [], wantLangu
   for (const c of candidates) {
     if (!Number.isInteger(c.position)) {
       rejected.push({ ...c, reason: `split edition (position ${c.position})` }); continue;
+    }
+    // Before the collection test on purpose. "Untitled Stormlight Archive #6"
+    // would also trip a bundle rule on a bad day, and a rejection reason that
+    // names the wrong problem sends the next reviewer looking in the wrong file.
+    if (PLACEHOLDER_TITLE_RE.test(c.title)) {
+      rejected.push({ ...c, reason: 'title is a placeholder for an unpublished book' }); continue;
     }
     if (COLLECTION_RE.test(c.title)) {
       collectionTitles.push(normTitle(c.title));

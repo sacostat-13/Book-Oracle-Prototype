@@ -12,7 +12,7 @@ import { useTheme } from '../lib/ThemeContext';
 import { useNotifications, notificationLabel, notificationRoute } from '../lib/useNotifications';
 import AnnouncementModal from './AnnouncementModal';
 import ReleaseNotesModal from './ReleaseNotesModal';
-import { CURRENT_VERSION } from '../lib/releases';
+import { CURRENT_VERSION, currentRelease } from '../lib/releases';
 import NavSearch from './NavSearch';
 import ScanModal from './ScanModal';
 import { useT } from '../lib/I18nContext';
@@ -119,11 +119,71 @@ export default function Nav({ onPreviewBook, guestMode = false }) {
   // Scanning is a global affordance: a reader standing in a bookshop should
   // not have to navigate to a shelf first. Destination is chosen at the end.
   const [scanOpen, setScanOpen] = useState(false);
+  // v0.70: a release flagged `major` announces itself once instead of waiting
+  // to be found behind the sparkle.
+  const [announceOpen, setAnnounceOpen] = useState(false);
+  const announceChecked = useRef(false);
+
+  // DEV only. Mirrors App.jsx's `?onboarding=reset`: visit any page with
+  // `?whatsnew=reset` and the announcement opens again on the spot, without
+  // touching lastSeenVersion in Supabase. Strips the param so a refresh does
+  // not replay it forever.
+  const [devReplayNonce, setDevReplayNonce] = useState(0);
+  useEffect(() => {
+    if (!import.meta.env.DEV) return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('whatsnew') !== 'reset') return;
+    params.delete('whatsnew');
+    const qs = params.toString();
+    window.history.replaceState({}, '',
+      window.location.pathname + (qs ? `?${qs}` : '') + window.location.hash);
+    announceChecked.current = false;
+    setDevReplayNonce((n) => n + 1);
+  }, []);
 
   // v0.46: the nav "what's new" dot lights when a newer release has shipped
   // than the one the reader last opened.
   const hasUnseenRelease = state.lastSeenVersion !== CURRENT_VERSION;
   const openReleases = () => { setReleaseOpen(true); markReleasesSeen(); };
+
+  // The unprompted what's-new modal. Deliberately narrow about when it fires:
+  //
+  //   - only for a signed-in, onboarded reader (guests have nowhere to put a
+  //     scanned book, and onboarding already owns the screen)
+  //   - only when the current release opted in with `major`
+  //   - only once per reader per version — markReleasesSeen() runs on open, so
+  //     dismissing and taking the CTA both count as seen
+  //   - never on top of a dialog something else opened first. App.jsx's early
+  //     returns already keep the password-reset gate and onboarding from
+  //     co-existing with the nav, so this covers the remaining overlays
+  //     (OracleGateDialog, ShareMomentModal) without a global modal manager.
+  //     If a third thing ever needs to queue, that is when to build one.
+  //
+  // Runs on the state that arrives asynchronously from the profile, not on
+  // mount, because lastSeenVersion is null on the first render of every
+  // session. The ref keeps it to a single decision.
+  useEffect(() => {
+    if (announceChecked.current) return;
+    if (guestMode || !user || !state.onboarded) return;
+    const release = currentRelease();
+    if (!release?.major) return;
+    const devReplay = import.meta.env.DEV && devReplayNonce > 0;
+    if (!devReplay && state.lastSeenVersion === CURRENT_VERSION) return;
+    if (document.querySelector('.rating-modal-overlay, .overlay')) return;
+    announceChecked.current = true;
+    setAnnounceOpen(true);
+    // The dev replay deliberately does not mark it seen, so ?whatsnew=reset
+    // stays repeatable instead of being a one-shot you have to undo in SQL.
+    if (!devReplay) markReleasesSeen();
+  }, [guestMode, user, state.onboarded, state.lastSeenVersion, markReleasesSeen, devReplayNonce]);
+
+  function takeAnnouncementCta() {
+    const action = currentRelease()?.ctaAction;
+    setAnnounceOpen(false);
+    // Scanning is a modal, not a route — the CTA opens it directly, so the
+    // reader goes from reading about it to doing it in one tap.
+    if (action === 'scan') setScanOpen(true);
+  }
 
   const booksRef = useRef(null);
   const socialRef = useRef(null);
@@ -526,6 +586,13 @@ export default function Nav({ onPreviewBook, guestMode = false }) {
       )}
       {releaseOpen && (
         <ReleaseNotesModal onClose={() => setReleaseOpen(false)} />
+      )}
+      {announceOpen && (
+        <ReleaseNotesModal
+          announce
+          onCta={takeAnnouncementCta}
+          onClose={() => setAnnounceOpen(false)}
+        />
       )}
       {scanOpen && <ScanModal onClose={() => setScanOpen(false)} />}
     </>

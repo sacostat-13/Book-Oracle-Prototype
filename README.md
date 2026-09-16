@@ -4,7 +4,7 @@ A reading companion — wishlist, library, Passages (reading plans), Anthologies
 lists), book clubs, Kindred (follows), and an AI-powered "oracle" for book discovery. Built with React + Vite + SCSS, backed by Supabase for auth
 and cross-device sync, and Netlify Functions for API proxying.
 
-> Current version: **v0.69** — see [Releases](#releases) below for changelog.
+> Current version: **v0.70** — see [Releases](#releases) below for changelog.
 > Upgrading from an earlier version? Check the matching `MIGRATION_*.md` / `UPDATE_*.md`.
 
 ---
@@ -372,6 +372,87 @@ and forward requests. Locally you need `netlify dev` to make them work.
 ---
 
 ## Releases
+
+# v0.70 — Scan a shelf with the camera (2026-09-16)
+
+**No migrations. No new env vars. `public/app-version.json` goes to `0.70`.**
+One new dependency (`@zxing/library`), one new SCSS partial, and a
+`netlify.toml` header change that the feature does not work without.
+
+Readers add books by scanning the EAN-13 barcode on the back cover. Scanning is
+continuous — no tap between books — and the pile commits to one destination
+(wishlist or library) at the end. Entry points are the top bar, so a reader
+standing in a bookshop does not have to navigate to a shelf first, and the title
+importer.
+
+### Files
+
+| File | |
+| --- | --- |
+| `src/lib/barcodeScanner.js` | new — camera, engine selection, the four filters, torch, photo decode |
+| `src/lib/scanResolve.js` | new — ISBN → book, session-cached |
+| `src/components/ScanModal.jsx` | new — the scanning UI |
+| `src/styles/components/_scan.scss` | new |
+| `src/styles/main.scss` | `@use 'components/scan'` |
+| `src/components/Nav.jsx` | global Scan entry (desktop icon + mobile menu row) |
+| `src/components/BulkImport.jsx` | "scan instead" onto the same pipeline |
+| `src/i18n/{en,es}.json` | `scan.*` (42 keys), `nav.scan`, `bulkImport.scanInstead` |
+| `package.json` | `@zxing/library@^0.21.3` — run `npm install` |
+| `netlify.toml` | `Permissions-Policy: camera=(self)` |
+
+Scanned books go through the existing `hardcoverLookupByIsbn` →
+`googleBooksLookupByIsbn` chain and the existing `bulkAddToWishlist` /
+`bulkAddToLibrary`. The scanner is another mouth on the import pipeline, not a
+second importer. `src/lib/isbn.js` already had `isValidIsbn`, `isbn10to13` and
+`registrantLanguage`; the scanner uses those rather than its own copies.
+
+### Three failures that each cost a day, and the code that prevents them
+
+**`Permissions-Policy` must allow the camera.** The header shipped `camera=()`,
+which denies `getUserMedia` for this site's own pages: it rejects with
+`NotAllowedError` before any permission prompt appears, so there is nothing the
+reader can grant. It is `camera=(self)` now — `microphone` and `geolocation`
+stay denied. Without that deploy the feature is dead on the live site and
+perfectly healthy on localhost, which is the worst possible way to find out.
+
+**`'BarcodeDetector' in window` is not a capability check.** On Windows, Chrome
+exposes the constructor but ships no barcode backend: construction succeeds and
+`detect()` rejects on every frame. `getSupportedFormats()` is the only honest
+gate. `barcodeScanner.js` uses it and also counts runtime rejections so a
+backend that disappears mid-session falls back to ZXing instead of going quiet.
+
+**The decoder must be bundled, not fetched.** It is a dynamic
+`import('@zxing/library')`, so Vite emits a local chunk and first paint is
+untouched. A CDN tag would be blocked by `script-src 'self'` and fail
+*silently* — a decoder that never arrives is indistinguishable from one that is
+broken.
+
+All three produce the same symptom: a working camera that decodes nothing. So
+every non-decoding state in `ScanModal` renders *over* the camera view, never
+behind it. (The prototype's error panel sat in normal flow behind an absolutely
+positioned `<video>`, and later an "invisible" `display:flex` overlay covered the
+live feed because the `hidden` attribute loses to `display`. Both shipped a
+scanner that looked broken while reporting its own failure to nobody.)
+
+### Not in this release
+
+The shared `book_isbns` cache, the `resolve_isbn` RPC, the confidence ladder and
+`reader_editions` writes are specified in `claude/isbn-scan-v1-spec.md` and
+deliberately deferred: they need a migration and an RLS surface, and none of it
+has to exist for a reader to scan their shelf.
+
+The duplicate-trap guard is the first thing to add. A scanned Spanish ISBN can
+still resolve to a *new* `books` row for a work the catalogue already holds in
+English — the exact duplication `reader-editions-v1-spec.md` exists to stop.
+`workGroups.js` hides it at display time; nothing prevents it at write time, and
+the scanner will become its largest source. Watch `books` row creation after
+this ships: a spike in `discovered` rows with non-English `language` values is
+this firing.
+
+The library-sticker question is still open. Loan barcodes are often pasted over
+the ISBN, which would hurt the in-a-library case; the decoder deliberately
+accepts Codabar and Code 39 so the rejection path can tell us rather than us
+guessing.
 
 # Maintenance Notes — 2026-09-10 → 09-18: the series backfill, and the gate that reviews it
 

@@ -2785,7 +2785,18 @@ export function DataProvider({ children }) {
   }, []);
 
   const setOnboarded = useCallback((v) => {
-    setState((s) => ({ ...s, onboarded: v }));
+    // v0.70: finishing onboarding also marks the current release as seen.
+    //
+    // Without this, `lastSeenVersion === null` is ambiguous — it means both
+    // "brand new account" and "long-time reader who never clicked the sparkle"
+    // — and the what's-new modal has to guess which. Stamping it here makes
+    // null mean only the second, so a reader who starts on v0.70 is not
+    // told what is new in the version they arrived on, and everyone else is.
+    setState((s) => ({
+      ...s,
+      onboarded: v,
+      lastSeenVersion: v ? CURRENT_VERSION : s.lastSeenVersion,
+    }));
   }, []);
 
   const setShelfSortMode = useCallback((mode) => {
