@@ -49,7 +49,8 @@
     "parchmentMode": "Parchment",
     "stacks": "The Stacks",
     "dashboard": "Dashboard",
-    "notifNewFollower": "is following you"
+    "notifNewFollower": "is following you",
+    "scan": "Scan books"
   },
   "signIn": {
     "eyebrow": "Welcome",
@@ -1102,7 +1103,8 @@
     "statusUnmatched": "add as-is",
     "removeRow": "Remove from list",
     "pasteTitlesFirst": "Paste one book per line first.",
-    "pasteUrlsFirst": "Paste one Amazon URL per line first."
+    "pasteUrlsFirst": "Paste one Amazon URL per line first.",
+    "scanInstead": "Or scan the barcodes instead"
   },
   "selection": {
     "selected": "selected",
@@ -2172,5 +2174,49 @@
     "ja": "Japanese",
     "zh": "Chinese",
     "ko": "Korean"
+  },
+  "scan": {
+    "title": "Scan books",
+    "open": "Scan",
+    "close": "Done",
+    "gateTitle": "Scan your books",
+    "gateCopy": "Hold the back cover about 15 cm from the lens and let the camera focus. Keep scanning — the pile builds as you go, and you choose where it all lands at the end.",
+    "start": "Start scanning",
+    "hint": "Point at the barcode on the back cover",
+    "torch": "Light",
+    "photo": "Photo",
+    "added": "Added",
+    "looking": "Looking it up…",
+    "alreadyInPile": "Already in the pile",
+    "alreadyOnShelf": "Already on your shelves",
+    "notIdentified": "Couldn't identify this one",
+    "inPile": "in the pile",
+    "inPileOne": "in the pile",
+    "reviewPile": "Review",
+    "backToCamera": "Back to camera",
+    "pileEmpty": "Nothing scanned yet. Point the camera at a barcode to begin.",
+    "keepScanning": "Keep scanning",
+    "destLabel": "Add these to",
+    "destWishlist": "wishlist",
+    "destLibrary": "library",
+    "save": "Add {count} to your {target}",
+    "saving": "Adding…",
+    "savedOne": "Added 1 book to your {target}.",
+    "savedMany": "Added {count} books to your {target}.",
+    "nothingToAdd": "Nothing new to add — everything scanned is already on your shelves.",
+    "badgeReady": "Ready",
+    "badgeOwned": "Already yours",
+    "badgeUnknown": "Unknown",
+    "badgeResolving": "Looking up",
+    "removeRow": "Remove from the pile",
+    "manualLabel": "ISBN",
+    "manualPlaceholder": "Or type an ISBN",
+    "manualAdd": "Add",
+    "manualInvalid": "That isn't a valid ISBN.",
+    "photoNoCode": "No barcode found in that photo.",
+    "errCameraDenied": "The camera is blocked. Check that this site is allowed to use the camera in your browser settings, then try again.",
+    "errNoCamera": "This browser can't reach a camera.",
+    "errNoDecoder": "The barcode reader couldn't start on this device.",
+    "problemAlt": "You can still type an ISBN or add one from a photo below."
   }
 }

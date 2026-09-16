@@ -6,6 +6,7 @@ import { useOracleQuota } from '../lib/OracleQuotaContext';
 import { findBookByTitle, bookKey, cleanTitle } from '../lib/bookHelpers';
 import { lookupByTitle, parseTitleList } from '../lib/bookLookup';
 import { callClaude, QuotaExceededError, parseJSONResponse } from '../lib/claudeApi';
+import ScanModal from './ScanModal';
 
 // v0.58 — this was the quota leak.
 //
@@ -70,6 +71,9 @@ export default function BulkImport({ onClose, target = 'wishlist' }) {
   const [importing, setImporting] = useState(false);
   // v0.44: { done, total } while the confirm-phase import is running
   const [importProgress, setImportProgress] = useState(null);
+  // Scanning is another mouth onto this same pipeline, not a second importer:
+  // it resolves ISBNs and hands the books to the same bulkAdd* calls below.
+  const [scanOpen, setScanOpen] = useState(false);
 
   async function lookupTitleList() {
     const parsed = parseTitleList(titleText);
@@ -174,6 +178,10 @@ export default function BulkImport({ onClose, target = 'wishlist' }) {
   const missCount = results.filter((r) => r.status === 'missing').length;
   const hasResults = results.length > 0;
 
+  if (scanOpen) {
+    return <ScanModal target={target} onClose={() => { setScanOpen(false); onClose(); }} />;
+  }
+
   return (
     <div className="bulk-form">
       <div className="manual-add-header">
@@ -201,6 +209,7 @@ export default function BulkImport({ onClose, target = 'wishlist' }) {
           <div className="upload-help">{t('bulkImport.titlesHelp')}</div>
           <div className="bulk-actions">
             <span className="manual-add-note">{isLibrary ? t('bulkImport.titlesNoteLibrary') : t('bulkImport.titlesNoteWishlist')}</span>
+            <button className="btn-secondary" onClick={() => setScanOpen(true)}>{t('bulkImport.scanInstead')}</button>
             <button className="btn-primary" onClick={lookupTitleList} disabled={!titleText.trim()}>{t('bulkImport.lookUpBtn')}</button>
           </div>
         </>

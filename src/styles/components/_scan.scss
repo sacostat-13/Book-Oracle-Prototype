@@ -1,0 +1,552 @@
+@use "../tokens";
+
+// components/_scan.scss — the barcode scanner.
+//
+// This is the one screen in the app that is theme-independent, and that is a
+// decision rather than an oversight: a live camera feed behind parchment chrome
+// is unreadable, so the stage commits to the dark surface in both themes. Every
+// value below still comes from the token system — nothing is a raw rgba
+// parchment value — but the dark-side tokens are named explicitly instead of
+// inherited from whatever theme is active.
+
+// The stage commits to a dark surface in BOTH themes, so it needs a handful of
+// fixed values. Project rule still applies: no loose rgba/hex at use sites.
+// They are declared once here, --ro- prefixed like every other token, and every
+// rule below consumes them through var().
+.scan,
+.scan-overlay {
+  --ro-scan-void:  #000;                 // letterbox behind the video
+  --ro-scan-on:    #EDE6D6;              // text/edges that must read on film
+  --ro-scan-scrim: rgba(6, 5, 9, .72);   // vignette
+  --ro-scan-bar:   rgba(6, 5, 9, .85);   // top bar gradient
+  --ro-scan-veil:  rgba(6, 5, 9, .9);    // gate + failure panels
+  --ro-scan-chip:  rgba(23, 19, 29, .8); // chrome buttons over film
+  --ro-scan-card:  rgba(15, 12, 19, .94);// the confirmation card
+  --ro-scan-lift:  rgba(0, 0, 0, .45);   // thumb shadow
+}
+
+.scan-overlay {
+  padding: 0;
+  align-items: stretch;
+  justify-content: stretch;
+}
+
+.scan {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 560px;
+  margin: 0 auto;
+  background: var(--ro-bg-deep);
+  color: var(--ro-text);
+  overflow: hidden;
+
+  // Full-bleed on a phone: the reader is holding this up to a shelf and every
+  // pixel of viewfinder helps. On a desktop it behaves like a tall modal.
+  height: 100dvh;
+
+  @media (min-width: 640px) {
+    height: min(860px, calc(100dvh - 48px));
+    margin-block: 24px;
+    border: 1px solid var(--ro-border-strong);
+    border-radius: var(--ro-radius-xl);
+    box-shadow: var(--ro-shadow);
+  }
+}
+
+// ── stage ────────────────────────────────────────────────────────────────────
+.scan__stage {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  background: var(--ro-bg-deep);
+  overflow: hidden;
+}
+
+.scan__video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  background: var(--ro-scan-void);
+}
+
+.scan__scrim {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(ellipse 78% 46% at 50% 42%, transparent 38%, var(--ro-scan-scrim) 100%);
+}
+
+.scan__bar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: var(--ro-space-2);
+  padding: var(--ro-space-3) var(--ro-space-4);
+  padding-top: calc(var(--ro-space-3) + env(safe-area-inset-top, 0px));
+  background: linear-gradient(180deg, var(--ro-scan-bar), transparent);
+}
+
+.scan__heading {
+  font-family: var(--ro-font-display);
+  font-size: 20px;
+  color: var(--ro-gold-text);
+}
+
+.scan__spacer { flex: 1; }
+
+.scan__chip {
+  font-family: var(--ro-font-mono);
+  font-size: 12px;
+  color: var(--ro-scan-on);
+  background: var(--ro-scan-chip);
+  border: 1px solid var(--ro-border-strong);
+  border-radius: var(--ro-radius-sm);
+  padding: 7px 11px;
+  min-height: var(--ro-touch-min);
+  cursor: pointer;
+
+  &.is-on {
+    background: var(--ro-gold);
+    border-color: var(--ro-gold);
+    color: var(--ro-gold-on);
+  }
+}
+
+// ── reticle ──────────────────────────────────────────────────────────────────
+.scan__reticle {
+  position: absolute;
+  left: 50%;
+  top: 42%;
+  transform: translate(-50%, -50%);
+  width: min(80vw, 360px);
+  max-width: 100%;
+  aspect-ratio: 5 / 3;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.scan__corner {
+  position: absolute;
+  width: 26px;
+  height: 26px;
+  border: 2px solid var(--ro-gold);
+  border-radius: 2px;
+  transition: border-color .18s ease, transform .18s ease;
+}
+.scan__corner--tl { top: 0; left: 0; border-right: 0; border-bottom: 0; }
+.scan__corner--tr { top: 0; right: 0; border-left: 0; border-bottom: 0; }
+.scan__corner--bl { bottom: 0; left: 0; border-right: 0; border-top: 0; }
+.scan__corner--br { bottom: 0; right: 0; border-left: 0; border-top: 0; }
+
+.scan__reticle::after {
+  content: '';
+  position: absolute;
+  left: 8%;
+  right: 8%;
+  top: 50%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--ro-gold), transparent);
+  opacity: .5;
+  animation: scan-breathe 2.6s ease-in-out infinite;
+}
+
+.scan__reticle.is-locked {
+  .scan__corner { border-color: var(--ro-scan-on); transform: scale(1.12); }
+  &::after { animation: none; opacity: 0; }
+}
+
+@keyframes scan-breathe {
+  0%, 100% { opacity: .18; transform: scaleX(.82); }
+  50%      { opacity: .6;  transform: scaleX(1); }
+}
+
+.scan__hint {
+  position: absolute;
+  left: 50%;
+  bottom: var(--ro-space-6);
+  transform: translateX(-50%);
+  margin: 0;
+  z-index: 2;
+  font-family: var(--ro-font-mono);
+  font-size: 11px;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+  color: var(--ro-muted);
+  text-align: center;
+  max-width: 88%;
+}
+
+// ── gate + failure ───────────────────────────────────────────────────────────
+.scan__gate,
+.scan__problem {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--ro-space-4);
+  padding: var(--ro-space-6);
+  text-align: center;
+  background: var(--ro-scan-veil);
+}
+
+// Any state where the scanner cannot decode MUST render over the camera, not
+// behind it. An error panel that paints underneath the video shows the reader a
+// working camera that does nothing and reports nothing.
+
+.scan__gate-title {
+  margin: 0;
+  font-family: var(--ro-font-display);
+  font-weight: 400;
+  font-size: 30px;
+  color: var(--ro-text);
+}
+
+.scan__gate-copy,
+.scan__problem p {
+  margin: 0;
+  max-width: 34ch;
+  font-size: 14px;
+  line-height: 1.7;
+  color: var(--ro-muted);
+}
+
+.scan__problem-alt { font-size: 12px; }
+
+.scan__start { min-width: 200px; }
+
+// ── the quick confirmation ───────────────────────────────────────────────────
+.scan__confirm {
+  position: absolute;
+  left: var(--ro-space-4);
+  right: var(--ro-space-4);
+  bottom: var(--ro-space-4);
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: var(--ro-space-3);
+  padding: var(--ro-space-3);
+  background: var(--ro-scan-card);
+  border: 1px solid var(--ro-gold);
+  border-radius: var(--ro-radius-lg);
+  box-shadow: var(--ro-shadow);
+  animation: scan-confirm-in .22s cubic-bezier(.32, .72, .35, 1);
+}
+
+.scan__confirm--duplicate { border-color: var(--ro-burgundy); }
+.scan__confirm--unresolved { border-color: var(--ro-border-strong); }
+
+@keyframes scan-confirm-in {
+  from { opacity: 0; transform: translateY(14px) scale(.98); }
+  to   { opacity: 1; transform: none; }
+}
+
+.scan__confirm-cover {
+  width: 40px;
+  height: 58px;
+  flex: none;
+  border-radius: var(--ro-radius-sm);
+  border: 1px solid var(--ro-border);
+  background: var(--ro-surface-2) center / cover no-repeat;
+}
+
+.scan__confirm-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.scan__confirm-kicker {
+  font-family: var(--ro-font-mono);
+  font-size: 10px;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--ro-gold-text);
+}
+
+.scan__confirm-title {
+  font-family: var(--ro-font-display);
+  font-size: 19px;
+  line-height: 1.2;
+  color: var(--ro-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.scan__confirm-author,
+.scan__confirm-isbn {
+  font-family: var(--ro-font-mono);
+  font-size: 11px;
+  color: var(--ro-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+// ── manual + photo ───────────────────────────────────────────────────────────
+// Not a consolation prize: a focused numeric input is also how a USB
+// keyboard-wedge barcode scanner works, with no code path of its own.
+.scan__manual {
+  display: flex;
+  gap: var(--ro-space-2);
+  padding: var(--ro-space-3) var(--ro-space-4);
+  background: var(--ro-surface);
+  border-top: 1px solid var(--ro-border);
+  flex-wrap: wrap;
+}
+
+.scan__input {
+  flex: 1 1 140px;
+  min-width: 0;
+  font-family: var(--ro-font-mono);
+  font-size: 15px;
+  letter-spacing: .04em;
+  background: var(--ro-field);
+  border: 1px solid var(--ro-border);
+  border-radius: var(--ro-radius-sm);
+  color: var(--ro-text);
+  padding: 10px 12px;
+
+  &:focus { outline: none; border-color: var(--ro-gold); }
+}
+
+.scan__manual-btn,
+.scan__photo {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+// ── the pile ─────────────────────────────────────────────────────────────────
+.scan__pile {
+  display: flex;
+  align-items: center;
+  gap: var(--ro-space-3);
+  width: 100%;
+  padding: var(--ro-space-3) var(--ro-space-4);
+  padding-bottom: calc(var(--ro-space-3) + env(safe-area-inset-bottom, 0px));
+  background: var(--ro-surface-2);
+  border: 0;
+  border-top: 1px solid var(--ro-border-strong);
+  color: var(--ro-text);
+  text-align: left;
+  cursor: pointer;
+  min-height: var(--ro-touch-min);
+}
+
+.scan__thumbs {
+  display: flex;
+  align-items: center;
+  width: 74px;
+  flex: none;
+}
+
+.scan__thumb {
+  width: 34px;
+  height: 50px;
+  flex: none;
+  margin-left: -14px;
+  border-radius: 2px;
+  border: 1px solid var(--ro-border-strong);
+  background: var(--ro-surface-3) center / cover no-repeat;
+  box-shadow: -3px 0 8px var(--ro-scan-lift);
+
+  &:first-child { margin-left: 0; }
+}
+
+.scan__count {
+  font-family: var(--ro-font-display);
+  font-size: 30px;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.scan__count-label {
+  font-family: var(--ro-font-mono);
+  font-size: 10px;
+  letter-spacing: .13em;
+  text-transform: uppercase;
+  color: var(--ro-muted);
+}
+
+.scan__pile-action {
+  font-family: var(--ro-font-mono);
+  font-size: 11px;
+  color: var(--ro-gold-text);
+}
+
+// ── review ───────────────────────────────────────────────────────────────────
+.scan__review {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  background: var(--ro-bg);
+  padding: var(--ro-space-4);
+  padding-top: calc(var(--ro-space-4) + env(safe-area-inset-top, 0px));
+  padding-bottom: calc(var(--ro-space-4) + env(safe-area-inset-bottom, 0px));
+  overflow-y: auto;
+}
+
+.scan__empty {
+  color: var(--ro-muted);
+  text-align: center;
+  padding: var(--ro-space-8) 0;
+}
+
+.scan__list { flex: 1; }
+
+.scan__row {
+  display: flex;
+  align-items: center;
+  gap: var(--ro-space-3);
+  padding: var(--ro-space-3) 0;
+  border-bottom: 1px solid var(--ro-border);
+
+  &.is-dim { opacity: .6; }
+}
+
+.scan__row-cover {
+  width: 36px;
+  height: 52px;
+  flex: none;
+  border-radius: 2px;
+  border: 1px solid var(--ro-border);
+  background: var(--ro-surface-2) center / cover no-repeat;
+}
+
+.scan__row-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.scan__row-title {
+  font-family: var(--ro-font-body);
+  font-size: 16px;
+  color: var(--ro-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.scan__row-sub {
+  font-family: var(--ro-font-mono);
+  font-size: 11px;
+  color: var(--ro-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.scan__row-badge {
+  flex: none;
+  font-family: var(--ro-font-mono);
+  font-size: 10px;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+  padding: 3px 6px;
+  border-radius: var(--ro-radius-sm);
+  border: 1px solid currentColor;
+
+  &.is-ready  { color: var(--ro-forest); }
+  &.is-error  { color: var(--ro-error); }
+  &.is-muted  { color: var(--ro-muted); }
+}
+
+.scan__row-remove {
+  flex: none;
+  background: none;
+  border: 0;
+  color: var(--ro-muted);
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 4px 8px;
+
+  &:hover { color: var(--ro-text); }
+}
+
+.scan__dest {
+  padding-top: var(--ro-space-4);
+  border-top: 1px solid var(--ro-border);
+}
+
+.scan__dest-label {
+  display: block;
+  font-family: var(--ro-font-mono);
+  font-size: 10px;
+  letter-spacing: .13em;
+  text-transform: uppercase;
+  color: var(--ro-muted);
+  margin-bottom: var(--ro-space-2);
+}
+
+.scan__dest-choices {
+  display: flex;
+  gap: var(--ro-space-2);
+  flex-wrap: wrap;
+}
+
+.scan__dest-btn {
+  font-family: var(--ro-font-body);
+  font-size: 15px;
+  padding: 10px 18px;
+  min-height: var(--ro-touch-min);
+  border-radius: var(--ro-radius-pill);
+  border: 1px solid var(--ro-border-strong);
+  background: transparent;
+  color: var(--ro-text);
+  cursor: pointer;
+
+  &.is-active {
+    background: var(--ro-gold);
+    border-color: var(--ro-gold);
+    color: var(--ro-gold-on);
+  }
+}
+
+.scan__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ro-space-3);
+  justify-content: flex-end;
+  padding-top: var(--ro-space-4);
+}
+
+// ── nav entry point ──────────────────────────────────────────────────────────
+.nav-scan {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: 0;
+  color: inherit;
+  cursor: pointer;
+  padding: 8px;
+  border-radius: var(--ro-radius-sm);
+
+  &:hover { color: var(--ro-gold-text); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scan__reticle::after { animation: none; }
+  .scan__confirm { animation: none; }
+}

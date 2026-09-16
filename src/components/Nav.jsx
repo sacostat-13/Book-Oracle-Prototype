@@ -14,6 +14,7 @@ import AnnouncementModal from './AnnouncementModal';
 import ReleaseNotesModal from './ReleaseNotesModal';
 import { CURRENT_VERSION } from '../lib/releases';
 import NavSearch from './NavSearch';
+import ScanModal from './ScanModal';
 import { useT } from '../lib/I18nContext';
 
 
@@ -115,6 +116,9 @@ export default function Nav({ onPreviewBook, guestMode = false }) {
   const [userOpen, setUserOpen] = useState(false);
   const [activeAnnouncement, setActiveAnnouncement] = useState(null);
   const [releaseOpen, setReleaseOpen] = useState(false);
+  // Scanning is a global affordance: a reader standing in a bookshop should
+  // not have to navigate to a shelf first. Destination is chosen at the end.
+  const [scanOpen, setScanOpen] = useState(false);
 
   // v0.46: the nav "what's new" dot lights when a newer release has shipped
   // than the one the reader last opened.
@@ -302,6 +306,24 @@ export default function Nav({ onPreviewBook, guestMode = false }) {
         {/* ── Icon cluster ── */}
         <div className="nav-icons">
 
+          {/* Scan — global entry point */}
+          {user && (
+            <button
+              className="nav-scan"
+              onClick={() => setScanOpen(true)}
+              aria-label={t('nav.scan')}
+              title={t('nav.scan')}
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M3 7V5a2 2 0 0 1 2-2h2" />
+                <path d="M17 3h2a2 2 0 0 1 2 2v2" />
+                <path d="M21 17v2a2 2 0 0 1-2 2h-2" />
+                <path d="M7 21H5a2 2 0 0 1-2-2v-2" />
+                <path d="M7 8v8M10 8v8M13 8v8M17 8v8" />
+              </svg>
+            </button>
+          )}
+
           {/* What's new */}
           <button
             className="nav-whatsnew"
@@ -455,6 +477,11 @@ export default function Nav({ onPreviewBook, guestMode = false }) {
                 {count > 0 && <span className="mobile-menu__badge">{count}</span>}
               </button>
             ))}
+            {user && (
+              <button className="mobile-menu__item" onClick={() => { setMenuOpen(false); setScanOpen(true); }}>
+                {t('nav.scan')}
+              </button>
+            )}
             <button className={`mobile-menu__item${(route.name === 'plan-list' || route.name === 'plan-create' || route.name === 'plan-view') ? ' is-active' : ''}`} onClick={() => nav('plan-list')}>
               {t('nav.plans')}
             </button>
@@ -500,6 +527,7 @@ export default function Nav({ onPreviewBook, guestMode = false }) {
       {releaseOpen && (
         <ReleaseNotesModal onClose={() => setReleaseOpen(false)} />
       )}
+      {scanOpen && <ScanModal onClose={() => setScanOpen(false)} />}
     </>
   );
 }
