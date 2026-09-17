@@ -124,6 +124,24 @@ export default function Nav({ onPreviewBook, guestMode = false }) {
   const [announceOpen, setAnnounceOpen] = useState(false);
   const announceChecked = useRef(false);
 
+  // v0.71: the dashboard's "I know the book I want" asks for the search box.
+  // Desktop focuses the bar in place; below the nav breakpoint the bar is
+  // hidden, so open the menu, whose head is the same search.
+  useEffect(() => {
+    function onFocusSearch() {
+      const bar = document.querySelector('.topnav .nav-search-input');
+      if (bar && bar.offsetParent !== null) {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        bar.focus();
+        return;
+      }
+      setMenuOpen(true);
+      setTimeout(() => document.querySelector('.mobile-menu .nav-search-input')?.focus(), 50);
+    }
+    window.addEventListener('ro:focus-search', onFocusSearch);
+    return () => window.removeEventListener('ro:focus-search', onFocusSearch);
+  }, []);
+
   // DEV only. Mirrors App.jsx's `?onboarding=reset`: visit any page with
   // `?whatsnew=reset` and the announcement opens again on the spot, without
   // touching lastSeenVersion in Supabase. Strips the param so a refresh does

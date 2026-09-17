@@ -226,7 +226,24 @@
     "levelNudgeBody": "Los libros que has amado últimamente van mucho más allá de “{current}”. Quizá sea hora de llamarte de otra manera.",
     "levelNudgeAccept": "Asumir “{next}”",
     "levelNudgeDismiss": "Todavía no",
-    "goalWidgetUndated": "{count} libros de tu biblioteca no tienen fecha de lectura, así que no cuentan acá. Los libros importados suelen llegar sin fecha — podés agregarla desde la página de cada libro."
+    "goalWidgetUndated": "{count} libros de tu biblioteca no tienen fecha de lectura, así que no cuentan acá. Los libros importados suelen llegar sin fecha — podés agregarla desde la página de cada libro.",
+    "addBooks": {
+      "title": "Agregar libros",
+      "introEmpty": "Tus estantes te esperan. Empezá por lo que tengas a mano.",
+      "intro": "Elegí la forma que mejor se adapte a lo que tenés a mano.",
+      "toggle": "Agregar libros",
+      "close": "Cerrar",
+      "scan": "Tengo los libros acá",
+      "scanSub": "Escaneá los códigos de barras — una pila entera en pocos minutos",
+      "goodreads": "Uso Goodreads",
+      "goodreadsSub": "Traé tus estantes desde tu perfil",
+      "bulk": "Tengo una lista de títulos",
+      "bulkSub": "Pegalos, uno por línea",
+      "search": "Sé qué libro quiero",
+      "searchSub": "Buscá por título o autor",
+      "stacks": "Todavía no sé",
+      "stacksSub": "Recorré los Estantes y quedate con lo que te llame"
+    }
   },
   "currentlyReading": {
     "breadcrumb": "Inicio",
@@ -2093,7 +2110,9 @@
       "q5": "¿Funciona en español?",
       "a5": "Completamente. Cada página, función y nota de versión existe en inglés y en español. El Oráculo es bilingüe de nacimiento, no por traducción tardía.",
       "q6": "¿Qué obtengo como Adepto?",
-      "a6": "Cinco sugerencias del Oráculo cada día en vez de cinco al mes — con las mismas razones detrás de cada una — más acceso anticipado a nuevos ritos. El nivel Buscador sigue siendo gratis para siempre."
+      "a6": "Cinco sugerencias del Oráculo cada día en vez de cinco al mes — con las mismas razones detrás de cada una — más acceso anticipado a nuevos ritos. El nivel Buscador sigue siendo gratis para siempre.",
+      "q7": "¿Cómo agrego mis libros?",
+      "a7": "Como te quede más cómodo. Escaneá con el celular los códigos de barras de una pila de libros, traé tus estantes desde Goodreads, pegá una lista de títulos o buscá un libro a la vez. ¿No sabés por dónde empezar? Recorré el catálogo y quedate con lo que te llame. De cualquier forma, el Oráculo los ordena por género y serie durante la noche."
     },
     "epilogue": {
       "title": "Tu carta sigue sobre la mesa.",

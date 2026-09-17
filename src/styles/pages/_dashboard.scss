@@ -505,6 +505,102 @@
   margin-top: 8px;
 }
 
+// ── Add books chooser — v0.71 ─────────────────────────────────────────────────
+// One door to scan / Goodreads / paste / search / The Stacks, worded by what the
+// reader has in hand. Open while shelves are sparse, folded to a button after.
+.db-add {
+  @extend %widget-surface;
+  padding: 24px;
+  margin-bottom: 16px;
+}
+
+.db-add--folded {
+  background: none;
+  border: 0;
+  box-shadow: none;
+  padding: 0;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.db-add__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.db-add__title {
+  font-family: var(--ro-font-body);
+  font-weight: 700;
+  font-size: 23px;
+  line-height: 1.1;
+  color: var(--ro-text);
+}
+
+.db-add__intro {
+  font-family: var(--ro-font-body);
+  font-size: 14px;
+  line-height: 1.4;
+  color: var(--ro-muted);
+  margin-top: 8px;
+}
+
+.db-add__options {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.db-add__option {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 16px;
+  text-align: left;
+  cursor: pointer;
+  background: var(--ro-surface-2);
+  border: 1px solid var(--ro-border);
+  border-radius: var(--ro-radius-md);
+  color: var(--ro-text);
+  transition: border-color .15s, transform .1s;
+
+  &:hover,
+  &:focus-visible,
+  &.is-active {
+    border-color: var(--ro-gold);
+  }
+
+  &:hover {
+    transform: translateY(-1px);
+  }
+}
+
+.db-add__glyph {
+  font-size: 18px;
+  line-height: 1;
+  color: var(--ro-gold);
+}
+
+.db-add__label {
+  font-family: var(--ro-font-body);
+  font-weight: 700;
+  font-size: 16px;
+  line-height: 1.2;
+}
+
+.db-add__sub {
+  font-family: var(--ro-font-body);
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--ro-muted);
+}
+
+.db-add__bulk {
+  margin-top: 20px;
+}
+
 // ── Reading Stats (3-up) ──────────────────────────────────────────────────────
 .db-stats-grid {
   display: grid;

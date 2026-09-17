@@ -346,20 +346,12 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
     const found = sources.find((b) => bookKey(b) === bookKey_);
     if (found) {
       setBook(found);
-      // If the current URL has no snap, silently patch it in so the browser
-      // back button can restore this book even if the collection isn't loaded
-      // yet when the user navigates back (race between popstate and DataContext).
-      if (!route.params?.snap) {
-        const params = buildBookPageParams(found, route.params?.from || 'app', route.params?.fromLabel || '');
-        const qs = Object.entries(params)
-          .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`)
-          .join('&');
-        // v0.39: patch the real path in place (was a hash rewrite pre-path-routing).
-        const next = '/book/' + encodeURIComponent(bookKey_) + '?' + qs;
-        if (window.location.pathname + window.location.search !== next) {
-          history.replaceState(null, '', next);
-        }
-      }
+      // v0.71: this used to replaceState `?from=…&snap=…` into the address bar
+      // so Back could restore the book before the collection loaded. It undid
+      // v0.67's transient-params cleanup for every book on the reader's own
+      // shelves — which are exactly the books readers copy and share. The race
+      // it guarded is covered since v0.63.3: with no snap and no shelf hit,
+      // the branch below looks the book up by key.
     } else if (snapshotBook) {
       // Collection not loaded yet or book not in collection — use snapshot.
       // Once collection loads this effect re-runs and upgrades to the full record.

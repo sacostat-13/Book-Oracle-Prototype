@@ -1184,10 +1184,13 @@ export default function Profile() {
   useEffect(() => {
     if (!tabFromRoute) return;
     const timer = setTimeout(() => {
-      document.getElementById('pf-settings')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      // v0.71: the dashboard's "I track on Goodreads" lands on the import
+      // panel itself, not the top of the Account tab.
+      const target = route.params?.anchor === 'goodreads' ? 'pf-goodreads' : 'pf-settings';
+      document.getElementById(target)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }, 150);
     return () => clearTimeout(timer);
-  }, [tabFromRoute]);
+  }, [tabFromRoute, route.params?.anchor]);
 
   async function handleUpgrade() {
     if (!user) return;

@@ -2,6 +2,9 @@
 // Act VI — Questions. A quiet accordion; the thread runs past it. Six Q&As
 // (ported from v4, translated), with the voice-rule fix in the first answer:
 // the Oracle *finds and suggests* — the reader always chooses.
+// q7 ("How do I add my books?") renders second: it is the first practical
+// question after "what is this", and readers were asking it in-app. Keys stay
+// numbered by when they were written, not by position.
 // Reduced motion: toggles instantly, no height tween.
 import { useRef, useState } from 'react';
 import gsap from 'gsap';
@@ -83,7 +86,7 @@ export default function Questions({ anchorRef }) {
     <section className="lps-faq" id="lp-faq" ref={(el) => { rootRef.current = el; if (anchorRef) anchorRef.current = el; }}>
       <h2 className="lps-title">{t('landing.questions.title')}</h2>
       <div className="lps-faq__list">
-        {[1, 2, 3, 4, 5, 6].map((n) => (
+        {[1, 7, 2, 3, 4, 5, 6].map((n) => (
           <QuestionItem key={n} q={t(`landing.questions.q${n}`)} a={t(`landing.questions.a${n}`)} />
         ))}
       </div>

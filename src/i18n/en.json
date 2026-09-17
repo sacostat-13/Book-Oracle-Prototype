@@ -226,7 +226,24 @@
     "levelNudgeBody": "The books you've loved lately read well beyond “{current}.” Perhaps it is time to call yourself something more.",
     "levelNudgeAccept": "Embrace “{next}”",
     "levelNudgeDismiss": "Not yet",
-    "goalWidgetUndated": "{count} books in your library have no finish date, so they don't count here. Imported books usually arrive undated — you can add a date from any book's page."
+    "goalWidgetUndated": "{count} books in your library have no finish date, so they don't count here. Imported books usually arrive undated — you can add a date from any book's page.",
+    "addBooks": {
+      "title": "Add books",
+      "introEmpty": "Your shelves are waiting. Start from whatever you have in front of you.",
+      "intro": "Pick the way that fits what you have in front of you.",
+      "toggle": "Add books",
+      "close": "Close",
+      "scan": "I have the books with me",
+      "scanSub": "Scan the barcodes — a whole pile in a few minutes",
+      "goodreads": "I track on Goodreads",
+      "goodreadsSub": "Bring your shelves over from your profile",
+      "bulk": "I have a list of titles",
+      "bulkSub": "Paste them in, one per line",
+      "search": "I know the book I want",
+      "searchSub": "Search by title or author",
+      "stacks": "I’m not sure yet",
+      "stacksSub": "Browse The Stacks and keep what catches your eye"
+    }
   },
   "currentlyReading": {
     "breadcrumb": "Dashboard",
@@ -2093,7 +2110,9 @@
       "q5": "Does it work in Spanish?",
       "a5": "Completamente. Every page, feature, and release note exists in both English and Spanish. The Oracle is bilingual by birth, not by translation afterthought.",
       "q6": "What do I get as an Adept?",
-      "a6": "Five Oracle suggestions every day instead of five per month — the same reasons behind each one — plus early access to new rites. The Seeker tier remains free forever."
+      "a6": "Five Oracle suggestions every day instead of five per month — the same reasons behind each one — plus early access to new rites. The Seeker tier remains free forever.",
+      "q7": "How do I add my books?",
+      "a7": "Whichever way suits what you have in front of you. Scan the barcodes on a pile of books with your phone, bring your shelves over from Goodreads, paste a list of titles, or search for one book at a time. Not sure where to begin? Browse the catalog and keep what calls to you. Either way, the Oracle sorts them into genres and series overnight."
     },
     "epilogue": {
       "title": "Your card is still drawn.",

@@ -19,6 +19,7 @@ import CoachMark from '../components/CoachMark';
 import { OracleQuotaBadge } from '../components/OracleQuotaBadge';
 import { logRecommendations } from '../lib/oracleProvenance';
 import Avatar from '../components/Avatar';
+import AddBooksChooser from '../components/AddBooksChooser';
 
 const FEED_PAGE_SIZE = 5;
 
@@ -1295,6 +1296,10 @@ export default function Dashboard({ onOpenBook }) {
           ))}
         </div>
       </div>
+
+      {/* v0.71: one door to every way of adding books — open while the
+          shelves are nearly empty, a single button after that. */}
+      <AddBooksChooser />
 
       {/* Quick Actions Permanent Widget   */}
       <QuickActionsWidget go={go} t={t} />
