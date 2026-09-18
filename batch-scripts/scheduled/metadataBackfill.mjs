@@ -57,7 +57,7 @@ import {
   inferGenre,
   inferAllGenres,
   explainGenre,
-  findGenreDrift,
+  guardGenreDrift,
   withUmbrellas,
 } from '../_shared/genreRules.mjs';
 import { readFileSync, writeFileSync } from 'fs';
@@ -414,14 +414,18 @@ async function fetchBooksWithGenreLinks(bookIds) {
 // names from public.genres, so no reader can ever select it and none of those
 // books can be genre-seeded.
 //
-// Checked before any writes. Reported, not enforced: a stale rule should not
-// stop descriptions being backfilled, which is the larger half of this job.
+// Checked before any writes. Stale rules are switched off for this run, the
+// descriptions half carries on, and the run exits 1 at the end — a stale rule
+// should not stop descriptions being backfilled, but it must turn the run red.
+// It used to be a warning in a log nobody reads, which is how merged genres
+// kept coming back.
 // One query, three uses: ids for linking, names for the drift check, and
 // parent_id for the umbrella map.
 async function loadGenreCatalog() {
   const { data, error } = await supabase.from('genres').select('id, name, parent_id');
   if (error) {
-    console.warn('[metadataBackfill] could not read genres table:', error.message);
+    console.error('[metadataBackfill] could not read genres table:', error.message);
+    process.exitCode = 1;
     return { idByName: new Map(), parentByName: new Map() };
   }
   const rows = data || [];
@@ -434,14 +438,15 @@ async function loadGenreCatalog() {
         .map((r) => [r.name, nameById.get(r.parent_id)])
   );
   const known = new Set(rows.map((r) => r.name));
-  const missing = findGenreDrift(known);
+  const missing = guardGenreDrift(known);
   if (missing.length) {
-    console.warn(
+    console.error(
       `\n[metadataBackfill] GENRE DRIFT — ${missing.length} rule target(s) absent from ` +
       `public.genres:\n  ${missing.join('\n  ')}\n` +
-      `Books assigned these are unreachable by genre seeding. Fix GENRE_RULES, or add ` +
-      `the rows to public.genres.\n`
+      `Those rules are OFF for this run and the run will exit 1. A genre was renamed, ` +
+      `merged or deleted without updating batch-scripts/_shared/genreRules.mjs.\n`
     );
+    process.exitCode = 1;
   }
   return { idByName, parentByName };
 }

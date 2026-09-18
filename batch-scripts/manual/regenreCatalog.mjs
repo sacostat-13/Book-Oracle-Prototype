@@ -81,7 +81,7 @@ import {
   inferGenre,
   inferAllGenres,
   explainGenre,
-  findGenreDrift,
+  guardGenreDrift,
   withUmbrellas,
   ruleMatches,
 } from '../_shared/genreRules.mjs';
@@ -314,13 +314,17 @@ async function loadGenreCatalog() {
     rows.filter((r) => r.parent_id && nameById.has(r.parent_id))
         .map((r) => [r.name, nameById.get(r.parent_id)])
   );
-  const drift = findGenreDrift(new Set(rows.map((r) => r.name)));
+  // Stale rules are switched off for this run and the run exits 1 at the end.
+  // See guardGenreDrift in _shared/genreRules.mjs.
+  const drift = guardGenreDrift(new Set(rows.map((r) => r.name)));
   if (drift.length) {
-    console.warn(
+    console.error(
       `\n[regenre] GENRE DRIFT — ${drift.length} rule target(s) absent from public.genres:\n  ` +
       drift.join('\n  ') +
-      `\nBooks assigned these are unreachable: the picker only offers names from that table.\n`
+      `\nThose rules are OFF for this run and the run will exit 1. Update ` +
+      `batch-scripts/_shared/genreRules.mjs.\n`
     );
+    process.exitCode = 1;
   }
   return { idByName, nameById, parentByName, total: rows.length };
 }

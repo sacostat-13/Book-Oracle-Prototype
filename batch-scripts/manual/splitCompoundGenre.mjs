@@ -28,6 +28,11 @@
 //   node batch-scripts/manual/splitCompoundGenre.mjs --dry-run
 //   node batch-scripts/manual/splitCompoundGenre.mjs
 //   node batch-scripts/manual/splitCompoundGenre.mjs --retire   # after review
+//
+// --retire checks that every book on the compound is on at least one half. If
+// any are not, it lists them and stops. If none are, it folds the compound into
+// Gothic with merge_genres() and prints what moved. Once the compound is gone,
+// the script exits early; that is the finished state, not an error.
 
 import { createServiceClient } from '../_shared/supabaseClient.mjs';
 import { readFileSync } from 'fs';
@@ -128,9 +133,20 @@ function parseJSON(raw) {
   try { return JSON.parse(body.slice(a, b + 1)); } catch { return null; }
 }
 
+// Throws on a query error. It used to return null for both "no such genre" and
+// "the request failed", so a network error printed 'No genre with
+// normalized_name "feministsapphicgothic"' and read like the job was done.
 async function genreByNorm(norm) {
-  const { data } = await supabase.from('genres').select('id, name, family_id, parent_id').eq('normalized_name', norm).maybeSingle();
+  const { data, error } = await supabase.from('genres').select('id, name, family_id, parent_id').eq('normalized_name', norm).maybeSingle();
+  if (error) throw new Error(`genres lookup for "${norm}" failed: ${error.message}`);
   return data || null;
+}
+
+// Same rule for every read the retire path makes: an error is fatal. A failed
+// read that came back as an empty list would count as "0 stranded" and merge.
+function must({ data, error, count }, what) {
+  if (error) throw new Error(`${what} failed: ${error.message}`);
+  return { data: data || [], count };
 }
 
 async function main() {
@@ -139,33 +155,60 @@ async function main() {
   console.log('╚══════════════════════════════════════════╝\n');
 
   const compound = await genreByNorm(SPLIT.compound);
-  if (!compound) { console.error(`No genre with normalized_name "${SPLIT.compound}".`); process.exit(1); }
+  if (!compound) { console.log(`  No genre "${SPLIT.compound}" — already retired. Nothing to do.\n`); return; }
   console.log(`  Splitting: ${compound.name}`);
 
   // ── retire ────────────────────────────────────────────────────────────────
   if (RETIRE) {
     const halves = await Promise.all(SPLIT.halves.map((h) => genreByNorm(h.normalized)));
     if (halves.some((h) => !h)) { console.error('  Halves not created yet — run without --retire first.'); process.exit(1); }
-    const { count: unclassified } = await supabase
-      .from('book_genres').select('book_id', { count: 'exact', head: true }).eq('genre_id', compound.id);
-    const { data: links } = await supabase.from('book_genres').select('book_id').eq('genre_id', compound.id);
-    const ids = (links || []).map((r) => r.book_id);
-    let stranded = 0;
+    const gothic = await genreByNorm(SPLIT.keepParent);
+    if (!gothic) { console.error(`  No "${SPLIT.keepParent}" genre to fold the compound into.`); process.exit(1); }
+
+    const { data: links } = must(
+      await supabase.from('book_genres').select('book_id').eq('genre_id', compound.id),
+      'reading compound links');
+    const ids = links.map((r) => r.book_id);
+    const onAHalf = new Set();
     for (let i = 0; i < ids.length; i += 50) {
-      const chunk = ids.slice(i, i + 50);
-      const { data } = await supabase.from('book_genres').select('book_id')
-        .in('book_id', chunk).in('genre_id', halves.map((h) => h.id));
-      stranded += chunk.length - new Set((data || []).map((r) => r.book_id)).size;
+      const { data } = must(
+        await supabase.from('book_genres').select('book_id')
+          .in('book_id', ids.slice(i, i + 50)).in('genre_id', halves.map((h) => h.id)),
+        'reading half links');
+      for (const r of data) onAHalf.add(r.book_id);
     }
-    console.log(`  ${unclassified} book(s) on the compound, ${stranded} of them on NEITHER half.`);
-    if (stranded > 0) {
+    const stranded = ids.filter((id) => !onAHalf.has(id));
+    console.log(`  ${ids.length} book(s) on the compound, ${stranded.length} of them on NEITHER half.`);
+
+    if (stranded.length > 0) {
+      const titles = [];
+      for (let i = 0; i < stranded.length; i += 50) {
+        const { data } = must(
+          await supabase.from('books').select('id, title, author').in('id', stranded.slice(i, i + 50)),
+          'reading stranded books');
+        titles.push(...data);
+      }
+      titles.sort((a, b) => String(a.title).localeCompare(String(b.title)));
+      for (const b of titles) console.log(`    ${b.id}  ${b.title} — ${b.author || 'unknown'}`);
       console.error('\n  Refusing to retire: those books would lose their only specific shelf.');
-      console.error('  Re-run the classification, or assign them by hand, then retire.\n');
+      console.error('  Re-run without --retire (it only sends these), or link them to a half');
+      console.error('  by hand. Books that are neither can be left to fold into Gothic: link');
+      console.error('  them to Gothic explicitly first, so that is a decision and not a side effect.\n');
       process.exit(1);
     }
-    console.log('\n  Every book is on at least one half. Retire with:');
-    console.log(`    select merge_genres('${compound.id}', '<the id of Gothic>');`);
-    console.log('  (merge_genres moves any remaining links, repoints books.genre, and deletes the row.)\n');
+
+    if (DRY_RUN) {
+      console.log(`\n  DRY RUN — would run merge_genres('${compound.id}', '${gothic.id}').\n`);
+      return;
+    }
+    // merge_genres moves any remaining links to Gothic, repoints books.genre,
+    // re-homes children, recounts and deletes the row. Service role only.
+    const { data: r, error } = await supabase.rpc('merge_genres', { _loser: compound.id, _winner: gothic.id });
+    if (error) { console.error(`  merge_genres failed: ${error.message}`); process.exit(1); }
+    const row = Array.isArray(r) ? r[0] : r;
+    console.log(`\n  Retired ${compound.name} into ${gothic.name}:`);
+    console.log(`    links moved ${row?.links_moved}, dropped ${row?.links_dropped}, ` +
+      `children re-homed ${row?.children_repointed}, books.genre repointed ${row?.books_rescalared}\n`);
     return;
   }
 

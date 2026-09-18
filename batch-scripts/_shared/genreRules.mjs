@@ -54,8 +54,12 @@ export const MAX_GENRES_PER_BOOK = 5;
 
 // Every target here must exist in public.genres, or the assignment is invisible
 // — the genre picker only offers names from that table, so no reader can select
-// it and no book filed under it can be found. assertNoGenreDrift() below is the
+// it and no book filed under it can be found. guardGenreDrift() below is the
 // guard; the scripts call it before writing anything.
+//
+// When a genre is RENAMED, MERGED or DELETED, check this table in the same
+// change. A new genre needs a rule only if the libraries have a reliable
+// subject heading for it; without one, the Oracle assigns it and that is fine.
 export const GENRE_RULES = [
   // ══ Specific subgenres — a named thing, rarely a coincidence ══════════════
   // ── Gothic ────────────────────────────────────────────────────────────────
@@ -79,7 +83,13 @@ export const GENRE_RULES = [
   // This is the failure mode the header of this file warns about: "A WRONG
   // GENRE IS WORSE THAN NO GENRE. It puts a book in front of exactly the reader
   // who did not ask for it."
-  ['Feminist & Sapphic Gothic',   /sapphic gothic|lesbian gothic|feminist gothic|queer gothic/i,             SPECIFIC],
+  //
+  // 2026-09-18 — the compound is split (splitCompoundGenre.mjs) and retired, so
+  // each half gets its own rule. "queer gothic" is dropped rather than moved:
+  // it does not say the book is sapphic, and a wrong shelf is worse than none.
+  // A queer gothic still scores Gothic, and LGBTQ+ Fiction on its other tags.
+  ['Feminist Gothic',             /feminist gothic/i,                                                        SPECIFIC],
+  ['Sapphic Gothic',              /sapphic gothic|lesbian gothic/i,                                          SPECIFIC],
   ['Classic & Older Gothic',      /classic gothic|victorian gothic|gothic revival/i,                         SPECIFIC],
   ['Haunted Houses',              /haunted house|haunted houses|ghost stor(y|ies)|haunting/i,                SPECIFIC],
   ['Dark Academia',               /dark academia|campus novel|academic thriller|boarding school/i,           SPECIFIC],
@@ -91,7 +101,7 @@ export const GENRE_RULES = [
   ['Techno-Horror',               /techno-horror|technological horror|machine horror/i,                      SPECIFIC],
   ['Indigenous Horror',           /indigenous horror|native american horror/i,                               SPECIFIC],
   ['Scandinavian Horror',         /nordic horror|scandinavian horror|swedish horror|norwegian horror/i,      SPECIFIC],
-  ['Japanese & East Asian Horror',/japanese horror|j-horror|korean horror/i,                                 SPECIFIC],
+  ['East Asian Horror',           /japanese horror|j-horror|korean horror/i,                                 SPECIFIC],
   ['Vampires',                    /vampire/i,                                                                SPECIFIC],
   ['Witches',                     /witch(es|craft)?\b/i,                                                     SPECIFIC],
   ['Zombies',                     /zombie|undead/i,                                                          SPECIFIC],
@@ -194,7 +204,7 @@ export const GENRE_RULES = [
 
   // ── Region and tradition ──────────────────────────────────────────────────
   ['East Asian Literary Fiction', /japanese (literature|fiction)|korean (literature|fiction)|chinese (literature|fiction)|east asian literature/i, SPECIFIC],
-  ['Irish Fiction',               /irish fiction|irish literature/i,                                         SPECIFIC],
+  ['Irish Literature',            /irish fiction|irish literature/i,                                         SPECIFIC],
   // Same reasoning as American Literature — "Spanish fiction" is a shelving
   // nationality, not a genre.
   ['Spanish Literature',          /spanish literature/i,                                                     SPECIFIC],
@@ -209,6 +219,9 @@ export const GENRE_RULES = [
 
   // ══ Real genres with some overlap ═════════════════════════════════════════
   ['Fantasy Romance',             /fantasy romance|romantasy|paranormal romance/i,                           MID],
+  // Anchored or qualified: bare "regency" also names hotels, a TV channel and
+  // the French Régence. Regency romance keeps scoring Historical Romance too.
+  ['Regency',                     /regency (romance|fiction|novels?|era|period|england)|^regency$/i,         SPECIFIC],
   ['Historical Romance',          /historical romance|regency romance/i,                                     MID],
   ['LGBTQ+ Romance',              /queer romance|gay romance|m\/m romance|f\/f romance|sapphic romance|lesbian romance/i, MID],
   // v0.63.2b — SPLIT BY STRENGTH, and this split is load-bearing.
@@ -234,12 +247,14 @@ export const GENRE_RULES = [
   // a book matching both simply scores higher.
   ['LGBTQ+ Fiction',              /sapphic|lesbian fiction|wlw/i,                                           SPECIFIC],
   ['LGBTQ+ Fiction',              /lgbt|gay fiction|queer fiction|transgender fiction/i,                     MID],
+  ['Cozy Mystery',                /cozy myster|cosy myster|cozy crime|cosy crime/i,                          SPECIFIC],
   ['Mystery',                     /mystery|detective|whodunit|amateur sleuth/i,                              MID],
   // "murder" on its own, 75 books. BROAD because it is genuinely ambiguous —
   // it sits on crime novels, but equally on literary fiction and horror where
   // a murder is the event rather than the puzzle. At BROAD any sharper rule
   // outranks it and it must appear early to score at all.
   ['Mystery',                     /^murder$/i,                                                               BROAD],
+  ['Political Thriller',          /political thriller|political suspense/i,                                  SPECIFIC],
   ['Thriller',                    /thriller/i,                                                               MID],
   ['Suspense',                    /suspense/i,                                                               MID],
   ['Psychological Fiction',       /psychological (fiction|thriller|suspense)|unreliable narrator/i,          MID],
@@ -274,10 +289,13 @@ export const GENRE_RULES = [
   // and Open Library tags translations heavily. It used to score on every work
   // ever published in another language.
   ['Classics',                    /classics|classic literature|classic fiction|early works to 1800/i,        BROAD],
-  ['Classic Literary Fiction',    /classic literary/i,                                                       BROAD],
+  // Targets below point at the genre a merged row was folded into. A rule that
+  // names a deleted genre drops its link silently and still writes the dead
+  // name into books.genre; if anything recreates the row, it fills straight back up.
+  ['Classics',                    /classic literary/i,                                                       BROAD],   // was Classic Literary Fiction, merged 2026-09-02
   ['Horror',                      /horror/i,                                                                 BROAD],
   ['Gothic',                      /gothic/i,                                                                 BROAD],
-  ['Supernatural',                /supernatural/i,                                                           BROAD],
+  ['Paranormal',                  /supernatural/i,                                                           BROAD],   // was Supernatural, merged 2026-09-02
   // "magic" alone appears on 167 books. BROAD, not MID, deliberately: it is
   // real evidence of fantasy but it also turns up on magical realism, stage
   // magic and children's picture books. At BROAD it needs to appear early to
@@ -361,6 +379,7 @@ export function rankGenres(subjects) {
   (subjects || []).forEach((subject, i) => {
     const positionWeight = i < 6 ? 3 : i < 15 ? 2 : 1;
     for (const [genre, pattern, specificity] of GENRE_RULES) {
+      if (disabledTargets.has(genre)) continue;
       if (!patternHits(pattern, subject)) continue;
       const prev = acc.get(genre) || { score: 0, spec: 0, firstPos: Infinity, hits: [] };
       prev.score += positionWeight * specificity;
@@ -436,7 +455,7 @@ export function withUmbrellas(genreNames, parentByName, limit = MAX_GENRES_PER_B
 // subjects nothing reads — the ranked list of those is what tells you which
 // rule to write next, rather than guessing at what the catalogue contains.
 export function ruleMatches(subject) {
-  return GENRE_RULES.some(([, pattern]) => patternHits(pattern, subject));
+  return GENRE_RULES.some(([genre, pattern]) => !disabledTargets.has(genre) && patternHits(pattern, subject));
 }
 
 // ── Drift guard ──────────────────────────────────────────────────────────────
@@ -447,8 +466,22 @@ export function ruleMatches(subject) {
 // be found. This has bitten before — four canonical names differed from the
 // real genre by word order alone and stranded ~114 books.
 //
-// Reported, not thrown. A stale rule should not stop the rest of the run.
+// findGenreDrift() only reports. guardGenreDrift() is what the scripts call:
+// it also switches the stale rules off for the rest of the process, so nothing
+// infers a dead name. Before this, a rule naming a merged genre dropped its
+// link silently and still wrote the dead name into books.genre — which is how
+// Supernatural survived its merge. The caller then fails the run (exit code 1)
+// after finishing the rest of its work: a stale rule should not stop
+// descriptions being backfilled, but it must not leave the nightly run green.
 export function findGenreDrift(knownNames) {
   const known = knownNames instanceof Set ? knownNames : new Set(knownNames);
   return [...new Set(GENRE_RULES.map(([name]) => name))].filter((n) => !known.has(n));
+}
+
+const disabledTargets = new Set();
+
+export function guardGenreDrift(knownNames) {
+  const missing = findGenreDrift(knownNames);
+  for (const name of missing) disabledTargets.add(name);
+  return missing;
 }
