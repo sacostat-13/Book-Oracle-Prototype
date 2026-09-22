@@ -57,6 +57,7 @@ import {
 import {
   fileURLToPath
 } from 'url';
+import { isPlaceholderGenre, normalizeGenreName } from '../../src/lib/genrePlaceholders.js';
 
 const __dirname = dirname(fileURLToPath(
   import.meta.url));
@@ -446,7 +447,7 @@ function buildPrompt(books, existingGenres) {
 
   const systemPrompt = `You are the Book Oracle, a literary curator. For each book return genres, series info, a description, complexity, depth, author gender, and the language the book was originally written in.
 
-GENRE RULES: Prefer existing catalog genres. Assign 2-5 per book: every specific genre that genuinely applies, PLUS the broad umbrella above it where one exists. A folk horror novel is \"Folk Horror\" AND \"Horror\"; a Faulkner is \"Southern Gothic\" AND \"Gothic\" AND \"Literary Fiction\". One reader browses the wide shelf and another the narrow one, and the book should be found by both. Do not pad — a genre that only loosely fits is worse than a missing one, because it puts the book in front of a reader who did not ask for it. Prefer a single clear concept over a compound name joined with \"&\": a book can carry several genres, so two ideas belong in two genres. Only invent when nothing in the catalog fits.
+GENRE RULES: Prefer existing catalog genres. Assign 2-5 per book: every specific genre that genuinely applies, PLUS the broad umbrella above it where one exists. A folk horror novel is \"Folk Horror\" AND \"Horror\"; a Faulkner is \"Southern Gothic\" AND \"Gothic\" AND \"Literary Fiction\". One reader browses the wide shelf and another the narrow one, and the book should be found by both. Do not pad — a genre that only loosely fits is worse than a missing one, because it puts the book in front of a reader who did not ask for it. Prefer a single clear concept over a compound name joined with \"&\": a book can carry several genres, so two ideas belong in two genres. Only invent when nothing in the catalog fits. If nothing fits and you cannot name a real genre, return an empty genres array — never a placeholder like \"unknown\", \"other\" or \"n/a\". \"unknown\" is an answer for AUTHOR GENDER and ORIGINAL LANGUAGE only.
 SERIES RULES: null for standalone books. "total" may be null for ongoing series.
 DESCRIPTION RULES: 2-4 sentences. Evocative, literary, informative. English only.
 COMPLEXITY RULES (prose difficulty, 1-5): 1=casual/page-turners, 2=mid-difficulty, 3=literary, 4=challenging (Faulkner, Han Kang), 5=experimental (Donoso, Lispector). Judge sentence structure/vocabulary/technique, not length or genre.
@@ -499,19 +500,24 @@ Return ONLY valid JSON.`;
 }
 
 // ── Write-back ────────────────────────────────────────────────────────────────
-// Genre name normaliser matching the DB's normalize_genre_name() function.
-function normalizeGenreName(name) {
-  return name.toLowerCase().replace(/[^a-z0-9]/g, '');
-}
+// Genre name normaliser — the shared copy, which matches the DB's
+// normalize_genre_name() INCLUDING the leading-"the " strip. The local copy
+// that lived here skipped that step, so "The Weird" would have been written
+// with normalized_name 'theweird' where the database (and every lookup) says
+// 'weird'.
 
 // upsert_genre RPC requires auth.uid() which is null with the service role key.
 // Instead we do a direct INSERT ... ON CONFLICT DO NOTHING and then SELECT.
 // The service role bypasses RLS so both operations work fine.
 async function resolveGenreId(name, genreCache) {
-  const trimmed = name.trim();
+  const trimmed = (name || '').trim();
   if (!trimmed || trimmed.length > 80) return null;
   const normalized = normalizeGenreName(trimmed);
   if (!normalized) return null;
+  // "unknown", "other", "n/a"… are not genres. The DB constraint would reject
+  // the insert anyway; dropping it here keeps the log clean and leaves the book
+  // in books_needing_genres for the next run instead of half-filed.
+  if (isPlaceholderGenre(trimmed)) return null;
 
   // Check local cache first (avoids redundant DB round-trips per batch)
   if (genreCache.has(normalized)) return genreCache.get(normalized);
@@ -804,7 +810,11 @@ async function main() {
         // legitimately sits under more of them. Still capped: without a limit
         // the model pads, and a book tagged with eight genres is as useless for
         // discovery as one tagged with none.
-        const genreNames = backfillOnly ? [] : (Array.isArray(item.genres) ? item.genres.slice(0, MAX_GENRES_PER_BOOK) : []);
+        // Placeholders are dropped BEFORE the cap, so an "unknown" neither takes a
+        // slot from a real genre nor reaches the in-run catalogue below.
+        const genreNames = backfillOnly ? [] : (Array.isArray(item.genres)
+          ? item.genres.filter((n) => typeof n === 'string' && !isPlaceholderGenre(n)).slice(0, MAX_GENRES_PER_BOOK)
+          : []);
         const genreIds = genreNames.length ?
           (await Promise.all(genreNames.map((n) => resolveGenreId(n, genreCache)))).filter(Boolean) :
           [];

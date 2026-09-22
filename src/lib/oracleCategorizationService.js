@@ -242,6 +242,7 @@ GENRE RULES:
 - When you do create a new genre, keep it specific and non-overlapping with anything already in the catalog. Prefer a single clear concept over a compound name joined with "&" — a book can carry several genres, so two ideas belong in two genres.
 - Assign 2-5 genres: the specific ones the book genuinely belongs to, PLUS the broad umbrella above them where one exists. A folk horror novel is "Folk Horror" AND "Horror"; a Le Guin novel is "Science Fiction" and likely "Literary Fiction" too. Both matter — one reader browses the wide shelf, another the narrow one, and the book should be found by both.
 - Do not pad. A genre that only loosely applies is worse than a missing one, because it puts the book in front of a reader who did not ask for it.
+- If nothing fits and you cannot name a real genre, return an empty genres array — never a placeholder like "unknown", "other" or "n/a". "unknown" is an answer for AUTHOR GENDER and ORIGINAL LANGUAGE only.
 
 SERIES RULES:
 - Return null for standalone books not part of any series.
