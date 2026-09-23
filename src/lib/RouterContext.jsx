@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
+import { navigateWithMorph } from './coverMorph';
 
 const RouterContext = createContext(null);
 
@@ -271,7 +272,11 @@ export function RouterProvider({ children }) {
 
   const go = useCallback((name, params = {}) => {
     writingRef.current = true;
-    setRouteState({ name, params });
+    // A Book Page opened from a cover morphs that cover into the page's hero
+    // (View Transitions; see coverMorph.js). Anything else: plain setState.
+    const morphed = navigateWithMorph(() => setRouteState({ name, params }), {
+      toBookPage: name === 'book-page',
+    });
 
     // Preserve ?lang=xx across navigations — I18nContext manages it
     // independently of route params, and buildPath() rebuilds the full
@@ -306,7 +311,7 @@ export function RouterProvider({ children }) {
       );
     }
 
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    if (!morphed) window.scrollTo({ top: 0, behavior: 'smooth' });
     setTimeout(() => { writingRef.current = false; }, 0);
   }, []);
 

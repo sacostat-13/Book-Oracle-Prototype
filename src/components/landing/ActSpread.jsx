@@ -20,6 +20,7 @@ import { useGSAP } from '@gsap/react';
 import { useT } from '../../lib/I18nContext';
 import OracleCard from './OracleCard';
 import { burstFromElement } from './burst';
+import { sceneBus } from './sceneBus';
 import { prefersReducedMotion } from './motion';
 
 gsap.registerPlugin(ScrollTrigger, useGSAP);
@@ -29,6 +30,10 @@ gsap.registerPlugin(ScrollTrigger, useGSAP);
 export const PIN_DEPTH_DESKTOP = 3.0;
 export const PIN_DEPTH_MOBILE = 2.2;
 export const IGNITE_PROGRESS = 0.45;
+// The gold thread waits until the card has been zoomed through — lighting it
+// at the reveal drew a stray line across the card face. It now starts as the
+// "beyond" copy hands off to Act II.
+export const THREAD_IGNITE_PROGRESS = 0.88;
 
 const CARD_COUNT = 5;
 const CHOSEN = 2; // center card of the fan
@@ -134,6 +139,7 @@ export default function ActSpread() {
               invalidateOnRefresh: true,
               onUpdate: (self) => {
                 const p = self.progress;
+                sceneBus.progress = p; // the WebGL sky, if it loaded, follows along
                 // Breathing while the spread is "in hand"; still through the zoom.
                 if (p < IGNITE_PROGRESS) idle.forEach((tw) => tw.play());
                 else idle.forEach((tw) => tw.pause());
@@ -141,6 +147,7 @@ export default function ActSpread() {
                 if (p >= IGNITE_PROGRESS && !hasBurst) {
                   hasBurst = true;
                   burstFromElement(flipperRef.current);
+                  sceneBus.burstAt = performance.now();
                 }
                 if (p < 0.05) hasBurst = false;
               },
