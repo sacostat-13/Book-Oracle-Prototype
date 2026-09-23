@@ -209,7 +209,7 @@ Return ONLY valid JSON in this exact format:
 
       <div>
         {loading ? (
-          <BookLoader text={t('oracle.askAsking')} />
+          <BookLoader text={t('oracle.askAsking')} spread />
         ) : results ? (
           <>
             <h2 className="oracle-results-title">

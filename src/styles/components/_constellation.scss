@@ -1,0 +1,132 @@
+// components/_constellation.scss — "Your reading sky" (ReaderConstellation.jsx)
+// three.js-motion experiment. Token-only, follows both themes: the stars and
+// thread are drawn in the scene from --ro-gold; the panel is a surface.
+
+.rc {
+  margin: var(--ro-space-4) 0;
+  padding: 20px 22px;
+  border-radius: var(--ro-radius-md, 10px);
+  background: var(--ro-surface-2);
+}
+
+.rc__title {
+  margin: 0 0 8px;
+  font-family: var(--ro-font-display);
+  font-size: 24px;
+  font-weight: 400;
+  color: var(--ro-text);
+}
+
+.rc__lead {
+  margin: 0 0 14px;
+  max-width: 68ch;
+  color: var(--ro-text-2);
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.rc__sky {
+  position: relative;
+  height: 0;
+  border-radius: var(--ro-radius-md, 10px);
+  overflow: hidden;
+  background:
+    radial-gradient(ellipse at 50% 45%, color-mix(in srgb, var(--ro-gold) 10%, transparent), transparent 65%),
+    var(--ro-bg-deep, var(--ro-bg));
+  transition: height .8s cubic-bezier(.2, .7, .2, 1);
+
+  &.is-live { height: 440px; }
+
+  @media (max-width: 640px) {
+    &.is-live { height: 340px; }
+  }
+}
+
+.rc__canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  cursor: grab;
+  touch-action: pan-y;
+}
+
+.rc__labels {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.rc__label {
+  position: absolute;
+  left: 0;
+  top: 0;
+  opacity: 0;
+  white-space: nowrap;
+  font-family: var(--ro-font-display);
+  font-style: italic;
+  font-size: 13px;
+  color: var(--ro-gold-text);
+  text-shadow: 0 1px 6px var(--ro-bg-deep, var(--ro-bg));
+  will-change: transform;
+}
+
+.rc__tip {
+  position: absolute;
+  z-index: 2;
+  transform: translate(14px, -50%);
+  display: grid;
+  gap: 2px;
+  max-width: 260px;
+  padding: 10px 12px;
+  border: 1px solid var(--ro-border);
+  border-radius: var(--ro-radius-sm, 6px);
+  background: var(--ro-surface);
+  box-shadow: var(--ro-shadow);
+  font-size: 13px;
+  color: var(--ro-text-2);
+  pointer-events: auto;
+}
+
+.rc__tip-title {
+  font-family: var(--ro-font-display);
+  font-size: 16px;
+  font-style: italic;
+  color: var(--ro-text);
+}
+
+.rc__tip-author { color: var(--ro-text-2); }
+.rc__tip-meta { color: var(--ro-muted); font-size: 12px; }
+
+.rc__tip-open {
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--ro-gold-text);
+  text-decoration: none;
+
+  &:hover { text-decoration: underline; }
+}
+
+.rc__legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 14px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.rc__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 11px;
+  border: 1px solid var(--ro-border);
+  border-radius: var(--ro-radius-pill, 999px);
+  font-size: 13px;
+  color: var(--ro-text-2);
+  text-decoration: none;
+
+  b { font-weight: 600; color: var(--ro-gold-text); }
+}
+
+a.rc__chip:hover { border-color: var(--ro-gold); color: var(--ro-text); }

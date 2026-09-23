@@ -20,6 +20,7 @@ import { useGSAP } from '@gsap/react';
 import { useT } from '../../lib/I18nContext';
 import OracleCard from './OracleCard';
 import { burstFromElement } from './burst';
+import { sceneBus } from './sceneBus';
 import { prefersReducedMotion } from './motion';
 
 gsap.registerPlugin(ScrollTrigger, useGSAP);
@@ -134,6 +135,7 @@ export default function ActSpread() {
               invalidateOnRefresh: true,
               onUpdate: (self) => {
                 const p = self.progress;
+                sceneBus.progress = p; // the WebGL sky, if it loaded, follows along
                 // Breathing while the spread is "in hand"; still through the zoom.
                 if (p < IGNITE_PROGRESS) idle.forEach((tw) => tw.play());
                 else idle.forEach((tw) => tw.pause());
@@ -141,6 +143,7 @@ export default function ActSpread() {
                 if (p >= IGNITE_PROGRESS && !hasBurst) {
                   hasBurst = true;
                   burstFromElement(flipperRef.current);
+                  sceneBus.burstAt = performance.now();
                 }
                 if (p < 0.05) hasBurst = false;
               },

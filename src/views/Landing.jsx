@@ -23,6 +23,7 @@ import LandingNav from '../components/LandingNav';
 import LandingFooter from '../components/LandingFooter';
 import SignInGate from '../components/SignInGate';
 import GoldThread from '../components/landing/GoldThread';
+import StarField from '../components/landing/StarField';
 import ActSpread from '../components/landing/ActSpread';
 import RiteSuggestion from '../components/landing/RiteSuggestion';
 import RitePath from '../components/landing/RitePath';
@@ -152,6 +153,8 @@ export default function Landing() {
 
   return (
     <div className="lps-root">
+      {/* Optional WebGL sky behind Act I — see StarField for the fallback rules. */}
+      <StarField fadeRef={rite1Ref} />
       <GoldThread anchors={threadAnchors} />
       {/* The logo mark follows the palette the visitor picked, not the page —
           `dark` used to be hardcoded true because the story was ink-only. */}

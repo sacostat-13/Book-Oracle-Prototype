@@ -804,7 +804,13 @@
     "curatorRequestPending": "Solicitud enviada — te contactaremos.",
     "curatorRequestGranted": "Eres curador.",
     "curatorRequestDenied": "Esta solicitud no fue concedida.",
-    "tabLedger": "La Bitácora"
+    "tabLedger": "La Bitácora",
+    "constellationTitle": "Tu cielo de lectura",
+    "constellationHint": "Cada estrella es un libro que terminaste, agrupado por familia de géneros — cuanto más brilla, más reciente. El hilo dorado sigue tus últimas {n} lecturas, en orden. Arrastrá para girar el cielo; pasá sobre una estrella para ver su libro.",
+    "constellationEmpty": "Terminá algunos libros más y tu cielo va a empezar a llenarse.",
+    "constellationUncharted": "Sin cartografiar",
+    "constellationRead": "leído el {date}",
+    "constellationOpen": "Abrir libro →"
   },
   "onboarding": {
     "step1Eyebrow": "Paso 2 de 6 · Perfil lector",
@@ -1446,7 +1452,9 @@
     "more": "más",
     "goHome": "Ir al inicio",
     "legal": "Legal",
-    "search": "Buscar"
+    "search": "Buscar",
+    "loaderShelf": "Del estante de {genre}",
+    "oracleWaitHint": "El Oráculo está barajando tu estante — mové las cartas mientras esperás"
   },
   "about": {
     "breadcrumb": "Inicio",

@@ -245,6 +245,26 @@ body.theme-parchment .lps-root {
   &.is-static &__path { opacity: 0.15; filter: none; }
 }
 
+// ── The WebGL sky (optional — StarField.jsx) ─────────────────────────────────
+// A fixed canvas under everything in the story. `isolation` makes .lps-root a
+// stacking context so the canvas can sit at z-index -1: above the root's own
+// ink background, below every section's content. Without it a positioned
+// canvas would paint over the in-flow Act II copy.
+.lps-root { isolation: isolate; }
+
+.lps-starfield {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100vh;
+  z-index: -1;
+  pointer-events: none;
+  display: block;
+}
+
+// The GPU dust replaces the DOM motes only once the scene is actually running.
+.lps-root.lps-has-gl .lps-dust { display: none; }
+
 // ══ Act I — The Spread (pinned theater) ══════════════════════════════════════
 .lps-theater { position: relative; z-index: 2; }
 

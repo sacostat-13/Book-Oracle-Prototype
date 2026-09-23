@@ -804,7 +804,13 @@
     "curatorRequestPending": "Request sent — we'll be in touch.",
     "curatorRequestGranted": "You're a curator.",
     "curatorRequestDenied": "This request wasn't granted.",
-    "tabLedger": "The Ledger"
+    "tabLedger": "The Ledger",
+    "constellationTitle": "Your reading sky",
+    "constellationHint": "Every star is a book you have finished, gathered by genre family — the brighter, the more recent. The gold thread follows your last {n} reads, in order. Drag to turn the sky; hover a star to see its book.",
+    "constellationEmpty": "Finish a few more books and your sky will start to fill in.",
+    "constellationUncharted": "Uncharted",
+    "constellationRead": "read {date}",
+    "constellationOpen": "Open book →"
   },
   "onboarding": {
     "step1Eyebrow": "Step 2 of 6 · Reader profile",
@@ -1446,7 +1452,9 @@
     "more": "more",
     "goHome": "Go home",
     "legal": "Legal",
-    "search": "Search"
+    "search": "Search",
+    "loaderShelf": "From the shelf of {genre}",
+    "oracleWaitHint": "The Oracle is shuffling your shelf — drag the cards while you wait"
   },
   "about": {
     "breadcrumb": "Dashboard",
