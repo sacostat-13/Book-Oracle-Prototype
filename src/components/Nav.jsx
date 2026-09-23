@@ -102,7 +102,7 @@ function NotifItem({ n, t, onClose, go, markOneRead, onAnnouncement }) {
 
 // ── Main component ─────────────────────────────────────────────────────────────
 export default function Nav({ onPreviewBook, guestMode = false }) {
-  const { state, markReleasesSeen } = useData();
+  const { state, markReleasesSeen, dataHydrated } = useData();
   const { route, go } = useRouter();
   const { user, signInWithGoogle, signOut } = useAuth();
   const { lang, toggleLang, t, tNode } = useI18n();
@@ -180,9 +180,15 @@ export default function Nav({ onPreviewBook, guestMode = false }) {
   // Runs on the state that arrives asynchronously from the profile, not on
   // mount, because lastSeenVersion is null on the first render of every
   // session. The ref keeps it to a single decision.
+  //
+  // v0.71.2: and only once that state IS the profile. On public routes Nav
+  // mounts while DataContext is still loading, with `state` booted from
+  // localStorage — a book page opened in a new tab read a stale
+  // lastSeenVersion from there, announced, and the mark was then overwritten
+  // by the Supabase load before it could persist. Every new tab, again.
   useEffect(() => {
     if (announceChecked.current) return;
-    if (guestMode || !user || !state.onboarded) return;
+    if (guestMode || !user || !dataHydrated || !state.onboarded) return;
     const release = currentRelease();
     if (!release?.major) return;
     const devReplay = import.meta.env.DEV && devReplayNonce > 0;
@@ -193,7 +199,7 @@ export default function Nav({ onPreviewBook, guestMode = false }) {
     // The dev replay deliberately does not mark it seen, so ?whatsnew=reset
     // stays repeatable instead of being a one-shot you have to undo in SQL.
     if (!devReplay) markReleasesSeen();
-  }, [guestMode, user, state.onboarded, state.lastSeenVersion, markReleasesSeen, devReplayNonce]);
+  }, [guestMode, user, dataHydrated, state.onboarded, state.lastSeenVersion, markReleasesSeen, devReplayNonce]);
 
   function takeAnnouncementCta() {
     const action = currentRelease()?.ctaAction;

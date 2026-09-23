@@ -928,7 +928,10 @@ async function loadFromSupabase(userId) {
 }
 
 async function savePreferences(userId, state) {
-  await supabase
+  // v0.71.2: supabase-js resolves with { error } instead of throwing, so the
+  // .catch() at the call site never saw a refused write (RLS, a trigger, a
+  // missing column). Throw it so it reaches the console.
+  const { error } = await supabase
     .from('profiles')
     .update({
       preferences: {
@@ -963,6 +966,7 @@ async function savePreferences(userId, state) {
       updated_at: new Date().toISOString(),
     })
     .eq('id', userId);
+  if (error) throw error;
 }
 
 export function DataProvider({ children }) {
@@ -985,6 +989,14 @@ export function DataProvider({ children }) {
   // True once we have real Supabase data (not just cache or localStorage).
   // Prevents the persist effect from overwriting localStorage with stale data.
   const supabaseLoadedRef = useRef(false);
+  // v0.71.2: the same fact as supabaseLoadedRef, but as state and keyed to the
+  // user, so components can wait on it. `loading` is not enough: it starts
+  // false and is only flipped by this provider's load effect, which runs AFTER
+  // its children's effects in the same commit. Public routes (book-page,
+  // list-view, plan-view…) mount Nav for a signed-in reader before the load
+  // resolves, so anything deciding on `state` there was reading the
+  // localStorage snapshot, not the reader's profile.
+  const [hydratedUserId, setHydratedUserId] = useState(null);
   // v0.45: guards the one-time accomplishments backfill against re-running
   // within a session (belt-and-braces on top of the persisted stamp).
   const backfillRanRef = useRef(false);
@@ -1018,6 +1030,7 @@ export function DataProvider({ children }) {
             supabaseLoadedRef.current = true; // treat cache as authoritative
             catalogVersionRef.current = cached.catalogVersion;
             setState(merged);
+            setHydratedUserId(user.id);
             loadedUserIdRef.current = user.id;
             setLoading(false);
           }
@@ -1089,6 +1102,7 @@ export function DataProvider({ children }) {
               setState(remote);
               saveSessionCache(user.id, remote);
               loadedUserIdRef.current = user.id;
+              setHydratedUserId(user.id);
             }
           } catch (e) {
             // Deliberately does NOT set supabaseLoadedRef, so the persist effect
@@ -3482,6 +3496,9 @@ export function DataProvider({ children }) {
     // v0.46: "what's new" seen-marker
     lastSeenVersion: state.lastSeenVersion || null,
     markReleasesSeen,
+    // v0.71.2: true once `state` is this reader's real data (session cache or
+    // Supabase), never the localStorage snapshot it boots from.
+    dataHydrated: !!user && hydratedUserId === user.id,
     importGoodreads,
     bulkAddToLibrary,
     bulkAddToWishlist,
