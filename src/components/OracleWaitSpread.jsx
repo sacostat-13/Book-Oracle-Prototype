@@ -1,55 +1,32 @@
 // src/components/OracleWaitSpread.jsx
 //
-// The long-wait toy for Oracle calls. BookLoader renders this when a caller
-// passes `spread` (OracleAsk, OracleCategories, OracleSimilar). For the first
-// few seconds nothing changes — most Oracle calls land before it matters.
-// Past SHOW_AFTER_MS the book mark gives way to a ring of cards from the
-// reader's own shelf (see oracleSpread/scene.js) that they can spin and turn.
+// The long-wait ritual for Oracle calls. BookLoader renders this when a
+// caller passes `spread` (OracleAsk, OracleCategories, OracleSimilar). For the
+// first few seconds nothing changes — most Oracle calls land before it
+// matters. Past `showAfterMs` the loader gives way to a tarot spread under a
+// sky of stars that choose a card, every ~12 s (see oracleSpread/scene.js),
+// with a line explaining why the screen changed: the Oracle is taking longer.
 //
-// The three.js chunk is fetched halfway through the delay, so it is already
-// in cache by the time the spread appears, and never fetched at all for a
-// quick answer. No WebGL (or reduced motion, Save-Data…) → quotes only, as
-// before.
-import { useContext, useEffect, useRef, useState } from 'react';
-import { DataContext } from '../lib/DataContext';
+// The three.js chunk is fetched halfway through the delay, so it is in cache
+// by the time the spread appears, and never fetched at all for a quick
+// answer. No WebGL (or reduced motion, Save-Data…) → the quote loader only.
+import { useEffect, useRef, useState } from 'react';
 import { useT } from '../lib/I18nContext';
 import { canUseWebGL, readColorVar, isParchment } from '../lib/webgl';
 
 const SHOW_AFTER_MS = 8000;
+const SIGILS = ['✧', '☾', '⚜', '❦', '✦', '☼', '❧'];
 
 function toHex([r, g, b]) {
   const h = (n) => Math.round(n * 255).toString(16).padStart(2, '0');
   return `#${h(r)}${h(g)}${h(b)}`;
 }
 
-// Books with covers first, then the rest; shuffled so repeat waits differ.
-function pickBooks(state) {
-  if (!state) return [];
-  const all = [
-    ...(state.currentlyReading || []).map((c) => c?.book || c),
-    ...(state.library || []),
-    ...(state.readNext || []),
-    ...(state.wishlist || []),
-  ].filter((b) => b?.t);
-  const seen = new Set();
-  const uniq = all.filter((b) => {
-    const k = `${b.t}|${b.a}`.toLowerCase();
-    if (seen.has(k)) return false;
-    seen.add(k);
-    return true;
-  });
-  const shuffled = uniq.sort(() => Math.random() - 0.5);
-  const withCover = shuffled.filter((b) => b.coverUrl);
-  const without = shuffled.filter((b) => !b.coverUrl);
-  return [...withCover, ...without].slice(0, 12);
-}
-
 export default function OracleWaitSpread({ onActive, showAfterMs = SHOW_AFTER_MS }) {
   const t = useT();
-  const data = useContext(DataContext);
+  const tRef = useRef(t);
+  tRef.current = t;
   const hostRef = useRef(null);
-  const stateRef = useRef(data?.state);
-  stateRef.current = data?.state;
   const onActiveRef = useRef(onActive);
   onActiveRef.current = onActive;
   const [on, setOn] = useState(false);
@@ -67,14 +44,14 @@ export default function OracleWaitSpread({ onActive, showAfterMs = SHOW_AFTER_MS
       (chunk || import('./oracleSpread/scene'))
         .then(({ createSpreadScene }) => {
           if (disposed || !hostRef.current) return;
-          const parchment = isParchment();
           api = createSpreadScene(hostRef.current, {
-            books: pickBooks(stateRef.current),
             mobile: window.innerWidth <= 640,
+            faces: SIGILS.map((sigil, i) => ({ sigil, name: tRef.current(`common.oracleArcana${i + 1}`) })),
             colors: {
               gold: toHex(readColorVar('--ro-gold')),
               ink: toHex(readColorVar('--ro-surface', document.body, [0.08, 0.07, 0.05])),
-              parchment,
+              text: toHex(readColorVar('--ro-text', document.body, [0.91, 0.87, 0.79])),
+              parchment: isParchment(),
             },
           });
           if (api) {
@@ -93,8 +70,8 @@ export default function OracleWaitSpread({ onActive, showAfterMs = SHOW_AFTER_MS
   }, [showAfterMs]);
 
   return (
-    <div className={`ows${on ? ' is-on' : ''}`} aria-hidden="true">
-      <div className="ows__stage" ref={hostRef} />
+    <div className={`ows${on ? ' is-on' : ''}`}>
+      <div className="ows__stage" ref={hostRef} aria-hidden="true" />
       {on && <p className="ows__hint">{t('common.oracleWaitHint')}</p>}
     </div>
   );

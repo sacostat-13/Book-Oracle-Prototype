@@ -2,7 +2,7 @@
 //
 // Lazy chunk (the only place on the landing that imports three). Rendered on a
 // fixed canvas BEHIND the story; the DOM cards, copy and gold thread all stay
-// on top and unchanged. Four draw calls:
+// on top and unchanged. Three draw calls:
 //
 //   DUST   — gold motes filling a long corridor of space. Scroll-driven:
 //            they gather and swirl toward the cards during the consideration,
@@ -10,12 +10,10 @@
 //            flies through them in the threshold — streak past as parallax.
 //            Scroll velocity also turns the whole vortex a little.
 //
-//   BOOKS  — real 3D volumes (instanced boxes: leather boards, gilt spine,
-//            cream page edges), tumbling slowly along the corridor beyond the
-//            card. As the camera reaches each one it shrinks away…
-//
-//   STARS  — …and a star is born where it was, rising to its place in the sky
-//            ahead. By the end of Act I every book is a star.
+//   STARS  — sparks born along the corridor beyond the card as the camera
+//            passes, each rising to its place in the sky ahead. By the end
+//            of Act I the whole sky is lit. (Round 2 tried 3D books here that
+//            turned into stars; they made the page look worse and were cut.)
 //
 //   LINES  — a few of those stars are joined into constellations. When Act II
 //            scrolls in the corridor and dust go, but the sky stays behind the
@@ -23,8 +21,8 @@
 //            stars faint, drifting slowly with the scroll.
 //
 // Progress beats (from ActSpread, via sceneBus):
-//   0.10–0.45 gather · 0.45 burst · 0.50–0.62 books appear · 0.50–0.92 fly ·
-//   0.86–0.96 all remaining books become stars · 0.93–1.0 constellations.
+//   0.10–0.45 gather · 0.45 burst · 0.50–0.92 fly (stars born as passed) ·
+//   0.86–0.96 every remaining star lit · 0.93–1.0 constellations.
 import {
   WebGLRenderer,
   Scene,
@@ -38,11 +36,6 @@ import {
   LineSegments,
   LineBasicMaterial,
   Color,
-  Vector3,
-  Mesh,
-  BoxGeometry,
-  InstancedBufferGeometry,
-  InstancedBufferAttribute,
 } from 'three';
 import { sceneBus } from '../sceneBus';
 import { readRgbVar, isParchment, onThemeChange, hasHover } from './util';
@@ -117,91 +110,9 @@ const DUST_FRAG = /* glsl */ `
   }
 `;
 
-// ── 3D books ──────────────────────────────────────────────────────────────
-// One instanced box per book: x = thickness, y = height, z = cover width.
-// ±x faces are the covers, −z the spine, +z the fore-edge, ±y the page tops.
-// Every face is shaded in the fragment shader from its object-space normal,
-// so a single draw call gives leather boards with a gilt frame, a banded
-// spine, and cream page edges — and the slow tumble shows all of them.
-const BOOK_VERT = /* glsl */ `
-  uniform float uTime, uCamZ, uForce, uBookIn;
-  attribute vec3 aBook;
-  attribute vec4 aRand;   // size, phase, tilt, spin
-  attribute vec3 aColor;
-  varying vec3 vN;        // object-space normal (face id)
-  varying vec3 vWN;       // world-space normal (lighting)
-  varying vec2 vUv;
-  varying vec3 vColor;
-
-  mat3 rotY(float a) { float c = cos(a), s = sin(a); return mat3(c, 0., -s, 0., 1., 0., s, 0., c); }
-  mat3 rotZ(float a) { float c = cos(a), s = sin(a); return mat3(c, s, 0., -s, c, 0., 0., 0., 1.); }
-  mat3 rotX(float a) { float c = cos(a), s = sin(a); return mat3(1., 0., 0., 0., c, s, 0., -s, c); }
-
-  void main() {
-    float passed = smoothstep(aBook.z + 7.0, aBook.z + 0.5, uCamZ);
-    float m = max(passed, uForce);
-    // The book shrinks away as its star is born (see STAR_VERT).
-    float grow = smoothstep(aRand.y * 0.35, aRand.y * 0.35 + 0.65, uBookIn);
-    float depth = aBook.z - uCamZ;           // negative = ahead of camera
-    float far = 1.0 - smoothstep(18.0, 34.0, -depth);
-    float s = (0.85 + aRand.x * 0.4) * grow * far * (1.0 - smoothstep(0.0, 0.55, m));
-
-    // Spine toward the reader, then a slow individual tumble.
-    float spin = 3.14159 + aRand.z * 1.2 + uTime * (aRand.w - 0.5) * 0.5;
-    mat3 R = rotY(spin) * rotZ(aRand.z * 0.5) * rotX(sin(uTime * 0.4 + aRand.y * 6.28) * 0.12);
-
-    vec3 p = aBook + R * (position * s);
-    p.y += sin(uTime * 0.6 + aRand.y * 6.28) * 0.08;
-    vN = normal;
-    vWN = R * normal;
-    vUv = uv;
-    vColor = aColor;
-    gl_Position = projectionMatrix * modelViewMatrix * vec4(p, 1.0);
-  }
-`;
-
-const BOOK_FRAG = /* glsl */ `
-  uniform vec3 uGold, uPaper, uLight;
-  uniform float uAmbient;
-  varying vec3 vN;
-  varying vec3 vWN;
-  varying vec2 vUv;
-  varying vec3 vColor;
-
-  float line(float x, float at, float w) { return smoothstep(w, 0.0, abs(x - at)); }
-
-  void main() {
-    vec3 n = normalize(vN);
-    vec3 col = vColor;
-    if (abs(n.x) > 0.5) {
-      // Cover: leather with a gilt frame inset from the edge.
-      vec2 q = abs(vUv - 0.5);
-      float frame = line(max(q.x, q.y * 0.72), 0.40, 0.012) + line(max(q.x, q.y * 0.72), 0.36, 0.008);
-      col = mix(col, uGold, clamp(frame, 0.0, 1.0) * 0.9);
-    } else if (n.z < -0.5) {
-      // Spine: banded, with a title plate.
-      float bands = line(vUv.y, 0.13, 0.012) + line(vUv.y, 0.18, 0.008)
-                  + line(vUv.y, 0.87, 0.012) + line(vUv.y, 0.82, 0.008);
-      float plate = step(abs(vUv.y - 0.58), 0.09) * step(abs(vUv.x - 0.5), 0.3);
-      col = mix(col, uGold, clamp(bands + plate * 0.55, 0.0, 1.0));
-      col *= 0.8 + 0.35 * (1.0 - pow(abs(vUv.x - 0.5) * 2.0, 2.0)); // rounded spine
-    } else {
-      // Page edges (fore-edge and top/bottom): cream, finely ruled, framed
-      // by the thin edge of each board.
-      float across = vUv.x; // runs across the thickness on every page face
-      float board = step(across, 0.09) + step(0.91, across);
-      float leaves = 0.93 + 0.07 * sin(across * 140.0);
-      col = mix(uPaper * leaves, vColor, clamp(board, 0.0, 1.0));
-    }
-    float diff = max(dot(normalize(vWN), normalize(uLight)), 0.0);
-    col *= uAmbient + 0.75 * diff;
-    gl_FragColor = vec4(col, 1.0);
-  }
-`;
-
-// ── Stars (one per book) ────────────────────────────────────────────────────
-// Born where the book was, as it shrinks, then rising to its place in the
-// sky. aConst marks the constellation members that stay bright behind the
+// ── Stars ─────────────────────────────────────────────────────────────────
+// Each is born as a spark along the corridor as the camera passes, then
+// rises to its place in the sky. aConst marks the constellation members that stay bright behind the
 // Rites once the rest of the sky has dimmed.
 const STAR_VERT = /* glsl */ `
   uniform float uTime, uCamZ, uForce, uScale, uOpacity, uAfter;
@@ -220,7 +131,9 @@ const STAR_VERT = /* glsl */ `
     vec4 mv = modelViewMatrix * vec4(p, 1.0);
     gl_Position = projectionMatrix * mv;
     float depth = max(-mv.z, 0.1);
-    gl_PointSize = min((0.45 + aRand.x * 1.1) * uScale / depth, 160.0);
+    // Capped small while a spark is still close to the camera, so a freshly
+    // born star reads as a spark, not a lens flare.
+    gl_PointSize = min((0.45 + aRand.x * 1.1) * uScale / depth, mix(14.0, 160.0, e));
 
     float tw = 0.72 + 0.28 * sin(uTime * (0.6 + aRand.w * 1.8) + aRand.y * 30.0);
     float birth = smoothstep(0.2, 0.6, m);
@@ -243,11 +156,6 @@ const STAR_FRAG = /* glsl */ `
     gl_FragColor = vec4(mix(uGold, uStarCore, core * 0.7), a);
   }
 `;
-
-// Leather bindings. Dark on ink so the gilt catches the light — the
-// dark-academia shelf.
-const LEATHER_INK = ['#6e2a2c', '#2a4a38', '#283656', '#7d5827', '#4a2d46', '#3a3530', '#5c4228'];
-const LEATHER_PARCHMENT = ['#7a2e2e', '#2f5641', '#2c3b5e', '#8a6428', '#553150', '#4b3b2a', '#6a4a2a'];
 
 export function createStarScene(canvas, { mobile = false } = {}) {
   let renderer;
@@ -302,13 +210,12 @@ export function createStarScene(canvas, { mobile = false } = {}) {
   dust.frustumCulled = false;
   scene.add(dust);
 
-  // ── Books → stars ───────────────────────────────────────────────────────
-  const BOOKS = mobile ? 160 : 320;
-  const bPos = new Float32Array(BOOKS * 3);
-  const bStar = new Float32Array(BOOKS * 3);
-  const bRand = new Float32Array(BOOKS * 4);
-  const bColor = new Float32Array(BOOKS * 3);
-  const bConst = new Float32Array(BOOKS);
+  // ── Stars ───────────────────────────────────────────────────────
+  const STARS = mobile ? 160 : 320;
+  const bPos = new Float32Array(STARS * 3);
+  const bStar = new Float32Array(STARS * 3);
+  const bRand = new Float32Array(STARS * 4);
+  const bConst = new Float32Array(STARS);
 
   // Sky: a wide shell ahead of where the camera stops. A handful of
   // constellations get tight clusters; everything else is scattered.
@@ -322,7 +229,7 @@ export function createStarScene(canvas, { mobile = false } = {}) {
     constellations.push({ cx: Math.cos(a) * rr * 1.5, cy: Math.sin(a) * rr * 0.8, members: [] });
   }
 
-  for (let i = 0; i < BOOKS; i++) {
+  for (let i = 0; i < STARS; i++) {
     // Corridor walls: a ring around the flight path, clear of the centre so
     // the card and the "beyond" copy keep the middle of the frame.
     const theta = rand() * Math.PI * 2;
@@ -350,37 +257,7 @@ export function createStarScene(canvas, { mobile = false } = {}) {
     bRand[i * 4 + 3] = rand();
   }
 
-  // The books: one instanced box, positioned and shaded in BOOK_VERT/FRAG.
-  const box = new BoxGeometry(0.24, 1.1, 0.76);
-  const bookGeo = new InstancedBufferGeometry();
-  bookGeo.index = box.index;
-  bookGeo.setAttribute('position', box.getAttribute('position'));
-  bookGeo.setAttribute('normal', box.getAttribute('normal'));
-  bookGeo.setAttribute('uv', box.getAttribute('uv'));
-  bookGeo.setAttribute('aBook', new InstancedBufferAttribute(bPos, 3));
-  bookGeo.setAttribute('aRand', new InstancedBufferAttribute(bRand, 4));
-  const colorAttr = new InstancedBufferAttribute(bColor, 3);
-  bookGeo.setAttribute('aColor', colorAttr);
-  bookGeo.instanceCount = BOOKS;
-  const bookMat = new ShaderMaterial({
-    vertexShader: BOOK_VERT,
-    fragmentShader: BOOK_FRAG,
-    uniforms: {
-      uTime: { value: 0 },
-      uCamZ: { value: CAM_START },
-      uForce: { value: 0 },
-      uBookIn: { value: 0 },
-      uGold: { value: new Color() },
-      uPaper: { value: new Color() },
-      uLight: { value: new Vector3(0.45, 0.65, 0.75) },
-      uAmbient: { value: 0.42 },
-    },
-  });
-  const books = new Mesh(bookGeo, bookMat);
-  books.frustumCulled = false;
-  scene.add(books);
-
-  // The stars the books become.
+  // The stars, born along the corridor.
   const starGeo = new BufferGeometry();
   starGeo.setAttribute('position', new BufferAttribute(bPos, 3));
   starGeo.setAttribute('aStar', new BufferAttribute(bStar, 3));
@@ -441,25 +318,9 @@ export function createStarScene(canvas, { mobile = false } = {}) {
     dustMat.uniforms.uColor.value.setRGB(...gold);
     dustMat.blending = parchment ? NormalBlending : AdditiveBlending;
     dustMat.needsUpdate = true;
-    // Gilt stays the bright gold in both palettes — it is metal, not ink.
-    bookMat.uniforms.uGold.value.setRGB(...readRgbVar('--lps-glow-rgb'));
-    bookMat.uniforms.uPaper.value.set(parchment ? '#f3ead2' : '#d9ccae');
-    // Daylight on parchment: lift the shadows so the books read as leather,
-    // not silhouettes.
-    bookMat.uniforms.uAmbient.value = parchment ? 0.72 : 0.42;
     starMat.uniforms.uGold.value.setRGB(...gold);
     starMat.uniforms.uStarCore.value.set(parchment ? '#5a4214' : '#fff6dc');
     lineMat.color.setRGB(...gold);
-    const leather = parchment ? LEATHER_PARCHMENT : LEATHER_INK;
-    const tmp = new Color();
-    const r2 = rng(7);
-    for (let i = 0; i < BOOKS; i++) {
-      tmp.set(leather[Math.floor(r2() * leather.length)]);
-      bColor[i * 3] = tmp.r;
-      bColor[i * 3 + 1] = tmp.g;
-      bColor[i * 3 + 2] = tmp.b;
-    }
-    colorAttr.needsUpdate = true;
     themeScale = parchment ? 0.85 : 1;
   }
   applyTheme();
@@ -556,17 +417,10 @@ export function createStarScene(canvas, { mobile = false } = {}) {
     du.uSpin.value = spin;
     du.uOpacity.value = vis * (0.9 - 0.35 * smooth(0.9, 1, p)) * (1 - after);
 
-    const bu = bookMat.uniforms;
-    bu.uTime.value = time;
-    bu.uCamZ.value = camZ;
-    bu.uForce.value = smooth(0.86, 0.96, p);
-    bu.uBookIn.value = smooth(0.5, 0.62, p);
-    books.visible = p > 0.49 && p < 0.99;
-
     const su = starMat.uniforms;
     su.uTime.value = time;
     su.uCamZ.value = camZ;
-    su.uForce.value = bu.uForce.value;
+    su.uForce.value = smooth(0.86, 0.96, p);
     su.uOpacity.value = vis;
     su.uAfter.value = after;
 
@@ -606,7 +460,7 @@ export function createStarScene(canvas, { mobile = false } = {}) {
       window.removeEventListener('resize', resize);
       window.removeEventListener('pointermove', onPointer);
       document.removeEventListener('visibilitychange', onVisibility);
-      [dustGeo, dustMat, box, bookGeo, bookMat, starGeo, starMat, lineGeo, lineMat].forEach((d) => d.dispose());
+      [dustGeo, dustMat, starGeo, starMat, lineGeo, lineMat].forEach((d) => d.dispose());
       renderer.dispose();
       renderer.forceContextLoss?.();
     },

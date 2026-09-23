@@ -949,13 +949,17 @@ body.theme-parchment .lps-root {
   z-index: 1;
   border: 1px solid var(--lps-border);
   border-radius: 12px;
-  background: var(--lps-tint);
+  // The tint is laid over solid ink rather than left translucent: the WebGL
+  // sky now stays behind the whole page, and a see-through tile let its
+  // constellations read as if drawn on top of the card. Same colour as
+  // before on the plain page.
+  background: linear-gradient(var(--lps-tint), var(--lps-tint)), var(--lps-ink);
   padding: 2rem 1.7rem;
   transition: background 0.3s, border-color 0.3s, transform 0.3s;
   will-change: transform, opacity;
 
   &:hover {
-    background: var(--lps-tint-hover);
+    background: linear-gradient(var(--lps-tint-hover), var(--lps-tint-hover)), var(--lps-ink);
     border-color: rgba(var(--lps-gold-rgb), 0.4);
     transform: translateY(-6px);
   }

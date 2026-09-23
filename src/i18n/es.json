@@ -1454,7 +1454,14 @@
     "legal": "Legal",
     "search": "Buscar",
     "loaderShelf": "Del estante de {genre}",
-    "oracleWaitHint": "El Oráculo está barajando tu estante — mové las cartas mientras esperás"
+    "oracleWaitHint": "El Oráculo está buscando tu libro en lo más hondo de las estrellas. Dale un poquito más de tiempo, por favor.",
+    "oracleArcana1": "La Estrella",
+    "oracleArcana2": "La Linterna",
+    "oracleArcana3": "El Umbral",
+    "oracleArcana4": "El Archivo",
+    "oracleArcana5": "El Errante",
+    "oracleArcana6": "El Hogar",
+    "oracleArcana7": "El Margen"
   },
   "about": {
     "breadcrumb": "Inicio",

@@ -1454,7 +1454,14 @@
     "legal": "Legal",
     "search": "Search",
     "loaderShelf": "From the shelf of {genre}",
-    "oracleWaitHint": "The Oracle is shuffling your shelf — drag the cards while you wait"
+    "oracleWaitHint": "The Oracle is delving deep into the stars for your book. Please give it a little more time.",
+    "oracleArcana1": "The Star",
+    "oracleArcana2": "The Lantern",
+    "oracleArcana3": "The Threshold",
+    "oracleArcana4": "The Archive",
+    "oracleArcana5": "The Wanderer",
+    "oracleArcana6": "The Hearth",
+    "oracleArcana7": "The Margin"
   },
   "about": {
     "breadcrumb": "Dashboard",

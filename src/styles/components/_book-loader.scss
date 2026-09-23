@@ -400,33 +400,36 @@ a.book-loader__genre:focus-visible {
   transition: height .9s cubic-bezier(.2, .7, .2, 1), opacity 1.1s ease;
 
   &.is-on {
-    height: 330px;
+    height: 400px;
     opacity: 1;
   }
 
   @media (max-width: 640px) {
-    &.is-on { height: 260px; }
+    &.is-on { height: 330px; }
   }
 }
 
 .ows__stage {
   width: 100%;
-  height: calc(100% - 28px);
+  height: calc(100% - 64px);
 }
 
 .ows__canvas {
   display: block;
   width: 100%;
   height: 100%;
-  cursor: grab;
+  cursor: default;
   touch-action: pan-y; // vertical swipes still scroll the page
 }
 
 .ows__hint {
-  margin: 6px 0 0;
-  font-family: var(--ro-font-body);
-  font-size: .8rem;
-  color: var(--ro-muted);
+  max-width: 44ch;
+  margin: 8px auto 0;
+  font-family: var(--ro-font-display);
+  font-style: italic;
+  font-size: 1.05rem;
+  line-height: 1.45;
+  color: var(--ro-text-2);
 }
 
 .book-loader--spread {
