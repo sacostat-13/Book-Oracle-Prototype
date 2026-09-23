@@ -30,6 +30,10 @@ gsap.registerPlugin(ScrollTrigger, useGSAP);
 export const PIN_DEPTH_DESKTOP = 3.0;
 export const PIN_DEPTH_MOBILE = 2.2;
 export const IGNITE_PROGRESS = 0.45;
+// The gold thread waits until the card has been zoomed through — lighting it
+// at the reveal drew a stray line across the card face. It now starts as the
+// "beyond" copy hands off to Act II.
+export const THREAD_IGNITE_PROGRESS = 0.88;
 
 const CARD_COUNT = 5;
 const CHOSEN = 2; // center card of the fan

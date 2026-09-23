@@ -768,7 +768,7 @@ function orderQuotes(genres) {
   return [...shuffle(first), ...shuffle(rest)];
 }
 
-export default function BookLoader({ text, fullHeight = false, genres = null, spread = false }) {
+export default function BookLoader({ text, fullHeight = false, genres = null, spread = false, spreadAfterMs }) {
   const t = useT();
   // BookLoader also renders before DataProvider mounts (the app's first
   // load), so read the context directly and tolerate its absence.
@@ -867,7 +867,7 @@ export default function BookLoader({ text, fullHeight = false, genres = null, sp
       role="status"
       aria-live="polite"
     >
-      {spread && <OracleWaitSpread onActive={setSpreadOn} />}
+      {spread && <OracleWaitSpread onActive={setSpreadOn} showAfterMs={spreadAfterMs} />}
       <div className="book-loader__book" aria-hidden="true">
         <span className="book-loader__board book-loader__board--left" />
         <span className="book-loader__board book-loader__board--right" />

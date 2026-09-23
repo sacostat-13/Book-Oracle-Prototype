@@ -388,7 +388,9 @@ a.book-loader__genre:focus-visible {
 
 // ── Oracle long-wait spread (three.js-motion experiment) ────────────────────
 // Collapsed to nothing until OracleWaitSpread's scene is live, then it opens
-// and the small book mark steps aside for it.
+// and takes over the wait: the book mark, the thread and the quote step
+// aside, leaving the cards, the status line and the hint. One thing moving
+// at a time.
 .ows {
   width: 100%;
   max-width: 760px;
@@ -427,4 +429,8 @@ a.book-loader__genre:focus-visible {
   color: var(--ro-muted);
 }
 
-.book-loader--spread .book-loader__book { display: none; }
+.book-loader--spread {
+  .book-loader__book,
+  .book-loader__thread,
+  .book-loader__quote { display: none; }
+}

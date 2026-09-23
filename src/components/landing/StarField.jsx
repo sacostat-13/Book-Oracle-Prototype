@@ -11,8 +11,9 @@
 //   - Only on success does `.lps-has-gl` go on the root, which retires the DOM
 //     dust motes in favour of the GPU ones. Nothing else in the DOM changes.
 //
-// `fadeRef` is the Act II anchor: the sky fades out as it scrolls in, and the
-// render loop stops once it is gone.
+// `fadeRef` is the Act II anchor: as it scrolls in, the corridor and dust
+// clear and the sky settles into a dim backdrop (constellations kept) for the
+// rest of the page.
 import { useEffect, useRef } from 'react';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { canUseWebGL, whenIdle } from '../../lib/webgl';
@@ -41,10 +42,10 @@ export default function StarField({ fadeRef }) {
               trigger: el,
               start: 'top bottom',
               end: 'top 25%',
-              onUpdate: (self) => api?.setFade(1 - self.progress),
-              onRefresh: (self) => api?.setFade(1 - self.progress),
+              onUpdate: (self) => api?.setAfter(self.progress, self.end),
+              onRefresh: (self) => api?.setAfter(self.progress, self.end),
             });
-            api.setFade(1 - st.progress);
+            api.setAfter(st.progress, st.end);
           }
         })
         .catch(() => { /* stay on the DOM landing */ });

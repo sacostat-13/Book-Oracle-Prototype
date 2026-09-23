@@ -44,7 +44,7 @@ function pickBooks(state) {
   return [...withCover, ...without].slice(0, 12);
 }
 
-export default function OracleWaitSpread({ onActive }) {
+export default function OracleWaitSpread({ onActive, showAfterMs = SHOW_AFTER_MS }) {
   const t = useT();
   const data = useContext(DataContext);
   const hostRef = useRef(null);
@@ -62,7 +62,7 @@ export default function OracleWaitSpread({ onActive }) {
     const prefetch = setTimeout(() => {
       chunk = import('./oracleSpread/scene');
       chunk.catch(() => {});
-    }, SHOW_AFTER_MS / 2);
+    }, showAfterMs / 2);
     const show = setTimeout(() => {
       (chunk || import('./oracleSpread/scene'))
         .then(({ createSpreadScene }) => {
@@ -83,14 +83,14 @@ export default function OracleWaitSpread({ onActive }) {
           }
         })
         .catch(() => {});
-    }, SHOW_AFTER_MS);
+    }, showAfterMs);
     return () => {
       disposed = true;
       clearTimeout(prefetch);
       clearTimeout(show);
       api?.dispose();
     };
-  }, []);
+  }, [showAfterMs]);
 
   return (
     <div className={`ows${on ? ' is-on' : ''}`} aria-hidden="true">
