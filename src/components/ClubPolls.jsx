@@ -18,6 +18,7 @@ import { supabase } from '../lib/supabase';
 import BookCover from './BookCover';
 import { callClaude, QuotaExceededError } from '../lib/claudeApi';
 import { useT } from '../lib/I18nContext';
+import { useProLimits } from '../lib/proGates';
 import { useOracleQuota } from '../lib/OracleQuotaContext';
 
 // ── Oracle suggestion flow ────────────────────────────────────────────────────
@@ -272,6 +273,8 @@ export default function ClubPolls({ clubId, clubName, clubGenres = [], isAdmin, 
   // v0.58: hoisted out of fetchOracleSuggestions / handleOracleSuggest, which
   // were calling hooks outside render.
   const { handleQuotaError, onCallSucceeded, confirmOracleCall } = useOracleQuota();
+  // v0.72: the Oracle's part in a club is Pro. Manual polls stay free.
+  const { isPro, goUpgrade } = useProLimits();
   const [polls, setPolls] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
@@ -360,11 +363,11 @@ export default function ClubPolls({ clubId, clubName, clubGenres = [], isAdmin, 
           <div className="club-card__actions">
             <button
               className="btn btn-accent"
-              onClick={handleOracleSuggest}
+              onClick={isPro ? handleOracleSuggest : goUpgrade}
               disabled={oracleLoading}
-
+              title={isPro ? undefined : t('pro.clubOracleHint')}
             >
-              {oracleLoading ? t('polls.oracleThinking') : t('polls.oracleSuggestsBtn')}
+              {oracleLoading ? t('polls.oracleThinking') : isPro ? t('polls.oracleSuggestsBtn') : `✦ ${t('pro.clubOracleLocked')}`}
             </button>
             {!showCreate && (
               <button className="btn btn-secondary" onClick={() => setShowCreate(true)}>

@@ -16,9 +16,11 @@ import { useOracleQuota } from '../lib/OracleQuotaContext';
 import { OracleQuotaWall } from '../components/OracleQuotaBadge';
 import { useT, useTNode, useI18n, langDirective } from '../lib/I18nContext';
 import BookCard from '../components/BookCard';
+import OracleMissButton from '../components/OracleMissButton';
 import { buildTasteProfile, describeTasteProfile, MATCH_SCORING_INSTRUCTIONS } from '../lib/matchHelpers';
 import { buildExcludeHint, buildShelfSignature, filterAlreadyKnown, REASON_INSTRUCTIONS, REPRESENTATION_INSTRUCTIONS } from '../lib/oraclePrompt';
 import { saveDraw, loadDraw } from '../lib/oracleDrawCache';
+import { fetchMissHint } from '../lib/oracleReadings'; // v0.73
 
 const QUERY_MAX = 280;
 
@@ -77,6 +79,8 @@ export default function OracleAsk({ onOpenBook }) {
     // exact, local, free, and applied to the full shelf.
     const known = [...state.readNext, ...state.library, ...state.wishlist];
     const exclude = buildExcludeHint(known);
+    // v0.73: what they turned down with "None of these call to me".
+    const missHint = await fetchMissHint();
 
     // v0.50: the taste summary now carries favorite genres, mood, stated
     // reading level AND goal — the old direct genre/mood lines duplicated it.
@@ -98,7 +102,7 @@ A reader asks: "${trimmed}"
 
 Recommend ${ASK_REQUEST} books that best answer this request. You are NOT limited to any catalog; recommend the best matches in world literature.
 
-Avoid recommending books they already know. Here is a sample of what is already on their shelves (not exhaustive): ${exclude}
+Avoid recommending books they already know. Here is a sample of what is already on their shelves (not exhaustive): ${exclude}${missHint}
 
 Return ONLY valid JSON in this exact format:
 {"books":[{"title":"...","author":"...","genre":"...","complexity":1-5,"depth":1-5,"description":"one-sentence description","reason":"one sentence on why THIS reader would enjoy it right now","match":0-100}]}`;
@@ -221,6 +225,7 @@ Return ONLY valid JSON in this exact format:
                 />
               ))}
             </div>
+            <OracleMissButton surface="ask" books={results.books} />
           </>
         ) : null}
       </div>

@@ -2951,12 +2951,17 @@ export function DataProvider({ children }) {
   }, [user]);
 
   const updateList = useCallback(async (listId, updates) => {
-    if (!user) return;
-    await supabase.from('lists').update(updates).eq('id', listId).eq('user_id', user.id);
+    if (!user) return { error: { message: 'signed_out' } };
+    // v0.71.1: returns { error } and leaves local state alone on failure. The
+    // cover guard (pro_required:cover) can refuse a write, and an optimistic
+    // update would show a cover the server never stored.
+    const { error } = await supabase.from('lists').update(updates).eq('id', listId).eq('user_id', user.id);
+    if (error) { console.error('updateList failed:', error); return { error }; }
     setState((s) => ({
       ...s,
       lists: (s.lists || []).map((l) => l.id === listId ? { ...l, ...updates } : l),
     }));
+    return { error: null };
   }, [user]);
 
   const deleteList = useCallback(async (listId) => {

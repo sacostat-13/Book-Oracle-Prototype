@@ -941,7 +941,7 @@ function AIQuotaBar({ go, t }) {
         />
       </div>
       <div className="db-ai__note">
-        {t('dashboard.aiQuotaIncludes')}
+        {quota.welcome ? t('dashboard.aiQuotaWelcome', { limit }) : t('dashboard.aiQuotaIncludes')}
         {/* v0.61: the curator note is gone with the exemption it explained.
             Catalog categorization is no longer a metered in-app action for
             anyone — it runs nightly in CI — so there is no longer a class of

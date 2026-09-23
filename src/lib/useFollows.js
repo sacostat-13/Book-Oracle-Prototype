@@ -30,7 +30,7 @@ import { supabase } from './supabase';
 export const USERNAME_RE = /^[a-z0-9_-]{3,24}$/;
 
 const PROFILE_COLS =
-  'id, username, display_name, avatar_url, bio, favorite_genres, is_curator, shelf_visibility';
+  'id, username, display_name, avatar_url, bio, favorite_genres, is_curator, shelf_visibility, pro_mark'; // v0.72: pro_mark
 
 // ── Username helpers (unchanged from useFriends) ─────────────────────────────
 

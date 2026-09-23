@@ -7,11 +7,14 @@ import { useData } from '../lib/DataContext';
 import { useRouter } from '../lib/RouterContext';
 import { useT } from '../lib/I18nContext';
 import CornerBrackets from './CornerBrackets';
+import ProGate from './ProGate';
+import { useProLimits } from '../lib/proGates';
 
 export default function AddToListModal({ books = [], onClose }) {
   // books can be a single book object or an array
   const bookList = Array.isArray(books) ? books : [books];
   const { state, addBookToList, createList } = useData();
+  const { canCreate } = useProLimits(); // v0.72
   const { go } = useRouter();
   const t = useT();
   const [creating, setCreating] = useState(false);
@@ -141,9 +144,13 @@ export default function AddToListModal({ books = [], onClose }) {
           </div>
         ) : (
           <div className="modal-foot">
-            <button className="btn-tertiary" onClick={() => setCreating(true)}>
-              + {t('lists.newListBtn')}
-            </button>
+            {canCreate('lists') ? (
+              <button className="btn-tertiary" onClick={() => setCreating(true)}>
+                + {t('lists.newListBtn')}
+              </button>
+            ) : (
+              <ProGate feature="lists" compact />
+            )}
             <button className="btn-secondary" onClick={() => { onClose(); go('lists'); }}
             >
               {t('addToList.manageLists')}

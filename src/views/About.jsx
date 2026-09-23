@@ -243,7 +243,7 @@ export default function About() {
                   <span className="pf-author-count">{t('about.pricingProPeriod')}</span>
                 </div>
                 <ul className="legal-list">
-                  {['pricingProFeature1', 'pricingProFeature2', 'pricingProFeature3', 'pricingProFeature4', 'pricingProFeature5'].map((k) => (
+                  {['pricingProFeature1', 'pricingProFeature2', 'pricingProFeature6', 'pricingProFeature3', 'pricingProFeature4', 'pricingProFeature7', 'pricingProFeature5'].map((k) => (
                     <li key={k} className="legal-list__item">
                       <span className="lv-hl">❦</span>{t(`about.${k}`)}
                     </li>

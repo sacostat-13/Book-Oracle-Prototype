@@ -5,6 +5,8 @@ import { useRouter } from '../lib/RouterContext';
 import { ALL_BOOKS, bookKey } from '../lib/bookHelpers';
 import { callClaude, parseJSONResponse, QuotaExceededError } from '../lib/claudeApi';
 import { logRecommendations, attachRecommendationIds } from '../lib/oracleProvenance';
+import OracleMissButton from '../components/OracleMissButton';
+import { fetchMissHint } from '../lib/oracleReadings'; // v0.73
 import { useOracleQuota } from '../lib/OracleQuotaContext';
 import { OracleQuotaBadge, OracleQuotaWall } from '../components/OracleQuotaBadge';
 import { useT, useI18n, langDirective } from '../lib/I18nContext';
@@ -229,6 +231,8 @@ export default function OracleCategories({ onOpenBook }) {
       // more books than we need so that filtering has something to cut into.
       const known = [...state.readNext, ...state.library, ...state.wishlist];
       const exclude = buildExcludeHint(known);
+      // v0.73: what they turned down with "None of these call to me".
+      const missHint = await fetchMissHint();
 
       // Use the display name of the selected genre for the AI prompt
       const selectedGenreName = sourceGenres.find((g) => g.norm === genre)?.name;
@@ -243,7 +247,7 @@ ${shelf}
 
 ${describeTasteProfile(tasteProfile)}
 
-Avoid recommending books they already know. Here is a sample of what is already on their shelves (not exhaustive): ${exclude}
+Avoid recommending books they already know. Here is a sample of what is already on their shelves (not exhaustive): ${exclude}${missHint}
 
 Return ONLY valid JSON in this format:
 {"books":[{"title":"...","author":"...","genre":"...","complexity":1-5,"depth":1-5,"description":"one-sentence description","reason":"one sentence on why THIS reader would enjoy it right now","match":0-100}]}`;
@@ -442,6 +446,9 @@ Return ONLY valid JSON in this format:
           ))
         )}
       </section>
+      {!loading && draw.length > 0 && (
+        <OracleMissButton surface="categories" books={draw} />
+      )}
     </>
   );
 }

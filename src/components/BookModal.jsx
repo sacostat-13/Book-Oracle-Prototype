@@ -15,6 +15,7 @@ import RatingModal from './RatingModal';
 import CategoryAutocomplete from './CategoryAutocomplete';
 import { resolveGenres } from '../lib/genreDisplay';
 import { fetchRecommendationReason, isOracleSuggested } from '../lib/oracleProvenance';
+import OracleLongReading from './OracleLongReading';
 
 // `exclude` holds the reader's finished books. Same rule as BookPage's
 // computeSimilar: a recommendation strip that offers books already on the read
@@ -431,6 +432,11 @@ export default function BookModal({ book, onClose, onOpenBook }) {
               <p className="book-card__quote">— {oracleReason}</p>
             </div>
           )}
+
+          {/* v0.73: the long reading (Pro). Offered on every book, not only
+              Oracle-drawn ones — "why this, for me" is the question a reader
+              has about a book a friend pressed on them too. */}
+          <OracleLongReading book={display} reason={oracleReason} />
 
           {display.d && (
             <div className="bp-section">

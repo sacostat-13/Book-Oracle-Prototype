@@ -8,6 +8,8 @@ import { useT, useI18n, langDirective } from '../lib/I18nContext';
 import { useOracleQuota } from '../lib/OracleQuotaContext';
 import { goalDirective } from '../lib/matchHelpers';
 import GenreSelect from '../components/GenreSelect';
+import ProGate from '../components/ProGate';
+import { useProLimits } from '../lib/proGates';
 
 const LEVEL_NAMES = ['', '', '', 'Devoted', 'Literary', 'Voracious'];
 const LEVEL_BLURB = {
@@ -22,6 +24,7 @@ export default function PlanCreate() {
   const t = useT();
   const { lang } = useI18n();
   const { handleQuotaError, onCallSucceeded, confirmOracleCall } = useOracleQuota();
+  const { canCreate } = useProLimits();
   const [type, setType] = useState(null);
   const [target, setTarget] = useState(route.params?.seriesName || null);
 
@@ -189,6 +192,9 @@ export default function PlanCreate() {
   }
 
   async function generate() {
+    // v0.72: checked before the Oracle is paid, not after — the insert trigger
+    // would refuse the plan, and the reader would have spent a call on it.
+    if (!canCreate('plans')) return;
     // v0.58: series plans are assembled from catalog data, not from Anthropic
     // (see buildSeriesPlan) — only the themed path spends a call.
     if (type !== 'series' && !(await confirmOracleCall('plan'))) return;
@@ -353,6 +359,8 @@ Return ONLY valid JSON in this exact format:
         <h1 className="page-head__title">Where do you want to <span className="accent">go</span>?</h1>
         <p className="page-head__lead">We'll build a paced, curated path from where you are to where you're headed.</p>
       </div>
+
+      {!canCreate('plans') && <ProGate feature="plans" />}
 
       <div className="onboarding-card plan-card">
         <div className="onb-eyebrow">1 · Plan type</div>
@@ -529,7 +537,7 @@ Return ONLY valid JSON in this exact format:
 
         <div className="onb-actions">
           <button className="btn-secondary" onClick={() => go('dashboard')}>← Back</button>
-          <button className="btn-primary" disabled={!canGenerate} onClick={generate}>
+          <button className="btn-primary" disabled={!canGenerate || !canCreate('plans')} onClick={generate}>
             Generate plan ❦
           </button>
         </div>

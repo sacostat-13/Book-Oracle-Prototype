@@ -17,8 +17,12 @@ import Avatar from '../components/Avatar';
 import CornerBrackets from '../components/CornerBrackets';
 import ShareModal from '../components/ShareModal';
 import OracleCallHistory from '../components/OracleCallHistory';
+import TasteChart from '../components/TasteChart';
 import { groupFamilyAccomplishments, nextRung } from '../lib/ledger';
 import { FamilyRowsSkeleton } from '../components/Skeleton';
+
+// v0.75: display price of the annual Pro variant, e.g. "$49.99". Unset = monthly only.
+const ANNUAL_PRICE = import.meta.env.VITE_ANNUAL_PRICE || null;
 
 
 // ── Small stat card ──────────────────────────────────────────────────────────
@@ -1192,7 +1196,10 @@ export default function Profile() {
     return () => clearTimeout(timer);
   }, [tabFromRoute, route.params?.anchor]);
 
-  async function handleUpgrade() {
+  // v0.75: `plan` is 'monthly' (default) or 'annual'. The annual option only
+  // renders when VITE_ANNUAL_PRICE is set, which should be set together with
+  // LEMON_SQUEEZY_REDIRECT_URL_ANNUAL on the function side.
+  async function handleUpgrade(plan = 'monthly') {
     if (!user) return;
     setCheckoutLoading(true);
     try {
@@ -1204,6 +1211,7 @@ export default function Profile() {
       const res = await fetch('/.netlify/functions/create-checkout-session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ plan: plan === 'annual' ? 'annual' : 'monthly' }),
       });
       const json = await res.json();
       if (!json.url) {
@@ -1523,6 +1531,9 @@ export default function Profile() {
           />
         </div>
       </section>
+
+      {/* v0.73: the reader's chart (Pro). Own profile only — this view is. */}
+      {user && <TasteChart />}
 
       {hasStats && (
         <div className="profile-stats">
@@ -1862,15 +1873,21 @@ export default function Profile() {
               )
             ) : (
               <div className="pf-upgrade">
-                <button className="btn-primary" onClick={handleUpgrade} disabled={checkoutLoading}>
+                <button className="btn-primary" onClick={() => handleUpgrade('monthly')} disabled={checkoutLoading}>
                   {checkoutLoading ? t('subscription.redirecting') : t('subscription.upgradeBtn')}
                 </button>
+                {ANNUAL_PRICE && (
+                  <button className="btn-text btn--sm" onClick={() => handleUpgrade('annual')} disabled={checkoutLoading}>
+                    {t('subscription.annualOption', { price: ANNUAL_PRICE })}
+                  </button>
+                )}
                 <div className="pf-upgrade__features">
                   {t('subscription.upgradePrice')} ·{' '}
                   {[
                     t('subscription.upgradeFeature1'),
                     t('subscription.upgradeFeature2'),
                     t('subscription.upgradeFeature3'),
+                    t('subscription.upgradeFeature4'),
                   ].join(' · ')}
                 </div>
               </div>

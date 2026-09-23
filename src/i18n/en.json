@@ -243,7 +243,8 @@
       "searchSub": "Search by title or author",
       "stacks": "I’m not sure yet",
       "stacksSub": "Browse The Stacks and keep what catches your eye"
-    }
+    },
+    "aiQuotaWelcome": "Your welcome month: {limit} readings to start you off"
   },
   "currentlyReading": {
     "breadcrumb": "Dashboard",
@@ -400,7 +401,7 @@
     "quotaWallTitle": "The Oracle is quiet for now",
     "quotaWallBody": "You've used all {limit} AI calls for today.",
     "quotaWallReset": "Resets {date}.",
-    "quotaWallUpgradeNote": "Upgrade to Pro for 5 calls per day — 30× more than the free plan.",
+    "quotaWallUpgradeNote": "Pro makes the Oracle unlimited — consult it as often as you read.",
     "categoriesDraw": "Give me a book ❦",
     "categoriesSearchGenres": "Search genres…",
     "categoriesDrawing": "Divining…",
@@ -424,7 +425,17 @@
     "askError": "Couldn't reach the Oracle. Try rephrasing your question.",
     "askResultsTitle": "Found <span class=\"accent\">{count} books</span> for you",
     "curationPending": "☩ {count} book is waiting to be read by the Oracle. Genres and details arrive overnight.",
-    "curationPendingPlural": "☩ {count} books are waiting to be read by the Oracle. Genres and details arrive overnight."
+    "curationPendingPlural": "☩ {count} books are waiting to be read by the Oracle. Genres and details arrive overnight.",
+    "missButton": "None of these call to me",
+    "missPrompt": "What missed?",
+    "missReason": {
+      "not_my_taste": "Not my taste",
+      "already_known": "Already know these",
+      "off_request": "Not what I asked for",
+      "other": "Something else"
+    },
+    "missRefunded": "Noted — this reading is on the Oracle.",
+    "missNoted": "Noted — the Oracle will learn from it."
   },
   "plans": {
     "breadcrumb": "Dashboard",
@@ -1504,16 +1515,16 @@
     "pricingFreePrice": "$0",
     "pricingFreePeriod": "forever",
     "pricingFreeFeature1": "Full library, wishlist & read-next queue",
-    "pricingFreeFeature2": "Book clubs, lists & reading plans",
+    "pricingFreeFeature2": "Join any book club; start one club, 3 anthologies and a reading plan of your own",
     "pricingFreeFeature3": "Series tracking & cover shelf",
-    "pricingFreeFeature4": "5 Oracle AI calls per month",
+    "pricingFreeFeature4": "5 Oracle readings a month (10 in your first month)",
     "pricingFreeFeature5": "Full English & Spanish support",
     "pricingProTitle": "Pro",
     "pricingProPrice": "$5.99",
     "pricingProPeriod": "per month",
     "pricingProFeature1": "Everything in Free",
-    "pricingProFeature2": "5 Oracle draws per day",
-    "pricingProFeature3": "5 AI reading plans per day",
+    "pricingProFeature2": "Unlimited Oracle readings",
+    "pricingProFeature3": "Unlimited clubs, anthologies & reading plans",
     "pricingProFeature4": "Book club polls & discussion prompts",
     "pricingProFeature5": "Cancel anytime from your profile",
     "pricingProCta": "Upgrade to Pro ❦",
@@ -1522,7 +1533,9 @@
     "privacyLink": "Privacy Policy",
     "termsLink": "Terms of Service",
     "refundLink": "Refund Policy",
-    "pageTitle": "About the <span class=\"accent\">Oracle</span>"
+    "pageTitle": "About the <span class=\"accent\">Oracle</span>",
+    "pricingProFeature6": "Why this book, for you — and your reader's chart",
+    "pricingProFeature7": "Custom list covers & list insights"
   },
   "share": {
     "modalEyebrow": "Share",
@@ -1716,29 +1729,30 @@
     "tierPastDue": "Past due",
     "sectionTitle": "Subscription",
     "freeDesc": "{remaining} of {limit} AI calls remaining this month.",
-    "proDesc": "5 AI calls per day — Oracle draws, reading plans, and book clubs.",
+    "proDesc": "Unlimited Oracle readings — draws, passages and book clubs.",
     "pastDueDesc": "Payment failed. Update your payment method to restore access.",
     "upgradeBtn": "Upgrade to Pro ❦",
     "manageBtn": "Manage subscription →",
     "upgradePrice": "$5.99/month · cancel anytime",
-    "upgradeFeature1": "5 Oracle draws per day (vs 5 per month on Free)",
-    "upgradeFeature2": "5 AI reading plans per day",
+    "upgradeFeature1": "Unlimited Oracle readings (vs 5 a month on Free)",
+    "upgradeFeature2": "Unlimited clubs, anthologies & reading plans",
     "upgradeFeature3": "Book club polls & discussion prompts",
-    "upgradeFeature4": "Priority support",
+    "upgradeFeature4": "The Adept mark on your profile",
     "resetsOn": "Quota resets {date}",
     "redirecting": "Opening checkout…",
     "checkoutSuccess": "Payment successful! Activating your Pro plan…",
     "checkoutCancelled": "Checkout cancelled — no charge was made.",
     "checkoutError": "Could not open checkout. Try again.",
     "portalError": "Could not open billing portal. Try again.",
-    "noSubToast": "No active subscription on this account yet — upgrade to Pro to unlock daily Oracle draws.",
+    "noSubToast": "No active subscription on this account yet — upgrade to Pro to make the Oracle unlimited.",
     "alreadyProToast": "You're already on Pro — use Manage subscription to make changes.",
     "compedTitle": "Pro, granted directly",
     "compedBody": "This account has Pro access with no billing attached, so there is nothing to manage. Your quota and features are unaffected.",
     "compedToast": "This account has Pro access with no billing attached.",
     "subMissingTitle": "No billing record found",
     "subMissingBody": "We hold a subscription for this account that the payment provider no longer recognises — usually a cancelled subscription, or one created in test mode. Your Pro access is unaffected. Get in touch if you believe this is wrong.",
-    "subMissingToast": "The subscription on file could not be found."
+    "subMissingToast": "The subscription on file could not be found.",
+    "annualOption": "Or {price} a year"
   },
   "oracleGate": {
     "introEyebrow": "Before you begin",
@@ -1785,8 +1799,11 @@
       "categorization": "Book categorization",
       "club_poll": "Book club suggestions",
       "club_discussion": "Discussion questions",
-      "unknown": "Oracle call"
-    }
+      "unknown": "Oracle call",
+      "why_long": "The long reading",
+      "taste_chart": "Reader's chart"
+    },
+    "costRefunded": "refunded"
   },
   "kindred": {
     "booksThisYear": "{count} books in {year}",
@@ -1851,7 +1868,9 @@
     "tabKindred": "Your Kindred",
     "totalBooks": "{count} total",
     "unfollow": "Unfollow",
-    "unmute": "Unmute"
+    "unmute": "Unmute",
+    "adept": "Adept",
+    "adeptHint": "Reads with The Books Oracle Pro."
   },
   "footer": {
     "privacy": "Privacy",
@@ -1899,7 +1918,7 @@
   "privacy": {
     "breadcrumbs": "Privacy Policy",
     "title": "Privacy <span class=\"accent\">Policy</span>",
-    "lastUpdated": "Last updated: July 30, 2026",
+    "lastUpdated": "Last updated: September 23, 2026",
     "whoWeAreTitle": "Who we are",
     "whoWeArePara1": "The Books Oracle (accessible at thebooksoracle.com) is a personal reading companion application operated by an individual developer based in Costa Rica. ",
     "whoWeArePara2": "For privacy - related questions: support @thebooksoracle.com",
@@ -1907,7 +1926,7 @@
     "whatDataWeCollectPara1": "<strong >Account data.</strong> When you sign in with Google, we receive your name, email address, and profile photo. We store these to identify your account.",
     "whatDataWeCollectPara2": "<strong >Reading data.</strong> Your library, wishlist, read-next queue, ratings, notes, reading dates, and progress belong to you and are stored in your account.",
     "whatDataWeCollectPara3": "<strong>Usage data.</strong> We keep a record of each time you use an Oracle feature — which part of the app it came from and when — so you can see where your quota went, and so we can enforce free-tier limits and monitor infrastructure costs. This record contains no content: not the question you asked, and not the book you were looking at. You can read your own history under Profile → Subscription.",
-    "whatDataWeCollectPara4": "<strong >Subscription data.</strong> If you subscribe to Pro, we store your Paddle customer ID and subscription ID. We never store card numbers or payment details — all payment processing is handled by Paddle.",
+    "whatDataWeCollectPara4": "<strong >Subscription data.</strong> If you subscribe to Pro, we store your Lemon Squeezy customer ID and subscription ID. We never store card numbers or payment details — all payment processing is handled by Lemon Squeezy.",
     "whatDataWeCollectPara5": "<strong >Club data.</strong> Your display name, reading activity, and any posts or discussion contributions in book clubs are visible to other club members.",
     "whatDataWeDoNotCollectTitle": "What we do not collect",
     "whatDataWeDoNotCollectPara1": "We do not collect your location, device identifiers, browsing history outside the app, or biometric data. We do not run advertising and have no advertising partners. We do not sell your data to any third party.",
@@ -1917,16 +1936,16 @@
     "dataStorageTitle": "Data storage and security",
     "dataStoragePara1": "Your data is stored in Supabase (PostgreSQL on AWS) with row-level security policies ensuring users can only access their own data. All data is transmitted over HTTPS. Service role credentials are stored only in server-side environment variables and are never exposed to the client.",
     "thirdPartyTitle": "Third-party services",
-    "thirdPartyPara1": "We use: Google OAuth (sign-in only), Supabase (database), Anthropic Claude (AI features), Paddle (payments — Merchant of Record), Netlify (hosting), Hardcover / OpenLibrary (book metadata).",
+    "thirdPartyPara1": "We use: Google OAuth (sign-in only), Supabase (database), Anthropic Claude (AI features), Lemon Squeezy (payments — Merchant of Record), Netlify (hosting), Hardcover / OpenLibrary (book metadata).",
     "yourRightsTitle": "Your rights",
     "yourRightsPara1": "You can delete your account and all data at any time from Profile → Reset profile. You can request a copy of your data or ask us to delete specific records by emailing support@thebooksoracle.com. We respond within 30 days. EEA users have GDPR rights including access, rectification, erasure, and portability.",
     "cookiesTitle": "Cookies",
-    "cookiesPara1": "The app uses browser localStorage and sessionStorage to cache reading data locally for performance. These are not advertising cookies and do not track you across other sites. No third-party tracking cookies are set.",
+    "cookiesPara1": "The app uses browser localStorage and sessionStorage to cache reading data locally for performance. When you open someone's shared Anthology, it also keeps a random visitor number in this browser so the curator can see how many different people it reached — the number is not linked to your account and never shown to anyone. With Do Not Track or Global Privacy Control turned on, nothing is counted. These are not advertising cookies and do not track you across other sites. No third-party tracking cookies are set.",
     "childrenTitle": "Children",
     "childrenPara1": "The Books Oracle is not directed at children under 13. If you believe a child has provided personal data, contact us and we will delete it promptly.",
     "changesTitle": "Changes",
     "changesPara1": "We may update this policy from time to time. Significant changes will be noted in the in-app release notes.",
-    "whatDataWeCollectPara6": "<strong>Recommendation history.</strong> When the Oracle suggests books to you, we record the titles it offered and whether you added them. This is the app's own output rather than anything you told us, and we keep it for one reason: it is the only way to tell whether the Oracle's suggestions are any good. It is visible only to you, and it is deleted with your account."
+    "whatDataWeCollectPara6": "<strong>Recommendation history.</strong> When the Oracle suggests books to you, we record the titles it offered and whether you added them. This is the app's own output rather than anything you told us, and we keep it for one reason: it is the only way to tell whether the Oracle's suggestions are any good. When you tell the Oracle none of its suggestions fit, we record that and the reason you picked, and use it to steer your next suggestions. It is visible only to you, and it is deleted with your account."
   },
   "terms": {
     "breadcrumbs": "Terms & Conditions",
@@ -1945,7 +1964,7 @@
     "aiFeaturesAndAccuracyTitle": "AI features and accuracy",
     "aiFeaturesAndAccuracyPara1": "Oracle recommendations, reading plans, and categorizations are AI-generated and provided for entertainment and discovery. They may contain inaccuracies. We do not guarantee accuracy, completeness, or suitability of AI-generated content.",
     "subscriptionsAndPaymentTitle": "Subscriptions and payment",
-    "subscriptionsAndPaymentPara1": "The Pro plan is billed monthly at $5 USD via Paddle, who acts as Merchant of Record. Subscriptions renew automatically until cancelled. You can cancel from Profile at any time; access continues through the current billing period. We reserve the right to change pricing with 30 days notice to active subscribers.",
+    "subscriptionsAndPaymentPara1": "The Pro plan is billed monthly at $5.99 USD via Lemon Squeezy, who acts as Merchant of Record. Subscriptions renew automatically until cancelled. You can cancel from Profile at any time; access continues through the current billing period. Unlimited Oracle use on Pro is for personal reading and is subject to a fair-use limit that protects the service from automated abuse. We reserve the right to change pricing with 30 days notice to active subscribers.",
     "intellectualPropertyTitle": "Intellectual property",
     "intellectualPropertyPara1": "The The Books Oracle application, design, and original content are owned by the operator. Book metadata is sourced from third-party catalogs and subject to their respective licenses.",
     "disclaimerAndLimitationOfLiabilityTitle": "Disclaimer and limitation of liability",
@@ -2083,19 +2102,23 @@
       "seekerName": "The Seeker",
       "seekerPrice": "$0",
       "seekerRow1": "Wishlist & library, unlimited books",
-      "seekerRow2": "Reading plans, book clubs & friends",
-      "seekerRow3": "5 Oracle suggestions per month, each with reasons",
-      "seekerRow4": "Browse the Vault's curated catalog",
-      "seekerRow5": "Full EN / ES experience",
+      "seekerRow2": "5 Oracle suggestions a month — 10 in your first — each with reasons",
+      "seekerRow3": "When the Oracle misses, say so — the reading comes back, twice a month",
+      "seekerRow4": "Join any book club, and run one of your own",
+      "seekerRow5": "Three curated lists to share, and a reading plan at a time",
       "seekerCta": "Begin as a Seeker",
       "adeptTag": "The full rite",
       "adeptName": "The Adept",
       "adeptPrice": "$5.99",
       "adeptRow1": "Everything in the Seeker",
-      "adeptRow2": "Five Oracle suggestions a day, instead of five a month",
-      "adeptRow3": "Consult the Rites as often as you read",
-      "adeptRow4": "Early access to new rites",
-      "adeptCta": "Become an Adept"
+      "adeptRow2": "Unlimited Oracle suggestions",
+      "adeptRow3": "Why this book, for you: a personal reading of any book, tied to the books you've loved",
+      "adeptRow4": "Your reader's chart — the themes you return to, and three doors to try",
+      "adeptCta": "Become an Adept",
+      "seekerRow6": "The Vault's curated catalog, in English and Spanish",
+      "adeptRow5": "The Oracle in your book clubs: suggested polls and discussion questions",
+      "adeptRow6": "Unlimited clubs, curated lists and reading plans, with custom list covers",
+      "adeptRow7": "See which of your lists move readers"
     },
     "questions": {
       "title": "Questions for the Oracle",
@@ -2110,7 +2133,7 @@
       "q5": "Does it work in Spanish?",
       "a5": "Completamente. Every page, feature, and release note exists in both English and Spanish. The Oracle is bilingual by birth, not by translation afterthought.",
       "q6": "What do I get as an Adept?",
-      "a6": "Five Oracle suggestions every day instead of five per month — the same reasons behind each one — plus early access to new rites. The Seeker tier remains free forever.",
+      "a6": "Unlimited Oracle suggestions instead of five a month, a personal reading of why any book suits you, your reader's chart, the Oracle's help in your book clubs, and no limits on clubs, curated lists or reading plans — plus custom covers and insights for the lists you share. The Seeker tier remains free forever, and your first month as a Seeker comes with ten suggestions.",
       "q7": "How do I add my books?",
       "a7": "Whichever way suits what you have in front of you. Scan the barcodes on a pile of books with your phone, bring your shelves over from Goodreads, paste a list of titles, or search for one book at a time. Not sure where to begin? Browse the catalog and keep what calls to you. Either way, the Oracle sorts them into genres and series overnight."
     },
@@ -2238,5 +2261,85 @@
     "errNoCamera": "This browser can't reach a camera. On a computer, check that no other app is using the webcam.",
     "errNoDecoder": "The barcode reader couldn't start on this device.",
     "problemAlt": "You can still type an ISBN or add one from a photo below."
+  },
+  "pro": {
+    "gate": {
+      "upgrade": "See Pro",
+      "clubs": {
+        "title": "Your first club is yours.",
+        "body": "Running more than one club is part of Pro. Joining as many clubs as you like stays free."
+      },
+      "lists": {
+        "title": "You've curated {limit} Anthologies.",
+        "body": "More than {limit} is part of Pro. Every Anthology you have stays yours, and stays shareable."
+      },
+      "plans": {
+        "title": "Your Passage is underway.",
+        "body": "Keeping more than one Passage at a time is part of Pro. Finish or remove this one to chart the next."
+      },
+      "cover": {
+        "title": "Custom covers are part of Pro.",
+        "body": "Give an Anthology its own cover image — it replaces the strip of book covers wherever the Anthology appears."
+      }
+    },
+    "clubOracleLocked": "Oracle suggestions · Pro",
+    "clubOracleHint": "The Oracle joins book clubs on Pro. Polls and questions you write yourself stay free.",
+    "longReadingCta": "Why this book, for me",
+    "longReadingLocked": "Why this book, for you — a personal reading · Pro",
+    "longReadingLabel": "The long reading",
+    "longReadingDrawing": "The Oracle is reading your shelf…",
+    "longReadingError": "The Oracle couldn't finish that reading. Try again in a moment.",
+    "chartTitle": "Your reader's chart",
+    "chartIntro": "The Oracle reads your whole shelf back to you: the themes you return to, the way you lean, the rooms of the library you've never walked into — and three doors to try.",
+    "chartLockedBody": "A portrait of you as a reader, drawn from your shelf by the Oracle. Part of Pro.",
+    "chartTooFew": "The chart needs a shelf to read. Log {count} books you've read and the Oracle can draw it.",
+    "chartCta": "Draw my chart",
+    "chartDrawing": "Drawing your chart…",
+    "chartThemes": "You return to",
+    "chartLeaning": "How you lean",
+    "chartBlindSpots": "Rooms you haven't entered",
+    "chartDirections": "Three doors to try",
+    "chartDrawnOn": "Drawn {date}",
+    "chartRedraw": "Redraw",
+    "longReadingEchoes": "Echoes on your shelf"
+  },
+  "insights": {
+    "title": "Which Anthologies move readers",
+    "lead": "The last 30 days on your public Anthologies, busiest first.",
+    "colAnthology": "Anthology",
+    "colVisitors": "Visitors",
+    "colViews": "Views",
+    "colOpens": "Books opened",
+    "colFollowers": "Followers",
+    "colAdds": "Shelved",
+    "colSignups": "Brought in",
+    "fewer": "under {k}",
+    "privacy": "Counts only — never who. Shelved and Brought in (all time) show once they reach {k}. Readers with Do Not Track on are not counted.",
+    "noPublic": "Make an Anthology public to start seeing who it reaches.",
+    "freeLead": "Your Anthologies were viewed {count} times in the last 30 days.",
+    "freeNoPublic": "Make an Anthology public and share it to see how far it travels.",
+    "freeCta": "See which ones move readers with Pro"
+  },
+  "anthologyEditor": {
+    "open": "Edit",
+    "title": "Edit Anthology",
+    "fieldTitle": "Title",
+    "fieldDescription": "Description",
+    "fieldCover": "Cover",
+    "coverUpload": "Upload a cover",
+    "coverReplace": "Replace cover",
+    "coverRemove": "Remove cover",
+    "coverUploading": "Uploading…",
+    "coverHint": "JPG, PNG or WebP. It's resized before upload and shown wherever this Anthology appears.",
+    "save": "Save changes",
+    "saveError": "Couldn't save those changes. Try again in a moment.",
+    "coverError": {
+      "not_image": "That file isn't an image.",
+      "too_large": "That image is over 20 MB.",
+      "unreadable": "That image couldn't be read.",
+      "signed_out": "Sign in again to upload a cover.",
+      "pro_required": "Custom covers are part of Pro.",
+      "upload_failed": "The cover couldn't be uploaded. Try again in a moment."
+    }
   }
 }

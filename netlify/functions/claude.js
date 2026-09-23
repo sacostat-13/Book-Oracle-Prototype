@@ -163,7 +163,9 @@ export async function handler(event) {
   const LOGGED_SOURCES = [
     'spark', 'ask', 'similar', 'categories', 'plan',
     'categorization', 'club_poll', 'club_discussion',
+    'why_long', 'taste_chart', // v0.73: Pro extras
   ];
+  const PRO_ONLY_SOURCES = ['club_poll', 'club_discussion', 'why_long', 'taste_chart'];
   const rawSource = typeof body.source === 'string' ? body.source : null;
   const source = LOGGED_SOURCES.includes(rawSource) ? rawSource : 'unknown';
 
@@ -220,6 +222,20 @@ export async function handler(event) {
       }
 
       quotaEnforced = true;
+
+      // v0.72: the Oracle's part in a book club (poll suggestions, discussion
+      // prompts) is Pro; v0.73 adds the long reading and the reader's chart. Free readers run clubs by hand. Keyed on `source`,
+      // which is allowlisted above; a client that mislabels a club call as
+      // 'ask' just spends an ordinary metered call, which is not a bypass of
+      // anything that costs us.
+      if (PRO_ONLY_SOURCES.includes(source) && !(quota.subscription_status === 'active' || quota.is_curator)) {
+        return json(403, {
+          error:   'pro_required',
+          feature: source,
+          message: 'This part of the Oracle is on Pro.',
+        });
+      }
+
       if (!quota.unlimited && !quota.run_charged && quota.calls_remaining <= 0) {
         const resetDate = quota.reset_at
           ? new Date(quota.reset_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric' })

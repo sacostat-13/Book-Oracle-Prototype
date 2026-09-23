@@ -201,6 +201,10 @@ export default function Nav({ onPreviewBook, guestMode = false }) {
     // Scanning is a modal, not a route — the CTA opens it directly, so the
     // reader goes from reading about it to doing it in one tap.
     if (action === 'scan') setScanOpen(true);
+    // v0.71: the Pro rethink points at About → Pricing, which already honours
+    // an `anchor` param (scrolls after render). Signed-in readers only ever
+    // see the announcement, and About is readable by everyone.
+    if (action === 'pricing') go('about', { anchor: 'pricing' });
   }
 
   const booksRef = useRef(null);

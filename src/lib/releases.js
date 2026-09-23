@@ -16,9 +16,38 @@
 
 // The version label shown as "current" — keep in sync with package.json and
 // the README version line.
-export const CURRENT_VERSION = 'v0.70';
+export const CURRENT_VERSION = 'v0.71';
 
 export const RELEASES = [{
+    version: 'v0.71',
+    date: '2026-09-23',
+    // Announced on load: this changes what Free and Pro each include, and a
+    // reader who meets a limit they did not know about would reasonably feel
+    // ambushed. The CTA goes to About → Pricing, where both tiers sit side by
+    // side (see takeAnnouncementCta in Nav.jsx).
+    major: true,
+    ctaEn: 'See what each plan includes',
+    ctaEs: 'Mirá qué incluye cada plan',
+    ctaAction: 'pricing',
+    titleEn: 'The Oracle, rethought',
+    titleEs: 'El Oráculo, repensado',
+    bodyEn: [
+      'Pro is now unlimited. Consult the Oracle as often as you read — there is no daily number to watch any more.',
+      'The free plan keeps five Oracle readings a month, and new readers start with ten in their first month, so the Oracle has room to learn you before it starts counting.',
+      'Under every set of suggestions there is a quiet new line: None of these call to me. Tell the Oracle what missed and it keeps the answer, so the next reading does better. If that reading cost you one of your monthly calls, the Oracle gives it back — up to twice a month.',
+      'Pro also brings Why this book, for you: open any book and the Oracle reads it against your own shelf, with the books it echoes shown beside it. And your reader\'s chart in Profile — the themes you return to, the rooms of the library you have never walked into, and three doors to try.',
+      'Anthologies can now be edited — title and description — from their page. On Pro they can have their own cover, and curators can see which of their public Anthologies move readers. Counts only, never who.',
+      'Everyone can still join any book club and share every Anthology. On the free plan you can run one club, curate three Anthologies and keep one Passage at a time; the Oracle\'s part in book clubs — suggested polls and discussion questions — is now part of Pro. Nothing you already have is taken away.',
+    ],
+    bodyEs: [
+      'Pro ahora es ilimitado. Consultá al Oráculo cada vez que leas — ya no hay un número diario que vigilar.',
+      'El plan gratuito mantiene cinco lecturas del Oráculo por mes, y quienes recién llegan arrancan con diez en su primer mes, así el Oráculo tiene margen para conocerte antes de empezar a contar.',
+      'Debajo de cada grupo de sugerencias hay una línea nueva y discreta: Ninguno me llama. Contale al Oráculo qué falló y se guarda la respuesta, para que la próxima lectura salga mejor. Si esa lectura te costó una de tus consultas del mes, el Oráculo te la devuelve — hasta dos veces por mes.',
+      'Pro también trae Por qué este libro, para vos: abrí cualquier libro y el Oráculo lo lee a la luz de tu propio estante, con los libros con los que resuena al lado. Y tu carta de lector en Perfil — los temas a los que volvés, las salas de la biblioteca que nunca pisaste y tres puertas para probar.',
+      'Las Antologías ahora se pueden editar — título y descripción — desde su página. Con Pro pueden tener su propia portada, y quienes curan pueden ver cuáles de sus Antologías públicas mueven lectores. Solo cantidades, nunca quién.',
+      'Cualquiera puede sumarse a cualquier club y compartir todas sus Antologías. En el plan gratuito podés tener un club propio, tres Antologías y un Pasaje a la vez; la parte del Oráculo en los clubes — encuestas y preguntas sugeridas — ahora es parte de Pro. No se pierde nada de lo que ya tenés.',
+    ],
+  }, {
     version: 'v0.70',
     date: '2026-09-16',
     // Announced on load, once, to readers who have not seen v0.70 yet.
@@ -48,30 +77,16 @@ export const RELEASES = [{
     titleEn: 'Set like a book',
     titleEs: 'Compuesto como un libro',
     bodyEn: [
-      'The app is set in the typeface it talks about. Every paragraph, button and',
-      'blurb used to be in a UI sans while the headings were serif; now the whole',
-      'page is EB Garamond, and it reads like a page instead of a dashboard.',
-      'Cards lost their outlines. The panels on your dashboard were each drawn as a',
-      'gradient inside a thin border; they are flat now, and the sections above them',
-      'are real headings rather than small gold capitals.',
-      'Italics mean something again. They were on author names, button labels and the',
-      'numbers in your reading stats. They are now for a book title, a series, and',
-      'the Oracle speaking — so when something is italic, it is telling you why.',
-      'The page you are on is named once, in colour, on the thing it is about: your',
-      'Wishlist, your Library, the Oracle.',
+      'The app is set in the typeface it talks about. Every paragraph, button and blurb used to be in a UI sans while the headings were serif; now the whole page is EB Garamond, and it reads like a page instead of a dashboard.',
+      'Cards lost their outlines. The panels on your dashboard were each drawn as a gradient inside a thin border; they are flat now, and the sections above them are real headings rather than small gold capitals.',
+      'Italics mean something again. They were on author names, button labels and the numbers in your reading stats. They are now for a book title, a series, and the Oracle speaking — so when something is italic, it is telling you why.',
+      'The page you are on is named once, in colour, on the thing it is about: your Wishlist, your Library, the Oracle.',
     ],
     bodyEs: [
-      'La app está compuesta con la tipografía de la que habla. Cada párrafo, botón y',
-      'reseña estaba en una sans de interfaz mientras los títulos eran serif; ahora',
-      'toda la página es EB Garamond y se lee como una página, no como un tablero.',
-      'Las tarjetas perdieron el contorno. Los paneles de tu panel principal estaban',
-      'dibujados como un degradado dentro de un borde fino; ahora son planos, y los',
-      'títulos de sección son títulos de verdad en vez de versalitas doradas.',
-      'Las itálicas vuelven a significar algo. Estaban en los nombres de autor, en los',
-      'botones y en los números de tus estadísticas. Ahora son para el título de un',
-      'libro, una saga, y para cuando habla el Oráculo.',
-      'La página en la que estás se nombra una sola vez, en color, sobre aquello de lo',
-      'que trata: tu Lista de deseos, tu Biblioteca, el Oráculo.',
+      'La app está compuesta con la tipografía de la que habla. Cada párrafo, botón y reseña estaba en una sans de interfaz mientras los títulos eran serif; ahora toda la página es EB Garamond y se lee como una página, no como un tablero.',
+      'Las tarjetas perdieron el contorno. Los paneles de tu panel principal estaban dibujados como un degradado dentro de un borde fino; ahora son planos, y los títulos de sección son títulos de verdad en vez de versalitas doradas.',
+      'Las itálicas vuelven a significar algo. Estaban en los nombres de autor, en los botones y en los números de tus estadísticas. Ahora son para el título de un libro, una saga, y para cuando habla el Oráculo.',
+      'La página en la que estás se nombra una sola vez, en color, sobre aquello de lo que trata: tu Lista de deseos, tu Biblioteca, el Oráculo.',
     ],
   }, {
     version: 'v0.68',

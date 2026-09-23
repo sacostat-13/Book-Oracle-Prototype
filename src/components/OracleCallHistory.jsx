@@ -143,7 +143,9 @@ export default function OracleCallHistory() {
                       <span className={`oracle-history__cost${e.charged ? '' : ' oracle-history__cost--free'}`}>
                         {e.charged
                           ? t('oracleHistory.costOne')
-                          : t(e.period === 'exempt' ? 'oracleHistory.costExempt' : 'oracleHistory.costRun')}
+                          : t(e.period === 'exempt'   ? 'oracleHistory.costExempt'
+                            : e.period === 'refunded' ? 'oracleHistory.costRefunded' // v0.71: a miss refunded it
+                            : 'oracleHistory.costRun')}
                       </span>
                     </li>
                   ))}

@@ -31,6 +31,10 @@ import CategoryAutocomplete from '../components/CategoryAutocomplete';
 import CoachMark from '../components/CoachMark';
 import ShareModal from '../components/ShareModal';
 import { bookShareUrl } from '../lib/shareService';
+import { noteAnthologyAdd } from '../lib/anthologyInsights'; // v0.74
+import { useAuth } from '../lib/AuthContext';
+import { fetchRecommendationReason } from '../lib/oracleProvenance';
+import OracleLongReading from '../components/OracleLongReading';
 
 
 // ─── Similar books ────────────────────────────────────────────────────────────
@@ -237,6 +241,10 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
   const bookKey_ = route.params?.bookKey;
   const from = route.params?.from || 'dashboard';
   const fromLabel = route.params?.fromLabel || 'Dashboard';
+  // v0.74: a book reached from a shared Anthology and then shelved counts
+  // toward that Anthology's insights. noteAnthologyAdd checks the book matches
+  // the one opened from it, so browsing onward does not inherit the credit.
+  const fromAnthology = () => { if (from === 'list-view') noteAnthologyAdd(display); };
 
   const [book, setBook] = useState(null);
   // v0.63.2b: genre links for a book that is on NO shelf. See the effect below.
@@ -276,6 +284,22 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
   const [adderOpen, setAdderOpen] = useState(false);
   const [pendingRemoveId, setPendingRemoveId] = useState(null);
   const [shareOpen, setShareOpen] = useState(false); // v0.43
+
+  // v0.71.1: the Oracle's reason and the long reading, on the page readers
+  // actually land on. Both had been built into BookModal, which nothing
+  // renders any more — every book link goes here — so neither was visible.
+  // The reason is looked up by title against the reader's own impression log
+  // (RLS-scoped, a handful of rows); guests have none, so nothing is fetched.
+  const { user: authUser } = useAuth();
+  const [oracleReason, setOracleReason] = useState(null);
+  const reasonTitle = book?.t || null;
+  useEffect(() => {
+    if (!authUser || !reasonTitle) { setOracleReason(null); return undefined; }
+    let cancelled = false;
+    fetchRecommendationReason({ title: reasonTitle })
+      .then((r) => { if (!cancelled) setOracleReason(r); });
+    return () => { cancelled = true; };
+  }, [authUser, reasonTitle]);
 
   // Read snapshot from URL immediately — renders before DataContext loads.
   //
@@ -1258,18 +1282,18 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
               // book read outright is the least common path here since bulk
               // adds already cover that. ─────────────────────────────────────
               <div className="bp-primary-zone">
-                <button className="btn-accent btn--block" onClick={() => startReading(display)}>
+                <button className="btn-accent btn--block" onClick={() => { fromAnthology(); startReading(display); }}>
                   {t('bookPage.startReading')}
                 </button>
                 {(!inWish || !inNext) && (
                   <div className="bp-actions-row">
                     {!inWish && (
-                      <button className="btn-secondary" onClick={() => addToWishlist(display)}>
+                      <button className="btn-secondary" onClick={() => { fromAnthology(); addToWishlist(display); }}>
                         {t('bookPage.addToWishlist')}
                       </button>
                     )}
                     {!inNext && (
-                      <button className="btn-secondary" onClick={() => addToReadNext(display)}>
+                      <button className="btn-secondary" onClick={() => { fromAnthology(); addToReadNext(display); }}>
                         {t('bookPage.addToNext')}
                       </button>
                     )}
@@ -1279,7 +1303,7 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
                   <AddToListPicker book={display} className="btn-tertiary btn--sm" />
                   <button
                     className="btn-tertiary btn--sm"
-                    onClick={async () => { const m = await markAsRead(display, {}, { defer: true }); setPendingMoment(m); setRatingEditorOpen(true); }}
+                    onClick={async () => { fromAnthology(); const m = await markAsRead(display, {}, { defer: true }); setPendingMoment(m); setRatingEditorOpen(true); }}
                   >
                     {t('bookPage.markAsRead')}
                   </button>
@@ -1319,6 +1343,21 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
           )}
         </div>
       </div>
+
+      {/* v0.71.1: why the Oracle drew it (when it did), then the Pro reading.
+          Above the description on purpose — the description tells anybody
+          what the book is; these tell THIS reader why it might be theirs. */}
+      {oracleReason && (
+        <div className="bp-section">
+          <div className="bp-section__label">{t('bookModal.oracleReason')}</div>
+          <p className="book-card__quote">— {oracleReason}</p>
+        </div>
+      )}
+      {authUser && (
+        <div className="bp-section">
+          <OracleLongReading book={display} reason={oracleReason} />
+        </div>
+      )}
 
       {/* Description */}
       {display.d && (

@@ -43,6 +43,11 @@ function ReaderRow({ entry, t, onOpen, actions }) {
                 {t('kindred.curator')}
               </span>
             )}
+            {p?.pro_mark && !p?.is_curator && (
+              <span className="kin-badge kin-badge--curator" title={t('kindred.adeptHint')}>
+                ✦ {t('kindred.adept')}
+              </span>
+            )}
             {entry.mutual && (
               <span className="kin-badge kin-badge--mutual" title={t('kindred.mutualHint')}>
                 {t('kindred.mutual')}

@@ -9,7 +9,7 @@
     "brandAccent": "El Oráculo de los Libros"
   },
   "nav": {
-    "wishlist": "Antología",
+    "wishlist": "Lista de Deseos",
     "library": "Biblioteca",
     "readNext": "Por leer",
     "profile": "Perfil",
@@ -108,7 +108,7 @@
     "greetingBack": "Bienvenido/a de vuelta",
     "levelPill": "Lector Nivel {level}",
     "booksRead": "{count} leídos",
-    "inWishlist": "{count} en antología",
+    "inWishlist": "{count} en Lista de Deseos",
     "readingNow": "{count} leyendo ahora",
     "currentlyReading": "Leyendo ahora",
     "readingPlans": "Pasajes",
@@ -128,7 +128,7 @@
     "recentActivity": "Actividad reciente",
     "emptyFeedOrnament": "❦",
     "emptyFeedText": "Tu historia lectora empieza acá.",
-    "emptyFeedSub": "Marcá un libro como leído o agregá uno a tu antología.",
+    "emptyFeedSub": "Marcá un libro como leído o agregá uno a tu Lista de Deseos.",
     "showMore": "Mostrar {count} actualizaciones más",
     "ctaOracle": "El <span class=\"accent\">Oráculo</span>",
     "ctaOracleSub": "Invocá libros por estado de ánimo o género",
@@ -146,8 +146,8 @@
     "ctaClubsSub": "Leé el mismo libro que otras personas",
     "feedFinished": "Terminó",
     "feedStarted": "Empezó a leer",
-    "feedAddedOne": "Agregó a la antología",
-    "feedAddedMany": "Agregó {count} libros a la antología",
+    "feedAddedOne": "Agregó a la Lista de Deseos",
+    "feedAddedMany": "Agregó {count} libros a la Lista de Deseos",
     "feedPlanCreated": "Creó un pasaje",
     "feedBy": "de",
     "today": "Hoy",
@@ -243,7 +243,8 @@
       "searchSub": "Buscá por título o autor",
       "stacks": "Todavía no sé",
       "stacksSub": "Recorré los Estantes y quedate con lo que te llame"
-    }
+    },
+    "aiQuotaWelcome": "Tu mes de bienvenida: {limit} lecturas para arrancar"
   },
   "currentlyReading": {
     "breadcrumb": "Inicio",
@@ -400,7 +401,7 @@
     "quotaWallTitle": "El Oráculo guarda silencio por ahora",
     "quotaWallBody": "Usaste las {limit} consultas de IA de hoy.",
     "quotaWallReset": "Se renueva el {date}.",
-    "quotaWallUpgradeNote": "Mejorá a Pro para 5 consultas por día — 30× más que el plan gratuito.",
+    "quotaWallUpgradeNote": "Con Pro el Oráculo es ilimitado — consultalo cada vez que leas.",
     "categoriesDraw": "Dame un libro ❦",
     "categoriesSearchGenres": "Buscar géneros…",
     "categoriesDrawing": "Consultando…",
@@ -424,7 +425,17 @@
     "askError": "No se pudo contactar al Oráculo. Intentá reformular tu pregunta.",
     "askResultsTitle": "Encontramos <span class=\"accent\">{count} libros</span> para vos",
     "curationPending": "☩ {count} libro espera la lectura del Oráculo. Los géneros y los detalles llegan durante la noche.",
-    "curationPendingPlural": "☩ {count} libros esperan la lectura del Oráculo. Los géneros y los detalles llegan durante la noche."
+    "curationPendingPlural": "☩ {count} libros esperan la lectura del Oráculo. Los géneros y los detalles llegan durante la noche.",
+    "missButton": "Ninguno me llama",
+    "missPrompt": "¿Qué falló?",
+    "missReason": {
+      "not_my_taste": "No es mi estilo",
+      "already_known": "Ya los conozco",
+      "off_request": "No es lo que pedí",
+      "other": "Otra cosa"
+    },
+    "missRefunded": "Anotado — esta lectura corre por cuenta del Oráculo.",
+    "missNoted": "Anotado — el Oráculo va a aprender de esto."
   },
   "plans": {
     "breadcrumb": "Inicio",
@@ -611,7 +622,7 @@
     "inCatalog": "{n} de {total} en el catálogo",
     "bookStatusRead": "Leído",
     "bookStatusQueued": "En cola",
-    "bookStatusWishlist": "En antología",
+    "bookStatusWishlist": "En Lista de Deseos",
     "addToWishlist": "❦ Agregar",
     "addToNext": "→ Siguiente",
     "markRead": "✓ Leído",
@@ -626,11 +637,11 @@
     "queued": "· {count} en cola",
     "finished": "✓ ¡Completa!",
     "createPlan": "✦ Crear pasaje",
-    "addFirstBook": "+ Agregar libro 1 a la antología",
+    "addFirstBook": "+ Agregar libro 1 a la Lista de Deseos",
     "booksInSeries": "Libros de la saga",
     "noBooks": "No se encontraron libros para esta saga.",
     "bookN": "Libro {n}",
-    "wishlisted": "En antología"
+    "wishlisted": "En Lista de Deseos"
   },
   "profile": {
     "eyebrow": "Perfil",
@@ -649,7 +660,7 @@
     "importGoodreads": "Importar CSV de Goodreads",
     "importing": "Importando…",
     "resetAll": "Reiniciar todo",
-    "confirmReset": "Esto borra tu biblioteca, tu antología, tus pasajes y tus antologías en esta cuenta. No se puede deshacer. ¿Continuar?",
+    "confirmReset": "Esto borra tu biblioteca, tu Lista de Deseos, tus pasajes y tus antologías en esta cuenta. No se puede deshacer. ¿Continuar?",
     "readingLevel": "Nivel de lectura",
     "levelNames": {
       "1": "Lectora casual",
@@ -1084,7 +1095,7 @@
     "successToast": "Gracias, lo revisaremos pronto"
   },
   "bulkImport": {
-    "titleWishlist": "Importar varios a la antología",
+    "titleWishlist": "Importar varios a la Lista de Deseos",
     "titleLibrary": "Importar varios a la biblioteca",
     "tabGoodreadsRead": "Goodreads (Leídos)",
     "tabTitles": "Pegar títulos",
@@ -1094,12 +1105,12 @@
     "nothingToImport": "Nada para importar — cada fila falta o ya está en tu {target}.",
     "added": "Se agregó {count} libro a tu {target}.",
     "addedPlural": "Se agregaron {count} libros a tu {target}.",
-    "targetWishlist": "antología",
+    "targetWishlist": "Lista de Deseos",
     "targetLibrary": "biblioteca",
     "lookingUp": "Buscando… {done}/{total}",
     "readyCount": "{count} listo",
     "addAsIs": "{count} agregar así",
-    "alreadyHave": "{count} ya en la biblioteca/antología",
+    "alreadyHave": "{count} ya en la biblioteca/Lista de Deseos",
     "notFoundCount": "{count} no encontrado",
     "startOver": "Empezar de nuevo",
     "addBtn": "Agregar {count} a {target} ❦",
@@ -1403,7 +1414,7 @@
     "ariaResults": "Resultados de búsqueda",
     "loading": "Buscando…",
     "inLibrary": "Biblioteca",
-    "inWishlist": "Antología",
+    "inWishlist": "Lista de Deseos",
     "inNext": "Por leer",
     "oracle": "Oráculo"
   },
@@ -1504,16 +1515,16 @@
     "pricingFreePrice": "$0",
     "pricingFreePeriod": "para siempre",
     "pricingFreeFeature1": "Biblioteca, lista de deseos y cola completas",
-    "pricingFreeFeature2": "Clubs de lectura, listas y planes",
+    "pricingFreeFeature2": "Sumate a cualquier club; creá un club, 3 antologías y un plan de lectura propios",
     "pricingFreeFeature3": "Seguimiento de sagas y estante de portadas",
-    "pricingFreeFeature4": "5 consultas al Oráculo por mes",
+    "pricingFreeFeature4": "5 lecturas del Oráculo por mes (10 en tu primer mes)",
     "pricingFreeFeature5": "Soporte completo en inglés y español",
     "pricingProTitle": "Pro",
     "pricingProPrice": "$5.99",
     "pricingProPeriod": "por mes",
     "pricingProFeature1": "Todo lo del plan Gratis",
-    "pricingProFeature2": "5 consultas al Oráculo por día",
-    "pricingProFeature3": "5 planes de lectura con IA por día",
+    "pricingProFeature2": "Lecturas del Oráculo ilimitadas",
+    "pricingProFeature3": "Clubes, antologías y planes de lectura ilimitados",
     "pricingProFeature4": "Encuestas y consignas de club de lectura",
     "pricingProFeature5": "Cancelá cuando quieras desde tu perfil",
     "pricingProCta": "Mejorar a Pro ❦",
@@ -1522,7 +1533,9 @@
     "privacyLink": "Política de Privacidad",
     "termsLink": "Términos de Servicio",
     "refundLink": "Política de Reembolso",
-    "pageTitle": "Sobre el <span class=\"accent\">Oráculo</span>"
+    "pageTitle": "Sobre el <span class=\"accent\">Oráculo</span>",
+    "pricingProFeature6": "Por qué este libro, para vos — y tu carta de lector",
+    "pricingProFeature7": "Portadas propias y estadísticas de tus listas"
   },
   "share": {
     "modalEyebrow": "Compartir",
@@ -1617,7 +1630,7 @@
     "addCategory": "+ Agregar",
     "acquire": "Adquirir este libro",
     "inReadNext": "✓ En la cola",
-    "fromWishlist": "Antología",
+    "fromWishlist": "Lista de Deseos",
     "fromSearch": "Búsqueda",
     "addRating": "+ Calificar",
     "notRatedYet": "Sin calificar aún.",
@@ -1637,7 +1650,7 @@
     "fromSearch": "Búsqueda",
     "statusRead": "Leído",
     "statusQueued": "En cola",
-    "statusWishlist": "En antología",
+    "statusWishlist": "En Lista de Deseos",
     "resultsAriaLabel": "Resultados de búsqueda",
     "loadingText": "Buscando…"
   },
@@ -1716,29 +1729,30 @@
     "tierPastDue": "Pago vencido",
     "sectionTitle": "Suscripción",
     "freeDesc": "{remaining} de {limit} consultas de IA restantes este mes.",
-    "proDesc": "5 consultas de IA por día — Oráculo, planes y clubes.",
+    "proDesc": "Consultas al Oráculo ilimitadas — lecturas, pasajes y clubes.",
     "pastDueDesc": "El pago falló. Actualizá tu método de pago para restaurar el acceso.",
     "upgradeBtn": "Mejorar a Pro ❦",
     "manageBtn": "Gestionar suscripción →",
     "upgradePrice": "$5.99/mes · cancelá cuando quieras",
-    "upgradeFeature1": "5 consultas al Oráculo por día (vs 5 por mes en Gratis)",
-    "upgradeFeature2": "5 planes de lectura con IA por día",
+    "upgradeFeature1": "Lecturas del Oráculo ilimitadas (vs 5 por mes en Gratis)",
+    "upgradeFeature2": "Clubes, antologías y planes de lectura ilimitados",
     "upgradeFeature3": "Encuestas y consignas de club de lectura",
-    "upgradeFeature4": "Soporte prioritario",
+    "upgradeFeature4": "La marca de Adepto en tu perfil",
     "resetsOn": "Cuota se renueva el {date}",
     "redirecting": "Abriendo pago…",
     "checkoutSuccess": "¡Pago exitoso! Activando tu plan Pro…",
     "checkoutCancelled": "Pago cancelado — no se realizó ningún cobro.",
     "checkoutError": "No se pudo abrir el pago. Intentá de nuevo.",
     "portalError": "No se pudo abrir el portal. Intentá de nuevo.",
-    "noSubToast": "Esta cuenta aún no tiene una suscripción activa — mejorá a Pro para desbloquear consultas diarias al Oráculo.",
+    "noSubToast": "Esta cuenta aún no tiene una suscripción activa — mejorá a Pro para que el Oráculo sea ilimitado.",
     "alreadyProToast": "Ya tenés Pro — usá Gestionar suscripción para hacer cambios.",
     "compedTitle": "Pro, otorgado directamente",
     "compedBody": "Esta cuenta tiene acceso Pro sin facturación asociada, así que no hay nada que gestionar. Tu cuota y tus funciones no se ven afectadas.",
     "compedToast": "Esta cuenta tiene acceso Pro sin facturación asociada.",
     "subMissingTitle": "No se encontró el registro de facturación",
     "subMissingBody": "Tenemos una suscripción registrada para esta cuenta que el proveedor de pagos ya no reconoce — normalmente una suscripción cancelada, o una creada en modo de prueba. Tu acceso Pro no se ve afectado. Escribinos si creés que esto es un error.",
-    "subMissingToast": "No se encontró la suscripción registrada."
+    "subMissingToast": "No se encontró la suscripción registrada.",
+    "annualOption": "O {price} por año"
   },
   "oracleGate": {
     "introEyebrow": "Antes de empezar",
@@ -1785,8 +1799,11 @@
       "categorization": "Categorización de libros",
       "club_poll": "Sugerencias para el club",
       "club_discussion": "Preguntas de discusión",
-      "unknown": "Consulta al Oráculo"
-    }
+      "unknown": "Consulta al Oráculo",
+      "why_long": "La lectura larga",
+      "taste_chart": "Carta de lector"
+    },
+    "costRefunded": "devuelta"
   },
   "kindred": {
     "booksThisYear": "{count} libros en {year}",
@@ -1851,7 +1868,9 @@
     "tabKindred": "Tus afines",
     "totalBooks": "{count} en total",
     "unfollow": "Dejar de seguir",
-    "unmute": "Reactivar"
+    "unmute": "Reactivar",
+    "adept": "Adepto",
+    "adeptHint": "Lee con The Books Oracle Pro."
   },
   "footer": {
     "privacy": "Privacidad",
@@ -1899,7 +1918,7 @@
   "privacy": {
     "breadcrumbs": "Política de privacidad",
     "title": "<span class=\"accent\">Política</span> de privacidad",
-    "lastUpdated": "Última actualización: 30 de julio de 2026",
+    "lastUpdated": "Última actualización: 23 de septiembre de 2026",
     "whoWeAreTitle": "Quiénes somos",
     "whoWeArePara1": "The Books Oracle (accesible en thebooksoracle.com) es una aplicación de acompañamiento de lectura personal operada por un desarrollador individual basado en Costa Rica.",
     "whoWeArePara2": "Para preguntas relacionadas con la privacidad: support@thebooksoracle.com",
@@ -1907,7 +1926,7 @@
     "whatDataWeCollectPara1": "<strong>Datos de la cuenta.</strong> Cuando inicias sesión con Google, recibimos tu nombre, dirección de correo electrónico y foto de perfil. Almacenamos estos datos para identificar tu cuenta.",
     "whatDataWeCollectPara2": "<strong>Datos de lectura.</strong> Tu biblioteca, lista de deseos, cola de próximas lecturas, calificaciones, notas, fechas de lectura y progreso te pertenecen y se almacenan en tu cuenta.",
     "whatDataWeCollectPara3": "<strong>Datos de uso.</strong> Guardamos un registro de cada vez que usás una función del Oráculo — de qué parte de la app salió y cuándo — para que puedas ver en qué se fue tu cuota, y para aplicar los límites del plan gratuito y controlar los costos de infraestructura. Ese registro no contiene contenido: ni la pregunta que hiciste, ni el libro que estabas mirando. Podés consultar tu propio historial en Perfil → Suscripción.",
-    "whatDataWeCollectPara4": "<strong>Datos de suscripción.</strong> Si te suscribes a Pro, almacenamos tu ID de cliente de Paddle y tu ID de suscripción. Nunca almacenamos números de tarjeta ni datos de pago; todo el procesamiento de pagos lo gestiona Paddle.",
+    "whatDataWeCollectPara4": "<strong>Datos de suscripción.</strong> Si te suscribís a Pro, almacenamos tu ID de cliente de Lemon Squeezy y tu ID de suscripción. Nunca almacenamos números de tarjeta ni datos de pago; todo el procesamiento de pagos lo gestiona Lemon Squeezy.",
     "whatDataWeCollectPara5": "<strong>Datos del club.</strong> Tu nombre visible, actividad de lectura y cualquier publicación o contribución de debate en los clubes de lectura serán visibles para los demás miembros del club.",
     "whatDataWeDoNotCollectTitle": "Qué no recopilamos",
     "whatDataWeDoNotCollectPara1": "No recopilamos tu ubicación, identificadores de dispositivos, historial de navegación fuera de la aplicación ni datos biométricos. No mostramos publicidad y no tenemos socios publicitarios. No vendemos tus datos a ningún tercero.",
@@ -1917,16 +1936,16 @@
     "dataStorageTitle": "Almacenamiento y seguridad de datos",
     "dataStoragePara1": "Tus datos se almacenan en Supabase (PostgreSQL en AWS) con políticas de seguridad a nivel de fila (RLS) que garantizan que los usuarios solo puedan acceder a sus propios datos. Todos los datos se transmiten a través de HTTPS. Las credenciales de rol de servicio se almacenan únicamente en variables de entorno del lado del servidor y nunca se exponen al cliente.",
     "thirdPartyTitle": "Servicios de terceros",
-    "thirdPartyPara1": "Utilizamos: Google OAuth (solo inicio de sesión), Supabase (base de datos), Anthropic Claude (funciones de IA), Paddle (pagos — comerciante oficial), Netlify (alojamiento), Hardcover / OpenLibrary (metadatos de libros).",
+    "thirdPartyPara1": "Utilizamos: Google OAuth (solo inicio de sesión), Supabase (base de datos), Anthropic Claude (funciones de IA), Lemon Squeezy (pagos — comerciante oficial), Netlify (alojamiento), Hardcover / OpenLibrary (metadatos de libros).",
     "yourRightsTitle": "Tus derechos",
     "yourRightsPara1": "Puedes eliminar tu cuenta y todos tus datos en cualquier momento desde Perfil → Restablecer perfil. Puedes solicitar una copia de tus datos o pedirnos que eliminemos registros específicos enviando un correo electrónico a support@thebooksoracle.com. Responderemos en un plazo de 30 días. Los usuarios del EEE (Espacio Económico Europeo) tienen los derechos del RGPD, incluidos el acceso, la rectificación, la supresión y la portabilidad.",
     "cookiesTitle": "Cookies",
-    "cookiesPara1": "La aplicación utiliza localStorage y sessionStorage del navegador para guardar en caché los datos de lectura localmente por motivos de rendimiento. Estas no son cookies publicitarias y no te rastrean en otros sitios. No se configuran cookies de rastreo de terceros.",
+    "cookiesPara1": "La aplicación usa localStorage y sessionStorage del navegador para guardar en caché los datos de lectura localmente por motivos de rendimiento. Cuando abrís una Antología compartida por otra persona, también guarda un número de visitante aleatorio en este navegador para que quien la curó pueda ver a cuántas personas distintas llegó — ese número no está vinculado a tu cuenta y nunca se le muestra a nadie. Con No rastrear o Global Privacy Control activados, no se cuenta nada. No son cookies publicitarias y no te rastrean en otros sitios. No se configuran cookies de rastreo de terceros.",
     "childrenTitle": "Menores",
     "childrenPara1": "The Books Oracle no está dirigido a niños menores de 13 años. Si crees que un menor ha proporcionado datos personales, ponte en contacto con nosotros y los eliminaremos de inmediato.",
     "changesTitle": "Cambios",
     "changesPara1": "Es posible que actualicemos esta política de vez en cuando. Los cambios significativos se indicarán en las notas de la versión dentro de la aplicación.",
-    "whatDataWeCollectPara6": "<strong>Historial de recomendaciones.</strong> Cuando el Oráculo te sugiere libros, registramos los títulos que ofreció y si los agregaste. Esto es producción de la app, no algo que vos nos hayas contado, y lo guardamos por un solo motivo: es la única manera de saber si las sugerencias del Oráculo son buenas. Solo vos podés verlo, y se elimina junto con tu cuenta."
+    "whatDataWeCollectPara6": "<strong>Historial de recomendaciones.</strong> Cuando el Oráculo te sugiere libros, registramos los títulos que ofreció y si los agregaste. Esto es producción de la app, no algo que vos nos hayas contado, y lo guardamos por un solo motivo: es la única manera de saber si las sugerencias del Oráculo son buenas. Cuando le decís al Oráculo que ninguna sugerencia te sirve, registramos eso y el motivo que elegiste, y lo usamos para orientar tus próximas sugerencias. Solo vos podés verlo, y se elimina junto con tu cuenta."
   },
   "terms": {
     "breadcrumbs": "Términos y Condiciones",
@@ -1945,7 +1964,7 @@
     "aiFeaturesAndAccuracyTitle": "Funciones de IA y precisión",
     "aiFeaturesAndAccuracyPara1": "Las recomendaciones de Oracle, los planes de lectura y las categorizaciones son generados por IA y se proporcionan con fines de entretenimiento y descubrimiento. Pueden contener imprecisiones. No garantizamos la precisión, integridad o idoneidad del contenido generado por IA.",
     "subscriptionsAndPaymentTitle": "Suscripciones y pago",
-    "subscriptionsAndPaymentPara1": "El plan Pro se factura mensualmente a $5 USD a través de Paddle, quien actúa como Comerciante de Registro (Merchant of Record). Las suscripciones se renuevan automáticamente hasta que se cancelen. Puedes cancelarla desde Perfil en cualquier momento; el acceso continuará durante el periodo de facturación actual. Nos reservamos el derecho de cambiar los precios con un aviso de 30 días a los suscriptores activos.",
+    "subscriptionsAndPaymentPara1": "El plan Pro se factura mensualmente a $5.99 USD a través de Lemon Squeezy, quien actúa como Comerciante de Registro (Merchant of Record). Las suscripciones se renuevan automáticamente hasta que se cancelen. Podés cancelarla desde Perfil en cualquier momento; el acceso continúa durante el período de facturación actual. El uso ilimitado del Oráculo en Pro es para lectura personal y está sujeto a un límite de uso razonable que protege el servicio del abuso automatizado. Nos reservamos el derecho de cambiar los precios con un aviso de 30 días a los suscriptores activos.",
     "intellectualPropertyTitle": "Propiedad intelectual",
     "intellectualPropertyPara1": "La aplicación The Books Oracle, su diseño y el contenido original son propiedad del operador. Los metadatos de los libros proceden de catálogos de terceros y están sujetos a sus respectivas licencias.",
     "disclaimerAndLimitationOfLiabilityTitle": "Exclusión de garantías y limitación de responsabilidad",
@@ -2083,19 +2102,23 @@
       "seekerName": "El Buscador",
       "seekerPrice": "$0",
       "seekerRow1": "Lista de deseos y biblioteca, libros sin límite",
-      "seekerRow2": "Planes de lectura, clubes y amistades",
-      "seekerRow3": "5 sugerencias del Oráculo al mes, cada una con razones",
-      "seekerRow4": "Explora el catálogo curado de la Bóveda",
-      "seekerRow5": "Experiencia completa EN / ES",
+      "seekerRow2": "5 sugerencias del Oráculo al mes — 10 en tu primer mes —, cada una con razones",
+      "seekerRow3": "Si el Oráculo no acierta, te devuelve la lectura — dos veces al mes",
+      "seekerRow4": "Cualquier club de lectura, y uno propio",
+      "seekerRow5": "Tres listas curadas para compartir y un plan de lectura a la vez",
       "seekerCta": "Empieza como Buscador",
       "adeptTag": "El rito completo",
       "adeptName": "El Adepto",
       "adeptPrice": "$5.99",
       "adeptRow1": "Todo lo del Buscador",
-      "adeptRow2": "Cinco sugerencias del Oráculo al día, en vez de cinco al mes",
-      "adeptRow3": "Consulta los Ritos tanto como leas",
-      "adeptRow4": "Acceso anticipado a nuevos ritos",
-      "adeptCta": "Conviértete en Adepto"
+      "adeptRow2": "Sugerencias del Oráculo ilimitadas",
+      "adeptRow3": "Por qué este libro, para vos: una lectura personal de cualquier libro, conectada con los que amaste",
+      "adeptRow4": "Tu carta de lector: tus temas recurrentes y tres puertas para probar",
+      "adeptCta": "Conviértete en Adepto",
+      "seekerRow6": "El catálogo curado de la Bóveda, en inglés y español",
+      "adeptRow5": "El Oráculo en tus clubes: encuestas y preguntas sugeridas",
+      "adeptRow6": "Clubes, listas curadas y planes de lectura ilimitados, con portadas propias",
+      "adeptRow7": "Qué listas tuyas mueven lectores"
     },
     "questions": {
       "title": "Preguntas para el Oráculo",
@@ -2110,7 +2133,7 @@
       "q5": "¿Funciona en español?",
       "a5": "Completamente. Cada página, función y nota de versión existe en inglés y en español. El Oráculo es bilingüe de nacimiento, no por traducción tardía.",
       "q6": "¿Qué obtengo como Adepto?",
-      "a6": "Cinco sugerencias del Oráculo cada día en vez de cinco al mes — con las mismas razones detrás de cada una — más acceso anticipado a nuevos ritos. El nivel Buscador sigue siendo gratis para siempre.",
+      "a6": "Sugerencias del Oráculo ilimitadas en vez de cinco al mes, una lectura personal de por qué cualquier libro es para vos, tu carta de lector, la ayuda del Oráculo en tus clubes y sin límites de clubes, listas curadas ni planes de lectura — además de portadas propias y estadísticas para las listas que compartís. El nivel Buscador sigue siendo gratis para siempre, y tu primer mes como Buscador trae diez sugerencias.",
       "q7": "¿Cómo agrego mis libros?",
       "a7": "Como te quede más cómodo. Escaneá con el celular los códigos de barras de una pila de libros, traé tus estantes desde Goodreads, pegá una lista de títulos o buscá un libro a la vez. ¿No sabés por dónde empezar? Recorré el catálogo y quedate con lo que te llame. De cualquier forma, el Oráculo los ordena por género y serie durante la noche."
     },
@@ -2238,5 +2261,85 @@
     "errNoCamera": "Este navegador no puede acceder a una cámara. En la computadora, revisá que ninguna otra app esté usando la webcam.",
     "errNoDecoder": "El lector de códigos no pudo iniciarse en este dispositivo.",
     "problemAlt": "Igual podés escribir un ISBN o agregarlo desde una foto acá abajo."
+  },
+  "pro": {
+    "gate": {
+      "upgrade": "Ver Pro",
+      "clubs": {
+        "title": "Tu primer club es tuyo.",
+        "body": "Tener más de un club propio es parte de Pro. Sumarte a todos los clubes que quieras sigue siendo gratis."
+      },
+      "lists": {
+        "title": "Ya curaste {limit} Antologías.",
+        "body": "Más de {limit} es parte de Pro. Todas las Antologías que tenés siguen siendo tuyas, y se pueden compartir."
+      },
+      "plans": {
+        "title": "Tu Pasaje está en marcha.",
+        "body": "Tener más de un Pasaje a la vez es parte de Pro. Terminá o quitá este para trazar el siguiente."
+      },
+      "cover": {
+        "title": "Las portadas propias son parte de Pro.",
+        "body": "Dale a una Antología su propia imagen de portada — reemplaza la tira de portadas de libros en todos lados donde aparece."
+      }
+    },
+    "clubOracleLocked": "Sugerencias del Oráculo · Pro",
+    "clubOracleHint": "El Oráculo se suma a los clubes con Pro. Las encuestas y preguntas que escribís vos siguen siendo gratis.",
+    "longReadingCta": "Por qué este libro, para mí",
+    "longReadingLocked": "Por qué este libro, para vos — una lectura personal · Pro",
+    "longReadingLabel": "La lectura larga",
+    "longReadingDrawing": "El Oráculo está leyendo tu estante…",
+    "longReadingError": "El Oráculo no pudo terminar esa lectura. Probá de nuevo en un momento.",
+    "chartTitle": "Tu carta de lector",
+    "chartIntro": "El Oráculo te devuelve la lectura de todo tu estante: los temas a los que volvés, hacia dónde te inclinás, las salas de la biblioteca que nunca pisaste — y tres puertas para probar.",
+    "chartLockedBody": "Un retrato tuyo como lector, trazado por el Oráculo a partir de tu estante. Parte de Pro.",
+    "chartTooFew": "La carta necesita un estante que leer. Registrá {count} libros leídos y el Oráculo va a poder trazarla.",
+    "chartCta": "Trazar mi carta",
+    "chartDrawing": "Trazando tu carta…",
+    "chartThemes": "Volvés a",
+    "chartLeaning": "Hacia dónde te inclinás",
+    "chartBlindSpots": "Salas que no pisaste",
+    "chartDirections": "Tres puertas para probar",
+    "chartDrawnOn": "Trazada el {date}",
+    "chartRedraw": "Volver a trazar",
+    "longReadingEchoes": "Ecos en tu estante"
+  },
+  "insights": {
+    "title": "Qué Antologías mueven lectores",
+    "lead": "Los últimos 30 días de tus Antologías públicas, de la más visitada a la menos.",
+    "colAnthology": "Antología",
+    "colVisitors": "Visitantes",
+    "colViews": "Vistas",
+    "colOpens": "Libros abiertos",
+    "colFollowers": "Seguidores",
+    "colAdds": "Guardados",
+    "colSignups": "Trajo",
+    "fewer": "menos de {k}",
+    "privacy": "Solo cantidades — nunca quién. Guardados y Trajo (histórico) se muestran cuando llegan a {k}. No se cuenta a quien tiene activado No rastrear.",
+    "noPublic": "Hacé pública una Antología para empezar a ver a quién llega.",
+    "freeLead": "Tus Antologías se vieron {count} veces en los últimos 30 días.",
+    "freeNoPublic": "Hacé pública una Antología y compartila para ver hasta dónde llega.",
+    "freeCta": "Mirá cuáles mueven lectores con Pro"
+  },
+  "anthologyEditor": {
+    "open": "Editar",
+    "title": "Editar Antología",
+    "fieldTitle": "Título",
+    "fieldDescription": "Descripción",
+    "fieldCover": "Portada",
+    "coverUpload": "Subir una portada",
+    "coverReplace": "Cambiar portada",
+    "coverRemove": "Quitar portada",
+    "coverUploading": "Subiendo…",
+    "coverHint": "JPG, PNG o WebP. Se achica antes de subirla y se muestra en todos lados donde aparece esta Antología.",
+    "save": "Guardar cambios",
+    "saveError": "No se pudieron guardar los cambios. Probá de nuevo en un momento.",
+    "coverError": {
+      "not_image": "Ese archivo no es una imagen.",
+      "too_large": "Esa imagen pesa más de 20 MB.",
+      "unreadable": "No se pudo leer esa imagen.",
+      "signed_out": "Volvé a iniciar sesión para subir una portada.",
+      "pro_required": "Las portadas propias son parte de Pro.",
+      "upload_failed": "No se pudo subir la portada. Probá de nuevo en un momento."
+    }
   }
 }

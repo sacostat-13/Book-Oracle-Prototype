@@ -14,8 +14,9 @@ import { prefersReducedMotion } from './motion';
 
 gsap.registerPlugin(ScrollTrigger, useGSAP);
 
-const SEEKER_ROWS = [1, 2, 3, 4, 5];
-const ADEPT_ROWS = [1, 2, 3, 4];
+// v0.71.1: rows follow docs/pro-tier-v1-spec.md — keep in step with About's pricing.
+const SEEKER_ROWS = [1, 2, 3, 4, 5, 6];
+const ADEPT_ROWS = [1, 2, 3, 4, 5, 6, 7];
 
 export default function Offering({ onOpenAuth, anchorRef }) {
   const t = useT();

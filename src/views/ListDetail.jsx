@@ -14,6 +14,7 @@ import BookCover from '../components/BookCover';
 import ShareModal from '../components/ShareModal';
 import ListMetaEditor from '../components/ListMetaEditor';
 import { listShareUrl } from '../lib/shareService';
+import AnthologyEditor from '../components/AnthologyEditor'; // v0.71.1
 
 function AddBookPicker({ list, onClose }) {
   const { state, addBookToList } = useData();
@@ -123,6 +124,7 @@ export default function ListDetail() {
   const [addingBook, setAddingBook] = useState(false);
   const [shareOpen, setShareOpen] = useState(false); // v0.43: replaces copy-link
   const [editingMeta, setEditingMeta] = useState(false);
+  const [editing, setEditing] = useState(false); // v0.71.1: title, description, cover
 
   const listId = route.params?.listId;
   const list = (state.lists || []).find(l => l.id === listId);
@@ -160,6 +162,9 @@ export default function ListDetail() {
     <>
       
 
+      {list.cover_image_url && (
+        <img className="ls-cover" src={list.cover_image_url} alt="" />
+      )}
       <div className="ls-page-head">
         <div className="page-head__eyebrow">
           <span>{t('about.featureListsTitle')}</span> · {list.title}
@@ -182,6 +187,9 @@ export default function ListDetail() {
       <div className="bp-actions">
         <button className="btn-primary" onClick={() => setAddingBook(true)}>
           {t('listDetail.addBook')}
+        </button>
+        <button className={`btn-secondary${editing ? ' active' : ''}`} onClick={() => setEditing((v) => !v)}>
+          {editing ? t('common.cancel') : t('anthologyEditor.open')}
         </button>
         <button className="btn-secondary" onClick={togglePublic}>
           {list.is_public
@@ -207,6 +215,8 @@ export default function ListDetail() {
           </button>
         )}
       </div>
+
+      {editing && <AnthologyEditor list={list} onClose={() => setEditing(false)} />}
 
       {/* Tags are only offered on a public list. They exist so Discover can
           filter, and a private list is not in Discover — showing the editor

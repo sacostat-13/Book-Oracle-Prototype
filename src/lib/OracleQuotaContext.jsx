@@ -5,13 +5,17 @@
 // Quota shape:
 //   {
 //     subscription_status: 'free'|'active'|'past_due'|'cancelled',
-//     period:              'day'|'month'|'unlimited', // 'unlimited' for curators
+//     period:              'day'|'month'|'unlimited',
 //     calls_used:          int,
-//     calls_limit:         int|null,       // 5 for both tiers, different period; null when unlimited
+//     calls_limit:         int|null,       // Free: 5 a month (10 in the welcome month);
+//                                          // null when unlimited
 //     calls_remaining:     int|null,       // null when unlimited
 //     reset_at:            Date|null,
-//     unlimited:           bool,           // v0.56: true for curators (profiles.is_curator),
-//                                          // straight from get_oracle_quota — Pro itself is still 5/day.
+//     unlimited:           bool,           // v0.71: true for Pro. A Pro reader who reaches
+//                                          // the fair-use ceiling (30/day) comes back
+//                                          // unlimited: false, period 'day', 0 remaining,
+//                                          // which the existing day-wall already renders.
+//     welcome:             bool,           // v0.71: free reader inside their first 30 days
 //   }
 
 import { createContext, useContext, useEffect, useRef, useState, useCallback } from 'react';
@@ -86,6 +90,7 @@ export function OracleQuotaProvider({ children }) {
         calls_remaining:     unlimited ? null : Math.max(0, data.calls_remaining ?? FREE_LIMIT),
         reset_at:            data.reset_at ? new Date(data.reset_at) : null,
         unlimited,
+        welcome:             !!data.welcome,
         is_curator:          !!data.is_curator,
       });
     } catch (e) {

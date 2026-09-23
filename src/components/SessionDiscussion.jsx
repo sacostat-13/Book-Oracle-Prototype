@@ -17,6 +17,7 @@ import { callClaude, QuotaExceededError } from '../lib/claudeApi';
 import CommentThread from './CommentThread';
 import { useT } from '../lib/I18nContext';
 import { useOracleQuota } from '../lib/OracleQuotaContext';
+import { useProLimits } from '../lib/proGates';
 import { fetchTitlesByUserId } from '../lib/titles';
 
 // ── Oracle question suggestion fetch ─────────────────────────────────────────
@@ -194,6 +195,7 @@ export default function SessionDiscussion({ sessionId, clubId, isAdmin, book = {
   const { postComment, deleteComment, editComment, addQuestion, deleteQuestion } = useData();
   const t = useT();
   const { handleQuotaError, onCallSucceeded, confirmOracleCall } = useOracleQuota();
+  const { isPro, goUpgrade } = useProLimits(); // v0.72: Oracle prompts are Pro
   const [discussion, setDiscussion] = useState(null);
   // v0.51: comment author id -> worn Reader Title key. Loaded in one batch
   // after the discussion arrives; decoration only, so failures render nothing.
@@ -311,10 +313,11 @@ export default function SessionDiscussion({ sessionId, clubId, isAdmin, book = {
               <div className="club-card__actions">
                 <button
                   className="btn-text"
-                  onClick={handleOracleSuggest}
+                  onClick={isPro ? handleOracleSuggest : goUpgrade}
                   disabled={oracleLoading}
+                  title={isPro ? undefined : t('pro.clubOracleHint')}
                 >
-                  {oracleLoading ? t('discussion.oracleThinking') : t('discussion.oracleSuggestsBtn')}
+                  {oracleLoading ? t('discussion.oracleThinking') : isPro ? t('discussion.oracleSuggestsBtn') : `✦ ${t('pro.clubOracleLocked')}`}
                 </button>
                 {!showAddQuestion && (
                   <button className="btn-text" onClick={() => setShowAddQuestion(true)}>

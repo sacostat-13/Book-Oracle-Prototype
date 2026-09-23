@@ -9,6 +9,9 @@ import BookCover from '../components/BookCover';
 import CornerBrackets from '../components/CornerBrackets';
 import EmptyState from '../components/EmptyState';
 import ListMetaEditor from '../components/ListMetaEditor';
+import { useProLimits } from '../lib/proGates'; // v0.72: Free curates up to three Anthologies
+import ProGate from '../components/ProGate';
+import AnthologyInsights from '../components/AnthologyInsights'; // v0.74
 
 // How many covers to show per list before collapsing into a "+N more" box.
 const COVER_PREVIEW = 6;
@@ -97,6 +100,7 @@ export default function Lists() {
   const tNode = useTNode();
   const { lang } = useI18n();
   const [creating, setCreating] = useState(false);
+  const { canCreate } = useProLimits();
 
   const lists = state.lists || [];
   const { genresByBookId } = state;
@@ -141,10 +145,16 @@ export default function Lists() {
       <div className="plan-divider"><span className="plan-divider__glyph">✦</span></div>
 
       <div className="bp-actions">
-        <button className="btn-primary" onClick={() => setCreating(true)}>
-          + {t('lists.newListBtn')}
-        </button>
+        {canCreate('lists') ? (
+          <button className="btn-primary" onClick={() => setCreating(true)}>
+            + {t('lists.newListBtn')}
+          </button>
+        ) : (
+          <ProGate feature="lists" />
+        )}
       </div>
+
+      <AnthologyInsights listCount={lists.length} />
 
       {lists.length === 0 ? (
         <EmptyState
@@ -186,6 +196,10 @@ export default function Lists() {
                     {t('common.delete')}
                   </button>
                 </div>
+
+                {list.cover_image_url && (
+                  <img className="ls-cover ls-cover--card" src={list.cover_image_url} alt="" />
+                )}
 
                 {books.length === 0 ? (
                   <button

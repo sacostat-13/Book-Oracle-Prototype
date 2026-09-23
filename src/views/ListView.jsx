@@ -42,6 +42,7 @@ import BookCover from '../components/BookCover';
 import BookLoader from '../components/BookLoader';
 import FollowListButton from '../components/FollowListButton';
 import SignInGate from '../components/SignInGate';
+import { logAnthologyView, logAnthologyOpen, rememberReferral } from '../lib/anthologyInsights'; // v0.74
 
 // The RPC returns `row_to_json(b)` straight off the books table, so the shape
 // is snake_case DB columns — not the short-key book objects the rest of the app
@@ -95,6 +96,11 @@ export default function ListView() {
           const { data: d, error: e } = await supabase.rpc('get_public_list', { p_list_id: listId });
           if (e || !d) throw new Error(t('lists.notFound'));
           setData(d);
+          // v0.74: counted for the owner's insights (aggregate, DNT-respecting;
+          // the owner's own visits are ignored server-side). A signed-out
+          // visitor is remembered as referred by this Anthology for a week.
+          logAnthologyView(listId);
+          if (!user) rememberReferral(listId);
           setFollowing(!!d.caller_follows);
           setFollowerCount(Number(d.follower_count) || 0);
           // Clears the "changed since you looked" dot on the landing page. A
@@ -131,6 +137,7 @@ export default function ListView() {
   // another one is both surprising and liable to be blocked by the popup
   // blocker when it is not the direct result of a trusted click.
   function openBook(book) {
+    if (mode === 'list') logAnthologyOpen(listId, book); // v0.74
     go('book-page', buildBookPageParams(book, 'list-view', t('lists.fromList')));
   }
 
@@ -159,6 +166,9 @@ export default function ListView() {
     const moods = knownMoods(data.moods || []);
     return (
       <>
+        {list.cover_image_url && (
+          <img className="ls-cover" src={list.cover_image_url} alt="" />
+        )}
         <div className="ls-page-head">
           <div className="ls-page-head__label lv-curated-by">
             {tNode('lists.curatedBy', { name: <strong className="lv-curator-name">{owner.display_name}</strong> })}

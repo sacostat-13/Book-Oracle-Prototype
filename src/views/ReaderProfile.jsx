@@ -452,6 +452,11 @@ export default function FriendProfile() {
                 {t('kindred.curator')}
               </span>
             )}
+            {profile.pro_mark && !profile.is_curator && (
+              <span className="bp-pill bp-pill--gold" title={t('kindred.adeptHint')}>
+                ✦ {t('kindred.adept')}
+              </span>
+            )}
             {followsMe && amFollowing && (
               <span className="bp-pill" title={t('kindred.mutualHint')}>{t('kindred.mutual')}</span>
             )}

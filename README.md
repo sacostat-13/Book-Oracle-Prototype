@@ -4,7 +4,7 @@ A reading companion — wishlist, library, Passages (reading plans), Anthologies
 lists), book clubs, Kindred (follows), and an AI-powered "oracle" for book discovery. Built with React + Vite + SCSS, backed by Supabase for auth
 and cross-device sync, and Netlify Functions for API proxying.
 
-> Current version: **v0.70** — see [Releases](#releases) below for changelog.
+> Current version: **v0.71** — see [Releases](#releases) below for changelog.
 > Upgrading from an earlier version? Check the matching `MIGRATION_*.md` / `UPDATE_*.md`.
 
 ---
@@ -372,6 +372,153 @@ and forward requests. Locally you need `netlify dev` to make them work.
 ---
 
 ## Releases
+
+# v0.71 — Pro, rethought (2026-09-23)
+
+Unlimited Pro, the welcome month, "None of these call to me", Pro gates, the
+Oracle extras, Anthology insights and an optional annual plan. This is all five phases of
+`docs/pro-tier-v1-spec.md` in one release.
+
+**Five migrations, in order, BEFORE deploying the client** (the client selects
+`profiles.pro_mark`, which does not exist until the second one has run, and
+every profile read fails without it):
+
+1. `20260923120000_pro_unlimited_and_misses.sql`: guard, grants, quota, misses
+2. `20260924120000_pro_gates.sql`: `is_pro`, creation limits, `pro_mark`
+3. `20260925120000_oracle_readings.sql`: cached long readings and charts
+4. `20260926120000_anthology_insights.sql`: `anthology_events` and insights
+5. `20260927120000_anthology_covers.sql`: `lists.cover_image_url`, the
+   `anthology-covers` Storage bucket and its policies, the cover guard, and cards that
+   show a custom cover in place of the strip
+
+All four are idempotent and were run twice against a Postgres 16 scratch copy
+of the schema. A scenario script covered the guard, grants, quota tiers,
+the fair-use ceiling, refunds and the refund cap, all three gates, RLS on
+readings, and the insight thresholds.
+
+**Env vars (optional, both or neither):** `LEMON_SQUEEZY_REDIRECT_URL_ANNUAL`
+(function) and `VITE_ANNUAL_PRICE` (client, for example `$49.99`). Unset means
+monthly only, as before. `public/app-version.json` goes to `0.71`.
+
+**Announced on load** (`major: true`). The CTA opens About → Pricing: `ctaAction: 'pricing'` is handled in `Nav.jsx` `takeAnnouncementCta` as `go('about', { anchor: 'pricing' })`.
+
+### What was wrong
+
+- **Pro sold a limit nobody reached.** Free was 5 calls per month, Pro 5 per
+  *day*. A reader uses 3–4 calls to find a book and then goes and reads it, so the
+  daily cap was invisible and Pro had nothing to offer.
+- **`profiles` was self-writable, privileged columns included.** The policy
+  "Users can update own safe profile fields" is `USING (auth.uid() = id)` with
+  no column restriction, `authenticated` holds `GRANT ALL`, and nothing guarded
+  it. `supabase.from('profiles').update({ subscription_status: 'active' })` from
+  the browser console made anyone Pro. The same went for `is_curator` and for resetting
+  your own counters. An unlimited Pro makes that worth doing, so it had to close first.
+- **`consume_oracle_call(p_user_id, …)` was executable by `anon` and
+  `authenticated`.** It trusted the id it was given, so anyone could spend another
+  reader's quota. `get_oracle_quota` had the same shape for reads.
+- **A bad draw had no way to say so.** `oracle_recommendations` learned about
+  rejections only by their silence, and the reader had paid for them.
+
+### What changed
+
+- **Guard trigger `profiles_guard_privileged`.** For `anon`/`authenticated`
+  sessions, an UPDATE that touches `subscription_status`, `is_curator` or any
+  `oracle_calls_*` column raises `42501`. An INSERT has them reset to defaults.
+  The webhook (service role) and the definer RPCs (owner `postgres`) are
+  unaffected. No client code writes these columns (checked: `DataContext`
+  profile patch, `Onboarding`, notification prefs, `markIntroSeen`).
+- **Grants.** `consume_oracle_call` is service-role only. `get_oracle_quota` is
+  revoked from `anon`, and it refuses when `auth.uid()` is set and differs
+  from `p_user_id`.
+- **Quota.** Free gets `oracle_free_limit(created_at)`: 10 during the first 30 days
+  after signup, 5 after. `get_oracle_quota` returns `welcome`. Pro is
+  `unlimited: true` under a fair-use ceiling of 30/day. At the ceiling it
+  answers in the existing day-wall shape (`period: 'day'`, 0 remaining),
+  so the UI needed no new state. Pro charges log as `period = 'pro'`.
+- **Misses.** `oracle_misses` plus `report_oracle_miss(surface, ids, reason)`.
+  It validates that the ids are the caller's, from that surface, shown in the last 24h,
+  unresolved and not already reported. It marks them `dismissed` and records the
+  reason. It refunds a charged Free draw from the current month, 2 per month, by
+  flipping the originating `oracle_call_log` row to `charged = false, period =
+  'refunded'` and decrementing the counter. The charge is found by time window
+  (up to 10 min before the first `shown_at`), because `oracle_recommendations.call_id`
+  is never populated. Flipping the row rather than inserting a credit keeps
+  `get_oracle_call_history`'s charged-only totals matching the bar.
+- **Client.** `OracleMissButton` sits under the results in Ask, Similar and By
+  genres, and only renders when the books carry recommendation ids. Spark is
+  deliberately out of scope. The history shows "refunded". The dashboard bar names the
+  welcome month. Every "5 a day" string is now Unlimited. Terms and
+  Privacy still said Paddle and $5, and now say Lemon Squeezy and $5.99,
+  with a fair-use sentence for Unlimited.
+
+### Phases 2–5, in brief
+
+- **Gates (§5).** `enforce_free_limit()` BEFORE INSERT on `book_clubs` (1),
+  `lists` (3) and `plans` (1). It is keyed on the request's JWT role, so the service role
+  and the SQL editor pass through, and it is serialised per reader with an advisory lock.
+  Errors start `pro_required:<kind>`. `claude.js` returns 403 for
+  `club_poll` / `club_discussion` / `why_long` / `taste_chart` unless the reader is Pro or a curator. The UI gates live in
+  `useProLimits()` plus `ProGate`, and they check *before* the Oracle is
+  paid (PlanCreate). `profiles.pro_mark` is a generated column, shown as the
+  Adept pill on reader profiles and in Kindred.
+- **Extras (§6).** `OracleLongReading` in BookModal (any book) and `TasteChart`
+  in Profile → Overview (5+ books, redraw after 30 days), both cached in
+  `oracle_readings`. `fetchMissHint()` appends recent misses and their reasons to
+  the Ask, Similar and By genres prompts.
+- **Insights (§7).** ListView logs `view`/`open` with a random per-browser
+  visitor id (never under DNT/GPC, never the owner). BookPage logs `add` when
+  a book opened from an Anthology is shelved. Onboarding claims a 7-day
+  referral as `signup` for accounts under 2 days old. `get_anthology_insights()`
+  returns counts only: views for Free, the full table for Pro, and adds and signups
+  from 5 up. The Privacy page (cookies, recommendation history) is updated.
+- **Annual (§8).** `create-checkout-session` takes `{ plan }`, allowlisted.
+- **Found in testing.**
+  - The reader's chart suggested books already on the shelf. It now sends
+    the exclude hint, asks for 6 directions, keeps 3 after `filterAlreadyKnown`
+    against read-next, currently-reading, library and wishlist, and re-filters
+    cached charts on render. A chart left with fewer than 3 doors can be redrawn early.
+  - Anthologies had no way to edit the title or description. `AnthologyEditor` in
+    ListDetail now edits them, plus the custom cover (Pro). The cover is
+    re-encoded in the browser to WebP at 1200px or less, which strips EXIF, and is
+    uploaded to `<uid>/`. It shows on ListDetail, the public ListView, the owner's
+    Anthologies page, and the Discover and Following cards.
+  - `updateList` now returns `{ error }` and skips the optimistic update on failure.
+  - The long reading and the one-line Oracle reason were only in `BookModal`, which nothing renders anymore (every book link goes to `BookPage`), so neither was visible. Both now render on `BookPage` for signed-in readers.
+  - The landing Offering was updated to 6 Seeker rows and 7 Adept rows, and About
+    pricing to 7 Pro rows.
+
+### Files
+
+| File | |
+| --- | --- |
+| `supabase/migrations/2026092{3,4,5,6}120000_*.sql` | new (4) |
+| `src/lib/proGates.js`, `src/components/ProGate.jsx` | new: gates |
+| `src/lib/oracleReadings.js`, `src/components/OracleLongReading.jsx`, `src/components/TasteChart.jsx` | new: extras |
+| `src/lib/anthologyInsights.js`, `src/components/AnthologyInsights.jsx` | new: insights |
+| `src/views/{BookClubCreate,Lists,PlanCreate,ListView,BookPage,Onboarding,Profile,Kindred,ReaderProfile}.jsx`, `src/components/{AddToListModal,ClubPolls,SessionDiscussion,BookModal}.jsx`, `src/lib/useFollows.js` | wiring |
+| `netlify/functions/claude.js`, `netlify/functions/create-checkout-session.js` | Pro-only sources, annual plan |
+| `src/components/OracleMissButton.jsx` | new |
+| `src/views/OracleAsk.jsx`, `OracleSimilar.jsx`, `OracleCategories.jsx` | mount the button |
+| `src/lib/OracleQuotaContext.jsx` | `welcome`; shape comment |
+| `src/components/OracleCallHistory.jsx` | `refunded` label |
+| `src/views/Dashboard.jsx` | welcome-month note |
+| `src/styles/components/_oracle-quota.scss` | `.oracle-miss*` |
+| `src/i18n/{en,es}.json` | `oracle.miss*`, `oracleHistory.costRefunded`, `dashboard.aiQuotaWelcome`; pricing, landing, Terms, Privacy copy |
+| `docs/pro-tier-v1-spec.md` | new |
+
+### Verify
+
+```sql
+-- as the anon role this must be false
+select has_function_privilege('anon', 'public.consume_oracle_call(uuid,uuid,text,text)', 'execute');
+-- a client update to a privileged column must fail with 42501
+-- (Console, signed in:) await supabase.from('profiles').update({ subscription_status: 'active' }).eq('id', me)
+select * from public.oracle_misses order by created_at desc limit 20;
+```
+
+Setting a reader to Pro by hand still works from the SQL editor (`postgres`).
+
+---
 
 # v0.70 — Scan a shelf with the camera (2026-09-16)
 

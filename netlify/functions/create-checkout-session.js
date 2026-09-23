@@ -7,7 +7,9 @@
 // user_id to their own subscription.
 //
 // Required env vars:
-//   LEMON_SQUEEZY_REDIRECT_URL  — full checkout URL from LS dashboard
+//   LEMON_SQUEEZY_REDIRECT_URL         — full checkout URL from LS dashboard (monthly)
+//   LEMON_SQUEEZY_REDIRECT_URL_ANNUAL  — v0.75, optional: the annual variant's
+//                                        checkout URL. Unset = no annual option.
 //   SUPABASE_URL
 //   SUPABASE_SERVICE_ROLE_KEY
 
@@ -24,8 +26,18 @@ export async function handler(event) {
   if (event.httpMethod === 'OPTIONS') return { statusCode: 204, headers: CORS, body: '' };
   if (event.httpMethod !== 'POST') return json(405, { error: 'Method not allowed' });
 
-  const checkoutBase = process.env.LEMON_SQUEEZY_REDIRECT_URL;
-  if (!checkoutBase) return json(500, { error: 'Server misconfigured' });
+  // v0.75: monthly is the default and the headline; annual is opt-in and only
+  // exists once its checkout URL is configured. Allowlisted, never echoed.
+  let requested = {};
+  try { requested = JSON.parse(event.body || '{}'); } catch { requested = {}; }
+  const plan = requested?.plan === 'annual' ? 'annual' : 'monthly';
+  const checkoutBase = plan === 'annual'
+    ? process.env.LEMON_SQUEEZY_REDIRECT_URL_ANNUAL
+    : process.env.LEMON_SQUEEZY_REDIRECT_URL;
+  if (!checkoutBase) {
+    if (plan === 'annual') return json(400, { error: 'Annual billing is not available.', code: 'annual_unavailable' });
+    return json(500, { error: 'Server misconfigured' });
+  }
 
   const jwt = bearerToken(event);
   if (!jwt) return json(401, { error: 'unauthenticated' });

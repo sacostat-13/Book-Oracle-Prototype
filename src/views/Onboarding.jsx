@@ -11,6 +11,7 @@ import CornerBrackets from '../components/CornerBrackets';
 import { supabase } from '../lib/supabase';
 import { findBookByTitle } from '../lib/bookHelpers';
 import { validateUsername, checkUsernameAvailability } from '../lib/useFollows';
+import { claimAnthologyReferral } from '../lib/anthologyInsights';
 
 // v0.38: fixed set of mood/intent chips for the "what are you looking for right now" step.
 // Multi-select, up to MOOD_MAX. IDs are stable — used as keys in profile.currentMood and in i18n lookups.
@@ -189,6 +190,9 @@ export default function Onboarding() {
         }).eq('id', user.id);
       } catch (e) { console.error('goodreads id persist failed', e); }
     }
+
+    // v0.74: credit the shared Anthology that brought this reader, if any.
+    claimAnthologyReferral();
 
     setTimeout(() => go('dashboard'), 50);
   }

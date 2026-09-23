@@ -5,6 +5,8 @@ import { useRouter } from '../lib/RouterContext';
 import { ALL_BOOKS, bookKey } from '../lib/bookHelpers';
 import { callClaude, parseJSONResponse, QuotaExceededError } from '../lib/claudeApi';
 import { logRecommendations, attachRecommendationIds } from '../lib/oracleProvenance';
+import OracleMissButton from '../components/OracleMissButton';
+import { fetchMissHint } from '../lib/oracleReadings'; // v0.73
 import { useOracleQuota } from '../lib/OracleQuotaContext';
 import { OracleQuotaWall } from '../components/OracleQuotaBadge';
 import { useT, useI18n, langDirective } from '../lib/I18nContext';
@@ -161,6 +163,8 @@ export default function OracleSimilar({ onOpenBook }) {
     // must never produce.
     const known = [...state.readNext, ...state.library, ...state.wishlist, ...selection];
     const exclude = buildExcludeHint(known);
+    // v0.73: what they turned down with "None of these call to me".
+    const missHint = await fetchMissHint();
     const seedBooks = selection
       .map((b) => `- "${b.t}" by ${b.a}${b.g ? ` (${b.g})` : ''}${b.d ? `: ${b.d}` : ''}`)
       .join('\n');
@@ -177,7 +181,7 @@ ${tasteSummary ? tasteSummary + '\n\n' : ''}${shelf}
 
 Recommend ${SIMILAR_REQUEST} OTHER books they would love — books with similar tone, themes, prose style, or atmosphere. You are NOT limited to any catalog; recommend the best matches in world literature.
 
-Avoid recommending books they already know. Here is a sample of what is already on their shelves (not exhaustive): ${exclude}
+Avoid recommending books they already know. Here is a sample of what is already on their shelves (not exhaustive): ${exclude}${missHint}
 
 Return ONLY valid JSON in this exact format:
 {"books":[{"title":"...","author":"...","genre":"...","complexity":1-5,"depth":1-5,"description":"one-sentence description","reason":"one sentence on its kinship to the seed books, in this reader's terms","match":0-100}]}`;
@@ -316,6 +320,7 @@ Return ONLY valid JSON in this exact format:
                 />
               ))}
             </div>
+            <OracleMissButton surface="similar" books={results.books} />
           </>
         ) : null}
       </div>

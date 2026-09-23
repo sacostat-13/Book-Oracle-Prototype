@@ -9,12 +9,18 @@ import { useT, useTNode } from '../lib/I18nContext';
 // when Curated Lists became the third surface to need it — three hand-kept
 // copies of the same list is how they stop matching.
 import { MOODS, moodTitleKey } from '../lib/moods';
+import { useProLimits } from '../lib/proGates';
+import ProGate from '../components/ProGate';
 
 export default function BookClubCreate() {
   const { createClub, state } = useData();
   const { go } = useRouter();
   const t = useT();
   const tNode = useTNode();
+  // v0.72: Free readers own one club. The form is replaced rather than
+  // disabled — filling it in only to be refused at the end is the worst order.
+  const { canCreate } = useProLimits();
+  const gated = !canCreate('clubs');
 
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -66,6 +72,7 @@ export default function BookClubCreate() {
         </p>
       </div>
 
+      {gated ? <ProGate feature="clubs" /> : (
       <div className="club-form">
         <div>
           <label className="field-label">{t('clubs.fieldName')}</label>
@@ -204,6 +211,7 @@ export default function BookClubCreate() {
           </button>
         </div>
       </div>
+      )}
     </>
   );
 }
