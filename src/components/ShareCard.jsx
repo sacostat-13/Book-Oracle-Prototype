@@ -29,6 +29,7 @@ import { frameSlugFor } from '../lib/cardResolve';
 import { CARD_BOXES, DEFAULT_BOX } from '../lib/cardBoxes';
 import { useData } from '../lib/DataContext';
 import { sanitizeTitleKey } from '../lib/titles';
+import BookMark from './BookMark';
 
 export const SHARE_CARD_WIDTH = 540;
 export const SHARE_CARD_HEIGHT = 675;
@@ -62,7 +63,7 @@ function baseCopy(moment, t, lang) {
         eyebrow: t('share.card.planEyebrow'),
         headline: moment.planTitle,
         sub: t('share.card.planSub', { count: moment.count }),
-        ornament: '❦',
+        ornament: 'book',
         ...bookLine,
       };
     case 'nth_book':
@@ -162,7 +163,7 @@ function baseCopy(moment, t, lang) {
         eyebrow: t('share.card.bookEyebrow'),
         headline: b?.t || '',
         sub: b?.a ? t('share.card.bookSub', { author: b.a }) : '',
-        ornament: '❦',
+        ornament: 'book',
         ...bookLine,
         headlineIsBook: true,
       };
@@ -274,7 +275,7 @@ export default function ShareCard({ moment, cardRef }) {
       style={{ width: SHARE_CARD_WIDTH, height: SHARE_CARD_HEIGHT }}
     >
       <div className="share-card__frame">
-        <div className="share-card__ornament">{copy.ornament}</div>
+        <div className="share-card__ornament">{copy.ornament === 'book' ? <BookMark /> : copy.ornament}</div>
         <div className="share-card__eyebrow">{copy.eyebrow}</div>
         <div className="share-card__headline">{copy.headline}</div>
         {copy.sub && <div className="share-card__sub">{copy.sub}</div>}

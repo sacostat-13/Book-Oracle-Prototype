@@ -717,7 +717,7 @@ function QuickActionsWidget({ go, t }) {
   const actions = [
     { richLabel: 'dashboard.ctaWishlist', sub: t('dashboard.ctaWishlistSub'), glyph: '↗', route: 'wishlist', isAccent: false },
     { richLabel: 'dashboard.ctaLibrary', sub: t('dashboard.ctaLibrarySub'), glyph: '▤', route: 'library', isAccent: false },
-    { richLabel: 'dashboard.ctaOracle', sub: t('dashboard.ctaOracleSub'), glyph: '❦', route: 'oracle', isAccent: true },
+    { richLabel: 'dashboard.ctaOracle', sub: t('dashboard.ctaOracleSub'), glyph: '✧', route: 'oracle', isAccent: true },
     { richLabel: 'dashboard.ctaPlan', sub: t('dashboard.ctaPlanSub'), glyph: '✦', route: 'plan-create', isAccent: false },
     // v0.62.2: the Stacks, curated Lists and the club directory all existed and
     // were only reachable from the nav. Ordered after the four originals

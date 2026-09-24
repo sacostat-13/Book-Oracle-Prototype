@@ -709,7 +709,7 @@ export default async (request, context) => {
         // instead of the raw cover — raw covers are portrait and crop badly
         // in landscape unfurls, and carried no branding.
         image: ogCardImage(url.origin, {
-          ornament: '❦',
+          ornament: 'book', // drawn as the open-book mark by share-card.mjs
           headline: match.title,
           sub: `by ${authorDisplay}`,
           cover: match.cover_url || undefined,

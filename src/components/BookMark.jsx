@@ -1,6 +1,6 @@
 // src/components/BookMark.jsx — the site's "nothing here yet" mark.
 //
-// An open book, drawn in SVG, replacing the ❦ fleuron that used to stand in
+// An open book, drawn in SVG, replacing the floral-heart fleuron that used to stand in
 // for every empty state and for the pre-boot screen. A fleuron said
 // "decoration"; a book says what the space is for.
 //
