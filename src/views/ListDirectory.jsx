@@ -31,6 +31,7 @@ import { CardGridSkeleton } from '../components/Skeleton';
 import { MOODS, moodTitleKey } from '../lib/moods';
 import CoverStrip from '../components/CoverStrip';
 import FollowListButton from '../components/FollowListButton';
+import BookMark from '../components/BookMark';
 
 function ListCard({ list, onOpen, onFollowChange }) {
   const t = useT();
@@ -254,7 +255,7 @@ export default function ListDirectory() {
 
       {!loading && lists.length === 0 ? (
         <div className="lv-empty">
-          <div className="lv-empty-icon">❦</div>
+          <div className="lv-empty-icon"><BookMark animate /></div>
           <div className="lv-empty-title">{t('lists.discoverEmptyTitle')}</div>
           <div className="lv-empty-text">
             {activeFilterCount > 0 || query

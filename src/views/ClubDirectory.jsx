@@ -11,6 +11,7 @@ import { useT, useTNode } from '../lib/I18nContext';
 import BookCover from '../components/BookCover';
 import { CardGridSkeleton } from '../components/Skeleton';
 import { MOODS, moodTitleKey } from '../lib/moods';
+import BookMark from '../components/BookMark';
 
 function DirectoryCard({ club, onJoin, joining }) {
   const t = useT();
@@ -337,7 +338,7 @@ export default function ClubDirectory() {
 
       {!loading && clubs.length === 0 ? (
         <div className="empty-state">
-          <div className="ornament">❦</div>
+          <div className="ornament"><BookMark animate /></div>
           <div className="empty-state-title">{t('clubs.directory.emptyTitle')}</div>
           <div className="empty-state-text">{t('clubs.directory.emptyText')}</div>
         </div>

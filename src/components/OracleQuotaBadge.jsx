@@ -6,6 +6,7 @@
 import { useT } from '../lib/I18nContext';
 import { useOracleQuota } from '../lib/OracleQuotaContext';
 import { useRouter } from '../lib/RouterContext';
+import BookMark from './BookMark';
 
 export function OracleQuotaBadge({ style = {} }) {
   const { quota, loading } = useOracleQuota();
@@ -67,7 +68,7 @@ export function OracleQuotaWall() {
 
   return (
     <div className="quota-wall">
-      <div className="quota-wall__icon">❦</div>
+      <div className="quota-wall__icon"><BookMark animate /></div>
 
       <div className="quota-wall__eyebrow">
         {t(isDay ? 'oracle.quotaWallEyebrow' : 'oracle.quotaWallEyebrowMonth')}

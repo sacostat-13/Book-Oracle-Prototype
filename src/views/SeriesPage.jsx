@@ -21,6 +21,7 @@ import { fetchSeriesBooks } from '../lib/enrichmentService';
 import { fetchSeriesDescriptionFromWikipedia, fetchBooksInSeriesByName, normalizeSeriesName, SERIES_INDEX_FLOOR } from '../lib/seriesService';
 import BookCover from '../components/BookCover';
 import { openBookTab } from '../lib/bookHelpers';
+import BookMark from '../components/BookMark';
 
 // isAuthed/authPending/dataReady mirror BookPage and ListView. This route is
 // in App.jsx's PUBLIC_ROUTES as of 2026-08-24 — before that every /series/ URL
@@ -262,7 +263,7 @@ export default function SeriesPage({ isAuthed = true, authPending = false, dataR
   if (!seriesName) {
     return (
       <div className="empty-state lv-empty">
-        <div className="ornament">❦</div>
+        <div className="ornament"><BookMark animate /></div>
         <div className="empty-state-title">{t('seriesPage.notFound')}</div>
         <button className="btn-primary" onClick={() => go(from)}>{t('onboarding.back')}</button>
       </div>

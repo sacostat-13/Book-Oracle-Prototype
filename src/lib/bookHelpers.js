@@ -129,7 +129,7 @@ export const PALETTES = [
   { bg: 'linear-gradient(135deg, #1a2a2a 0%, #2a3a3a 100%)', accent: '#c9a978' },
   { bg: 'linear-gradient(135deg, #2a2010 0%, #5a4520 100%)', accent: '#e8dcc0' },
 ];
-export const ORNAMENTS = ['❦', '✦', '✧', '❧', '☩', '✺', '⚜', '☥', '✠', '❈'];
+export const ORNAMENTS = ['✶', '✦', '✧', '❧', '☩', '✺', '⚜', '☥', '✠', '❈'];
 export const SPINE_COLORS = [
   '#6b1a1a', '#3d4a36', '#2d1b3d', '#4a2a4a', '#2a3a3a',
   '#5a4520', '#3d2418', '#1a3d4a', '#5a2a1f', '#2a1a2a', '#4a3a1a',

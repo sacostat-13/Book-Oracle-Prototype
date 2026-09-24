@@ -85,7 +85,8 @@ const FONTS = [
     url: 'https://cdn.jsdelivr.net/fontsource/fonts/inter@latest/latin-400-normal.woff' },
   { key: 'sansIt', name: 'Inter',            weight: 400, style: 'italic',
     url: 'https://cdn.jsdelivr.net/fontsource/fonts/inter@latest/latin-400-italic.woff' },
-  // Symbol fallback: DejaVu Sans covers every ornament glyph (✦☩❦✺⚜✧❧).
+  // Symbol fallback: DejaVu Sans covers every ornament glyph (✦☩✺⚜✧❧).
+  // `ornament=book` is not a glyph: it is drawn as the open-book SVG below.
   { key: 'sym',    name: 'Ornament',         weight: 400, style: 'normal',
     url: 'https://cdn.jsdelivr.net/npm/dejavu-fonts-ttf@2.37.3/ttf/DejaVuSans.ttf' },
 ];
@@ -149,6 +150,27 @@ const box  = (style, children) => ({ type: 'div', props: { style: { display: 'fl
 const txt  = (style, value)    => ({ type: 'div', props: { style: { display: 'flex', ...style }, children: value } });
 const img  = (src, style)      => ({ type: 'img', props: { src, style } });
 
+/* The open-book mark (src/components/BookMark.jsx — keep the paths in step).
+ * Sent as `ornament=book`; drawn as an inline SVG image instead of a glyph. */
+const BOOK_MARK_SVG = (color) => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="-1 -1 50 38" fill="none" stroke="${color}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">`
+  + '<path d="M2 9v23.5c7.5-1.6 15.2-1 22 2 6.8-3 14.5-3.6 22-2V9"/>'
+  + `<path fill="${color}" fill-opacity=".08" d="M24 7.5C18 4.8 10.5 4.3 4.5 5.6v24.2c6-1.2 13.5-.7 19.5 2Z"/>`
+  + `<path fill="${color}" fill-opacity=".08" d="M24 7.5c6-2.7 13.5-3.2 19.5-1.9v24.2c-6-1.2-13.5-.7-19.5 2Z"/>`
+  + '<path stroke-width="1.1" opacity=".55" d="M8.5 11.2c4-.8 8.2-.5 11.8.9M8.5 16.2c4-.8 8.2-.5 11.8.9M8.5 21.2c4-.8 8.2-.5 11.8.9M39.5 11.2c-4-.8-8.2-.5-11.8.9M39.5 16.2c-4-.8-8.2-.5-11.8.9M39.5 21.2c-4-.8-8.2-.5-11.8.9"/>'
+  + '</svg>';
+
+// One ornament node: a glyph in the Ornament font, or the book mark at the
+// same visual size (1.45em wide, like the in-app BookMark).
+function ornamentNode(value, fontSize, style) {
+  if (value === 'book') {
+    const w = Math.round(fontSize * 1.45);
+    const h = Math.round(fontSize * 1.09);
+    const src = `data:image/svg+xml;base64,${Buffer.from(BOOK_MARK_SVG(C.gold)).toString('base64')}`;
+    return box({ justifyContent: 'center', marginBottom: style.marginBottom }, [img(src, { width: w, height: h })]);
+  }
+  return txt({ fontFamily: 'Ornament', fontSize, color: C.gold, lineHeight: 1, ...style }, value);
+}
+
 const clamp = (s, n) => (s && s.length > n ? s.slice(0, n - 1) + '…' : s || '');
 
 /* ── Card layout — mirrors ShareCard.jsx / _share.scss at 540×675 ── */
@@ -159,10 +181,7 @@ function card(p, cover) {
 
   // ornament
   if (p.ornament) {
-    children.push(txt(
-      { fontFamily: 'Ornament', fontSize: 34, color: C.gold, lineHeight: 1, marginBottom: 22, justifyContent: 'center' },
-      p.ornament
-    ));
+    children.push(ornamentNode(p.ornament, 34, { marginBottom: 22, justifyContent: 'center' }));
   }
 
   // eyebrow
@@ -253,10 +272,7 @@ function ogCard(p, cover) {
     : { alignItems: 'flex-start', textAlign: 'left' };
 
   const textChildren = [
-    p.ornament ? txt(
-      { fontFamily: 'Ornament', fontSize: 30, color: C.gold, lineHeight: 1, marginBottom: 20 },
-      p.ornament
-    ) : null,
+    p.ornament ? ornamentNode(p.ornament, 30, { marginBottom: 20 }) : null,
     p.eyebrow ? txt(
       { fontFamily: 'IBM Plex Mono', fontWeight: 600, fontSize: 17, letterSpacing: 3.4, textTransform: 'uppercase', color: C.goldText, marginBottom: 20 },
       p.eyebrow

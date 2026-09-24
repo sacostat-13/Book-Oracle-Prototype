@@ -38,7 +38,6 @@ export default function BookClubs() {
 
       {clubs.length === 0 ? (
         <EmptyState
-          ornament="❦"
           title={t('clubs.emptyTitle')}
           body={t('clubs.emptyText')}
           action={user ? { label: t('clubs.emptyCta'), onClick: () => go('book-club-create') } : undefined}

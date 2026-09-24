@@ -93,7 +93,6 @@ export default function CuratedLists() {
           <CardGridSkeleton count={4} className="cl-follow-grid" />
         ) : followed.length === 0 ? (
           <EmptyState
-            ornament="❦"
             title={t('lists.noFollowsTitle')}
             body={t('lists.noFollowsBody')}
             action={{ label: t('lists.discoverBtn'), onClick: () => go('lists-discover') }}
@@ -119,7 +118,6 @@ export default function CuratedLists() {
         </div>
         {mine.length === 0 ? (
           <EmptyState
-            ornament="❦"
             title={t('lists.emptyTitle')}
             body={t('lists.emptyText')}
             action={{ label: t('lists.emptyCta'), onClick: () => go('lists-mine') }}

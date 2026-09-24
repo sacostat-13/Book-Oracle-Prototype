@@ -41,7 +41,7 @@ export default function NotFound() {
         </p>
         <div className="onb-actions onb-actions--centered">
           <button className="btn-primary" onClick={() => go('dashboard')}>
-            {t('notFound.cta') || 'Return to the library ❦'}
+            {t('notFound.cta') || 'Return to the library'}
           </button>
         </div>
       </div>

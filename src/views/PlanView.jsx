@@ -6,6 +6,7 @@ import { useT } from '../lib/I18nContext';
 import { supabase } from '../lib/supabase';
 import ShareModal from '../components/ShareModal';
 import { planShareUrl } from '../lib/shareService';
+import BookMark from '../components/BookMark';
 
 export default function PlanView() {
   const { state, addToReadNext, markAsRead, deletePlan, setCurrentPlan, showToast } = useData();
@@ -69,7 +70,7 @@ export default function PlanView() {
           <a onClick={() => go('dashboard')}>{t('nav.dashboard')}</a> · {t('plans.readingPlanBreadcrumb')}
         </div>
         <div className="lv-empty">
-          <div className="lv-empty-icon">❦</div>
+          <div className="lv-empty-icon"><BookMark animate /></div>
           <div className="lv-empty-title">{t('plans.noActivePlan')}</div>
           <div className="lv-empty-text">{t('plans.noActivePlanText')}</div>
           <button className="btn-primary" onClick={() => go('plan-create')}>{t('plans.createOwnPlan')}</button>

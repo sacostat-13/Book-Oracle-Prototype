@@ -15,6 +15,7 @@ import ShareModal from '../components/ShareModal';
 import ListMetaEditor from '../components/ListMetaEditor';
 import { listShareUrl } from '../lib/shareService';
 import AnthologyEditor from '../components/AnthologyEditor'; // v0.71.1
+import BookMark from '../components/BookMark';
 
 function AddBookPicker({ list, onClose }) {
   const { state, addBookToList } = useData();
@@ -146,7 +147,7 @@ export default function ListDetail() {
 
   if (!list) return (
     <div className="lv-empty">
-      <div className="lv-empty-icon">❦</div>
+      <div className="lv-empty-icon"><BookMark animate /></div>
       <div className="lv-empty-title">{t('listDetail.notFound')}</div>
       <button className="btn-primary" onClick={() => go('lists')}>
         {t('listDetail.backToLists')}
@@ -257,7 +258,7 @@ export default function ListDetail() {
 
       {books.length === 0 ? (
         <div className="lv-empty">
-          <div className="lv-empty-icon">❦</div>
+          <div className="lv-empty-icon"><BookMark animate /></div>
           <div className="lv-empty-title">{t('listDetail.emptyTitle')}</div>
           <div className="lv-empty-text">{t('listDetail.emptyText')}</div>
         </div>

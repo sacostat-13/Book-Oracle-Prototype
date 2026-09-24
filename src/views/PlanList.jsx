@@ -58,7 +58,6 @@ export default function PlanList() {
 
       {plans.length === 0 ? (
         <EmptyState
-          ornament="❦"
           title={t('plans.noPlansTitle')}
           body={t('plans.noPlansText')}
           action={{ label: t('plans.createOwnPlan'), onClick: () => go('plan-create') }}

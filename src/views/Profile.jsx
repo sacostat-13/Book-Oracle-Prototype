@@ -21,6 +21,7 @@ import TasteChart from '../components/TasteChart';
 import ReaderConstellation from '../components/ReaderConstellation';
 import { groupFamilyAccomplishments, nextRung } from '../lib/ledger';
 import { FamilyRowsSkeleton } from '../components/Skeleton';
+import BookMark from '../components/BookMark';
 
 // v0.75: display price of the annual Pro variant, e.g. "$49.99". Unset = monthly only.
 const ANNUAL_PRICE = import.meta.env.VITE_ANNUAL_PRICE || null;
@@ -47,7 +48,7 @@ function StatCard({ value, label, sub }) {
 const LEDGER_ORNAMENT = {
   goal_completed: '✦',
   series_completed: '☩',
-  plan_completed: '❦',
+  plan_completed: <BookMark />,
   nth_book: '✺',
   family_count: '⚜',
   family_breadth: '✦',

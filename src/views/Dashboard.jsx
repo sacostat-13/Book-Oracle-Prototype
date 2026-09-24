@@ -20,6 +20,7 @@ import { OracleQuotaBadge } from '../components/OracleQuotaBadge';
 import { logRecommendations } from '../lib/oracleProvenance';
 import Avatar from '../components/Avatar';
 import AddBooksChooser from '../components/AddBooksChooser';
+import BookMark from '../components/BookMark';
 
 const FEED_PAGE_SIZE = 5;
 
@@ -716,7 +717,7 @@ function QuickActionsWidget({ go, t }) {
   const actions = [
     { richLabel: 'dashboard.ctaWishlist', sub: t('dashboard.ctaWishlistSub'), glyph: '↗', route: 'wishlist', isAccent: false },
     { richLabel: 'dashboard.ctaLibrary', sub: t('dashboard.ctaLibrarySub'), glyph: '▤', route: 'library', isAccent: false },
-    { richLabel: 'dashboard.ctaOracle', sub: t('dashboard.ctaOracleSub'), glyph: '❦', route: 'oracle', isAccent: true },
+    { richLabel: 'dashboard.ctaOracle', sub: t('dashboard.ctaOracleSub'), glyph: '✧', route: 'oracle', isAccent: true },
     { richLabel: 'dashboard.ctaPlan', sub: t('dashboard.ctaPlanSub'), glyph: '✦', route: 'plan-create', isAccent: false },
     // v0.62.2: the Stacks, curated Lists and the club directory all existed and
     // were only reachable from the nav. Ordered after the four originals
@@ -855,7 +856,7 @@ function FeedWidget({ state, onOpenBook, go, t, eyebrow }) {
     <WidgetShell icon={<IconDiamond />} label={eyebrow || t('dashboard.recentActivity')}>
       {events.length === 0 ? (
         <div className="feed-empty">
-          <div className="feed-empty__ornament">{t('dashboard.emptyFeedOrnament')}</div>
+          <div className="feed-empty__ornament"><BookMark animate /></div>
           <p className="feed-empty__text">
             {t('dashboard.emptyFeedText')}<br />{t('dashboard.emptyFeedSub')}
           </p>

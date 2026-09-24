@@ -57,7 +57,6 @@ export default function CurrentlyReading({ onOpenBook }) {
 
       {currentlyReading.length === 0 ? (
         <EmptyState
-          ornament="❦"
           title={t('currentlyReading.emptyTitle')}
           body={t('currentlyReading.emptyText')}
         >

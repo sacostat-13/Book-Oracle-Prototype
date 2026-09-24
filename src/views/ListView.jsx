@@ -43,6 +43,7 @@ import BookLoader from '../components/BookLoader';
 import FollowListButton from '../components/FollowListButton';
 import SignInGate from '../components/SignInGate';
 import { logAnthologyView, logAnthologyOpen, rememberReferral } from '../lib/anthologyInsights'; // v0.74
+import BookMark from '../components/BookMark';
 
 // The RPC returns `row_to_json(b)` straight off the books table, so the shape
 // is snake_case DB columns — not the short-key book objects the rest of the app
@@ -145,7 +146,7 @@ export default function ListView() {
 
   if (error || !data) return (
     <div className="lv-empty">
-      <div className="lv-empty-icon">❦</div>
+      <div className="lv-empty-icon"><BookMark animate /></div>
       <div className="lv-empty-title">{error || t('lists.notFound')}</div>
       <div className="lv-empty-text">{t('lists.notFoundText')}</div>
       {user && (
@@ -180,7 +181,7 @@ export default function ListView() {
           <div className="ls-page-head__meta">
             <span className="plan-badge">▤ {t('lists.bookCount', { count: books.length })}</span>
             {followerCount > 0 && (
-              <span className="plan-badge">❦ {t('lists.followerCount', { count: followerCount })}</span>
+              <span className="plan-badge">{t('lists.followerCount', { count: followerCount })}</span>
             )}
           </div>
           {(genreNames.length > 0 || moods.length > 0) && (
@@ -224,7 +225,7 @@ export default function ListView() {
 
         {books.length === 0 ? (
           <div className="lv-empty">
-            <div className="lv-empty-icon">❦</div>
+            <div className="lv-empty-icon"><BookMark animate /></div>
             <div className="lv-empty-title">{t('listDetail.emptyTitle')}</div>
           </div>
         ) : (

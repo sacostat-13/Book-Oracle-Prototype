@@ -22,7 +22,7 @@ export default function OracleFork() {
       </div>
       <div className="oracle-fork-grid">
         <button className="oracle-fork-card" onClick={() => go('oracle-categories')}>
-          <h2 className="oracle-fork-card__label">❦ {tNode('oracle.forkByGenres')}</h2>
+          <h2 className="oracle-fork-card__label">{tNode('oracle.forkByGenres')}</h2>
           <p className="oracle-fork-card__sub">{t('oracle.forkByGenresDesc')}</p>
         </button>
         <button className="oracle-fork-card" onClick={() => go('oracle-similar')}>

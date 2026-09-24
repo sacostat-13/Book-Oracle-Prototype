@@ -1,0 +1,44 @@
+// components/_book-mark.scss — the open-book mark (BookMark.jsx).
+// Em-sized and currentColor, so it inherits whatever ornament slot it sits in.
+// The pre-boot copy in index.html carries its own inline version of these
+// rules (it paints before this stylesheet exists).
+
+.book-mark {
+  display: inline-block;
+  width: 1.45em;
+  height: 1.09em;
+  vertical-align: -0.18em;
+  overflow: visible;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.book-mark__page { fill: currentColor; fill-opacity: .08; }
+.book-mark__lines { stroke-width: 1.1; opacity: .55; }
+
+// One leaf lifts off the right page, turns over the spine and settles on the
+// left, fading at each end so the loop never snaps back.
+.book-mark__leaf {
+  fill: currentColor;
+  fill-opacity: .16;
+  transform-box: view-box;
+  transform-origin: 24px 0;
+  opacity: 0;
+  animation: book-mark-turn 5s cubic-bezier(.45, .05, .35, 1) infinite;
+}
+
+@keyframes book-mark-turn {
+  0%   { transform: scaleX(1);  opacity: 0; }
+  10%  { transform: scaleX(1);  opacity: 1; }
+  22%  { transform: scaleX(1); }
+  52%  { transform: scaleX(-1); }
+  74%  { transform: scaleX(-1); opacity: 1; }
+  90%, 100% { transform: scaleX(-1); opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .book-mark__leaf { animation: none; opacity: 0; }
+}

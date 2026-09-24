@@ -480,7 +480,7 @@ Return ONLY valid JSON in this exact format:
                 onChange={(e) => setSeriesSearch(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && doSeriesSearch()}
               />
-              <button className="btn-primary" onClick={doSeriesSearch}>Search ❦</button>
+              <button className="btn-primary" onClick={doSeriesSearch}>Search</button>
             </div>
             <div>
               {seriesSearchLoading && (
@@ -538,7 +538,7 @@ Return ONLY valid JSON in this exact format:
         <div className="onb-actions">
           <button className="btn-secondary" onClick={() => go('dashboard')}>← Back</button>
           <button className="btn-primary" disabled={!canGenerate || !canCreate('plans')} onClick={generate}>
-            Generate plan ❦
+            Generate plan
           </button>
         </div>
       </div>

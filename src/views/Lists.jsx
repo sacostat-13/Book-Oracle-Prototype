@@ -158,7 +158,6 @@ export default function Lists() {
 
       {lists.length === 0 ? (
         <EmptyState
-          ornament="❦"
           title={t('lists.emptyTitle')}
           body={t('lists.emptyText')}
           action={{ label: t('lists.emptyCta'), onClick: () => setCreating(true) }}
