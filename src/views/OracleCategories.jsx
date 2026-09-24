@@ -429,7 +429,11 @@ Return ONLY valid JSON in this format:
 
       <section className="oracle-results-grid">
         {loading ? (
-          <BookLoader text="The oracle is divining…" />
+          <BookLoader
+            text="The oracle is divining…"
+            spread
+            genres={genre !== 'all' ? [sourceGenres.find((g) => g.norm === genre)?.name] : null}
+          />
         ) : draw.length === 0 ? (
           <div className="empty-state">
             <div className="ornament"><BookMark animate /></div>

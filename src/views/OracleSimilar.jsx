@@ -302,7 +302,7 @@ Return ONLY valid JSON in this exact format:
 
       <div>
         {loading ? (
-          <BookLoader text="Consulting the oracle…" />
+          <BookLoader text="Consulting the oracle…" spread />
         ) : results ? (
           <>
             <h2 className="oracle-results-title">

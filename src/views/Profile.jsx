@@ -18,6 +18,7 @@ import CornerBrackets from '../components/CornerBrackets';
 import ShareModal from '../components/ShareModal';
 import OracleCallHistory from '../components/OracleCallHistory';
 import TasteChart from '../components/TasteChart';
+import ReaderConstellation from '../components/ReaderConstellation';
 import { groupFamilyAccomplishments, nextRung } from '../lib/ledger';
 import { FamilyRowsSkeleton } from '../components/Skeleton';
 import BookMark from '../components/BookMark';
@@ -1532,6 +1533,9 @@ export default function Profile() {
           />
         </div>
       </section>
+
+      {/* three.js-motion experiment: the reader's sky — books as stars by family. */}
+      {user && <ReaderConstellation />}
 
       {/* v0.73: the reader's chart (Pro). Own profile only — this view is. */}
       {user && <TasteChart />}

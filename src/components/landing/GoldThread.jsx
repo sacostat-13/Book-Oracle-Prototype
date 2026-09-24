@@ -1,7 +1,7 @@
 // src/components/landing/GoldThread.jsx
 // The constellation thread: ONE SVG path system spanning the whole document.
-// It ignites at the chosen card's reveal in Act I (≈45% of the hero pin) and
-// terminates into the returned card in the Epilogue.
+// It ignites once the chosen card has been zoomed through in Act I (≈88% of the
+// hero pin, THREAD_IGNITE_PROGRESS) and terminates into the returned card in the Epilogue.
 //
 // Draw model: the path's y is monotonic, so we sample (y → arc length) once
 // per build and, on every scroll tick, set the dashoffset so the drawn head
@@ -20,7 +20,7 @@ import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { useGSAP } from '@gsap/react';
 import { prefersReducedMotion } from './motion';
-import { PIN_DEPTH_DESKTOP, PIN_DEPTH_MOBILE, IGNITE_PROGRESS } from './ActSpread';
+import { PIN_DEPTH_DESKTOP, PIN_DEPTH_MOBILE, THREAD_IGNITE_PROGRESS } from './ActSpread';
 
 gsap.registerPlugin(ScrollTrigger, useGSAP);
 
@@ -64,7 +64,7 @@ export default function GoldThread({ anchors = [] }) {
         svg.setAttribute('height', docH);
 
         // Ignition: the card sits at viewport center when the reveal lands.
-        const points = [{ x: vw / 2, y: pinDist() * IGNITE_PROGRESS + vh * 0.5 }];
+        const points = [{ x: vw / 2, y: pinDist() * THREAD_IGNITE_PROGRESS + vh * 0.5 }];
 
         anchors.forEach(({ ref, edge = 'center' }) => {
           const el = ref?.current;

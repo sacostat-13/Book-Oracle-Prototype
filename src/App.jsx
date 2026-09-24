@@ -480,6 +480,20 @@ export default function App() {
       page = <Dashboard onOpenBook={openBook} />;
   }
 
+  // Loader preview (three.js-motion experiment): add ?loaderPreview=1 to any
+  // signed-in page to see the Oracle's long-wait screen with your own shelf,
+  // without calling the Oracle. ?spreadAfter=2000 shortens the 8 s wait
+  // before the cards appear. Nothing is sent anywhere; it is just the loader.
+  if (route.params?.loaderPreview) {
+    page = (
+      <BookLoader
+        text={t('oracle.askAsking')}
+        spread
+        spreadAfterMs={Number(route.params.spreadAfter) || undefined}
+      />
+    );
+  }
+
   return (
     <div className="app">
       <Nav onPreviewBook={setPreviewBook} />

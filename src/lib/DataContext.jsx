@@ -105,7 +105,7 @@ const defaultState = {
   lastSeenVersion: null,
 };
 
-const DataContext = createContext(null);
+export const DataContext = createContext(null);
 
 // ---------- sessionStorage cache ----------
 // Stores the last known Supabase state per user so new tabs render instantly.

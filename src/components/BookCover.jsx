@@ -47,6 +47,7 @@ export default function BookCover({ title, author, coverUrl, className = '', eag
     return (
       <img
         className={`${className}${loaded ? ' loaded' : ''}`.trim()}
+        data-cover=""
         src={url}
         alt={`${title} cover`}
         loading="lazy"
@@ -70,7 +71,7 @@ export default function BookCover({ title, author, coverUrl, className = '', eag
   const palette = PALETTES[hashStr(title) % PALETTES.length];
   const orn = ORNAMENTS[hashStr(author || '') % ORNAMENTS.length];
   return (
-    <div className={`placeholder ${className}`} style={{ background: palette.bg }}>
+    <div className={`placeholder ${className}`} data-cover="" style={{ background: palette.bg }}>
       <div className="ph-ornament">{orn}</div>
       <div className="ph-title">{title}</div>
       <div className="ph-author">{author || ''}</div>
