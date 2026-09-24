@@ -35,6 +35,7 @@ import { noteAnthologyAdd } from '../lib/anthologyInsights'; // v0.74
 import { useAuth } from '../lib/AuthContext';
 import { fetchRecommendationReason } from '../lib/oracleProvenance';
 import OracleLongReading from '../components/OracleLongReading';
+import BookMark from '../components/BookMark';
 
 
 // ─── Similar books ────────────────────────────────────────────────────────────
@@ -731,7 +732,7 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
   if (notFound) {
     return (
       <div className="lv-empty">
-        <div className="lv-empty-icon">❦</div>
+        <div className="lv-empty-icon"><BookMark animate /></div>
         <div className="lv-empty-title">
           {t('bookPage.notFound')}
         </div>

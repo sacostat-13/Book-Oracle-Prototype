@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { useRouter } from '../lib/RouterContext';
 import { useT, useTNode } from '../lib/I18nContext';
 import CurrentReleaseFooter from '../components/CurrentReleaseFooter';
+import BookMark from '../components/BookMark';
 
 // Reusable section heading + body block, styled to match Profile.jsx voice
 function Section({ title, children }) {
@@ -245,7 +246,7 @@ export default function About() {
                 <ul className="legal-list">
                   {['pricingProFeature1', 'pricingProFeature2', 'pricingProFeature6', 'pricingProFeature3', 'pricingProFeature4', 'pricingProFeature7', 'pricingProFeature5'].map((k) => (
                     <li key={k} className="legal-list__item">
-                      <span className="lv-hl">❦</span>{t(`about.${k}`)}
+                      <span className="lv-hl"><BookMark /></span>{t(`about.${k}`)}
                     </li>
                   ))}
                 </ul>

@@ -15,6 +15,7 @@ import GenreSelect from '../components/GenreSelect';
 import { buildTasteProfile, describeTasteProfile, computeLocalMatch, MATCH_SCORING_INSTRUCTIONS } from '../lib/matchHelpers';
 import { buildExcludeHint, buildShelfSignature, filterAlreadyKnown, REASON_INSTRUCTIONS, REPRESENTATION_INSTRUCTIONS } from '../lib/oraclePrompt';
 import { saveDraw, loadDraw } from '../lib/oracleDrawCache';
+import BookMark from '../components/BookMark';
 
 // v0.15 phase 2.6: copy pass — "categories" → "genres" throughout.
 // The Temperament dropdown now draws from Oracle genres (genresByBookId)
@@ -374,7 +375,7 @@ Return ONLY valid JSON in this format:
         <span className="source-tabs__label">Source:</span>
         <button className={`source-tab${mode === 'wishlist' ? ' active' : ''}`} onClick={() => setMode('wishlist')}>
           <div className="source-tab__head">
-            <span className="source-tab__glyph">❦</span>
+            <span className="source-tab__glyph"><BookMark /></span>
             <span className="source-tab__title">My wishlist</span>
           </div>
           <div className="source-tab__sub">{state.wishlist.length} books</div>
@@ -431,7 +432,7 @@ Return ONLY valid JSON in this format:
           <BookLoader text="The oracle is divining…" />
         ) : draw.length === 0 ? (
           <div className="empty-state">
-            <div className="ornament">❦</div>
+            <div className="ornament"><BookMark animate /></div>
             <div className="empty-state-title">Awaiting your choice</div>
             <div className="empty-state-text">Select a temperament above and draw three books.</div>
           </div>

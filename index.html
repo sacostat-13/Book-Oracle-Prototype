@@ -164,6 +164,41 @@
             animation: pre-boot-pulse 1.8s ease-in-out infinite;
         }
 
+        /* The open book (same drawing as src/components/BookMark.jsx — keep
+           the two in step). A leaf turns while the bundle loads; it says
+           "a library is opening", where the old ❦ said nothing. */
+        .pre-boot__book {
+            width: 1.45em;
+            height: 1.09em;
+            overflow: visible;
+            fill: none;
+            stroke: currentColor;
+            stroke-width: 1.5;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+
+        .pre-boot__book .pg { fill: currentColor; fill-opacity: .08; }
+        .pre-boot__book .ln { stroke-width: 1.1; opacity: .55; }
+
+        .pre-boot__book .lf {
+            fill: currentColor;
+            fill-opacity: .16;
+            transform-box: view-box;
+            transform-origin: 24px 0;
+            opacity: 0;
+            animation: pre-boot-turn 1.6s cubic-bezier(.45, .05, .35, 1) infinite;
+        }
+
+        @keyframes pre-boot-turn {
+            0%   { transform: scaleX(1);  opacity: 0; }
+            12%  { transform: scaleX(1);  opacity: 1; }
+            20%  { transform: scaleX(1); }
+            60%  { transform: scaleX(-1); }
+            78%  { transform: scaleX(-1); opacity: 1; }
+            92%, 100% { transform: scaleX(-1); opacity: 0; }
+        }
+
         @keyframes pre-boot-pulse {
             0%, 100% { opacity: .45; }
             50%      { opacity: 1; }
@@ -251,6 +286,8 @@
                 opacity: .7;
             }
 
+            .pre-boot__book .lf { animation: none; }
+
             #root>.pre-mount {
                 animation: pre-mount-in 1ms linear 900ms forwards;
             }
@@ -270,7 +307,7 @@
          This is not cloaking: it is the same markup for every visitor, human or
          crawler, and it says the same thing the rendered page says. -->
     <div id="root">
-        <div class="pre-boot" aria-hidden="true">❦</div>
+        <div class="pre-boot" aria-hidden="true"><svg class="pre-boot__book" viewBox="0 0 48 36" focusable="false"><path d="M2 9v23.5c7.5-1.6 15.2-1 22 2 6.8-3 14.5-3.6 22-2V9"/><path class="pg" d="M24 7.5C18 4.8 10.5 4.3 4.5 5.6v24.2c6-1.2 13.5-.7 19.5 2Z"/><path class="pg" d="M24 7.5c6-2.7 13.5-3.2 19.5-1.9v24.2c-6-1.2-13.5-.7-19.5 2Z"/><path class="ln" d="M8.5 11.2c4-.8 8.2-.5 11.8.9M8.5 16.2c4-.8 8.2-.5 11.8.9M8.5 21.2c4-.8 8.2-.5 11.8.9M39.5 11.2c-4-.8-8.2-.5-11.8.9M39.5 16.2c-4-.8-8.2-.5-11.8.9M39.5 21.2c-4-.8-8.2-.5-11.8.9"/><path class="lf" d="M24 7.5c6-2.7 13.5-3.2 19.5-1.9v24.2c-6-1.2-13.5-.7-19.5 2Z"/></svg></div>
         <!--PREMOUNT-->
         <div class="pre-mount">
             <p class="eyebrow">A reading companion</p>

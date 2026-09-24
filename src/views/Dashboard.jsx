@@ -20,6 +20,7 @@ import { OracleQuotaBadge } from '../components/OracleQuotaBadge';
 import { logRecommendations } from '../lib/oracleProvenance';
 import Avatar from '../components/Avatar';
 import AddBooksChooser from '../components/AddBooksChooser';
+import BookMark from '../components/BookMark';
 
 const FEED_PAGE_SIZE = 5;
 
@@ -855,7 +856,7 @@ function FeedWidget({ state, onOpenBook, go, t, eyebrow }) {
     <WidgetShell icon={<IconDiamond />} label={eyebrow || t('dashboard.recentActivity')}>
       {events.length === 0 ? (
         <div className="feed-empty">
-          <div className="feed-empty__ornament">{t('dashboard.emptyFeedOrnament')}</div>
+          <div className="feed-empty__ornament"><BookMark animate /></div>
           <p className="feed-empty__text">
             {t('dashboard.emptyFeedText')}<br />{t('dashboard.emptyFeedSub')}
           </p>

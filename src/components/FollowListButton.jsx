@@ -54,7 +54,7 @@ export default function FollowListButton({ listId, following, onChange, onRequir
       disabled={busy}
       aria-pressed={!!following}
     >
-      {following ? `❦ ${t('lists.followingBtn')}` : t('lists.followBtn')}
+      {following ? t('lists.followingBtn') : t('lists.followBtn')}
     </button>
   );
 }

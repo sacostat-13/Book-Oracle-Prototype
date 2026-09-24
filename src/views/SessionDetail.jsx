@@ -15,6 +15,7 @@ import SessionDiscussion from '../components/SessionDiscussion';
 import CornerBrackets from '../components/CornerBrackets';
 import { useT } from '../lib/I18nContext';
 import Avatar from '../components/Avatar';
+import BookMark from '../components/BookMark';
 
 // ── Shared sub-components ─────────────────────────────────────────────────────
 
@@ -268,7 +269,7 @@ export default function SessionDetail() {
       <>
         <div className="breadcrumb"><a onClick={() => go('book-clubs')}>{t('clubs.createBreadcrumb')}</a></div>
         <div className="empty-state">
-          <div className="ornament">❦</div>
+          <div className="ornament"><BookMark animate /></div>
           <div className="empty-state-title">{t('sessions.sessionNotFound')}</div>
           <div className="empty-state-text">{t('sessions.sessionNotFoundText')}</div>
           <button className="btn-secondary" onClick={() => go('book-clubs')}>{t('sessions.backToClubs')}</button>

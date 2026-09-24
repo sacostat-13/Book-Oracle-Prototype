@@ -14,16 +14,20 @@
 //
 // Usage:
 //   <EmptyState
-//     ornament="❦"
 //     title={t('lists.emptyTitle')}
 //     body={t('lists.emptyText')}          // one sentence: what this is FOR
 //     action={{ label: t('lists.emptyCta'), onClick: () => setCreating(true) }}
 //   />
 //
+// The ornament defaults to the animated open book (BookMark). Pass another
+// node or glyph to override, or `ornament={null}` for none.
+//
 // `action.onClick` may be omitted if `action.href` is given (rare); `children`
 // renders below the action for the odd case that needs extra controls.
 
-export default function EmptyState({ ornament = '❦', title, body, action, children }) {
+import BookMark from './BookMark';
+
+export default function EmptyState({ ornament = <BookMark animate />, title, body, action, children }) {
   // Crisp (un-faded) whenever there's something to act on — a primary action
   // or a caller-supplied button group in `children`. A purely informational
   // empty state (no action, no children) keeps the quiet, dimmed treatment.

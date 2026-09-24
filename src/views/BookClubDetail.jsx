@@ -12,6 +12,7 @@ import ShareModal from '../components/ShareModal';
 import { clubShareUrl } from '../lib/shareService';
 import { fetchTitlesByUserId, titleLabel } from '../lib/titles';
 import Avatar from '../components/Avatar';
+import BookMark from '../components/BookMark';
 
 function SessionCard({ session, onClick, t }) {
   const now = new Date();
@@ -132,7 +133,7 @@ export default function BookClubDetail() {
       <>
         <div className="breadcrumb"><a onClick={() => go('book-clubs')}>{t('clubs.createBreadcrumb')}</a></div>
         <div className="empty-state">
-          <div className="ornament">❦</div>
+          <div className="ornament"><BookMark animate /></div>
           <div className="empty-state-title">{t('clubs.clubNotFound')}</div>
           <div className="empty-state-text">{t('clubs.clubNotFoundText')}</div>
           <button className="btn-secondary" onClick={() => go('book-clubs')}>{t('clubs.backToClubs')}</button>

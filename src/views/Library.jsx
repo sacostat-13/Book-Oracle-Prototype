@@ -15,6 +15,7 @@ import EmptyState from '../components/EmptyState';
 import ShelfFilters from '../components/ShelfFilters';
 import { useShelfFilters } from '../lib/useShelfFilters';
 import { useShelfGrouping } from '../lib/useShelfGrouping';
+import BookMark from '../components/BookMark';
 
 // v0.15 phase 2.5: two-dropdown filter (genres + categories) + Oracle genre grouping.
 // v0.16 DS pass: migrated to .lv-* / .btn-* / .select tokens.
@@ -264,7 +265,7 @@ export default function Library({ onOpenBook }) {
                       >
                         {sel.active
                           ? <span className="lv-row__checkbox">{isSelected ? '✓' : ''}</span>
-                          : (b.rating ? '★'.repeat(b.rating) : '❦')}
+                          : (b.rating ? '★'.repeat(b.rating) : <BookMark />)}
                       </div>
                       <div className="lv-row__content" onClick={() => !sel.active && onOpenBook?.(b)}>
                         <div className="lv-row__title">{b.t}</div>

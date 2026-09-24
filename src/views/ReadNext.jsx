@@ -26,7 +26,6 @@ export default function ReadNext({ onOpenBook }) {
 
       {queue.length === 0 ? (
         <EmptyState
-          ornament="❦"
           title={t('readNext.emptyTitle')}
           body={t('readNext.emptyText')}
           action={{ label: t('readNext.openOracle'), onClick: () => go('oracle') }}

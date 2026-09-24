@@ -14,6 +14,7 @@ import EmptyState from '../components/EmptyState';
 import ShelfFilters from '../components/ShelfFilters';
 import { useShelfFilters } from '../lib/useShelfFilters';
 import { useShelfGrouping } from '../lib/useShelfGrouping';
+import BookMark from '../components/BookMark';
 
 // v0.15 phase 2.5: two-dropdown filter (genres + categories).
 // v0.16 DS pass: migrated to .lv-* / .btn-* / .select tokens.
@@ -173,7 +174,6 @@ export default function Wishlist({ onOpenBook }) {
 
       {wl.length === 0 ? (
         <EmptyState
-          ornament="❦"
           title={t('wishlist.subtitleEmpty')}
           body={t('wishlist.emptyText')}
         >
@@ -194,7 +194,7 @@ export default function Wishlist({ onOpenBook }) {
         </EmptyState>
       ) : filtered.length === 0 ? (
         <div className="lv-empty">
-          <div className="lv-empty-icon">❦</div>
+          <div className="lv-empty-icon"><BookMark animate /></div>
           <div className="lv-empty-title">No books match</div>
           {/* v0.62: naming the active filters is the fix. "Try clearing your
               filters" makes the reader hunt for which of seven controls did
@@ -258,7 +258,7 @@ export default function Wishlist({ onOpenBook }) {
                       <div className="lv-row__num">
                         {sel.active
                           ? <span className="lv-row__checkbox">{isSelected ? '✓' : ''}</span>
-                          : (b.manuallyAdded ? '✎' : '❦')}
+                          : (b.manuallyAdded ? '✎' : <BookMark />)}
                       </div>
                       <div className="lv-row__content" onClick={() => !sel.active && onOpenBook?.(b)}>
                         <div className="lv-row__title">{b.t}</div>
