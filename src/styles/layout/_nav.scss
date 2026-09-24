@@ -706,8 +706,16 @@ body.theme-parchment .nav-logo__img--light {
 }
 
 // ── Nav search field ──────────────────────────────────────────────────────────
+// v0.66: search and spacer used to split the free space 1:1. While the input
+// sized itself that didn't matter, but once it fills its container (see
+// .nav-search-input) a 1:1 split would halve the field at 1180. Weighting the
+// search 99:1 lets it fill to its cap first; once it hits max-width, flexbox
+// hands whatever is left to the spacer, so the icon cluster stays flush right.
+.nav-spacer { min-width: 4px; }
+
 .nav-search {
-  flex: 1;
+  flex: 99 1 0;
+  min-width: 0;
   max-width: 340px;
   position: relative;
 
@@ -719,6 +727,10 @@ body.theme-parchment .nav-logo__img--light {
     border: 1px solid var(--ro-border-strong);
     border-radius: 999px;
     padding: 5px 22px;
+
+    @include tokens.ro-down(tablet) {
+      padding: 5px 10px;
+    }
   }
 
   @include tokens.ro-down(tablet) {
@@ -747,6 +759,20 @@ body.theme-parchment .nav-logo__img--light {
   position: relative;
   display: flex;
   align-items: center;
+  min-width: 0;
+}
+
+// v0.66: the input had no width of its own, so it rendered at the browser's
+// intrinsic `size="20"` width (~300px with its padding) regardless of how much
+// room .nav-search was given. Above 1180 that was invisible — the field had
+// 340px to spare — but in the condensed tier .nav-search shrinks to ~110px and
+// the input simply overflowed it, sliding its pill underneath the icon cluster
+// and user chip. Filling the wrap instead of sizing itself fixes every width.
+.nav-search-input {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  text-overflow: ellipsis;
 }
 
 .nav-search-spinner {
@@ -956,11 +982,15 @@ body.theme-parchment .nav-logo__img--light {
 
   .nav-stacks { margin-left: 4px; }
 
+  .nav-logo__mark .nav-logo__text { font-size: 1.05rem; }
+
   // Search keeps its full behaviour and loses only slack. Below ~150px the
   // placeholder starts truncating, which is why this stops at 200.
   .nav-search {
     max-width: 200px;
     min-width: 0;
+
+    input { padding: 5px 12px; }
   }
 
   .nav-icons {
@@ -972,6 +1002,31 @@ body.theme-parchment .nav-logo__img--light {
   .nav-bell {
     width: 32px;
     height: 32px;
+  }
+
+  .nav-scan { padding: 7px; }
+}
+
+// v0.66: the lower half of the condensed band (768–1023). Even condensed, the
+// bar's fixed-width pieces (logo, two groups, two pills, icons, user chip)
+// add up to ~620px, which left the search ~40px at 768. The name on the user
+// chip is the one thing here that duplicates something else — the avatar is
+// right beside it, and the dashboard greets the reader by name — so it goes,
+// worth ~85px. Visually hidden rather than display:none so the button keeps
+// its accessible name; the chip itself, and everything in its menu, stays.
+@include tokens.ro-between(tablet, desktop) {
+  .nav-user {
+    padding: 0 4px;
+
+    &__label {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip: rect(0 0 0 0);
+      clip-path: inset(50%);
+      white-space: nowrap;
+    }
   }
 }
 
