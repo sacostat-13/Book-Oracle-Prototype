@@ -805,11 +805,21 @@
     "curatorRequestDenied": "This request wasn't granted.",
     "tabLedger": "The Ledger",
     "constellationTitle": "Your reading sky",
-    "constellationHint": "Every star is a book you have finished, gathered by genre family — the brighter, the more recent. The gold thread follows your last {n} reads, in order. Drag to turn the sky; hover a star to see its book.",
+    "constellationHint": "Every star is a book you have finished, gathered by genre family — the brighter, the more recent. The gold thread follows your last {n} reads, in order. Drag to turn the sky, scroll or pinch to move closer, and choose a family to see only its stars.",
     "constellationEmpty": "Finish a few more books and your sky will start to fill in.",
     "constellationUncharted": "Uncharted",
     "constellationRead": "read {date}",
-    "constellationOpen": "Open book →"
+    "constellationOpen": "Open book →",
+    "constellationGlimpseHint": "Every star is a book you have finished, gathered by genre family. Your {n} most recent reads are named; drag to turn the sky, and choose a family to see only its stars.",
+    "constellationGlimpseMore": "{n} more stars in your sky are waiting to be named. Pro names every one, draws the gold thread through your reading, and lets you travel into it.",
+    "constellationUnnamed": "An unnamed star",
+    "constellationUnnamedBody": "One of your books. Pro names every star in your sky.",
+    "constellationZoomIn": "Move closer",
+    "constellationZoomOut": "Step back",
+    "constellationReset": "Back to the whole sky",
+    "constellationZoomHint": "Click the sky first, then scroll to move closer — or pinch",
+    "constellationFamilyPage": "Family page →",
+    "constellationShowAll": "Show the whole sky ✕"
   },
   "onboarding": {
     "step1Eyebrow": "Step 2 of 6 · Reader profile",

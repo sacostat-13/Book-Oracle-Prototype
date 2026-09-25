@@ -68,6 +68,120 @@
   color: var(--ro-gold-text);
   text-shadow: 0 1px 6px var(--ro-bg-deep, var(--ro-bg));
   will-change: transform;
+  // A button now: choosing a family clears the sky down to it.
+  padding: 2px 6px;
+  border: 0;
+  border-radius: var(--ro-radius-sm, 6px);
+  background: none;
+  cursor: pointer;
+
+  &:hover { text-decoration: underline; text-underline-offset: 3px; }
+  &.is-on { background: color-mix(in srgb, var(--ro-bg-deep, var(--ro-bg)) 70%, transparent); }
+}
+
+.rc__controls {
+  position: absolute;
+  z-index: 3;
+  right: 10px;
+  bottom: 10px;
+  display: grid;
+  gap: 6px;
+}
+
+.rc__ctl {
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 1px solid var(--ro-border);
+  border-radius: var(--ro-radius-sm, 6px);
+  background: color-mix(in srgb, var(--ro-surface) 85%, transparent);
+  color: var(--ro-text);
+  font-size: 17px;
+  line-height: 1;
+  cursor: pointer;
+
+  &:hover:not(:disabled) { border-color: var(--ro-gold); color: var(--ro-gold-text); }
+  &:disabled { opacity: .4; cursor: default; }
+  &:focus-visible { outline: 2px solid var(--ro-gold); outline-offset: 2px; }
+}
+
+.rc__focus {
+  position: absolute;
+  z-index: 3;
+  left: 10px;
+  top: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+  max-width: calc(100% - 20px);
+  padding: 7px 12px;
+  border: 1px solid var(--ro-border);
+  border-radius: var(--ro-radius-sm, 6px);
+  background: color-mix(in srgb, var(--ro-surface) 88%, transparent);
+  font-size: 13px;
+  color: var(--ro-text-2);
+}
+
+.rc__focus-name {
+  font-family: var(--ro-font-display);
+  font-style: italic;
+  font-size: 15px;
+  color: var(--ro-text);
+
+  b { font-family: var(--ro-font-body, inherit); font-style: normal; font-size: 12px; font-weight: 600; color: var(--ro-gold-text); }
+}
+
+.rc__focus-link,
+.rc__focus-clear {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: 12px;
+  color: var(--ro-gold-text);
+  text-decoration: none;
+  cursor: pointer;
+
+  &:hover { text-decoration: underline; }
+}
+
+.rc__hint {
+  position: absolute;
+  z-index: 3;
+  left: 50%;
+  bottom: 12px;
+  transform: translateX(-50%);
+  padding: 6px 12px;
+  border-radius: var(--ro-radius-pill, 999px);
+  background: color-mix(in srgb, var(--ro-surface) 90%, transparent);
+  border: 1px solid var(--ro-border);
+  font-size: 12px;
+  color: var(--ro-text-2);
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.rc__pro {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 16px;
+  margin: 12px 0 0;
+  padding: 10px 14px;
+  border: 1px dashed color-mix(in srgb, var(--ro-gold) 45%, transparent);
+  border-radius: var(--ro-radius-sm, 6px);
+
+  p {
+    flex: 1 1 260px;
+    margin: 0;
+    font-family: var(--ro-font-display);
+    font-style: italic;
+    font-size: 15px;
+    color: var(--ro-text-2);
+  }
 }
 
 .rc__tip {
@@ -98,7 +212,13 @@
 .rc__tip-meta { color: var(--ro-muted); font-size: 12px; }
 
 .rc__tip-open {
+  justify-self: start;
   margin-top: 4px;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  cursor: pointer;
   font-size: 12px;
   color: var(--ro-gold-text);
   text-decoration: none;
@@ -129,4 +249,19 @@
   b { font-weight: 600; color: var(--ro-gold-text); }
 }
 
-a.rc__chip:hover { border-color: var(--ro-gold); color: var(--ro-text); }
+button.rc__chip {
+  background: none;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+
+  &.is-on {
+    border-color: var(--ro-gold);
+    color: var(--ro-text);
+    background: color-mix(in srgb, var(--ro-gold) 12%, transparent);
+  }
+  &:focus-visible { outline: 2px solid var(--ro-gold); outline-offset: 2px; }
+}
+
+a.rc__chip:hover,
+button.rc__chip:hover { border-color: var(--ro-gold); color: var(--ro-text); }

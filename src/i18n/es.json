@@ -805,11 +805,21 @@
     "curatorRequestDenied": "Esta solicitud no fue concedida.",
     "tabLedger": "La Bitácora",
     "constellationTitle": "Tu cielo de lectura",
-    "constellationHint": "Cada estrella es un libro que terminaste, agrupado por familia de géneros — cuanto más brilla, más reciente. El hilo dorado sigue tus últimas {n} lecturas, en orden. Arrastrá para girar el cielo; pasá sobre una estrella para ver su libro.",
+    "constellationHint": "Cada estrella es un libro que terminaste, agrupado por familia de géneros — cuanto más brilla, más reciente. El hilo dorado sigue tus últimas {n} lecturas, en orden. Arrastrá para girar el cielo, scrolleá o pellizcá para acercarte, y elegí una familia para ver solo sus estrellas.",
     "constellationEmpty": "Terminá algunos libros más y tu cielo va a empezar a llenarse.",
     "constellationUncharted": "Sin cartografiar",
     "constellationRead": "leído el {date}",
-    "constellationOpen": "Abrir libro →"
+    "constellationOpen": "Abrir libro →",
+    "constellationGlimpseHint": "Cada estrella es un libro que terminaste, agrupado por familia de géneros. Tus {n} lecturas más recientes tienen nombre; arrastrá para girar el cielo y elegí una familia para ver solo sus estrellas.",
+    "constellationGlimpseMore": "{n} estrellas más de tu cielo esperan su nombre. Pro las nombra a todas, traza el hilo dorado de tus lecturas y te deja viajar hacia adentro.",
+    "constellationUnnamed": "Una estrella sin nombre",
+    "constellationUnnamedBody": "Uno de tus libros. Pro nombra cada estrella de tu cielo.",
+    "constellationZoomIn": "Acercarte",
+    "constellationZoomOut": "Alejarte",
+    "constellationReset": "Volver al cielo entero",
+    "constellationZoomHint": "Hacé clic en el cielo y después scrolleá para acercarte — o pellizcá",
+    "constellationFamilyPage": "Página de la familia →",
+    "constellationShowAll": "Ver el cielo entero ✕"
   },
   "onboarding": {
     "step1Eyebrow": "Paso 2 de 6 · Perfil lector",
