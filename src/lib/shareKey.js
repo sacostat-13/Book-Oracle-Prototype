@@ -44,7 +44,57 @@ function rowToBook(r) {
     isbn: r.isbn || undefined,
     status: r.status || 'unreviewed',
     source: r.source,
+    // 2026-09-29: carried so BookPage and the enrich merge can see the book is in a
+    // series. `s` itself is built in lookUpByShareKey once the series row has
+    // been read — the RPC returns only the id, not the name.
+    seriesId: r.series_id || undefined,
+    seriesPosition: r.position_in_series ?? undefined,
   };
+}
+
+// 2026-09-29 — SERIES ON SHARED LINKS.
+//
+// rowToBook used to drop series_id entirely, on the reasoning above that
+// series joins belong to bookRowToClient. The consequence: every book reached
+// by a shared link (or a fresh ?preview=true URL) that the viewer did not
+// already own rendered with NO series block, unless OpenLibrary happened to
+// know the series by title — which it does not for most manga and comics
+// ("Fruits Basket, Vol. 1" returns nothing). The catalogue knew perfectly well.
+// Googlebot lands on exactly this path, so the rendered page it indexed never
+// said the book was part of a series, and never linked to the series page.
+//
+// Builds the same `s` shape as DataContext's bookRowToClient for the fields a
+// public reader can see. Never throws: no series is a missing block, not a
+// broken page.
+async function attachSeries(book) {
+  if (!book?.seriesId) return book;
+  try {
+    const { data, error } = await supabase
+      .from('series')
+      .select('id,name,total_books,status,publication_status,source')
+      .eq('id', book.seriesId)
+      .maybeSingle();
+    if (error || !data?.name) {
+      if (error) console.warn('[shareKey] series lookup failed', error.message);
+      return book;
+    }
+    return {
+      ...book,
+      s: {
+        name: data.name,
+        n: book.seriesPosition ?? null,
+        total: data.total_books || null,
+        status: data.status || 'unreviewed',
+        publicationStatus: data.publication_status || 'unknown',
+        seriesId: data.id,
+        fromHardcover: data.source === 'hardcover',
+        fromOpenLibrary: data.source === 'openlibrary',
+      },
+    };
+  } catch (err) {
+    console.warn('[shareKey] series lookup threw', err?.message || err);
+    return book;
+  }
 }
 
 /**
@@ -63,7 +113,7 @@ export async function lookUpByShareKey(key) {
       console.warn('[shareKey] lookup failed', error.message);
       return null;
     }
-    return rowToBook(data);
+    return await attachSeries(rowToBook(data));
   } catch (err) {
     console.warn('[shareKey] lookup threw', err?.message || err);
     return null;

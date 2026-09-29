@@ -702,39 +702,6 @@ export default async (request, context) => {
       // never right for the book title, but "Unknown author" is a reasonable
       // fallback for a missing author in the OG title string.
       const authorDisplay = match.author || 'Unknown author';
-      const injected = injectMeta(html, {
-        title: `${match.title} by ${authorDisplay} — The Books Oracle`,
-        description: match.description ? match.description.slice(0, 200) : undefined,
-        // v0.48: branded 1200×630 card (cover + title on the ink/gold frame)
-        // instead of the raw cover — raw covers are portrait and crop badly
-        // in landscape unfurls, and carried no branding.
-        image: ogCardImage(url.origin, {
-          ornament: 'book', // drawn as the open-book mark by share-card.mjs
-          headline: match.title,
-          sub: `by ${authorDisplay}`,
-          cover: match.cover_url || undefined,
-        }),
-        imageWidth: 1200,
-        imageHeight: 630,
-        url: SITE + url.pathname,
-        jsonLd: {
-          '@context': 'https://schema.org',
-          '@type': 'Book',
-          name: match.title,
-          ...(match.author ? {
-            author: {
-              '@type': 'Person',
-              name: match.author
-            }
-          } : {}),
-          ...(match.description ? {
-            description: match.description.slice(0, 300)
-          } : {}),
-          ...(match.cover_url ? {
-            image: match.cover_url
-          } : {}),
-        },
-      });
       // ── Body content + internal links ──────────────────────────────────
       // Two extra reads, bots only. Series siblings first (strongest possible
       // relation between two book pages), then same-genre neighbours to give
@@ -779,6 +746,56 @@ export default async (request, context) => {
         }
       }
 
+      // 2026-09-29: built AFTER the series lookup (it used to run before it), so
+      // the JSON-LD below can carry isPartOf. Nothing above depends on it.
+      const injected = injectMeta(html, {
+        title: `${match.title} by ${authorDisplay} — The Books Oracle`,
+        description: match.description ? match.description.slice(0, 200) : undefined,
+        // v0.48: branded 1200×630 card (cover + title on the ink/gold frame)
+        // instead of the raw cover — raw covers are portrait and crop badly
+        // in landscape unfurls, and carried no branding.
+        image: ogCardImage(url.origin, {
+          ornament: 'book', // drawn as the open-book mark by share-card.mjs
+          headline: match.title,
+          sub: `by ${authorDisplay}`,
+          cover: match.cover_url || undefined,
+        }),
+        imageWidth: 1200,
+        imageHeight: 630,
+        url: SITE + url.pathname,
+        jsonLd: {
+          '@context': 'https://schema.org',
+          '@type': 'Book',
+          name: match.title,
+          ...(match.author ? {
+            author: {
+              '@type': 'Person',
+              name: match.author
+            }
+          } : {}),
+          ...(match.description ? {
+            description: match.description.slice(0, 300)
+          } : {}),
+          ...(match.cover_url ? {
+            image: match.cover_url
+          } : {}),
+          // 2026-09-29: the series relation, as schema.org models it — a Book that
+          // isPartOf a BookSeries, at a position. The body already said
+          // "<series> series" in prose; this is the same fact in the form
+          // Google reads structurally, and it links to the canonical
+          // /series/:name page (same encoding as sitemap.js).
+          ...(seriesName ? {
+            isPartOf: {
+              '@type': 'BookSeries',
+              name: seriesName,
+              url: `${SITE}/series/${encodeURIComponent(seriesName)}`,
+            },
+            ...(match.position_in_series != null ? {
+              position: Number(match.position_in_series)
+            } : {}),
+          } : {}),
+        },
+      });
       const bookBody = [
         `<p class="eyebrow">${escapeHtml(match.genre || 'The Books Oracle')}</p>`,
         `<h1>${escapeHtml(match.title)}</h1>`,

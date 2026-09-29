@@ -463,6 +463,13 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
         d: prev.d ?? row.d,
         isbn: prev.isbn ?? row.isbn,
         status: row.status ?? prev.status,
+        // 2026-09-29: the catalogue's series link. A search result carries a
+        // series only if Hardcover returned one; when it did not, this is the
+        // only place the page can learn it, and without it no series block
+        // renders (see attachSeries in shareKey.js).
+        s: prev.s ?? row.s,
+        seriesId: prev.seriesId ?? row.seriesId,
+        seriesPosition: prev.seriesPosition ?? row.seriesPosition,
       } : prev));
     })();
 
