@@ -161,6 +161,9 @@ async function topUpIsbn(book) {
     _author: storableAuthor(book.a),
     _isbn: hit.isbn,
     _hardcover_id: hit.hardcoverId || null,
+    // Same hit, same guard as the ISBN: coalesce in upsert_book means this can
+    // only fill a missing year, never replace one.
+    _first_published_year: hit.fy || null,
   });
 }
 

@@ -22,6 +22,8 @@ import { fetchSeriesDescriptionFromWikipedia, fetchBooksInSeriesByName, normaliz
 import BookCover from '../components/BookCover';
 import { openBookTab } from '../lib/bookHelpers';
 import BookMark from '../components/BookMark';
+import ShareModal from '../components/ShareModal';
+import { seriesShareUrl } from '../lib/shareService';
 
 // isAuthed/authPending/dataReady mirror BookPage and ListView. This route is
 // in App.jsx's PUBLIC_ROUTES as of 2026-08-24 — before that every /series/ URL
@@ -50,6 +52,10 @@ export default function SeriesPage({ isAuthed = true, authPending = false, dataR
   // noindex for the bot and indexable for the renderer, which is the bot/human
   // divergence this page has already been fixed for twice.
   const [catalogCount,   setCatalogCount]   = useState(null);
+  const [shareOpen,      setShareOpen]      = useState(false);
+  // 'reading' | 'publication'. Only offered when every volume is dated and the
+  // two orders actually differ — see pubOrder below.
+  const [order,          setOrder]          = useState('reading');
 
   // v0.39: SEO/share title+description for this series. Not set in App.jsx's
   // generic route-title effect — this is the only place this page's title
@@ -97,11 +103,15 @@ export default function SeriesPage({ isAuthed = true, authPending = false, dataR
     // Upstream still runs when the catalog holds 0 or 1 book for the series, so
     // a thin series is still padded rather than looking broken. It cannot
     // OVERWRITE a real catalog list.
+    setDescription(null);
+    setOrder('reading');
     (async () => {
       let catalogBooks = [];
+      let seriesRow = null;
       try {
         const res = await fetchBooksInSeriesByName(seriesName);
         catalogBooks = res.books || [];
+        seriesRow = res.series || null;
       } catch { /* fall through to upstream */ }
       if (cancelled) return;
       setCatalogCount(catalogBooks.length);
@@ -120,17 +130,39 @@ export default function SeriesPage({ isAuthed = true, authPending = false, dataR
         setLoading(false);
       }
 
-      // Wikipedia description. The author used to come only from the reader's
-      // own shelves, which are EMPTY for a signed-out visitor — so the one
-      // visitor this page now exists for got the least corroborated lookup.
-      // Prefer the catalog's own author and fall back to the shelves.
+      // The description, in order of who wrote it.
+      //
+      // Until 2026-09-30 this page read ONLY Wikipedia and never looked at
+      // series.description — so every description written for the catalog
+      // (seriesDescriptions.mjs, the Oracle pass, the editorial top-series
+      // pass) reached Googlebot through og-prerender and no human reader.
+      //
+      //   manual / oracle / wikipedia / NULL (hand-written, "precious")
+      //                     → shown as-is, no Wikipedia call at all
+      //   composed          → a placeholder assembled from catalog facts; true
+      //                       but thin, so Wikipedia's prose wins when it exists
+      //                       and the placeholder is only the fallback.
+      const catalogDesc = seriesRow?.description?.trim() || null;
+      const catalogIsPlaceholder = seriesRow?.description_source === 'composed';
+      if (catalogDesc && !catalogIsPlaceholder) {
+        if (!cancelled) setDescription({ description: catalogDesc });
+        return;
+      }
+
+      // Wikipedia. The author used to come only from the reader's own shelves,
+      // which are EMPTY for a signed-out visitor — so the one visitor this page
+      // now exists for got the least corroborated lookup. Prefer the catalog's
+      // own author and fall back to the shelves.
       const shelfAuthor = [...state.library, ...state.wishlist, ...state.readNext]
         .find((b) => b.s?.name === seriesName)?.a;
       const author = catalogBooks[0]?.a || shelfAuthor;
+      let wiki = null;
       try {
-        const d = await fetchSeriesDescriptionFromWikipedia(seriesName, author);
-        if (!cancelled && d) setDescription(d);
+        wiki = await fetchSeriesDescriptionFromWikipedia(seriesName, author);
       } catch { /* description is optional */ }
+      if (cancelled) return;
+      if (wiki) setDescription(wiki);
+      else if (catalogDesc) setDescription({ description: catalogDesc });
     })();
 
     return () => { cancelled = true; };
@@ -207,7 +239,9 @@ export default function SeriesPage({ isAuthed = true, authPending = false, dataR
       if (n == null) { deduped.push(b); continue; }
       const at = atPosition.get(n);
       if (at === undefined) { atPosition.set(n, deduped.length); deduped.push(b); continue; }
-      if (!inCollection(deduped[at]) && inCollection(b)) deduped[at] = b;
+      // The reader's copy wins, but it carries no year of its own — keep the
+      // catalog row's, or one shelf row silently disables publication order.
+      if (!inCollection(deduped[at]) && inCollection(b)) deduped[at] = { ...b, fy: b.fy ?? deduped[at].fy };
     }
 
     // `??`, not `||`. Position 0 is the prequel numbering convention (book 0
@@ -235,6 +269,21 @@ export default function SeriesPage({ isAuthed = true, authPending = false, dataR
   const queuedCount = entries.filter((b) => state.readNext.some((l) => bookKey(l) === bookKey(b))).length;
 
   const progressPct = total ? Math.round((readCount / total) * 100) : 0;
+
+  // ── Publication order ───────────────────────────────────────────────────────
+  // Same rule as the prerender (og-prerender.js, "Publication order"): only
+  // when EVERY listed volume is dated. An order with gaps is an ordering of
+  // the rows we happened to date, presented as the series'. And only when it
+  // differs from reading order — otherwise the toggle would switch nothing.
+  const pubOrder = useMemo(() => {
+    if (entries.length < 2 || !entries.every((b) => Number.isInteger(b.fy))) return null;
+    const sorted = entries
+      .map((b, i) => ({ b, i }))
+      .sort((x, y) => (x.b.fy - y.b.fy) || (x.i - y.i))
+      .map((x) => x.b);
+    return sorted.some((b, i) => b !== entries[i]) ? sorted : null;
+  }, [entries]);
+  const shownEntries = order === 'publication' && pubOrder ? pubOrder : entries;
 
   // ── Status for a single book ─────────────────────────────────────────────────
   function bookStatus(b) {
@@ -350,6 +399,14 @@ export default function SeriesPage({ isAuthed = true, authPending = false, dataR
               {t('seriesPage.addFirstBook')}
             </button>
           )}
+          {/* Share — signed out too. A series page is public, and "here is the
+              order to read these in" is the most forwardable thing on the site.
+              The unfurl is the branded series card from og-prerender. */}
+          {entries.length > 0 && (
+            <button className="btn-tertiary" onClick={() => setShareOpen(true)}>
+              ↗ {t('share.shareSeries')}
+            </button>
+          )}
         </div>
       </div>
 
@@ -389,6 +446,22 @@ export default function SeriesPage({ isAuthed = true, authPending = false, dataR
           )}
         </div>
 
+        {pubOrder && (
+          <div className="series-page-order" role="group" aria-label={t('seriesPage.orderLabel')}>
+            {['reading', 'publication'].map((o) => (
+              <button
+                key={o}
+                type="button"
+                className={`series-page-order__btn${order === o ? ' is-active' : ''}`}
+                aria-pressed={order === o}
+                onClick={() => setOrder(o)}
+              >
+                {t(o === 'reading' ? 'seriesPage.readingOrder' : 'seriesPage.publicationOrder')}
+              </button>
+            ))}
+          </div>
+        )}
+
         {loading && (
           <div className="loading">
             <div className="loading-spinner" />
@@ -403,7 +476,7 @@ export default function SeriesPage({ isAuthed = true, authPending = false, dataR
         )}
 
         <div className="series-page-book-list">
-          {entries.map((b) => {
+          {shownEntries.map((b) => {
             const k = bookKey(b);
             const status = bookStatus(b);
             const isActioning = actionLoading === k;
@@ -436,9 +509,9 @@ export default function SeriesPage({ isAuthed = true, authPending = false, dataR
                   >
                     {b.t}
                   </RouteLink>
-                  {b.pp && (
+                  {(b.pp || b.fy) && (
                     <div className="series-page-book-pages">
-                      {b.pp} {t('profile.statPages')}
+                      {[b.fy, b.pp && `${b.pp} ${t('profile.statPages')}`].filter(Boolean).join(' · ')}
                     </div>
                   )}
 
@@ -513,6 +586,15 @@ export default function SeriesPage({ isAuthed = true, authPending = false, dataR
           })}
         </div>
       </div>
+
+      {shareOpen && (
+        <ShareModal
+          title={seriesName}
+          text={t('share.text.seriesPage', { series: catalogSeriesName || seriesName, count: total || entries.length })}
+          url={seriesShareUrl(catalogSeriesName || seriesName)}
+          onClose={() => setShareOpen(false)}
+        />
+      )}
     </div>
   );
 }

@@ -227,7 +227,7 @@ export default function App() {
   //
   // 'book-page' was public from the start; the series route simply never got
   // the same treatment when v0.39 introduced path routing.
-  const PUBLIC_ROUTES = new Set(['book-page', 'series-page', 'list-view', 'plan-view', 'join-club', 'privacy', 'terms', 'refund', 'not-found', 'sitemap', 'lists-discover', 'genres-index', 'family-page', 'genre-page']);
+  const PUBLIC_ROUTES = new Set(['book-page', 'series-page', 'list-view', 'plan-view', 'join-club', 'privacy', 'terms', 'refund', 'not-found', 'sitemap', 'lists-discover', 'genres-index', 'family-page', 'genre-page', 'about', 'changelog']);
   if (PUBLIC_ROUTES.has(route.name)) {
     // During the brief auth check (~100ms), treat as loading not signed-out.
     // This prevents the sign-in prompt flashing before the session is confirmed.
@@ -337,6 +337,27 @@ export default function App() {
           <div className="container">
             <JoinClub />
           </div>
+          <Toast />
+        </div>
+      );
+    }
+
+    // About and What's New — public for signed-out visitors, in the landing
+    // chrome like the legal pages. Before this they were missing from
+    // PUBLIC_ROUTES and fell through to <SignInGate/>: the prerender served
+    // Googlebot the About copy while a person clicking through from a search
+    // result, a link in bio or an outreach email got a sign-in wall. A
+    // signed-in reader falls through to the main switch and keeps the full
+    // app chrome, exactly as before.
+    if ((route.name === 'about' || route.name === 'changelog') && !isAuthed && !authPending) {
+      const View = route.name === 'about' ? About : Changelog;
+      return (
+        <div className="app lp-root">
+          <LandingNav onOpenAuth={(mode) => go('dashboard', { auth: mode })} />
+          <div className="container lp-legal-container">
+            <View />
+          </div>
+          <LandingFooter />
           <Toast />
         </div>
       );

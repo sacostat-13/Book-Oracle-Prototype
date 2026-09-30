@@ -212,16 +212,26 @@ function pageCount(b) {
 }
 const fmtNum = (n) => Number(n).toLocaleString('en-US');
 
+// First-publication year, or null. Same rule as pageCount: omitted, never
+// guessed. The column is the WORK's year (migration 20260930120000), and
+// series_volumes already reports the earliest across collapsed editions.
+function pubYear(b) {
+  const n = Number(b?.first_published_year);
+  return Number.isInteger(n) && n !== 0 ? n : null;
+}
+
 // `withPages` is opt-in rather than automatic because only the series page has
 // a reason to carry it. `malazan book of the fallen page count` and `red rising
 // series page count by book` are in the 28-day query export, and the answer is
 // already in the column; the book page's "More <genre>" list answers nothing of
 // the kind and does not need the noise.
-function listItems(rows, { withPages = false } = {}) {
+function listItems(rows, { withPages = false, withYears = false, numbered = true } = {}) {
   return rows.map((b) => {
-    const pos = b.position_in_series != null ? `${Number(b.position_in_series)}. ` : '';
+    const pos = numbered && b.position_in_series != null ? `${Number(b.position_in_series)}. ` : '';
     const pp = withPages ? pageCount(b) : null;
-    const tail = `${b.author ? ` — ${escapeHtml(b.author)}` : ''}` +
+    const yr = withYears ? pubYear(b) : null;
+    const tail = `${yr ? ` (${yr})` : ''}` +
+      `${b.author ? ` — ${escapeHtml(b.author)}` : ''}` +
       `${pp ? ` · ${escapeHtml(fmtNum(pp))} pages` : ''}`;
     const href = bookLink(b);
     // An unaddressable row is listed without a link rather than dropped: the
@@ -838,7 +848,7 @@ export default async (request, context) => {
         // edition tie-break orders by it) — added here 2026-09-15 for the page
         // count line. If it ever leaves the view this query 400s, and the else
         // branch below is what says so out loud.
-        `${supabaseUrl}/rest/v1/series_volumes?select=title,author,share_key,position_in_series,description,pages` +
+        `${supabaseUrl}/rest/v1/series_volumes?select=title,author,share_key,position_in_series,description,pages,cover_url,first_published_year` +
         `&series_id=eq.${encodeURIComponent(match.id)}` +
         // Match the sitemap. It emits /series/:name from rows with these two
         // statuses, so the page behind those URLs must list the same rows --
@@ -923,13 +933,48 @@ export default async (request, context) => {
           ? `The ${held} book${held === 1 ? '' : 's'} listed here total ${fmtNum(totalPages)} pages.`
           : `All ${held} book${held === 1 ? '' : 's'} total ${fmtNum(totalPages)} pages.`;
 
+      // Publication order.
+      //
+      // `dragonlance publication order`, `dragonlance chronology`, `hellboy
+      // chronological order` — the one family of series queries the page could
+      // not answer at any length until books had a year (20260930120000).
+      //
+      // Same honesty rule as the page total: ONLY when every listed volume is
+      // dated. A publication order with holes in it is an ordering of the rows
+      // we happen to have dated, and it would be stated as the series'.
+      //
+      // When the two orders agree, a second identical list is noise — the fact
+      // worth stating is that they agree, as a sentence a searcher can lift.
+      // When they differ (prequels, Narnia, Dragonlance), the second list is the
+      // whole answer and gets its own heading.
+      const years = volumes.map(pubYear);
+      const allDated = held > 1 && years.every((y) => y != null);
+      const byYear = allDated
+        ? volumes
+            .map((v, i) => ({ v, i }))
+            .sort((a, b) => (pubYear(a.v) - pubYear(b.v)) || (a.i - b.i))
+            .map((x) => x.v)
+        : null;
+      const ordersDiffer = !!byYear && byYear.some((v, i) => v !== volumes[i]);
+      const firstYear = allDated ? Math.min(...years) : null;
+      const lastYear = allDated ? Math.max(...years) : null;
+      const yearsSentence = !allDated
+        ? ''
+        : ordersDiffer
+          ? `Published between ${firstYear} and ${lastYear}. The publication order differs from the reading order — both are below.`
+          : `Published between ${firstYear} and ${lastYear}, in the same order they are meant to be read.`;
+
       const seriesBody = [
         `<p class="eyebrow">Series</p>`,
         `<h1>${escapeHtml(match.name)} series in reading order</h1>`,
         countSentence ? `<p>${escapeHtml(countSentence)}</p>` : '',
+        yearsSentence ? `<p>${escapeHtml(yearsSentence)}</p>` : '',
         `<p>${escapeHtml(seriesDesc)}</p>`,
         held
-          ? `<h2>${escapeHtml(listHeading)}</h2><ul>${listItems(volumes, { withPages: true })}</ul>`
+          ? `<h2>${escapeHtml(listHeading)}</h2><ul>${listItems(volumes, { withPages: true, withYears: true })}</ul>`
+          : '',
+        ordersDiffer
+          ? `<h2>${escapeHtml(match.name)} in publication order</h2><ol>${listItems(byYear, { withYears: true, numbered: false })}</ol>`
           : '',
         pagesSentence ? `<p>${escapeHtml(pagesSentence)}</p>` : '',
         `<p><a href="/">The Books Oracle</a> — track the series you are partway through, and see what to read next.</p>`,
@@ -954,6 +999,22 @@ export default async (request, context) => {
         // Oracle" said nothing a searcher was looking for.
         title: `${match.name} series in order — every book | The Books Oracle`,
         description: seriesDesc.slice(0, 200),
+        // Branded 1200×630 card, same function as books/lists/plans (v0.48).
+        // Series were the one public surface still unfurling as a bare link —
+        // and they are the pages people actually arrive on from search.
+        image: ogCardImage(url.origin, {
+          ornament: 'book',
+          eyebrow: 'Series · in reading order',
+          headline: match.name,
+          sub: [
+            known ? `${known} ${known === 1 ? 'book' : 'books'}` : (held ? `${held} ${held === 1 ? 'book' : 'books'}` : null),
+            first?.author || null,
+            allDated ? (firstYear === lastYear ? String(firstYear) : `${firstYear}–${lastYear}`) : null,
+          ].filter(Boolean).join(' · '),
+          cover: (volumes.find((v) => v.cover_url) || {}).cover_url || undefined,
+        }),
+        imageWidth: 1200,
+        imageHeight: 630,
         url: SITE + canonicalPath,
         noindex: held < SERIES_INDEX_FLOOR,
         jsonLd: {
@@ -970,6 +1031,8 @@ export default async (request, context) => {
               // schema.org/Book.numberOfPages. Omitted rather than zeroed when
               // the row has none — same rule as `url` below.
               ...(pageCount(b) ? { numberOfPages: pageCount(b) } : {}),
+              // schema.org/CreativeWork.datePublished — a year alone is valid ISO 8601.
+              ...(pubYear(b) ? { datePublished: String(pubYear(b)) } : {}),
               // v0.63.3: omit `url` rather than emit a broken one — structured
               // data pointing at a 404 is worse for SEO than structured data
               // with one fewer field.

@@ -10,6 +10,7 @@
 #                                ISBNdb        — paid subscription, 5,000/day, first when keyed
 #   languageBackfill.mjs         OpenLibrary / Google Books / ISBN registration group
 #   originalLanguageBackfill.mjs Wikidata / OpenLibrary / the catalog's own work groups
+#   publicationYearBackfill.mjs  Hardcover / OpenLibrary — first-publication year, fill-only
 #
 # The two language passes (v0.64) are free, terminate, and write nothing they
 # cannot corroborate. They run last because their cheapest sources are the ISBNs
@@ -261,6 +262,17 @@ jobs:
         if: ${{ !cancelled() }}
         timeout-minutes: 60
         run: node batch-scripts/scheduled/originalLanguageBackfill.mjs ${{ steps.args.outputs.limit }} | tee origlanguage.log
+
+      # Publication years (2026-09-30). The safety net behind upsert_book's
+      # _first_published_year: new books normally arrive dated from the lookup
+      # chain, and this catches the ones that did not (Google Books fallback,
+      # manual adds, rows categorised since last week). --all covers the whole
+      # verified/oracle_categorized catalog, not just series books. Fill-only and
+      # resumable, so a timeout simply leaves the rest for next Monday.
+      - name: Backfill publication years (free)
+        if: ${{ !cancelled() }}
+        timeout-minutes: 45
+        run: node batch-scripts/scheduled/publicationYearBackfill.mjs --all ${{ steps.args.outputs.limit }} | tee pubyear.log
 
       # 5. Claude — MANUAL ONLY. Never runs on the schedule; only when someone types a
       #    number into curate_limit, which makes the spend an explicit, bounded decision.

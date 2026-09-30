@@ -57,6 +57,9 @@ function rowToSeriesBook(r, series) {
     a: r.author || '',
     d: r.description || undefined,
     pp: r.pages || undefined,
+    // First-publication year of the WORK (20260930120000; series_volumes gives
+    // the earliest across collapsed editions). Absent, never guessed.
+    fy: r.first_published_year ?? undefined,
     coverUrl: r.cover_url || undefined,
     isbn: r.isbn || undefined,
     status: r.status || 'unreviewed',

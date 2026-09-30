@@ -501,6 +501,8 @@ export default async function handler() {
         _author: author,
         _hardcover_id: b.id || null,
         _pages: b.pages || null,
+        // Already selected by QUERY above and never stored until 20260930140000.
+        _first_published_year: Number.isInteger(b.release_year) && b.release_year !== 0 ? b.release_year : null,
         _description: b.description || null,
         _cover_url: cover,
         // Canonical genre, not the Hardcover tag — this is what The Stacks

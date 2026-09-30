@@ -640,7 +640,10 @@
     "booksInSeries": "Books in the series",
     "noBooks": "No books found for this series.",
     "bookN": "Book {n}",
-    "wishlisted": "Wishlisted"
+    "wishlisted": "Wishlisted",
+    "orderLabel": "Order",
+    "readingOrder": "Reading order",
+    "publicationOrder": "Publication order"
   },
   "profile": {
     "eyebrow": "Profile",
@@ -1632,8 +1635,10 @@
       "profile": "{name}'s reading profile on The Books Oracle.",
       "familyCount": "{n} books in {family}. The Books Oracle keeps count.",
       "familyBreadth": "{n} corners of {family}. The Books Oracle keeps count.",
-      "newFamily": "First step into {family}. The Books Oracle led me there."
-    }
+      "newFamily": "First step into {family}. The Books Oracle led me there.",
+      "seriesPage": "The {series} series in reading order — all {count} books, on The Books Oracle."
+    },
+    "shareSeries": "Share this series"
   },
   "shelfScene": {
     "empty": "Your shelves are empty. Read a book or add one to fill them.",

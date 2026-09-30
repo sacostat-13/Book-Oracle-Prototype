@@ -2452,6 +2452,46 @@
   gap: 4px;
 }
 
+// Reading order / publication order. Only rendered when every volume is dated
+// and the two orders differ (SeriesPage pubOrder). Tokens only — light mode is
+// token-driven. Mono caps to match the "BOOK N" position labels it reorders.
+.series-page-order {
+  display: inline-flex;
+  gap: 0;
+  margin: var(--ro-space-2) 0 var(--ro-space-3);
+  border: 1px solid var(--ro-border);
+  border-radius: var(--ro-radius-md);
+  overflow: hidden;
+  align-self: flex-start;
+}
+
+.series-page-order__btn {
+  appearance: none;
+  background: transparent;
+  border: 0;
+  padding: 6px 12px;
+  font-family: var(--ro-font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ro-muted);
+  cursor: pointer;
+
+  & + & { border-left: 1px solid var(--ro-border); }
+
+  &:hover { color: var(--ro-text); }
+
+  &:focus-visible {
+    outline: 2px solid var(--ro-gold);
+    outline-offset: -2px;
+  }
+
+  &.is-active {
+    color: var(--ro-gold-text);
+    background: var(--ro-surface-2);
+  }
+}
+
 .series-page-book-list {
   display: flex;
   flex-direction: column;

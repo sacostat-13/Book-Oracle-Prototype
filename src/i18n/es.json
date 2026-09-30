@@ -640,7 +640,10 @@
     "booksInSeries": "Libros de la saga",
     "noBooks": "No se encontraron libros para esta saga.",
     "bookN": "Libro {n}",
-    "wishlisted": "En Lista de Deseos"
+    "wishlisted": "En Lista de Deseos",
+    "orderLabel": "Orden",
+    "readingOrder": "Orden de lectura",
+    "publicationOrder": "Orden de publicación"
   },
   "profile": {
     "eyebrow": "Perfil",
@@ -1632,8 +1635,10 @@
       "profile": "El perfil de lectura de {name} en The Books Oracle.",
       "familyCount": "{n} libros en {family}. The Books Oracle lleva la cuenta.",
       "familyBreadth": "{n} rincones de {family}. The Books Oracle lleva la cuenta.",
-      "newFamily": "Primer paso en {family}. The Books Oracle me llevó ahí."
-    }
+      "newFamily": "Primer paso en {family}. The Books Oracle me llevó ahí.",
+      "seriesPage": "La saga {series} en orden de lectura — los {count} libros, en The Books Oracle."
+    },
+    "shareSeries": "Compartir esta saga"
   },
   "shelfScene": {
     "empty": "Tus estantes están vacíos. Leé un libro o agregá uno para llenarlos.",

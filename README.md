@@ -4,7 +4,7 @@ A reading companion — wishlist, library, Passages (reading plans), Anthologies
 lists), book clubs, Kindred (follows), and an AI-powered "oracle" for book discovery. Built with React + Vite + SCSS, backed by Supabase for auth
 and cross-device sync, and Netlify Functions for API proxying.
 
-> Current version: **v0.71** — see [Releases](#releases) below for changelog.
+> Current version: **v0.72** — see [Releases](#releases) below for changelog.
 > Upgrading from an earlier version? Check the matching `MIGRATION_*.md` / `UPDATE_*.md`.
 
 ---
@@ -372,6 +372,100 @@ and forward requests. Locally you need `netlify dev` to make them work.
 ---
 
 ## Releases
+
+# v0.72 — Series in every order (2026-09-30)
+
+Publication years, publication order, series share cards, hand-checked series
+descriptions, and public About / What's New pages. Also ships the work merged
+since v0.71: the Reading Sky in Profile, the three.js motion layer, the
+open-book mark replacing the ❦ fleuron, and mobile/landing fixes. Full notes in
+`claude/series-share-and-publication-year-2026-09-30.md` (project docs).
+
+**Three migrations, in order, BEFORE deploying the client.** The third changes
+`upsert_book`'s signature, and the new client sends `_first_published_year` on
+every write — against the old 21-argument function that is a PGRST202 and every
+add-to-shelf fails.
+
+1. `20260930120000_books_first_published_year.sql`: `books.first_published_year`
+   (smallint, range-checked, NULL = unknown), a partial index for the backfill's
+   worklist, and `series_volumes` recreated with the column appended as the
+   earliest year across collapsed editions.
+2. `20260930130000_series_editorial_descriptions.sql`: generated from
+   `batch-scripts/_shared/seriesEditorial.mjs` by
+   `batch-scripts/manual/seriesEditorialSql.mjs` — edit the data file and
+   regenerate, never the SQL. 25 top-impression series. Overwrites only a NULL,
+   `composed` or `wikipedia` description; stamps `description_source = 'oracle'`.
+   Run the verification query at the bottom: `n = 0` means the catalog spells
+   that series differently.
+3. `20260930140000_upsert_book_first_published_year.sql`: `upsert_book` gains
+   `_first_published_year integer` (drop 21-arg, create 22-arg, regrant). Out-of-range
+   years are dropped, not raised. Merge is `coalesce(existing, incoming)` like
+   every other field — `least()` was rejected because the client's OpenLibrary
+   title match is loose enough that one bad match would backdate a book for good.
+
+**No new env vars. `public/app-version.json` goes to `0.72`.** Not announced on
+load (`major` unset).
+
+**Backfill.** `node batch-scripts/scheduled/publicationYearBackfill.mjs --all`
+(`--dry-run`, `--limit N`, `--verbose`, `--strict`). Hardcover by `hardcover_id`,
+then OpenLibrary `first_publish_year`, then Hardcover search; every hit must pass
+`titleMatches` + `authorMatches`, rows with a placeholder author are skipped, and
+Hardcover/OpenLibrary disagreements over 3 years go to
+`batch-scripts/output/publication-year-conflicts.csv`. Fill-only and resumable.
+Paced at ~1.5s per Hardcover request — the first version used a pure sliding
+window, burst its first batch, and got a wall of 429s. Expect about an hour for
+the series books. `catalog-maintenance.yml` now runs it weekly with `--all`
+as the safety net for rows that arrive undated.
+
+**Dated at write time.** `hardcoverService` asks for `release_year` (book-level,
+so the work's year) and returns it as `fy`; `bookLookup`'s OpenLibrary title
+path returns `first_publish_year` only when the title actually matched;
+`DataContext` round-trips `fy` and sends it from both `upsert_book` callers;
+`oracleCategorizationService.topUpIsbn` and `catalog-crawl` pass it too. Google
+Books is deliberately not used — its `publishedDate` is an edition's.
+
+### Series pages
+
+- **Prerender** (`og-prerender.js`): year after each title; a "Published between X
+  and Y" sentence; a separate `<h2>… in publication order</h2><ol>` when it differs
+  from reading order; `datePublished` on each `hasPart`. Same honesty rule as the
+  page total — nothing about years is said of the series unless **every** listed
+  volume is dated.
+- **Branded link preview**: series were the one public surface still unfurling as a
+  bare link. `ogCardImage` with the series name, "N books · author · 1950–1955" and
+  the first volume that has a cover.
+- **`SeriesPage.jsx`**: Share this series (signed out too) via `ShareModal` +
+  `seriesShareUrl`; Reading order / Publication order toggle under the same
+  every-volume-dated rule; year beside the page count.
+- **Descriptions reach readers.** The page used to read only Wikipedia, so
+  `series.description` reached Googlebot and nobody else. It now shows the catalog
+  description first (`manual` / `oracle` / `wikipedia` / NULL as-is) and treats
+  `composed` as a fallback behind Wikipedia.
+
+### About and What's New are public
+
+`about` and `changelog` were missing from `PUBLIC_ROUTES`, so a signed-out
+visitor got `<SignInGate/>` while the prerender served Googlebot the page — the
+same divergence the series route had before 2026-08-24. Signed out they now
+render in the landing chrome, like the legal pages; signed in, unchanged.
+
+### Tests
+
+`tests/prerender.test.js`: a Narnia fixture where the orders differ; year per
+volume, the agree/differ sentences, the publication-order list, a partly dated
+shelf making no claim, `datePublished`, and the series OG card. The `SCHEMA` stub
+carries `first_published_year` on `series_volumes`, so dropping it from the view
+fails the suite instead of 400ing in production. 418 passing.
+
+### Verify after deploy
+
+1. `curl -s -A "Googlebot/2.1" "https://www.thebooksoracle.com/series/The%20Chronicles%20of%20Narnia"`
+   — publication-order list present, `og:image` points at `share-card?layout=og`.
+2. `/about` in a private window renders without a sign-in prompt.
+3. Paste a series URL into WhatsApp or Slack; the card shows.
+4. Add a book from search and check `books.first_published_year` on the new row.
+
+---
 
 # v0.71 — Pro, rethought (2026-09-23)
 

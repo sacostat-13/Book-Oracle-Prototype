@@ -57,6 +57,13 @@ async function gql(query, variables = {}) {
 }
 
 // Normalize a Hardcover book node into our internal shape.
+// A plausible first-publication year, or null. Mirrors the range check in
+// upsert_book so an upstream typo is dropped here rather than silently there.
+function validYear(y) {
+  const n = Number(y);
+  return Number.isInteger(n) && n !== 0 && n >= -800 && n <= new Date().getFullYear() + 1 ? n : null;
+}
+
 function normalize(node) {
   if (!node) return null;
   const edition = pickBestEdition(node.editions);
@@ -79,6 +86,10 @@ function normalize(node) {
     a: author || 'Unknown author',
     d: node.description || null,
     pp: node.pages || null,
+    // First-publication year of the WORK (Hardcover's book-level
+    // release_year, not an edition's). Persisted by upsert_book as
+    // books.first_published_year — 20260930140000.
+    fy: validYear(node.release_year),
     coverUrl: node.image?.url || null,
     s: series,
     isbn: edition.isbn,
@@ -98,6 +109,7 @@ const BOOK_FIELDS = `
   id
   title
   pages
+  release_year
   description
   image { url }
   contributions { contribution author { name } }
@@ -215,6 +227,7 @@ function normalizeSearchHit(hit) {
     a: authors[0] || 'Unknown author',
     d: doc.description || null,
     pp: doc.pages || null,
+    fy: validYear(doc.release_year),
     coverUrl: doc.image?.url || null,
     s: null,
     isbn: doc.isbn_13 || doc.isbn_10 || null,

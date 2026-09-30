@@ -450,11 +450,18 @@ async function _lookupByTitleOL(title, author) {
     const best =
       d.docs.find((x) => x.title?.toLowerCase().includes(target)) || d.docs[0];
 
+    // The year only when the title actually matched. `best` falls back to
+    // docs[0] when nothing contains the query, which is fine for a genre guess
+    // and not fine for a date printed on a public series page — and upsert_book
+    // keeps the first year it is given.
+    const titleMatched = !!best.title?.toLowerCase().includes(target);
+    const fy = Number(best.first_publish_year);
     return {
       t: best.title,
       a: (best.author_name || [])[0] || author || 'Unknown author',
       g: pickGenreFromSubjects(best.subject),
       pp: best.number_of_pages_median || null,
+      fy: titleMatched && Number.isInteger(fy) && fy !== 0 ? fy : null,
       fromOpenLibrary: true,
       manuallyAdded: true,
     };

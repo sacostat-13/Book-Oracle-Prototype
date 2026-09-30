@@ -328,6 +328,9 @@ function bookRowToClient(b, extra = {}) {
     goodreadsId: b.goodreads_id ?? undefined,
     language: b.language || undefined,
     originalLanguage: b.original_language || undefined,
+    // Round-tripped so cacheBookFields → upsertBookOnServer re-sends what the
+    // catalog already knows rather than nothing (20260930140000).
+    fy: b.first_published_year ?? undefined,
     ...extra,
   };
 }
@@ -1249,6 +1252,9 @@ export function DataProvider({ children }) {
         // later lookup cannot relabel a row's language.
         _language: book.language || book.lang || null,
         _original_language: book.originalLanguage || null,
+        // 20260930140000. The lookup chain already fetched it (Hardcover
+        // release_year, OpenLibrary first_publish_year); nothing stored it.
+        _first_published_year: book.fy || null,
       };
       let { data, error } = await supabase.rpc('upsert_book', args);
       // PostgREST schema-cache miss (PGRST202): the first RPC after a cold
@@ -1341,6 +1347,7 @@ export function DataProvider({ children }) {
         // Recording its language is what later lets the two rows be shown as
         // one book.
         _language: book.language || book.lang || null,
+        _first_published_year: book.fy || null,
       });
     },
     [user, state.wishlist, state.library, state.readNext]

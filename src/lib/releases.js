@@ -16,9 +16,29 @@
 
 // The version label shown as "current" — keep in sync with package.json and
 // the README version line.
-export const CURRENT_VERSION = 'v0.71';
+export const CURRENT_VERSION = 'v0.72';
 
 export const RELEASES = [{
+    version: 'v0.72',
+    date: '2026-09-30',
+    // Not announced on load. Nothing here changes what a reader can or cannot
+    // do; it is found by visiting a series page or the Profile, which is where
+    // it is useful.
+    titleEn: 'Every order worth reading in',
+    titleEs: 'Todos los órdenes en que vale la pena leer',
+    bodyEn: [
+      'Series pages now show the year each book was first published. Where the order a series was written in is not the order it is meant to be read in — Narnia, Dragonlance, Hellboy — you can switch between the two.',
+      'The most-visited series have a proper introduction: what it is, who wrote it, and where to start. And any series can be shared with the new Share this series button; the link opens as a card with the cover, the number of books and the years they span.',
+      'Your reading sky, in Profile, turns every book you have finished into a star, grouped by the corner of the library it came from. Turn it, zoom in, and pick a family to bring it forward. The full sky is part of Pro; on the free plan your most recent reads are lit.',
+      'About and What\'s New now open for anyone, signed in or not — handy when you are telling a friend what this place is.',
+    ],
+    bodyEs: [
+      'Las páginas de saga ahora muestran el año en que se publicó por primera vez cada libro. Cuando el orden en que se escribió una saga no es el orden en que conviene leerla — Narnia, Dragonlance, Hellboy — podés alternar entre los dos.',
+      'Las sagas más visitadas tienen una presentación como corresponde: qué son, quién las escribió y por dónde empezar. Y cualquier saga se puede compartir con el nuevo botón Compartir esta saga; el enlace se abre como una tarjeta con la portada, la cantidad de libros y los años que abarca.',
+      'Tu cielo de lectura, en Perfil, convierte cada libro que terminaste en una estrella, agrupada según el rincón de la biblioteca de donde vino. Giralo, acercate y elegí una familia para traerla al frente. El cielo completo es parte de Pro; en el plan gratuito se encienden tus lecturas más recientes.',
+      'Acerca de y Novedades ahora se abren para cualquiera, con sesión iniciada o no — útil cuando le contás a alguien qué es este lugar.',
+    ],
+  }, {
     version: 'v0.71',
     date: '2026-09-23',
     // Announced on load: this changes what Free and Pro each include, and a

@@ -50,16 +50,23 @@ const SERIES = [
     description: 'Red Rising Saga is a 6-book series by Pierce Brown.', total_books: 6 },
   { id: 's2', name: 'Fablehaven', normalized_name: 'fablehaven',
     description: null, total_books: 3 },
+  // Reading order and publication order disagree — the case the publication
+  // order list exists for.
+  { id: 's3', name: 'The Chronicles of Narnia', normalized_name: 'chroniclesofnarnia',
+    description: null, total_books: 7 },
 ];
 const VOLUMES = [
-  { series_id: 's1', title: 'Red Rising',    author: 'Pierce Brown', share_key: 'redrising|pierceb',    position_in_series: 1, description: 'x', pages: 382 },
-  { series_id: 's1', title: 'Golden Son',    author: 'Pierce Brown', share_key: 'goldenson|pierceb',    position_in_series: 2, description: 'x', pages: 442 },
-  { series_id: 's1', title: 'Morning Star',  author: 'Pierce Brown', share_key: 'morningstar|pierceb',  position_in_series: 3, description: 'x', pages: 518 },
-  { series_id: 's1', title: 'Iron Gold',     author: 'Pierce Brown', share_key: 'irongold|pierceb',     position_in_series: 5, description: 'x', pages: 1_216 },
-  { series_id: 's2', title: 'Fablehaven',    author: 'Brandon Mull', share_key: 'fablehaven|brandonmu', position_in_series: 1, description: 'x', pages: 359 },
-  { series_id: 's2', title: 'Rise of the Evening Star', author: 'Brandon Mull', share_key: 'riseoftheeveningstar|brandonmu', position_in_series: 2, description: 'x', pages: 441 },
+  { series_id: 's1', title: 'Red Rising',    author: 'Pierce Brown', share_key: 'redrising|pierceb',    position_in_series: 1, description: 'x', pages: 382 , first_published_year: 2014 },
+  { series_id: 's1', title: 'Golden Son',    author: 'Pierce Brown', share_key: 'goldenson|pierceb',    position_in_series: 2, description: 'x', pages: 442 , first_published_year: 2015 },
+  { series_id: 's1', title: 'Morning Star',  author: 'Pierce Brown', share_key: 'morningstar|pierceb',  position_in_series: 3, description: 'x', pages: 518 , first_published_year: 2016 },
+  { series_id: 's1', title: 'Iron Gold',     author: 'Pierce Brown', share_key: 'irongold|pierceb',     position_in_series: 5, description: 'x', pages: 1_216 , first_published_year: 2018 },
+  { series_id: 's2', title: 'Fablehaven',    author: 'Brandon Mull', share_key: 'fablehaven|brandonmu', position_in_series: 1, description: 'x', pages: 359 , first_published_year: 2006 },
+  { series_id: 's2', title: 'Rise of the Evening Star', author: 'Brandon Mull', share_key: 'riseoftheeveningstar|brandonmu', position_in_series: 2, description: 'x', pages: 441 , first_published_year: 2007 },
   // No page count. This one row is why Fablehaven prints no total.
   { series_id: 's2', title: 'Grip of the Shadow Plague', author: 'Brandon Mull', share_key: 'gripoftheshadowplague|brandonmu', position_in_series: 3, description: 'x', pages: null },
+  { series_id: 's3', title: "The Magician's Nephew", author: 'C. S. Lewis', share_key: 'themagiciansnephew|cslewis', position_in_series: 1, description: 'x', pages: 202, cover_url: 'https://covers.example/mn.jpg', first_published_year: 1955 },
+  { series_id: 's3', title: 'The Lion, the Witch and the Wardrobe', author: 'C. S. Lewis', share_key: 'thelionthewitchandthewardrobe|cslewis', position_in_series: 2, description: 'x', pages: 208, first_published_year: 1950 },
+  { series_id: 's3', title: 'The Horse and His Boy', author: 'C. S. Lewis', share_key: 'thehorseandhisboy|cslewis', position_in_series: 3, description: 'x', pages: 224, first_published_year: 1954 },
 ];
 
 // THE SCHEMA, as PostgREST sees it. This is the half of the stub that matters.
@@ -81,7 +88,7 @@ const SCHEMA = {
   book_genres_view: ['book_id', 'genre_id', 'genre_name', 'normalized_name', 'genre_source',
                      'usage_count', 'genre_description', 'assigned_by_source',
                      'family_id', 'family_slug', 'family_name', 'family_sort'],
-  books: ['id', 'title', 'author', 'cover_url', 'status', 'genre'],
+  books: ['id', 'title', 'author', 'cover_url', 'status', 'genre', 'first_published_year'],
   series: ['id', 'name', 'normalized_name', 'author', 'description', 'description_source',
            'total_books', 'publication_status', 'volumes_checked_at', 'volumes_stale',
            'created_at', 'updated_at'],
@@ -92,7 +99,9 @@ const SCHEMA = {
   // exists for.
   series_volumes: ['id', 'title', 'author', 'status', 'cover_url', 'description', 'pages',
                    'isbn', 'genre', 'series_id', 'position_in_series', 'updated_at',
-                   'series_name', 'share_key', 'edition_count'],
+                   'series_name', 'share_key', 'edition_count',
+                   // Appended by 20260930120000.
+                   'first_published_year'],
 };
 
 function assertColumns(url) {
@@ -215,6 +224,8 @@ const rrs = await run('/series/Red Rising Saga');
 const rrsHtml = lastHtml;
 const fab = await run('/series/Fablehaven');
 const fabHtml = lastHtml;
+await run('/series/Chronicles of Narnia');
+const narniaHtml = lastHtml;
 
 describe('og-prerender: the genre surface as a crawler sees it', () => {
   it('the /genres hub is prerendered with an ItemList and breadcrumbs', () => {
@@ -320,7 +331,7 @@ describe('og-prerender: the genre surface as a crawler sees it', () => {
 // with different arithmetic.
 describe('og-prerender: the series page answers page-count queries', () => {
   it('prints a page count on each volume it has one for', () => {
-    expect(rrsHtml).toMatch(/1\. <a href="[^"]*">Red Rising<\/a> — Pierce Brown · 382 pages/);
+    expect(rrsHtml).toMatch(/1\. <a href="[^"]*">Red Rising<\/a> \(2014\) — Pierce Brown · 382 pages/);
     expect(rrsHtml).toMatch(/· 442 pages/);
   });
 
@@ -368,5 +379,55 @@ describe('og-prerender: the series page answers page-count queries', () => {
     // withPages is opt-in. The "More <genre>" and sibling lists on a book page
     // answer no page-count query and were not asked to change.
     expect(genHtml).not.toMatch(/ · \d[\d,]* pages/);
+  });
+});
+
+// ── Publication year and order ───────────────────────────────────────────────
+//
+// `dragonlance publication order`, `hellboy chronological order`. Same honesty
+// rule as the page total: nothing is claimed about the series unless EVERY
+// listed volume is dated.
+describe('og-prerender: the series page answers publication-order queries', () => {
+  it('prints the year on each dated volume', () => {
+    expect(rrsHtml).toMatch(/Golden Son<\/a> \(2015\) — Pierce Brown/);
+  });
+
+  it('says the orders agree, once, instead of printing a duplicate list', () => {
+    expect(rrsHtml).toContain('Published between 2014 and 2018, in the same order they are meant to be read.');
+    expect(rrsHtml).not.toMatch(/in publication order<\/h2>/);
+  });
+
+  it('lists the publication order when it differs from reading order', () => {
+    expect(narniaHtml).toContain('The publication order differs from the reading order');
+    const ol = (narniaHtml.match(/in publication order<\/h2><ol>([\s\S]*?)<\/ol>/) || [])[1] || '';
+    const order = [...ol.matchAll(/>([^<]+)<\/a>/g)].map((m) => m[1]);
+    expect(order).toEqual(['The Lion, the Witch and the Wardrobe', 'The Horse and His Boy', "The Magician's Nephew"]);
+  });
+
+  it('a partly dated shelf makes no claim about the series', () => {
+    // Fablehaven: two of three dated.
+    expect(fabHtml).not.toMatch(/Published between/);
+    expect(fabHtml).not.toMatch(/in publication order/);
+    expect(fabHtml).toMatch(/Fablehaven<\/a> \(2006\)/);
+  });
+
+  it('years reach the structured data as datePublished', () => {
+    const ld = JSON.parse((narniaHtml.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/) || [])[1]);
+    expect(ld.hasPart.find((p) => p.position === 2).datePublished).toBe('1950');
+  });
+});
+
+// ── Series link previews ─────────────────────────────────────────────────────
+describe('og-prerender: series pages unfurl as a branded card', () => {
+  it('emits a share-card og:image with the landscape layout', () => {
+    const img = (narniaHtml.match(/property="og:image" content="([^"]+)"/) || [])[1] || '';
+    expect(img).toContain('/.netlify/functions/share-card?');
+    expect(img).toContain('layout=og');
+    const u = new URL(img.replace(/&amp;/g, '&'));
+    expect(u.searchParams.get('headline')).toBe('The Chronicles of Narnia');
+    expect(u.searchParams.get('sub')).toBe('7 books · C. S. Lewis · 1950–1955');
+    // The first volume WITH a cover, not blindly the first volume.
+    expect(u.searchParams.get('cover')).toBe('https://covers.example/mn.jpg');
+    expect(narniaHtml).toContain('property="og:image:width" content="1200"');
   });
 });
