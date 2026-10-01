@@ -35,3 +35,4 @@ Claude outputs
 # never cleans them up. 149 were committed before this line existed; clear them
 # with:  git rm --cached "vite.config.js.timestamp-*"
 vite.config.js.timestamp-*
+docs/brand/out/

@@ -4,7 +4,7 @@ A reading companion — wishlist, library, Passages (reading plans), Anthologies
 lists), book clubs, Kindred (follows), and an AI-powered "oracle" for book discovery. Built with React + Vite + SCSS, backed by Supabase for auth
 and cross-device sync, and Netlify Functions for API proxying.
 
-> Current version: **v0.72** — see [Releases](#releases) below for changelog.
+> Current version: **v0.73** — see [Releases](#releases) below for changelog.
 > Upgrading from an earlier version? Check the matching `MIGRATION_*.md` / `UPDATE_*.md`.
 
 ---
@@ -373,6 +373,42 @@ and forward requests. Locally you need `netlify dev` to make them work.
 
 ## Releases
 
+# v0.73 — New logo (2026-10-01)
+
+The blackletter TBO monogram and the eye-with-laurels social image are retired.
+Their replacement is a single mark: an open book whose pages form an eye. It was
+traced 1:1 from the chosen design, and the only change was removing one stray
+artifact. No migrations.
+
+- **Nav / landing nav:** `public/logo-dark-mode.png` and `logo-light-mode.png`
+  are replaced in place (same filenames, so `Nav.jsx` and `LandingNav.jsx` are
+  unchanged). Dark mode is parchment + gold; light mode is ink navy + gold.
+- **Favicons:** one set (`/favicon.ico`, `icons/favicon-16/32/48.png`) replaces
+  the `prefers-color-scheme` pair: the light-mode mark (navy + gold) on a full
+  parchment square, which stays visible on dark tabs too. It uses a bolder
+  trace so it survives 16px. Source: `docs/brand/svg/favicon-light.svg`.
+- **PWA:** `icons/icon-192.png` and `icon-512.png` are regenerated at their true
+  sizes. A new `icon-maskable-512.png` is added to the manifest with
+  `purpose: maskable`. The new `icons/apple-touch-icon.png` is a 180px
+  full-bleed tile.
+- **Link previews:** `og:image` / `twitter:image` now point at
+  `/brand/og-image.png` (1200×630, with width/height/alt tags).
+  `og-prerender.js` also strips `og:image:alt` on entity pages, so a book
+  preview never carries the homepage alt text.
+- **Share cards:** the server card (`share-card.mjs`, portrait and OG layouts)
+  and the DOM card (`ShareCard.jsx`) draw `/brand/mark-on-dark-96.png` in the
+  footer in place of the ✦ glyph. The server falls back to ✦ if the fetch
+  fails.
+- **Removed:** `Logo-Social.jpeg`, `icons/favicon-dark.png`,
+  `icons/favicon-light.png`, and three unreferenced files with the wrong
+  contents for their names: `icons/icon.svg` (a PNG),
+  `icons/icon-maskable.svg` (JSON) and `icons/icon-maskable-192.png` (an SVG).
+- **Sources:** `docs/brand/` holds the SVG masters (mark, app icon, lockups,
+  wordmark), the social images and `src/build.py`, which regenerates all of
+  them from the traced geometry. The masters are kept out of `public/` on
+  purpose: workbox precaches every `svg` there, and each traced master is about
+  100 KB.
+
 # v0.72 — Series in every order (2026-09-30)
 
 Publication years, publication order, series share cards, hand-checked series
@@ -407,22 +443,39 @@ add-to-shelf fails.
 load (`major` unset).
 
 **Backfill.** `node batch-scripts/scheduled/publicationYearBackfill.mjs --all`
-(`--dry-run`, `--limit N`, `--verbose`, `--strict`). Hardcover by `hardcover_id`,
-then OpenLibrary `first_publish_year`, then Hardcover search; every hit must pass
-`titleMatches` + `authorMatches`, rows with a placeholder author are skipped, and
-Hardcover/OpenLibrary disagreements over 3 years go to
-`batch-scripts/output/publication-year-conflicts.csv`. Fill-only and resumable.
-Paced at ~1.5s per Hardcover request — the first version used a pure sliding
-window, burst its first batch, and got a wall of 429s. Expect about an hour for
-the series books. `catalog-maintenance.yml` now runs it weekly with `--all`
-as the safety net for rows that arrive undated.
+(`--dry-run`, `--limit N`, `--verbose`, `--repair`, `--recheck-days N`). Three
+sources: Hardcover (by `hardcover_id`, or search), OpenLibrary `first_publish_year`
+(first doc by relevance that passes the guards), and Wikidata P577 as the
+tiebreaker, asked only when the first two do not already agree. The rule lives in
+`batch-scripts/_shared/publicationYear.mjs` and is tested in
+`tests/publication-year.test.js`: **a year is written when two sources agree within
+3 years** (the earliest of the agreeing ones), or when exactly one source answers
+with a year ≥ 1000. Anything else stays NULL and is listed in
+`batch-scripts/output/publication-year-conflicts.csv`. Every hit must pass
+`titleMatches` + `authorMatches`; rows with a placeholder author are skipped.
 
-**Dated at write time.** `hardcoverService` asks for `release_year` (book-level,
-so the work's year) and returns it as `fy`; `bookLookup`'s OpenLibrary title
-path returns `first_publish_year` only when the title actually matched;
-`DataContext` round-trips `fy` and sends it from both `upsert_book` callers;
-`oracleCategorizationService.topUpIsbn` and `catalog-crawl` pass it too. Google
-Books is deliberately not used — its `publishedDate` is an edition's.
+The first full run used "earliest year wins" on conflict, and the 423-row conflicts
+CSV showed why that was wrong: both sources carry junk, and the junk is not biased
+late — OpenLibrary sentinel years (Frankenstein 1718, Lolita 1777, "1800", "1900"),
+Hardcover fragments (8, 20, 197) and reissue years (Harry Potter 2016). **Run once
+with `--repair`**: it resets every row in that CSV whose stored year still equals
+what the bad run wrote, and every stored year below 1000, then re-resolves them
+under the new rule.
+
+Paced at ~1.5s per Hardcover request, ~1.2s per OpenLibrary request, ~0.25s per
+Wikidata request — the very first version used a pure sliding window, burst its
+first batch, and got a wall of 429s. `catalog-maintenance.yml` runs it weekly with
+`--all --recheck-days 8`: fills new NULLs, and re-derives the years the app wrote
+at add time in the last week, overwriting only when two other sources agree on a
+different year.
+
+**Dated at write time — from Hardcover only.** `hardcoverService` asks for
+`release_year` (book-level, so the work's year) and returns it as `fy` when it is
+≥ 1000; `DataContext` round-trips `fy` and sends it from both `upsert_book`
+callers; `oracleCategorizationService.topUpIsbn` and `catalog-crawl` pass it too.
+OpenLibrary's year is NOT used at add time (sentinel years, above), nor Google
+Books' (`publishedDate` is an edition's). A reissue year from Hardcover cannot be
+caught at add time; the weekly `--recheck-days 8` is what corrects it.
 
 ### Series pages
 

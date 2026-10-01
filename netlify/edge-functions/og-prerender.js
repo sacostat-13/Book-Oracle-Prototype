@@ -144,7 +144,7 @@ function injectMeta(html, {
   let out = html
     .replace(/<title>.*?<\/title>/is, '')
     .replace(/<meta\s+name="description"[^>]*>/i, '')
-    .replace(/<meta\s+property="og:(?:title|description|url|image|image:width|image:height|type)"[^>]*>/gi, '')
+    .replace(/<meta\s+property="og:(?:title|description|url|image|image:width|image:height|image:alt|type)"[^>]*>/gi, '')
     .replace(/<meta\s+name="twitter:(?:card|title|description|image)"[^>]*>/gi, '')
     .replace(/<link\s+rel="canonical"[^>]*>/gi, '')
     .replace(/<link\s+rel="alternate"\s+hreflang="[^"]*"[^>]*>/gi, '');

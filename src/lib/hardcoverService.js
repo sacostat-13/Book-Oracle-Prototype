@@ -57,11 +57,21 @@ async function gql(query, variables = {}) {
 }
 
 // Normalize a Hardcover book node into our internal shape.
-// A plausible first-publication year, or null. Mirrors the range check in
-// upsert_book so an upstream typo is dropped here rather than silently there.
+// A plausible first-publication year, or null.
+//
+// Floor of 1000, not upsert_book's -800: this is a SINGLE source, and the
+// 2026-09-30 backfill found Hardcover's release_year truncated to 8, 20 and 197
+// on real modern novels. A lone year below 1000 is a fragment far more often
+// than it is antiquity (batch-scripts/_shared/publicationYear.mjs,
+// LONE_SOURCE_FLOOR). Ancient works get their year from the weekly backfill,
+// where two sources have to agree.
+//
+// Reissue years (Harry Potter as 2016) pass this check and cannot be caught
+// at add time. The weekly run's --recheck-days 8 re-derives every year written
+// in the last week against OpenLibrary and Wikidata and corrects it.
 function validYear(y) {
   const n = Number(y);
-  return Number.isInteger(n) && n !== 0 && n >= -800 && n <= new Date().getFullYear() + 1 ? n : null;
+  return Number.isInteger(n) && n >= 1000 && n <= new Date().getFullYear() + 1 ? n : null;
 }
 
 function normalize(node) {

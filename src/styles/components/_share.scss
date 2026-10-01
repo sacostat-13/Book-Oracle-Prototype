@@ -231,7 +231,7 @@
   margin-top: auto;
   padding-top: 22px;
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: 10px;
   font-family: var(--ro-font-mono);
   font-size: 12px;
@@ -239,7 +239,7 @@
   text-transform: uppercase;
 }
 
-.share-card__footer-glyph { color: #C9A84C; }
+.share-card__footer-mark { display: block; height: 20px; width: auto; }
 .share-card__footer-brand { color: #D8B85E; }
 .share-card__footer-url { color: rgba(233, 223, 202, 0.5); }
 

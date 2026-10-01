@@ -46,11 +46,13 @@
   padding: 0;
 
   &__mark {
-    // The full raster logo (already includes the site name) — sized to the
-    // topbar's 64px height with some breathing room.
-    height: 50px;
-    display: flex;
-    align-items: center;
+    // The book-eye mark (PNG at ~4x, see docs/brand/) next to the site name —
+    // sized to the topbar's 64px height with some breathing room.
+   height: 35px;
+   display: flex;
+   align-items: center;
+   gap: 8px;
+   
 
     .nav-logo__text {
       font-family: var(--ro-font-display);

@@ -4,47 +4,62 @@
 // ---
 // Migration 20260930120000 added the column. Nothing ever stored a year, so the
 // series pages could not answer `<series> publication order` or `chronological
-// order` — a real share of the queries Google already shows them for. Both
-// upstreams carry the fact; this script copies it in.
+// order` — a real share of the queries Google already shows them for.
 //
-// SOURCES, AND WHICH ONE WINS
-// ---------------------------
-//   1. Hardcover by hardcover_id — the strongest identity we have, batched 50 per
-//      request. `release_year` on a Hardcover BOOK is the work's year, not an
-//      edition's.
-//   2. OpenLibrary search (title + author) — `first_publish_year` is exactly the
-//      semantic we want. Free, no token; paced at ~1 req/s out of courtesy.
-//   3. Hardcover search — only when neither of the above answered.
+// SOURCES
+// -------
+//   hc   Hardcover by hardcover_id (batched 50/request), or Hardcover search when
+//        the row has no id. `release_year` on a Hardcover BOOK is the work's year.
+//   ol   OpenLibrary search, `first_publish_year` of the FIRST doc (by relevance)
+//        that passes the title + author guards.
+//   wd   Wikidata P577, the tiebreaker — only asked when hc and ol do not already
+//        agree. See _shared/wikidataYear.mjs.
 //
-// When 1 and 2 both answer and differ, the EARLIER year is written: a
-// translation or reissue can only make a year later, never earlier. A gap over
-// CONFLICT_YEARS is also written to batch-scripts/output/publication-year-conflicts.csv
-// so the big ones can be eyeballed; `--strict` writes nothing for those rows.
+// THE RULE: CORROBORATE, DON'T GUESS  (_shared/publicationYear.mjs)
+// ---------------------------------
+// A year is written when two sources agree within 3 years (the earliest of the
+// agreeing ones), or when exactly one source answered with a year >= 1000.
+// Everything else is left NULL and listed in
+// batch-scripts/output/publication-year-conflicts.csv.
+//
+// The first version wrote the EARLIEST of any two disagreeing years. The first
+// full run (2026-09-30) showed both sources carry junk — OpenLibrary sentinel
+// years (Frankenstein 1718, Lolita 1777, "1800", "1900"), Hardcover fragments
+// (8, 20, 197) and reissue years (Harry Potter 2016) — and "earliest" picked
+// the junk every time. `--repair` undoes that run's conflict rows.
 //
 // NEVER GUESSES
 // -------------
-// Every search hit must pass titleMatches() AND authorMatches() (src/lib/titleMatch.js,
-// the same guards as isbnBackfill). Rows whose author is empty or a placeholder
-// are skipped outright rather than matched on title alone — for an ISBN the
-// title guard can stand alone; for a year a wrong answer ships straight into a
-// sentence on a public page, so the bar is higher.
+// Every search hit must pass titleMatches() AND authorMatches() (src/lib/titleMatch.js).
+// Rows whose author is empty or a placeholder are skipped.
 //
-// Fills NULLs only. Safe to interrupt and re-run: it resumes from what is still null.
+// Fill-only by default, resumable. `--recheck-days N` additionally re-derives
+// rows CREATED in the last N days that already have a year — the year the app
+// wrote at add time from a single Hardcover lookup — and corrects it when the
+// corroborated answer differs. The weekly catalog-maintenance run uses 8.
 //
 // Usage (repo root):
 //   node batch-scripts/scheduled/publicationYearBackfill.mjs --dry-run --limit 25 --verbose
-//   node batch-scripts/scheduled/publicationYearBackfill.mjs                # series books only
-//   node batch-scripts/scheduled/publicationYearBackfill.mjs --all          # whole catalog
-//   node batch-scripts/scheduled/publicationYearBackfill.mjs --strict       # skip conflicts
+//   node batch-scripts/scheduled/publicationYearBackfill.mjs --all
+//   node batch-scripts/scheduled/publicationYearBackfill.mjs --all --repair
+//   node batch-scripts/scheduled/publicationYearBackfill.mjs --all --recheck-days 8
+//
+// --repair  Before running: set first_published_year back to NULL for every row
+//           in the EXISTING conflicts CSV (or --repair-from <path>) whose stored
+//           year still equals the CSV's `written` value — a year someone fixed by
+//           hand since is left alone — and for every stored year below 1000.
+//           Those rows then go through the new rule like any other NULL.
 //
 // Required in .env.local: VITE_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
-// Optional:               HARDCOVER_API_TOKEN (without it, OpenLibrary only)
+// Optional:               HARDCOVER_API_TOKEN (without it, OpenLibrary + Wikidata)
 
 import { createServiceClient } from '../_shared/supabaseClient.mjs';
 import { readFileSync, writeFileSync, mkdirSync } from 'fs';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 import { titleMatches, authorMatches, titleVariants } from '../../src/lib/titleMatch.js';
+import { decideYear, plausibleYear, TOLERANCE } from '../_shared/publicationYear.mjs';
+import { makeWikidataYear, FAILED as WD_FAILED } from '../_shared/wikidataYear.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -53,7 +68,12 @@ const args = process.argv.slice(2);
 const DRY_RUN = args.includes('--dry-run');
 const VERBOSE = args.includes('--verbose');
 const ALL = args.includes('--all');
-const STRICT = args.includes('--strict');
+const REPAIR = args.includes('--repair');
+function strArg(name) {
+  const a = args.find((x) => x === name || x.startsWith(name + '='));
+  if (!a) return null;
+  return a.includes('=') ? a.split('=').slice(1).join('=') : args[args.indexOf(a) + 1] ?? null;
+}
 function numArg(name, fallback) {
   const a = args.find((x) => x.startsWith(name));
   if (!a) return fallback;
@@ -62,8 +82,7 @@ function numArg(name, fallback) {
   return Number.isFinite(n) && n > 0 ? n : fallback;
 }
 const LIMIT = numArg('--limit', null);
-const CONFLICT_YEARS = 3;
-const THIS_YEAR = new Date().getFullYear();
+const RECHECK_DAYS = numArg('--recheck-days', null);
 
 // -- Env ----------------------------------------------------------------------
 const envText = readFileSync(join(__dirname, '..', '..', '.env.local'), 'utf8');
@@ -94,10 +113,6 @@ const realAuthor = (a) => {
   return !t || SENTINEL_AUTHOR_RX.test(t) ? null : t;
 };
 const searchTitle = (t) => titleVariants(t).slice(-1)[0] || t || '';
-const plausibleYear = (y) => {
-  const n = Number(y);
-  return Number.isInteger(n) && n >= -800 && n <= THIS_YEAR + 1 && n !== 0 ? n : null;
-};
 
 // -- Throttles ----------------------------------------------------------------
 // SPACED, not just windowed. The first version was a pure sliding window: 45
@@ -123,6 +138,14 @@ function makeThrottle(perMinute) {
 }
 const hcThrottle = makeThrottle(Number(env['HARDCOVER_RATE_LIMIT']) > 0 ? Number(env['HARDCOVER_RATE_LIMIT']) : 40);
 const olThrottle = makeThrottle(50);
+// Wikidata asks for well-behaved clients; ~1 request per 250ms is well inside it.
+const wdThrottle = makeThrottle(240);
+const wikidataYear = makeWikidataYear({
+  userAgent: 'BooksOracle-publicationYearBackfill/1.1 (https://thebooksoracle.com; simont@mozillafoundation.org)',
+  throttle: wdThrottle,
+  sleep,
+  log: (m) => console.warn('  ' + m),
+});
 
 // -- Circuit breaker ----------------------------------------------------------
 // Same lesson as isbnBackfill v0.62: a source that answers nothing but failures
@@ -231,33 +254,24 @@ async function openLibraryYear(title, author) {
   if (!res.ok) { noteFailure('openlibrary', `HTTP ${res.status}`); return null; }
   const json = await res.json();
   fails.openlibrary = 0;
-  // Several works can pass the guards (a novel and its graphic adaptation share a
-  // title and author). The earliest year among the matches is the original.
-  let best = null;
+  // The FIRST doc that passes the guards, in OpenLibrary's relevance order.
+  // This used to be the EARLIEST year among all passing docs, which is exactly
+  // how a stray mis-dated work record (Frankenstein 1718, Lolita 1777) beat the
+  // real one: the junk is almost always older than the truth, never newer.
   for (const d of json.docs || []) {
     if (!titleMatches(title, d.title) || !authorMatches(author, d.author_name || [])) continue;
     const y = plausibleYear(d.first_publish_year);
-    if (y && (best == null || y < best)) best = y;
+    if (y) { vlog(`openlibrary → ${y}`); return y; }
   }
-  if (best) vlog(`openlibrary → ${best}`);
-  return best;
+  return null;
 }
 
 // -- Worklist -----------------------------------------------------------------
-async function fetchWorklist(limit) {
+async function fetchPaged(build, limit) {
   const out = [];
   const PAGE = 1000;
   for (let from = 0; ; from += PAGE) {
-    let q = supabase
-      .from('books')
-      .select('id, title, author, hardcover_id, series_id, status')
-      .is('first_published_year', null)
-      .in('status', ['verified', 'oracle_categorized'])
-      .order('series_id', { ascending: true, nullsFirst: false })
-      .order('title')
-      .range(from, from + PAGE - 1);
-    if (!ALL) q = q.not('series_id', 'is', null);
-    const { data, error } = await q;
+    const { data, error } = await build().range(from, from + PAGE - 1);
     if (error) throw new Error(`worklist: ${error.message}`);
     out.push(...data);
     if (data.length < PAGE || (limit && out.length >= limit)) break;
@@ -265,66 +279,180 @@ async function fetchWorklist(limit) {
   return limit ? out.slice(0, limit) : out;
 }
 
+const COLS = 'id, title, author, hardcover_id, series_id, status, first_published_year';
+
+function fetchMissing(limit) {
+  return fetchPaged(() => {
+    let q = supabase.from('books').select(COLS)
+      .is('first_published_year', null)
+      .in('status', ['verified', 'oracle_categorized'])
+      .order('series_id', { ascending: true, nullsFirst: false })
+      .order('title');
+    if (!ALL) q = q.not('series_id', 'is', null);
+    return q;
+  }, limit);
+}
+
+// Rows the app dated at add time from one Hardcover answer. Any status: a book
+// is added as unreviewed/discovered, and waiting for categorisation to check
+// its year would leave a wrong one on public pages in the meantime.
+function fetchRecent(days, limit) {
+  const since = new Date(Date.now() - days * 86_400_000).toISOString();
+  return fetchPaged(() => supabase.from('books').select(COLS)
+    .not('first_published_year', 'is', null)
+    .gte('created_at', since)
+    .order('created_at'), limit);
+}
+
+// -- Repair -------------------------------------------------------------------
+function parseCsv(text) {
+  const rows = [];
+  let row = [], cell = '', q = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (q) {
+      if (c === '"' && text[i + 1] === '"') { cell += '"'; i++; }
+      else if (c === '"') q = false;
+      else cell += c;
+    } else if (c === '"') q = true;
+    else if (c === ',') { row.push(cell); cell = ''; }
+    else if (c === '\n' || c === '\r') {
+      if (c === '\r' && text[i + 1] === '\n') i++;
+      row.push(cell); rows.push(row); row = []; cell = '';
+    } else cell += c;
+  }
+  if (cell || row.length) { row.push(cell); rows.push(row); }
+  const [head, ...body] = rows.filter((r) => r.some((x) => x !== ''));
+  return body.map((r) => Object.fromEntries(head.map((h, i) => [h, r[i]])));
+}
+
+async function repair() {
+  const file = strArg('--repair-from') || join(__dirname, '..', 'output', 'publication-year-conflicts.csv');
+  let rows = [];
+  try { rows = parseCsv(readFileSync(file, 'utf8')); } catch (e) {
+    console.warn(`--repair: could not read ${file} (${e.message}) — only the <1000 sweep will run`);
+  }
+  const fromCsv = rows.filter((r) => r.book_id && r.written !== '' && Number.isFinite(Number(r.written)));
+  let reset = 0, skipped = 0;
+  for (const r of fromCsv) {
+    if (DRY_RUN) { reset++; continue; }
+    // Only if the value is still the one the bad run wrote.
+    const { data, error } = await supabase.from('books')
+      .update({ first_published_year: null })
+      .eq('id', r.book_id)
+      .eq('first_published_year', Number(r.written))
+      .select('id');
+    if (error) { console.warn(`  repair ${r.book_id}: ${error.message}`); continue; }
+    if (data?.length) reset++; else skipped++;
+  }
+  console.log(`--repair: ${reset} conflict row(s) ${DRY_RUN ? 'would be ' : ''}reset from ${file}${skipped ? `, ${skipped} already changed since and left alone` : ''}`);
+
+  const { count, error: cErr } = await supabase.from('books')
+    .select('id', { count: 'exact', head: true })
+    .lt('first_published_year', 1000);
+  if (cErr) throw new Error(`repair count: ${cErr.message}`);
+  if (!DRY_RUN && count) {
+    const { error } = await supabase.from('books').update({ first_published_year: null }).lt('first_published_year', 1000);
+    if (error) throw new Error(`repair <1000: ${error.message}`);
+  }
+  console.log(`--repair: ${count || 0} year(s) below 1000 ${DRY_RUN ? 'would be ' : ''}reset`);
+}
+
 const csvCell = (v) => {
   const s = v == null ? '' : String(v);
   return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 };
 
+// -- Resolve one row ----------------------------------------------------------
+// hc and ol first. Wikidata only when they have not already agreed — it costs
+// three or four requests a book, and for most of the catalog two sources agree.
+async function resolve(b, author, hcById) {
+  const hcId = b.hardcover_id != null ? hcById.get(String(b.hardcover_id)) ?? null : null;
+  const ol = await openLibraryYear(b.title, author);
+  let hc = hcId;
+  let decision = decideYear({ hc, ol });
+  if (decision.basis === 'hc+ol') return { hc, ol, wd: null, ...decision };
+
+  if (hc == null) hc = await hardcoverSearchYear(b.title, author);
+  const w = await wikidataYear(b.title, author);
+  const wd = w === WD_FAILED ? null : w.year;
+  if (w !== WD_FAILED && w.qid) vlog(`wikidata ${w.qid} → ${wd}`);
+  decision = decideYear({ hc, ol, wd });
+  return { hc, ol, wd, ...decision };
+}
+
 // -- Main ---------------------------------------------------------------------
 async function main() {
-  const rows = await fetchWorklist(LIMIT);
-  console.log(`${rows.length} book(s) missing first_published_year${ALL ? '' : ' (series books only; --all for the catalog)'}${DRY_RUN ? ' — DRY RUN' : ''}`);
+  if (REPAIR) await repair();
+
+  const missing = await fetchMissing(LIMIT);
+  const recent = RECHECK_DAYS ? await fetchRecent(RECHECK_DAYS, LIMIT) : [];
+  const rows = [...missing, ...recent.filter((r) => !missing.some((m) => m.id === r.id))];
+  console.log(
+    `${missing.length} book(s) missing first_published_year${ALL ? '' : ' (series books only; --all for the catalog)'}` +
+    `${RECHECK_DAYS ? `, ${recent.length} dated in the last ${RECHECK_DAYS} day(s) to recheck` : ''}` +
+    `${DRY_RUN ? ' — DRY RUN' : ''}`
+  );
   if (!rows.length) return;
 
   const hcById = await hardcoverYearsById(rows.map((r) => r.hardcover_id).filter((x) => x != null));
   console.log(`hardcover_id lookups answered for ${hcById.size} book(s)`);
 
-  const stats = { written: 0, noAuthor: 0, notFound: 0, conflicts: 0, skippedStrict: 0, errors: 0 };
-  const conflicts = [['book_id', 'title', 'author', 'hardcover', 'openlibrary', 'written']];
+  const stats = { written: 0, corrected: 0, confirmed: 0, notFound: 0, noAuthor: 0, conflicts: 0, implausible: 0, errors: 0 };
+  const bases = {};
+  const conflicts = [['book_id', 'title', 'author', 'hardcover', 'openlibrary', 'wikidata', 'stored', 'reason']];
 
   for (const [i, b] of rows.entries()) {
     const author = realAuthor(b.author);
-    process.stdout.write(`[${i + 1}/${rows.length}] ${b.title} — ${b.author || '?'}\n`);
+    const recheck = b.first_published_year != null;
+    process.stdout.write(`[${i + 1}/${rows.length}] ${b.title} — ${b.author || '?'}${recheck ? ` (recheck ${b.first_published_year})` : ''}\n`);
     if (!author) { stats.noAuthor++; vlog('skip: no real author to corroborate'); continue; }
 
-    const hc = b.hardcover_id != null ? hcById.get(String(b.hardcover_id)) ?? null : null;
-    const ol = await openLibraryYear(b.title, author);
-    const hcs = hc == null && ol == null ? await hardcoverSearchYear(b.title, author) : null;
+    const r = await resolve(b, author, hcById);
+    vlog(`→ ${r.year ?? '—'} [${r.basis}] (hc ${r.hc ?? '–'}, ol ${r.ol ?? '–'}, wd ${r.wd ?? '–'})`);
 
-    const candidates = [hc, ol, hcs].filter((y) => y != null);
-    if (!candidates.length) { stats.notFound++; vlog('no year from any source'); continue; }
+    if (r.year == null) {
+      if (r.basis === 'none') stats.notFound++;
+      else {
+        stats[r.basis === 'conflict' ? 'conflicts' : 'implausible']++;
+        conflicts.push([b.id, b.title, b.author, r.hc, r.ol, r.wd, b.first_published_year, r.basis]);
+      }
+      continue;
+    }
+    bases[r.basis] = (bases[r.basis] || 0) + 1;
 
-    let year = Math.min(...candidates);
-    if (hc != null && ol != null && Math.abs(hc - ol) > CONFLICT_YEARS) {
-      stats.conflicts++;
-      if (STRICT) { stats.skippedStrict++; conflicts.push([b.id, b.title, b.author, hc, ol, '']); continue; }
-      conflicts.push([b.id, b.title, b.author, hc, ol, year]);
+    if (recheck) {
+      if (r.year === b.first_published_year) { stats.confirmed++; continue; }
+      // Overwrite ONLY on a corroborated answer. A lone source disagreeing with
+      // the stored lone source is one opinion against another.
+      if (!r.basis.includes('+')) { stats.confirmed++; continue; }
+      if (DRY_RUN) { stats.corrected++; continue; }
+      const { error } = await supabase.from('books').update({ first_published_year: r.year })
+        .eq('id', b.id).eq('first_published_year', b.first_published_year);
+      if (error) { stats.errors++; console.warn(`  write failed: ${error.message}`); } else stats.corrected++;
+      continue;
     }
 
-    vlog(`→ ${year} (hardcover ${hc ?? '–'}, openlibrary ${ol ?? '–'}, hc-search ${hcs ?? '–'})`);
     if (DRY_RUN) { stats.written++; continue; }
-    // `.is(null)` in the filter keeps this a fill-only write even if another run
-    // got there first.
-    const { error } = await supabase
-      .from('books')
-      .update({ first_published_year: year })
+    const { error } = await supabase.from('books')
+      .update({ first_published_year: r.year })
       .eq('id', b.id)
       .is('first_published_year', null);
     if (error) { stats.errors++; console.warn(`  write failed: ${error.message}`); } else stats.written++;
   }
 
-  if (conflicts.length > 1) {
-    const dir = join(__dirname, '..', 'output');
-    mkdirSync(dir, { recursive: true });
-    const file = join(dir, 'publication-year-conflicts.csv');
-    writeFileSync(file, conflicts.map((r) => r.map(csvCell).join(',')).join('\n') + '\n');
-    console.log(`conflicts written to ${file}`);
-  }
+  const dir = join(__dirname, '..', 'output');
+  mkdirSync(dir, { recursive: true });
+  const file = join(dir, 'publication-year-conflicts.csv');
+  writeFileSync(file, conflicts.map((r) => r.map(csvCell).join(',')).join('\n') + '\n');
+  console.log(`unresolved rows written to ${file}`);
   console.log(
-    `\n${DRY_RUN ? 'would write' : 'written'}: ${stats.written}  not found: ${stats.notFound}  ` +
-    `no author: ${stats.noAuthor}  conflicts >${CONFLICT_YEARS}y: ${stats.conflicts}` +
-    `${STRICT ? ` (skipped ${stats.skippedStrict})` : ''}  errors: ${stats.errors}`
+    `\n${DRY_RUN ? 'would write' : 'written'}: ${stats.written}` +
+    `${RECHECK_DAYS ? `  corrected: ${stats.corrected}  confirmed: ${stats.confirmed}` : ''}` +
+    `  not found: ${stats.notFound}  no author: ${stats.noAuthor}` +
+    `  conflicts (>${TOLERANCE}y, left NULL): ${stats.conflicts}  implausible lone year: ${stats.implausible}  errors: ${stats.errors}`
   );
+  console.log(`basis: ${Object.entries(bases).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k} ${v}`).join(', ') || '—'}`);
   if (stats.errors) process.exit(1);
 }
 

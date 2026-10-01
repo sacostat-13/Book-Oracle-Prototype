@@ -305,7 +305,8 @@ export default function ShareCard({ moment, cardRef }) {
         )}
 
         <div className="share-card__footer">
-          <span className="share-card__footer-glyph">✦</span>
+          {/* Same file the server card (share-card.mjs) draws in its footer. */}
+          <img className="share-card__footer-mark" src="/brand/mark-on-dark-96.png" alt="" width="24" height="20" />
           <span className="share-card__footer-brand">The Books Oracle</span>
           <span className="share-card__footer-url">thebooksoracle.com</span>
         </div>

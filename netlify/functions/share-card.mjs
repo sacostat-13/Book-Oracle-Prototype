@@ -173,8 +173,21 @@ function ornamentNode(value, fontSize, style) {
 
 const clamp = (s, n) => (s && s.length > n ? s.slice(0, n - 1) + '…' : s || '');
 
+// Brand mark (the book-eye logo) for card footers. Fetched from the deployed
+// site once per warm instance; a failed fetch is not cached, so the next
+// request retries. Without it the footer falls back to the ✦ glyph.
+let _brandMark = null;
+async function brandMark(origin) {
+  if (!_brandMark) _brandMark = await loadCardAsset(`${origin}/brand/mark-on-dark-96.png`);
+  return _brandMark;
+}
+// The mark PNG is 122×100; keep that ratio at whatever height the footer needs.
+const footerMark = (mark, h) => (mark
+  ? img(mark, { width: Math.round(h * 1.22), height: h })
+  : txt({ fontFamily: 'Ornament', color: C.gold }, '✦'));
+
 /* ── Card layout — mirrors ShareCard.jsx / _share.scss at 540×675 ── */
-function card(p, cover) {
+function card(p, cover, mark) {
   const W = 540, H = 675;
 
   const children = [];
@@ -227,9 +240,9 @@ function card(p, cover) {
 
   // footer
   children.push(box(
-    { marginTop: 'auto', paddingTop: 22, width: '100%', justifyContent: 'center', alignItems: 'baseline', gap: 10, fontFamily: 'IBM Plex Mono', fontSize: 12, letterSpacing: 1.7, textTransform: 'uppercase' },
+    { marginTop: 'auto', paddingTop: 22, width: '100%', justifyContent: 'center', alignItems: mark ? 'center' : 'baseline', gap: 10, fontFamily: 'IBM Plex Mono', fontSize: 12, letterSpacing: 1.7, textTransform: 'uppercase' },
     [
-      txt({ fontFamily: 'Ornament', color: C.gold }, '✦'),
+      footerMark(mark, 20),
       txt({ color: C.goldText }, 'The Books Oracle'),
       txt({ color: C.urlDim }, 'thebooksoracle.com'),
     ]
@@ -261,7 +274,7 @@ function card(p, cover) {
  * with server-built strings (that function stays i18n-agnostic English).
  * ════════════════════════════════════════════════════════════════════════ */
 
-function ogCard(p, cover) {
+function ogCard(p, cover, mark) {
   const W = 1200, H = 630;
   const headline = clamp(p.headline, 90);
   const hSize = headline.length > 60 ? 46 : headline.length > 38 ? 56 : 68;
@@ -286,9 +299,9 @@ function ogCard(p, cover) {
       clamp(p.sub, 140)
     ) : null,
     box(
-      { marginTop: 36, alignItems: 'baseline', gap: 12, fontFamily: 'IBM Plex Mono', fontSize: 15, letterSpacing: 2.2, textTransform: 'uppercase' },
+      { marginTop: 36, alignItems: mark ? 'center' : 'baseline', gap: 12, fontFamily: 'IBM Plex Mono', fontSize: 15, letterSpacing: 2.2, textTransform: 'uppercase' },
       [
-        txt({ fontFamily: 'Ornament', color: C.gold }, '✦'),
+        footerMark(mark, 28),
         txt({ color: C.goldText }, 'The Books Oracle'),
         txt({ color: C.urlDim }, 'thebooksoracle.com'),
       ]
@@ -455,7 +468,7 @@ export default async (req) => {
     // an OG image is expected).
     if (q.layout === 'og') {
       const cover = await loadCover(q.cover, OG_COVER_MAX_W, OG_COVER_MAX_H);
-      const svg = await satori(ogCard(p, cover), { width: 1200, height: 630, fonts });
+      const svg = await satori(ogCard(p, cover, await brandMark(url.origin)), { width: 1200, height: 630, fonts });
       png = new Resvg(svg, { fitTo: { mode: 'width', value: 1200 } }).render().asPng();
       framed = true; // skip the default portrait path below
     } else if (q.frame) {
@@ -479,7 +492,7 @@ export default async (req) => {
 
     if (!framed) {
       const cover = await loadCover(q.cover);
-      const svg = await satori(card(p, cover), { width: 540, height: 675, fonts });
+      const svg = await satori(card(p, cover, await brandMark(url.origin)), { width: 540, height: 675, fonts });
       png = new Resvg(svg, { fitTo: { mode: 'width', value: 1080 } }).render().asPng();
     }
 

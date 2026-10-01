@@ -16,9 +16,24 @@
 
 // The version label shown as "current" — keep in sync with package.json and
 // the README version line.
-export const CURRENT_VERSION = 'v0.72';
+export const CURRENT_VERSION = 'v0.73';
 
 export const RELEASES = [{
+    version: 'v0.73',
+    date: '2026-10-01',
+    // Not announced on load: a new logo is seen, not looked for.
+    titleEn: 'A new face for the Oracle',
+    titleEs: 'Una cara nueva para el Oráculo',
+    bodyEn: [
+      'The Books Oracle has a new logo: an open book whose pages draw an eye. You will see it in the top bar, on the tab in your browser, on your home screen if you installed the app, and on every card you share.',
+      'Links to the site now open with the new logo too, instead of the old picture.',
+    ],
+    bodyEs: [
+      'The Books Oracle tiene un logo nuevo: un libro abierto cuyas páginas dibujan un ojo. Lo vas a ver en la barra de arriba, en la pestaña del navegador, en tu pantalla de inicio si instalaste la app y en cada tarjeta que compartas.',
+      'Los enlaces al sitio también se abren con el logo nuevo, en lugar de la imagen anterior.',
+    ],
+  },
+  {
     version: 'v0.72',
     date: '2026-09-30',
     // Not announced on load. Nothing here changes what a reader can or cannot
