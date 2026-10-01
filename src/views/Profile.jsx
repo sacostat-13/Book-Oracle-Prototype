@@ -1537,7 +1537,7 @@ export default function Profile() {
       {/* three.js-motion experiment: the reader's sky — books as stars by family. */}
       {user && <ReaderConstellation />}
 
-      {/* v0.73: the reader's chart (Pro). Own profile only — this view is. */}
+      {/* v0.72.2: the reader's chart (Pro). Own profile only — this view is. */}
       {user && <TasteChart />}
 
       {hasStats && (

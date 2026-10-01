@@ -20,7 +20,7 @@ import OracleMissButton from '../components/OracleMissButton';
 import { buildTasteProfile, describeTasteProfile, MATCH_SCORING_INSTRUCTIONS } from '../lib/matchHelpers';
 import { buildExcludeHint, buildShelfSignature, filterAlreadyKnown, REASON_INSTRUCTIONS, REPRESENTATION_INSTRUCTIONS } from '../lib/oraclePrompt';
 import { saveDraw, loadDraw } from '../lib/oracleDrawCache';
-import { fetchMissHint } from '../lib/oracleReadings'; // v0.73
+import { fetchMissHint } from '../lib/oracleReadings'; // v0.72.2
 
 const QUERY_MAX = 280;
 
@@ -79,7 +79,7 @@ export default function OracleAsk({ onOpenBook }) {
     // exact, local, free, and applied to the full shelf.
     const known = [...state.readNext, ...state.library, ...state.wishlist];
     const exclude = buildExcludeHint(known);
-    // v0.73: what they turned down with "None of these call to me".
+    // v0.72.2: what they turned down with "None of these call to me".
     const missHint = await fetchMissHint();
 
     // v0.50: the taste summary now carries favorite genres, mood, stated

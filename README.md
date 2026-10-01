@@ -4,7 +4,7 @@ A reading companion — wishlist, library, Passages (reading plans), Anthologies
 lists), book clubs, Kindred (follows), and an AI-powered "oracle" for book discovery. Built with React + Vite + SCSS, backed by Supabase for auth
 and cross-device sync, and Netlify Functions for API proxying.
 
-> Current version: **v0.73** — see [Releases](#releases) below for changelog.
+> Current version: **v0.72.2** — see [Releases](#releases) below for changelog.
 > Upgrading from an earlier version? Check the matching `MIGRATION_*.md` / `UPDATE_*.md`.
 
 ---
@@ -373,7 +373,7 @@ and forward requests. Locally you need `netlify dev` to make them work.
 
 ## Releases
 
-# v0.73 — New logo (2026-10-01)
+# v0.72.2 — New logo (2026-10-01)
 
 The blackletter TBO monogram and the eye-with-laurels social image are retired.
 Their replacement is a single mark: an open book whose pages form an eye. It was

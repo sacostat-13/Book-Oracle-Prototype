@@ -16,10 +16,10 @@
 
 // The version label shown as "current" — keep in sync with package.json and
 // the README version line.
-export const CURRENT_VERSION = 'v0.73';
+export const CURRENT_VERSION = 'v0.72.2';
 
 export const RELEASES = [{
-    version: 'v0.73',
+    version: 'v0.72.2',
     date: '2026-10-01',
     // Not announced on load: a new logo is seen, not looked for.
     titleEn: 'A new face for the Oracle',

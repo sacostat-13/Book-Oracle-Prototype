@@ -1,4 +1,4 @@
-// src/components/OracleLongReading.jsx — v0.73 (Pro)
+// src/components/OracleLongReading.jsx — v0.72.2 (Pro)
 //
 // "Why this book, for you" — the long reading. Sits on BookPage (v0.71.1 —
 // it was first placed in BookModal, which nothing renders) under the

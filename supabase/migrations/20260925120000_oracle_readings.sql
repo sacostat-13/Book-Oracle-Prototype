@@ -1,4 +1,4 @@
--- v0.73 — Oracle readings (Pro extras). 2026-09-25.
+-- v0.72.2 — Oracle readings (Pro extras). 2026-09-25.
 -- Spec: docs/pro-tier-v1-spec.md §6 · Client: src/lib/oracleReadings.js
 --
 -- Long-form Oracle output worth keeping:
@@ -26,7 +26,7 @@ create table if not exists public.oracle_readings (
 );
 
 comment on table public.oracle_readings is
-  'v0.73: cached long-form Oracle readings (why_long per book, taste_chart per reader). Private to the reader.';
+  'v0.72.2: cached long-form Oracle readings (why_long per book, taste_chart per reader). Private to the reader.';
 
 alter table public.oracle_readings enable row level security;
 
@@ -40,5 +40,5 @@ revoke all on public.oracle_readings from anon;
 grant select, insert, update, delete on public.oracle_readings to authenticated;
 
 do $$ begin
-  raise notice 'v0.73: oracle_readings ready.';
+  raise notice 'v0.72.2: oracle_readings ready.';
 end $$;

@@ -163,7 +163,7 @@ export async function handler(event) {
   const LOGGED_SOURCES = [
     'spark', 'ask', 'similar', 'categories', 'plan',
     'categorization', 'club_poll', 'club_discussion',
-    'why_long', 'taste_chart', // v0.73: Pro extras
+    'why_long', 'taste_chart', // v0.72.2: Pro extras
   ];
   const PRO_ONLY_SOURCES = ['club_poll', 'club_discussion', 'why_long', 'taste_chart'];
   const rawSource = typeof body.source === 'string' ? body.source : null;
@@ -224,7 +224,7 @@ export async function handler(event) {
       quotaEnforced = true;
 
       // v0.72: the Oracle's part in a book club (poll suggestions, discussion
-      // prompts) is Pro; v0.73 adds the long reading and the reader's chart. Free readers run clubs by hand. Keyed on `source`,
+      // prompts) is Pro; v0.72.2 adds the long reading and the reader's chart. Free readers run clubs by hand. Keyed on `source`,
       // which is allowlisted above; a client that mislabels a club call as
       // 'ask' just spends an ordinary metered call, which is not a bypass of
       // anything that costs us.

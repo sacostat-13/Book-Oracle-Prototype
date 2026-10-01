@@ -192,7 +192,7 @@ Notes:
 - The wall copy names what's gated and never threatens:
   *"Your first club is yours. More than one is part of Pro."*
 
-## 6. Phase 3 — v0.73 Oracle extras (Pro)
+## 6. Phase 3 — v0.72.2 Oracle extras (Pro)
 
 - **Why this book — the long reading.** From any Oracle-recommended book, a
   few paragraphs connecting it to named books on the reader's shelf (the

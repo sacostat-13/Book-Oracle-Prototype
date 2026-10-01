@@ -433,7 +433,7 @@ export default function BookModal({ book, onClose, onOpenBook }) {
             </div>
           )}
 
-          {/* v0.73: the long reading (Pro). Offered on every book, not only
+          {/* v0.72.2: the long reading (Pro). Offered on every book, not only
               Oracle-drawn ones — "why this, for me" is the question a reader
               has about a book a friend pressed on them too. */}
           <OracleLongReading book={display} reason={oracleReason} />

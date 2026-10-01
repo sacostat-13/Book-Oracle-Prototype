@@ -1,4 +1,4 @@
-// src/components/TasteChart.jsx — v0.73 (Pro)
+// src/components/TasteChart.jsx — v0.72.2 (Pro)
 //
 // "Your reader's chart" — a written portrait of the reader's shelf, in
 // Profile → Overview. Recurring themes, which way they lean, the rooms of the

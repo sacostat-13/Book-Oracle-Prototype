@@ -6,7 +6,7 @@ import { ALL_BOOKS, bookKey } from '../lib/bookHelpers';
 import { callClaude, parseJSONResponse, QuotaExceededError } from '../lib/claudeApi';
 import { logRecommendations, attachRecommendationIds } from '../lib/oracleProvenance';
 import OracleMissButton from '../components/OracleMissButton';
-import { fetchMissHint } from '../lib/oracleReadings'; // v0.73
+import { fetchMissHint } from '../lib/oracleReadings'; // v0.72.2
 import { useOracleQuota } from '../lib/OracleQuotaContext';
 import { OracleQuotaBadge, OracleQuotaWall } from '../components/OracleQuotaBadge';
 import { useT, useI18n, langDirective } from '../lib/I18nContext';
@@ -232,7 +232,7 @@ export default function OracleCategories({ onOpenBook }) {
       // more books than we need so that filtering has something to cut into.
       const known = [...state.readNext, ...state.library, ...state.wishlist];
       const exclude = buildExcludeHint(known);
-      // v0.73: what they turned down with "None of these call to me".
+      // v0.72.2: what they turned down with "None of these call to me".
       const missHint = await fetchMissHint();
 
       // Use the display name of the selected genre for the AI prompt

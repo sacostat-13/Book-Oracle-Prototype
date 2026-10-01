@@ -1,4 +1,4 @@
-// src/lib/oracleReadings.js — v0.73
+// src/lib/oracleReadings.js — v0.72.2
 //
 // The Pro Oracle extras, and the loop the miss button opened.
 // Spec: docs/pro-tier-v1-spec.md §6 · Schema: 20260925120000_oracle_readings.sql
