@@ -1,4 +1,4 @@
-// src/lib/avatars.js — v0.52
+// src/lib/avatars.js — v0.52 (set redrawn v0.73: 10 standard + one per genre family)
 //
 // The preset avatar gallery, driven entirely by the contents of
 // public/avatars/ — the virtual:avatar-manifest module (vite.config.js) lists
@@ -26,7 +26,9 @@ function labelFrom(slug) {
   return slug
     .split('-')
     .filter(Boolean)
-    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    // "and" reads as an ampersand, matching the genre family names
+    // (g-love-and-desire.svg -> "Love & Desire").
+    .map((w) => (w === 'and' ? '&' : w.charAt(0).toUpperCase() + w.slice(1)))
     .join(' ');
 }
 

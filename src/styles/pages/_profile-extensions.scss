@@ -795,3 +795,40 @@
   // bars need to be told, since they are block elements with an explicit width.
   .pf-family-track__stop .skeleton--text { margin: 2px auto; }
 }
+
+// ── Install-to-home-screen steps (iOS has no install prompt) ──────────────
+.pf-install-steps {
+  margin: 0;
+  padding-left: var(--ro-space-6);
+  font-family: var(--ro-font-body);
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--ro-text-2);
+
+  li + li { margin-top: var(--ro-space-1); }
+}
+
+// ── Reader preferences: one group per preference ─────────────────────────
+// Favourite genres / Looking for / Level / Goal share one .pf-section. Each
+// is a label → value → action unit: title and value sit tight (a caption,
+// not a new block), the button sits one step below the value, and the gap
+// BETWEEN groups is larger than any gap inside one, so the grouping reads.
+.pf-pref {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+
+  > * { margin: 0; }
+  > * + * { margin-top: var(--ro-space-3); }
+  > .pf-section__title + * { margin-top: var(--ro-space-2); }
+}
+
+.pf-section > .pf-pref + .pf-pref { margin-top: var(--ro-space-8); }
+
+.pf-pref__value {
+  margin: 0;
+  font-family: var(--ro-font-body);
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--ro-text-2);
+}

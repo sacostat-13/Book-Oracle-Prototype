@@ -22,6 +22,7 @@ import ReaderConstellation from '../components/ReaderConstellation';
 import { groupFamilyAccomplishments, nextRung } from '../lib/ledger';
 import { FamilyRowsSkeleton } from '../components/Skeleton';
 import BookMark from '../components/BookMark';
+import InstallAppSection from '../components/InstallAppSection';
 
 // v0.75: display price of the annual Pro variant, e.g. "$49.99". Unset = monthly only.
 const ANNUAL_PRICE = import.meta.env.VITE_ANNUAL_PRICE || null;
@@ -833,113 +834,125 @@ function ReaderPrefsSection({ state, setProfile, t }) {
 
   return (
     <div className="pf-section">
-      <h2 className="pf-section__title">{t('profile.labelFavoriteGenres')}</h2>
-      {!editingGenres ? (
-        <p className="pf-text pf-text--gap-lg">
-          {favoriteGenres.length > 0 ? favoriteGenres.join(', ') : t('profile.genresNotSet')}
-          <br />
-          <button className="btn-secondary" onClick={() => setEditingGenres(true)}>{t('common.edit')}</button>
-        </p>
-      ) : (
-        <>
-          <div className="chip-grid">
-            {genreOptions.map((g) => (
-              <button
-                key={g.id}
-                className={`chip ${favoriteGenres.includes(g.name) ? 'selected' : ''}`}
-                disabled={!favoriteGenres.includes(g.name) && favoriteGenres.length >= GENRE_MAX}
-                onClick={() => toggleGenre(g.name)}
-              >
-                {g.name}
-              </button>
-            ))}
-          </div>
-          <p className="onb-hint">{t('profile.genreMaxHint', { max: GENRE_MAX })}</p>
-          <button className="btn-secondary" onClick={() => setEditingGenres(false)}>{t('common.done')}</button>
-        </>
-      )}
+      <div className="pf-pref">
+        <h2 className="pf-section__title">{t('profile.labelFavoriteGenres')}</h2>
+        {!editingGenres ? (
+            <>
+              <p className="pf-pref__value">
+              {favoriteGenres.length > 0 ? favoriteGenres.join(', ') : t('profile.genresNotSet')}
+              </p>
+              <button className="btn-secondary" onClick={() => setEditingGenres(true)}>{t('common.edit')}</button>
+            </>
+        ) : (
+          <>
+            <div className="chip-grid">
+              {genreOptions.map((g) => (
+                <button
+                  key={g.id}
+                  className={`chip ${favoriteGenres.includes(g.name) ? 'selected' : ''}`}
+                  disabled={!favoriteGenres.includes(g.name) && favoriteGenres.length >= GENRE_MAX}
+                  onClick={() => toggleGenre(g.name)}
+                >
+                  {g.name}
+                </button>
+              ))}
+            </div>
+            <p className="onb-hint">{t('profile.genreMaxHint', { max: GENRE_MAX })}</p>
+            <button className="btn-secondary" onClick={() => setEditingGenres(false)}>{t('common.done')}</button>
+          </>
+        )}
+      </div>
 
-      <h2 className="pf-section__title">{t('profile.labelCurrentMood')}</h2>
-      {!editingMood ? (
-        <p className="pf-text pf-text--gap-lg">
-          {currentMood.length > 0 ? currentMood.map((id) => t(moodTitleKey(id))).join(', ') : t('profile.moodNotSet')}
-          <br />
-          <button className="btn-secondary" onClick={() => setEditingMood(true)}>{t('common.edit')}</button>
-        </p>
-      ) : (
-        <>
-          <div className="chip-grid">
-            {MOODS.map((id) => (
-              <button
-                key={id}
-                className={`chip ${currentMood.includes(id) ? 'selected' : ''}`}
-                disabled={!currentMood.includes(id) && currentMood.length >= MOOD_MAX}
-                onClick={() => toggleMood(id)}
-              >
-                {t(moodTitleKey(id))}
-              </button>
-            ))}
-          </div>
-          <p className="onb-hint">{t('profile.moodMaxHint', { max: MOOD_MAX })}</p>
-          <button className="btn-secondary" onClick={() => setEditingMood(false)}>{t('common.done')}</button>
-        </>
-      )}
+      <div className="pf-pref">
+        <h2 className="pf-section__title">{t('profile.labelCurrentMood')}</h2>
+        {!editingMood ? (
+            <>
+              <p className="pf-pref__value">
+              {currentMood.length > 0 ? currentMood.map((id) => t(moodTitleKey(id))).join(', ') : t('profile.moodNotSet')}
+              </p>
+              <button className="btn-secondary" onClick={() => setEditingMood(true)}>{t('common.edit')}</button>
+            </>
+        ) : (
+          <>
+            <div className="chip-grid">
+              {MOODS.map((id) => (
+                <button
+                  key={id}
+                  className={`chip ${currentMood.includes(id) ? 'selected' : ''}`}
+                  disabled={!currentMood.includes(id) && currentMood.length >= MOOD_MAX}
+                  onClick={() => toggleMood(id)}
+                >
+                  {t(moodTitleKey(id))}
+                </button>
+              ))}
+            </div>
+            <p className="onb-hint">{t('profile.moodMaxHint', { max: MOOD_MAX })}</p>
+            <button className="btn-secondary" onClick={() => setEditingMood(false)}>{t('common.done')}</button>
+          </>
+        )}
+      </div>
 
       {/* v0.50: reading level, finally editable after onboarding */}
-      <h2 className="pf-section__title">{t('profile.labelReadingLevel')}</h2>
-      {!editingLevel ? (
-        <p className="pf-text pf-text--gap-lg">
-          {readingLevel != null
-            ? `${t(`onboarding.levels.${readingLevel}.title`)} (${readingLevel}/5)`
-            : t('profile.notSet')}
-          <br />
-          <button className="btn-secondary" onClick={() => setEditingLevel(true)}>{t('common.edit')}</button>
-        </p>
-      ) : (
-        <>
-          <div className="chip-grid">
-            {LEVELS.map((v) => (
-              <button
-                key={v}
-                className={`chip ${readingLevel === v ? 'selected' : ''}`}
-                title={t(`onboarding.levels.${v}.sub`)}
-                onClick={() => setProfile({ readingLevel: v })}
-              >
-                {t(`onboarding.levels.${v}.title`)}
-              </button>
-            ))}
-          </div>
-          <p className="onb-hint">{t('profile.levelEditHint')}</p>
-          <button className="btn-secondary" onClick={() => setEditingLevel(false)}>{t('common.done')}</button>
-        </>
-      )}
+      <div className="pf-pref">
+        <h2 className="pf-section__title">{t('profile.labelReadingLevel')}</h2>
+        {!editingLevel ? (
+            <>
+              <p className="pf-pref__value">
+              {readingLevel != null
+                ? `${t(`onboarding.levels.${readingLevel}.title`)} (${readingLevel}/5)`
+                : t('profile.notSet')}
+              </p>
+              <button className="btn-secondary" onClick={() => setEditingLevel(true)}>{t('common.edit')}</button>
+            </>
+        ) : (
+          <>
+            <div className="chip-grid">
+              {LEVELS.map((v) => (
+                <button
+                  key={v}
+                  className={`chip ${readingLevel === v ? 'selected' : ''}`}
+                  title={t(`onboarding.levels.${v}.sub`)}
+                  onClick={() => setProfile({ readingLevel: v })}
+                >
+                  {t(`onboarding.levels.${v}.title`)}
+                </button>
+              ))}
+            </div>
+            <p className="onb-hint">{t('profile.levelEditHint')}</p>
+            <button className="btn-secondary" onClick={() => setEditingLevel(false)}>{t('common.done')}</button>
+          </>
+        )}
+      </div>
 
       {/* v0.50: reading goal (intent), finally editable after onboarding */}
-      <h2 className="pf-section__title">{t('profile.labelGoal')}</h2>
-      {!editingGoal ? (
-        <p className="pf-text pf-text--gap-lg">
-          {goal ? t(`onboarding.goals.${goal}.title`) : t('profile.notSet')}
-          <br />
-          <button className="btn-secondary" onClick={() => setEditingGoal(true)}>{t('common.edit')}</button>
-        </p>
-      ) : (
-        <>
-          <div className="chip-grid">
-            {GOALS.map((g) => (
-              <button
-                key={g}
-                className={`chip ${goal === g ? 'selected' : ''}`}
-                title={t(`onboarding.goals.${g}.sub`)}
-                onClick={() => setProfile({ goal: g })}
-              >
-                {t(`onboarding.goals.${g}.title`)}
-              </button>
-            ))}
-          </div>
-          <p className="onb-hint">{t('profile.goalEditHint')}</p>
-          <button className="btn-secondary" onClick={() => setEditingGoal(false)}>{t('common.done')}</button>
-        </>
-      )}
+      <div className="pf-pref">
+        <h2 className="pf-section__title">{t('profile.labelGoal')}</h2>
+        {!editingGoal ? (
+            <>
+              <p className="pf-pref__value">
+              {goal ? t(`onboarding.goals.${goal}.title`) : t('profile.notSet')}
+              </p>
+              <button className="btn-secondary" onClick={() => setEditingGoal(true)}>{t('common.edit')}</button>
+            </>
+        ) : (
+          <>
+            <div className="chip-grid">
+              {GOALS.map((g) => (
+                <button
+                  key={g}
+                  className={`chip ${goal === g ? 'selected' : ''}`}
+                  title={t(`onboarding.goals.${g}.sub`)}
+                  onClick={() => setProfile({ goal: g })}
+                >
+                  {t(`onboarding.goals.${g}.title`)}
+                </button>
+              ))}
+            </div>
+            <p className="onb-hint">{t('profile.goalEditHint')}</p>
+            <button className="btn-secondary" onClick={() => setEditingGoal(false)}>{t('common.done')}</button>
+          </>
+        )}
+      </div>
     </div>
   );
 }
@@ -1722,10 +1735,11 @@ export default function Profile() {
         {user && <AvatarSection state={state} user={user} updateAvatar={updateAvatar} showToast={showToast} t={t} />}
         <TitlesSection state={state} setProfile={setProfile} t={t} />
 
+        <div className="pf-section" id="pf-library">
         <h2 className="pf-section__title">
           {t('profile.labelLibrary')}
         </h2>
-        <p className="pf-text pf-text--gap-lg">
+        <p className="pf-text">
           {t('profile.librarySummary', { books: state.library.length, queued: state.readNext.length })}
           {state.profile.goodreadsImported && (
             <><br /><span className="lv-hl">{t('profile.goodreadsImported')}</span></>
@@ -1762,6 +1776,10 @@ export default function Profile() {
             </button>
           </details>
         </div>
+        </div>
+
+        {/* Install to home screen — Profile only for now. */}
+        <InstallAppSection />
 
         {/* ── Danger zone — lives at the bottom of the Account tab ─────────── */}
         <div className="pf-section">
