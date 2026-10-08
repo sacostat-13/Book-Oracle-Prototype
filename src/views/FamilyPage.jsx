@@ -156,7 +156,12 @@ export default function FamilyPage() {
             ? `${family.description} Every genre on the ${family.name} shelf.`.slice(0, 200)
             : `Every genre on the ${family.name} shelf.`,
         }
-      : { title: 'Browse by Genre — The Books Oracle' }
+      // 2026-10-07: while loading, leave the prerendered head alone (see
+      // `pending` in useDocumentMeta) instead of writing a title every family
+      // page shares. A family that does not exist is not advertised.
+      : loading
+        ? { pending: true }
+        : { title: 'Browse by Genre — The Books Oracle', noindex: true }
   );
 
   if (loading) return <div className="container"><div className="fp-empty">Reading the shelf…</div></div>;

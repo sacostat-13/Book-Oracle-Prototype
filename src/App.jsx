@@ -117,7 +117,20 @@ export default function App() {
     'not-found': { title: "The Oracle can't see that far — The Books Oracle", noindex: true },
   };
   const isLandingVisit = route.name === 'dashboard' && !authLoading && !user;
-  useDocumentMeta(isLandingVisit ? {} : (ROUTE_META[route.name] || {}));
+  // 2026-10-07: routes that own their meta get `pending` here, not `{}`. An
+  // empty object is not "say nothing": it still writes og:url from the
+  // location and resets robots to the index default -- and because this parent
+  // effect commits AFTER the child's, it overwrote BookPage's canonical og:url
+  // and its noindex on the first render. That only went unnoticed because
+  // BookPage used to re-run its effect when its fetch landed; now that it can
+  // render from the prerender's seed on the first pass, there is no second run
+  // to repair it.
+  const OWNS_META = new Set(['book-page', 'series-page', 'genre-page', 'family-page']);
+  useDocumentMeta(
+    OWNS_META.has(route.name)
+      ? { pending: true }
+      : isLandingVisit ? {} : (ROUTE_META[route.name] || {})
+  );
 
   // v0.39: keep <link rel="canonical"> in sync with the current path, now that
   // paths are real routes instead of a hash. Always points at one host
@@ -149,7 +162,12 @@ export default function App() {
     // child-before-parent, so without this guard the parent would overwrite the
     // child's correct value a moment later -- the same ordering hazard the
     // ROUTE_META comment above describes.
-    if (route.name === 'series-page') return;
+    //
+    // 2026-10-07: book-page too. BookPage builds its canonical from the row's
+    // share key (the prerender's, when it supplied one), so every spelling of a
+    // book URL names one canonical. This effect would overwrite that with
+    // whichever spelling was requested.
+    if (route.name === 'series-page' || route.name === 'book-page') return;
     const canonical = canonicalUrl();
     let link = document.querySelector('link[rel="canonical"]');
     if (!link) {

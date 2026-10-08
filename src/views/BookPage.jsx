@@ -7,11 +7,12 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useData } from '../lib/DataContext';
 import { resolveGenres } from '../lib/genreDisplay';
 import { supabase } from '../lib/supabase';
-import { lookUpByShareKey } from '../lib/shareKey';
+import { lookUpByShareKey, lookUpByShareKeyResult, bookFromSeed } from '../lib/shareKey';
+import { readEntitySeed } from '../lib/entitySeed';
 import { useRouter, RouteLink } from '../lib/RouterContext';
 import { useT, useI18n } from '../lib/I18nContext';
 import { useDocumentMeta } from '../lib/useDocumentMeta';
-import { bookKey, findBookByTitle, openBookTab, buildBookPageParams, displayAuthor } from '../lib/bookHelpers';
+import { bookKey, findBookByTitle, openBookTab, buildBookPageParams, displayAuthor, isPlaceholderBook } from '../lib/bookHelpers';
 import { enrichBookFromOpenLibrary, fetchSeriesBooks } from '../lib/enrichmentService';
 import { hardcoverGetBook } from '../lib/hardcoverService';
 import { fetchCoverURL } from '../lib/coverService';
@@ -247,19 +248,24 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
   // the one opened from it, so browsing onward does not inherit the credit.
   const fromAnthology = () => { if (from === 'list-view') noteAnthologyAdd(display); };
 
-  const [book, setBook] = useState(null);
+  // 2026-10-07 — the row og-prerender.js already resolved for this URL, if it
+  // left one (crawlers only, today). Rendering it on the FIRST pass is the fix
+  // for 866 pages Search Console filed as duplicates: Google's renderer used to
+  // index whatever this page showed while lookUpByShareKey was still out --
+  // a skeleton, or "Book not found" when it failed -- and every such page was
+  // identical. See src/lib/entitySeed.js. Keyed on the route param, so an
+  // in-app navigation to another book never renders this one's data.
+  const seed = useMemo(() => {
+    const s = readEntitySeed('book', bookKey_);
+    const seededBook = s ? bookFromSeed(s) : null;
+    return seededBook ? { book: seededBook, shareKey: s.shareKey || null } : null;
+  }, [bookKey_]);
+
+  const [book, setBook] = useState(() => seed?.book ?? null);
   // v0.63.2b: genre links for a book that is on NO shelf. See the effect below.
   const [pageGenres, setPageGenres] = useState(null);
   const [pageGenresLoading, setPageGenresLoading] = useState(false);
 
-  // v0.39: SEO/share title+description once the book resolves. Deliberately
-  // NOT set in App.jsx's generic route-title effect (see App.jsx) — this is
-  // the only place this page's title/description gets set.
-  useDocumentMeta({
-    title: book ? `${book.t} by ${displayAuthor(book)} — The Books Oracle` : 'Book — The Books Oracle',
-    description: book?.d ? book.d.slice(0, 200) : undefined,
-    image: book?.coverUrl || undefined,
-  });
 
   const [enrichment, setEnrichment] = useState(null);
   const [enrichedOverlay, setEnrichedOverlay] = useState({});
@@ -278,6 +284,38 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
   // notFound — showing "not found" while still looking is how the previous
   // version behaved, and it was wrong.
   const [lookingUp, setLookingUp] = useState(false);
+  // 2026-10-07: the lookup itself FAILED (network, timeout, rate limit) -- not
+  // the same thing as the catalogue having no such book. See
+  // lookUpByShareKeyResult. Rendering "not found" for a failed request is how
+  // real books were indexed as not-found pages.
+  const [lookupFailed, setLookupFailed] = useState(false);
+  const [retryTick, setRetryTick] = useState(0);
+
+  // v0.39: SEO/share title+description once the book resolves. Deliberately
+  // NOT set in App.jsx's generic route-title effect (see App.jsx) — this is
+  // the only place this page's title/description gets set.
+  //
+  // 2026-10-07:
+  //  - While nothing has resolved, `pending` leaves <head> alone. It used to
+  //    write the placeholder "Book — The Books Oracle" over the prerender's
+  //    correct title, and that placeholder is what Google indexed for every
+  //    page it snapshotted mid-load.
+  //  - This page owns its canonical (App.jsx stands aside for book-page), built
+  //    from the server's share key when the prerender supplied one -- one URL
+  //    per row, whatever spelling of the key was requested.
+  //  - noindex for a true not-found, and for books with no author or a
+  //    placeholder title (same rule as the prerender and sitemap.js).
+  const canonicalKey = seed?.shareKey || (book ? bookKey(book) : null);
+  useDocumentMeta({
+    pending: !book && !notFound,
+    title: book
+      ? `${book.t} by ${displayAuthor(book)} — The Books Oracle`
+      : `${t('bookPage.notFound')} — The Books Oracle`,
+    description: book?.d ? book.d.slice(0, 200) : undefined,
+    image: book?.coverUrl || undefined,
+    canonicalPath: canonicalKey ? `/book/${encodeURIComponent(canonicalKey)}` : undefined,
+    noindex: notFound || isPlaceholderBook(book),
+  });
   const [ratingEditorOpen, setRatingEditorOpen] = useState(false);
   const [pendingMoment, setPendingMoment] = useState(null); // share moment queued behind the rating step
   const [finishing, setFinishing] = useState(false);
@@ -396,11 +434,28 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
       // server-side — which made the page look broken rather than the link.
       //
       // The database is the third place to look, and now the SPA looks there.
+      //
+      // 2026-10-07: unless the prerender already looked (see `seed`). And a
+      // failed request is retried once and then shown as a failure, never as
+      // "not found" -- see lookupFailed.
+      if (seed?.book) {
+        setBook(seed.book);
+        return;
+      }
+      setNotFound(false);
+      setLookupFailed(false);
       setLookingUp(true);
-      lookUpByShareKey(bookKey_).then((row) => {
+      const attempt = (n) => lookUpByShareKeyResult(bookKey_).then(({ book: row, error }) => {
+        if (error && n < 1) {
+          return new Promise((r) => setTimeout(r, 1500)).then(() => attempt(n + 1));
+        }
         setLookingUp(false);
-        if (row) setBook(row); else setNotFound(true);
+        if (row) setBook(row);
+        else if (error) setLookupFailed(true);
+        else setNotFound(true);
+        return undefined;
       });
+      attempt(0);
     }
     // `upsertDiscoveredBook` is intentionally absent. It comes from
     // DataContext and is rebuilt on every provider render, so listing it here
@@ -408,7 +463,7 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
     // a discovered book back to the catalog, so the loop would be a write loop,
     // not just a wasted render.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [bookKey_, route.params, previewBookRef, state.wishlist, state.library, state.readNext, snapshotBook]);
+  }, [bookKey_, route.params, previewBookRef, state.wishlist, state.library, state.readNext, snapshotBook, seed, retryTick]);
 
   // v0.63.3d — ENRICHING A SEARCH RESULT, IN ITS OWN EFFECT.
   //
@@ -734,6 +789,22 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
     // showing the SHAPE of a book page is the difference between "loading" and
     // "this site is broken".
     return <BookPageSkeleton />;
+  }
+
+  // 2026-10-07: the request failed. Say so, and offer the retry -- "not found"
+  // would be a false claim about the catalogue (and, to a crawler, a page
+  // identical to every other failed one).
+  if (lookupFailed && !book) {
+    return (
+      <div className="lv-empty">
+        <div className="lv-empty-icon"><BookMark animate /></div>
+        <div className="lv-empty-title">{t('bookPage.loadFailed')}</div>
+        <div className="lv-empty-text">{t('bookPage.loadFailedHint')}</div>
+        <button className="btn-primary" onClick={() => setRetryTick((n) => n + 1)}>
+          {t('bookPage.retry')}
+        </button>
+      </div>
+    );
   }
 
   if (notFound) {
