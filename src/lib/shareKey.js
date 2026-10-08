@@ -66,6 +66,25 @@ function rowToBook(r) {
 // Builds the same `s` shape as DataContext's bookRowToClient for the fields a
 // public reader can see. Never throws: no series is a missing block, not a
 // broken page.
+// The `s` shape for a catalogue series row. Shared by attachSeries (which
+// fetches the row) and bookFromSeed (which is handed it by the prerender).
+function withSeries(book, data) {
+  if (!book || !data?.name) return book;
+  return {
+    ...book,
+    s: {
+      name: data.name,
+      n: book.seriesPosition ?? null,
+      total: data.total_books || null,
+      status: data.status || 'unreviewed',
+      publicationStatus: data.publication_status || 'unknown',
+      seriesId: data.id,
+      fromHardcover: data.source === 'hardcover',
+      fromOpenLibrary: data.source === 'openlibrary',
+    },
+  };
+}
+
 async function attachSeries(book) {
   if (!book?.seriesId) return book;
   try {
@@ -78,23 +97,24 @@ async function attachSeries(book) {
       if (error) console.warn('[shareKey] series lookup failed', error.message);
       return book;
     }
-    return {
-      ...book,
-      s: {
-        name: data.name,
-        n: book.seriesPosition ?? null,
-        total: data.total_books || null,
-        status: data.status || 'unreviewed',
-        publicationStatus: data.publication_status || 'unknown',
-        seriesId: data.id,
-        fromHardcover: data.source === 'hardcover',
-        fromOpenLibrary: data.source === 'openlibrary',
-      },
-    };
+    return withSeries(book, data);
   } catch (err) {
     console.warn('[shareKey] series lookup threw', err?.message || err);
     return book;
   }
+}
+
+/**
+ * 2026-10-07 — the book og-prerender.js already resolved for this URL (see
+ * src/lib/entitySeed.js), in the same shape lookUpByShareKey returns. Sync, so
+ * BookPage can render it on its first pass.
+ *
+ * @param {{ row: object, series?: object|null }} seed
+ */
+export function bookFromSeed(seed) {
+  const book = rowToBook(seed?.row);
+  if (!book) return null;
+  return seed.series && book.seriesId ? withSeries(book, seed.series) : book;
 }
 
 /**
@@ -104,18 +124,35 @@ async function attachSeries(book) {
  * @param {string} key e.g. "midnighttimetableanovelinghoststories|borachung"
  */
 export async function lookUpByShareKey(key) {
-  if (!key || typeof key !== 'string') return null;
+  const { book } = await lookUpByShareKeyResult(key);
+  return book;
+}
+
+/**
+ * 2026-10-07 — like lookUpByShareKey, but says WHY there is no book.
+ *
+ * lookUpByShareKey returns null both when the catalogue has no such book and
+ * when the request failed, and BookPage rendered "Book not found" for both. In
+ * Google's renderer the request sometimes fails, so real books were indexed as
+ * not-found pages -- identical ones, which Search Console then reported as
+ * duplicates of each other. Callers that decide what to render need the
+ * difference: not found is a page; a failed request is a retry.
+ *
+ * @returns {Promise<{ book: object|null, error: string|null }>}
+ */
+export async function lookUpByShareKeyResult(key) {
+  if (!key || typeof key !== 'string') return { book: null, error: null };
   try {
     const { data, error } = await supabase
       .rpc('find_book_by_client_key', { _key: key })
       .maybeSingle();
     if (error) {
       console.warn('[shareKey] lookup failed', error.message);
-      return null;
+      return { book: null, error: error.message || 'lookup failed' };
     }
-    return await attachSeries(rowToBook(data));
+    return { book: await attachSeries(rowToBook(data)), error: null };
   } catch (err) {
     console.warn('[shareKey] lookup threw', err?.message || err);
-    return null;
+    return { book: null, error: String(err?.message || err || 'lookup threw') };
   }
 }

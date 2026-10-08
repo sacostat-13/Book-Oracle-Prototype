@@ -50,6 +50,21 @@ export function displayAuthor(b) {
   return a || UNKNOWN_AUTHOR;
 }
 
+// 2026-10-07: a book page is not worth indexing when we cannot say who wrote
+// it, or when the title is a publisher's placeholder ("Untitled"). Such pages
+// still render for readers; they are just not advertised to search engines.
+// MIRRORS isPlaceholderBook() in netlify/edge-functions/og-prerender.js --
+// the prerender and this page must emit the same robots value, and sitemap.js
+// already leaves out keys whose author half is empty.
+export function isPlaceholderBook(b) {
+  if (!b) return false;
+  const a = (b.a || '').trim();
+  if (!a || a.toLowerCase() === UNKNOWN_AUTHOR.toLowerCase()) return true;
+  if (!a.toLowerCase().replace(/[^a-z0-9]/g, '')) return true; // author key empty
+  if (/^\s*untitled\s*$/i.test(b.t || '')) return true;
+  return false;
+}
+
 // The shareable address of a book: /book/<bookKey>.
 //
 // v0.63.3 — THIS IS NOW THE ONLY COPY. og-prerender.js and sitemap.js each

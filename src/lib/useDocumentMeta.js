@@ -52,8 +52,18 @@ const DEFAULT_ROBOTS = 'index, follow, max-image-preview:large, max-snippet:-1';
 //
 // Given a canonicalPath, this hook sets BOTH og:url and <link rel=canonical>
 // from it, and App.jsx's generic canonical effect stands aside for that route.
-export function useDocumentMeta({ title, description, image, noindex = false, canonicalPath }) {
+//
+// `pending` — 2026-10-07. The page's entity has not resolved yet, so this hook
+// has nothing true to say: it changes NOTHING in <head>. Before this, BookPage
+// passed the placeholder title "Book — The Books Oracle" (and GenrePage
+// "Genre — The Books Oracle" plus noindex) while it loaded, overwriting the
+// correct prerendered head. Whenever Google's renderer snapshotted at that
+// moment, every such page carried the same title over the same body, and 866
+// of them were filed as duplicates of one another. With `pending`, a crawler
+// keeps the prerender's head until the real values arrive.
+export function useDocumentMeta({ title, description, image, noindex = false, canonicalPath, pending = false }) {
   useEffect(() => {
+    if (pending) return;
     if (title) document.title = title;
     if (description) upsertMeta('name', 'description', description);
 
@@ -90,5 +100,5 @@ export function useDocumentMeta({ title, description, image, noindex = false, ca
       document.head.appendChild(robotsMeta);
     }
     robotsMeta.setAttribute('content', noindex ? 'noindex, nofollow' : DEFAULT_ROBOTS);
-  }, [title, description, image, noindex, canonicalPath]);
+  }, [title, description, image, noindex, canonicalPath, pending]);
 }

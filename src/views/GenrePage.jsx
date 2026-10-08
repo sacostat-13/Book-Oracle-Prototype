@@ -11,27 +11,37 @@
 // genreService.js for why that is the only shape that satisfies both a
 // returning reader and a crawler.
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useRouter, RouteLink } from '../lib/RouterContext';
 import { useDocumentMeta } from '../lib/useDocumentMeta';
+import { readEntitySeed } from '../lib/entitySeed';
 import { fetchGenre, fetchGenreShelf, fetchBooksByIds, GENRE_PAGE_SIZE, INDEX_FLOOR } from '../lib/genreService';
 import BookShelfGrid, { ShelfMore, ShelfOracle } from '../components/BookShelfGrid';
 
 export default function GenrePage() {
   const { route } = useRouter();
   const slug = route.params?.genreSlug;
-  const [genre, setGenre] = useState(null);
+  // 2026-10-07 — the genre og-prerender.js already resolved, if it left one
+  // (src/lib/entitySeed.js). With it, the heading, description and related
+  // genres render on the first pass; only the book shelf waits on the network.
+  // Without it, Google's renderer could snapshot "Consulting the shelf…" --
+  // the same text on every genre page -- and /genre/sapphicfantasy was filed
+  // as a duplicate of /genre/questfantasy for exactly that.
+  const seededGenre = useMemo(() => readEntitySeed('genre', slug)?.row || null, [slug]);
+  const [genre, setGenre] = useState(() => seededGenre);
   const [shelf, setShelf] = useState([]);      // every book id, shuffled for today
   const [books, setBooks] = useState([]);      // the rows loaded so far
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(() => !seededGenre);
   const [loadingMore, setLoadingMore] = useState(false);
 
   useEffect(() => {
     let alive = true;
-    setLoading(true);
     setBooks([]);
     setShelf([]);
-    fetchGenre(slug).then(async (g) => {
+    // The seed covers the genre row; the shelf below is fetched either way.
+    const genreReq = seededGenre ? Promise.resolve(seededGenre) : fetchGenre(slug);
+    if (!seededGenre) setLoading(true);
+    genreReq.then(async (g) => {
       if (!alive) return;
       setGenre(g);
       setLoading(false);
@@ -43,7 +53,7 @@ export default function GenrePage() {
       if (alive) setBooks(first);
     });
     return () => { alive = false; };
-  }, [slug]);
+  }, [slug, seededGenre]);
 
   // More, the way The Stacks does it. The id order was fixed when the shelf
   // loaded, so a later page can never repeat a book from an earlier one.
@@ -72,7 +82,11 @@ export default function GenrePage() {
           // Search Console fetched and declined in August.
           noindex: (genre.usage_count || 0) < INDEX_FLOOR,
         }
-      : { title: 'Genre — The Books Oracle', noindex: true }
+      // 2026-10-07: `pending` while loading -- this used to write a shared
+      // placeholder title AND noindex over the prerendered head mid-load.
+      : loading
+        ? { pending: true }
+        : { title: 'Genre — The Books Oracle', noindex: true }
   );
 
   if (loading) return <div className="container"><div className="fp-empty">Consulting the shelf…</div></div>;

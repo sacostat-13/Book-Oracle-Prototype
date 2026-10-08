@@ -154,7 +154,8 @@ function injectMeta(html, {
   // taking the first tag it sees would index the thin page anyway.
   if (noindex) out = out.replace(/<meta\s+name="robots"[^>]*>/gi, '');
 
-  return out.replace('</head>', `    ${tags}\n  </head>`);
+  // Function form: titles/descriptions containing `$&` or `$'` must not be expanded.
+  return out.replace('</head>', () => `    ${tags}\n  </head>`);
 }
 
 
@@ -184,7 +185,52 @@ const PREMOUNT_RE = /<!--PREMOUNT-->[\s\S]*?<!--\/PREMOUNT-->/;
 
 function injectBody(html, blockHtml) {
   if (!PREMOUNT_RE.test(html)) return html; // markers gone — leave it alone
-  return html.replace(PREMOUNT_RE, `<div class="pre-mount">${blockHtml}</div>`);
+  // Function form for the same `$&` reason as injectSeed below.
+  return html.replace(PREMOUNT_RE, () => `<div class="pre-mount">${blockHtml}</div>`);
+}
+
+// 2026-10-07 — THE ENTITY SEED.
+//
+// The PREMOUNT block above lives inside #root, so React replaces it on mount
+// and what Google indexes is whatever the SPA renders next. For a book page
+// that was a client-side lookup (lookUpByShareKey) and, until it answered, a
+// skeleton -- or, when it failed, "Book not found" -- under the placeholder
+// title "Book — The Books Oracle". Search Console's crawled HTML for
+// /book/bemyalibi%7C showed exactly that, and 866 unrelated book and genre
+// pages that rendered the same way were folded into one duplicate cluster
+// ("Duplicate, Google chose different canonical"). See
+// claude/seo-canonical-and-quality-v1-spec.md, Phase 0.5.
+//
+// So the row this function already resolved is handed to the SPA as JSON, in
+// <head> where React never touches it. BookPage / GenrePage read it
+// synchronously (src/lib/entitySeed.js) and render the real page on their
+// first pass, with no request in the way. It is the same data the page would
+// have fetched -- the same facts as the PREMOUNT body -- so nothing a crawler
+// is shown differs from what a reader is shown.
+//
+// `<` is escaped so a description containing "</script>" cannot end the tag
+// early; U+2028/2029 for old JSON-in-script parsers.
+function injectSeed(html, seed) {
+  if (!seed || !/<\/head>/i.test(html)) return html;
+  const json = JSON.stringify(seed)
+    .replace(/</g, '\\u003c')
+    .replace(/\u2028/g, '\\u2028')
+    .replace(/\u2029/g, '\\u2029');
+  // Function form: a string replacement would expand `$&`, `$'` etc. if a
+  // description happened to contain them.
+  return html.replace(/<\/head>/i, () => `<script type="application/json" id="__ENTITY__">${json}</script>\n</head>`);
+}
+
+// A book page is not worth indexing when we cannot say who wrote it, or when
+// the title is a publisher's placeholder. MIRRORS isPlaceholderBook() in
+// src/lib/bookHelpers.js -- the SPA sets the same noindex once it renders, and
+// a bot/renderer disagreement on robots is the divergence this file keeps
+// fixing. sitemap.js already omits keys with an empty author half.
+function isPlaceholderBook(title, author, shareKey) {
+  if (shareKey && shareKey.endsWith('|')) return true;
+  if (!author || /^\s*unknown author\s*$/i.test(author)) return true;
+  if (/^\s*untitled\s*$/i.test(title || '')) return true;
+  return false;
 }
 
 // Internal links are the point of this as much as the prose. Google discovers
@@ -297,10 +343,10 @@ export default async (request, context) => {
   // profiles) keep the generic block. That is deliberate — those are private-
   // by-default share targets that the sitemap never invites Google to index,
   // so there is nothing to gain from describing them in crawlable HTML.
-  async function respond(meta, body) {
+  async function respond(meta, body, seed) {
     const response = await context.next();
     const html = await response.text();
-    const injected = injectMeta(html, meta);
+    const injected = injectSeed(injectMeta(html, meta), seed);
     return new Response(body ? injectBody(injected, body) : injected, response);
   }
 
@@ -663,7 +709,26 @@ export default async (request, context) => {
               { name: genre.name, path: url.pathname },
             ]),
           ],
-        }, body);
+        }, body, {
+          // 2026-10-07 — see injectSeed. The shape fetchGenre() in
+          // src/lib/genreService.js returns, so GenrePage renders its heading,
+          // description and related genres on the first pass instead of
+          // "Consulting the shelf…" (the same text on every genre page, which
+          // is how /genre/sapphicfantasy came to be filed as a duplicate of
+          // /genre/questfantasy). The book shelf still loads client-side.
+          kind: 'genre',
+          key: slug,
+          row: {
+            id: genre.id,
+            name: genre.name,
+            normalized_name: slug,
+            description: genre.description,
+            usage_count: genre.usage_count,
+            family_id: genre.family_id,
+            family: fam ? { slug: fam.slug, name: fam.name } : null,
+            siblings,
+          },
+        });
       }
     }
     if (bookMatch) {
@@ -719,9 +784,24 @@ export default async (request, context) => {
       let siblings = [];
       let neighbours = [];
       let seriesName = null;
+      let seriesRow = null;
+
+      // 2026-10-07: the canonical comes from the ROW, not from the request.
+      // find_book_by_client_key accepts any author-prefix length and both `|`
+      // and `%7C`, so every spelling Google ever saw used to answer with itself
+      // as canonical. books_share_key holds the one key sitemap.js submits.
+      // Started here, awaited below, so it overlaps the series/genre reads.
+      const shareKeyReq = fetch(
+        `${supabaseUrl}/rest/v1/books_share_key?select=share_key&id=eq.${encodeURIComponent(match.id)}&limit=1`,
+        { headers: restHeaders }
+      ).then(async (r) => (r.ok ? (await r.json())[0]?.share_key || null : null))
+        .catch(() => null);
+
       if (match.series_id) {
         const [sRes, bRes] = await Promise.all([
-          fetch(`${supabaseUrl}/rest/v1/series?select=name&id=eq.${encodeURIComponent(match.series_id)}&limit=1`, { headers: restHeaders }),
+          // 2026-10-07: the fields the SPA's series block needs, so the seed
+          // can carry them (same select as attachSeries in src/lib/shareKey.js).
+          fetch(`${supabaseUrl}/rest/v1/series?select=id,name,total_books,status,publication_status,source&id=eq.${encodeURIComponent(match.series_id)}&limit=1`, { headers: restHeaders }),
           // status filter added 2026-08-24 to match sitemap.js and the series
           // branch below. All three must list the same rows.
           // 2026-09-08: series_volumes, not books_share_key -- one row per
@@ -730,7 +810,10 @@ export default async (request, context) => {
           // all three list the volumes of a series and all three must agree.
           fetch(`${supabaseUrl}/rest/v1/series_volumes?select=title,author,share_key,position_in_series&series_id=eq.${encodeURIComponent(match.series_id)}&status=in.(verified,oracle_categorized)&order=position_in_series.asc&limit=30`, { headers: restHeaders }),
         ]);
-        if (sRes.ok) seriesName = (await sRes.json())[0]?.name || null;
+        if (sRes.ok) {
+          seriesRow = (await sRes.json())[0] || null;
+          seriesName = seriesRow?.name || null;
+        }
         if (bRes.ok) {
           siblings = await bRes.json();
         } else {
@@ -756,9 +839,17 @@ export default async (request, context) => {
         }
       }
 
+      // 2026-10-07: canonical from the row's own key (see shareKeyReq above).
+      // Falls back to the requested key only if books_share_key could not be
+      // read -- today's behaviour, so the fallback cannot regress anything.
+      const shareKey = (await shareKeyReq) || wantedKey;
+      const canonicalUrl = `${SITE}/book/${encodeURIComponent(shareKey)}`;
+      const placeholder = isPlaceholderBook(match.title, match.author, shareKey);
+
       // 2026-09-29: built AFTER the series lookup (it used to run before it), so
       // the JSON-LD below can carry isPartOf. Nothing above depends on it.
-      const injected = injectMeta(html, {
+      const injectedMeta = injectMeta(html, {
+        noindex: placeholder,
         title: `${match.title} by ${authorDisplay} — The Books Oracle`,
         description: match.description ? match.description.slice(0, 200) : undefined,
         // v0.48: branded 1200×630 card (cover + title on the ink/gold frame)
@@ -772,7 +863,7 @@ export default async (request, context) => {
         }),
         imageWidth: 1200,
         imageHeight: 630,
-        url: SITE + url.pathname,
+        url: canonicalUrl,
         jsonLd: {
           '@context': 'https://schema.org',
           '@type': 'Book',
@@ -819,6 +910,31 @@ export default async (request, context) => {
           : '',
         `<p><a href="/">The Books Oracle</a> — reading tracker and book recommendations drawn from your own shelf.</p>`,
       ].filter(Boolean).join('');
+
+      // The seed: exactly the columns rowToBook() in src/lib/shareKey.js reads,
+      // plus the series fields attachSeries() reads -- not the whole row.
+      const injected = injectSeed(injectedMeta, {
+        kind: 'book',
+        key: wantedKey,
+        shareKey,
+        row: {
+          id: match.id,
+          title: match.title,
+          author: match.author,
+          description: match.description,
+          pages: match.pages,
+          genre: match.genre,
+          complexity: match.complexity,
+          depth: match.depth,
+          cover_url: match.cover_url,
+          isbn: match.isbn,
+          status: match.status,
+          source: match.source,
+          series_id: match.series_id,
+          position_in_series: match.position_in_series,
+        },
+        series: seriesRow,
+      });
 
       return new Response(injectBody(injected, bookBody), response);
     }
