@@ -365,8 +365,31 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
     } catch (_) { return null; }
   }, [snapParam]);
 
+  // 2026-10-08 — A NEW BOOK STARTS CLEAN.
+  //
+  // BookPage is the same component instance across in-app navigations, so its
+  // state survives a change of bookKey. `notFound` in particular was set by one
+  // book's failed lookup and never cleared by the next book's success: open an
+  // Oracle pick that is not in the catalogue, then pick ANY book from search,
+  // and the search result resolved correctly underneath a "Book not found"
+  // that still belonged to the previous page.
+  //
+  // Declared BEFORE the resolution effect: both run in the same commit, and the
+  // resolution effect's setBook must be the one that lands.
+  const lastKeyRef = useRef(bookKey_);
+  useEffect(() => {
+    if (lastKeyRef.current === bookKey_) return;
+    lastKeyRef.current = bookKey_;
+    setBook(seed?.book ?? null);
+    setNotFound(false);
+    setLookupFailed(false);
+    setLookingUp(false);
+  }, [bookKey_, seed]);
+
   // Resolve book: preview (from search) or collection lookup
   useEffect(() => {
+    // Any branch below that hands the page a book also retires a stale verdict.
+    const resolved = (b) => { setNotFound(false); setLookupFailed(false); setBook(b); };
     const isPreview = route.params?.preview === 'true';
     const previewBook = previewBookRef?.current;
 
@@ -399,7 +422,7 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
       // kept this effect harmless for a year despite its unstable dependencies,
       // and it is why enriching the book MUST NOT happen here — see the
       // dedicated effect below.
-      setBook(previewBook);
+      resolved(previewBook);
       return;
     }
     // Falls through on a stale ref: the collection lookup below, then the URL
@@ -408,7 +431,7 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
     const sources = [...state.wishlist, ...state.library, ...state.readNext];
     const found = sources.find((b) => bookKey(b) === bookKey_);
     if (found) {
-      setBook(found);
+      resolved(found);
       // v0.71: this used to replaceState `?from=…&snap=…` into the address bar
       // so Back could restore the book before the collection loaded. It undid
       // v0.67's transient-params cleanup for every book on the reader's own
@@ -418,7 +441,7 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
     } else if (snapshotBook) {
       // Collection not loaded yet or book not in collection — use snapshot.
       // Once collection loads this effect re-runs and upgrades to the full record.
-      setBook(snapshotBook);
+      resolved(snapshotBook);
     } else {
       // v0.63.3 — SHARED LINKS.
       //
@@ -439,7 +462,7 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
       // failed request is retried once and then shown as a failure, never as
       // "not found" -- see lookupFailed.
       if (seed?.book) {
-        setBook(seed.book);
+        resolved(seed.book);
         return;
       }
       setNotFound(false);
@@ -807,7 +830,7 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
     );
   }
 
-  if (notFound) {
+  if (notFound && !book) {
     return (
       <div className="lv-empty">
         <div className="lv-empty-icon"><BookMark animate /></div>

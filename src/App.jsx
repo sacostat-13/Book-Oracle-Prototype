@@ -65,7 +65,7 @@ import FamilyPage from './views/FamilyPage';
 import GenrePage from './views/GenrePage';
 
 export default function App() {
-  const { state, loading } = useData();
+  const { state, loading, upsertDiscoveredBook } = useData();
   const { route, go } = useRouter();
   const { user, loading: authLoading, recoveringPassword } = useAuth();
   const t = useT();
@@ -469,6 +469,17 @@ export default function App() {
   }
 
   function openBook(book) {
+    // 2026-10-08: an Oracle pick the catalogue has never seen had no `books`
+    // row, so its /book/<key> URL only worked inside the tab that carried the
+    // snapshot. Refresh, cmd-click or share it and every reader got "Book not
+    // found" (reported: How to Make an American Quilt, The Quilter's
+    // Apprentice, The Persian Pickle Club). Record it as `discovered`, as
+    // search already does, so the address resolves for anyone. Fire and
+    // forget: the new tab paints from its snapshot and does not wait on this.
+    // upsertDiscoveredBook skips guests and books already on a shelf.
+    Promise.resolve(upsertDiscoveredBook?.(book)).catch((err) => {
+      console.warn('[openBook] discovered upsert failed', err?.message || err);
+    });
     openBookTab(book, 'app');
   }
 
