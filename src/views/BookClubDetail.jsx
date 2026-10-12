@@ -13,6 +13,7 @@ import { clubShareUrl } from '../lib/shareService';
 import { fetchTitlesByUserId, titleLabel } from '../lib/titles';
 import Avatar from '../components/Avatar';
 import BookMark from '../components/BookMark';
+import { useConfirm } from '../components/primitives/ConfirmDialog';
 
 function SessionCard({ session, onClick, t }) {
   const now = new Date();
@@ -49,6 +50,7 @@ export default function BookClubDetail() {
   const { go, route } = useRouter();
   const { user } = useAuth();
   const t = useT();
+  const confirm = useConfirm();
 
   const clubId = route.params?.clubId;
   const [detail, setDetail] = useState(null);
@@ -92,7 +94,7 @@ export default function BookClubDetail() {
   }
 
   async function handleRegenerateToken() {
-    if (!confirm(t('clubs.confirmRegenerate'))) return;
+    if (!(await confirm(t('clubs.confirmRegenerate')))) return;
     const newToken = await regenerateJoinToken(clubId);
     if (newToken) {
       setDetail((d) => d ? { ...d, club: { ...d.club, join_token: newToken } } : d);
@@ -101,7 +103,7 @@ export default function BookClubDetail() {
   }
 
   async function handleRemoveMember(userId, displayName) {
-    if (!confirm(t('clubs.confirmRemoveMember', { name: displayName }))) return;
+    if (!(await confirm({ message: t('clubs.confirmRemoveMember', { name: displayName }), confirmLabel: t('common.remove'), danger: true }))) return;
     await supabase.from('book_club_members').delete().eq('club_id', clubId).eq('user_id', userId);
     await loadDetail();
   }
@@ -112,7 +114,7 @@ export default function BookClubDetail() {
   }
 
   async function handleLeave() {
-    if (!confirm(t('clubs.confirmLeaveText'))) return;
+    if (!(await confirm({ message: t('clubs.confirmLeaveText'), danger: true }))) return;
     await leaveClub(clubId);
     go('book-clubs');
   }

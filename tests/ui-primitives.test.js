@@ -44,6 +44,11 @@ describe('modals use the shared Modal', () => {
     expect(offenders).toEqual([]);
   });
 
+  it('no component calls the native confirm() — use useConfirm()', () => {
+    const offenders = files.filter((f) => /(^|[^.\w])(window\.)?confirm\(/m.test(readFileSync(f, 'utf8').replace(/await confirm\(/g, '')));
+    expect(offenders).toEqual([]);
+  });
+
   it('no component toggles body scrolling itself', () => {
     const offenders = files.filter((f) => /document\.body\.style\.overflow/.test(readFileSync(f, 'utf8')));
     expect(offenders).toEqual([]);

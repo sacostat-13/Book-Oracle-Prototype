@@ -43,7 +43,7 @@ export default function OracleGateDialog() {
       })
     : null;
 
-  function confirm() {
+  function proceed() {
     // Acknowledged by proceeding, not by dismissing — see
     // profiles.oracle_intro_seen_at in schema_v44.
     if (isIntro) markIntroSeen();
@@ -121,7 +121,7 @@ export default function OracleGateDialog() {
         <button className="btn-secondary" onClick={() => resolveGate(false)}>
           {t('oracleGate.cancel')}
         </button>
-        <button className="btn-primary" onClick={confirm}>
+        <button className="btn-primary" onClick={proceed}>
           {t(isIntro ? 'oracleGate.introConfirm' : 'oracleGate.lastConfirm')}
         </button>
       </div>

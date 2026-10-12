@@ -23,6 +23,7 @@ import { groupFamilyAccomplishments, nextRung } from '../lib/ledger';
 import { FamilyRowsSkeleton } from '../components/Skeleton';
 import BookMark from '../components/BookMark';
 import InstallAppSection from '../components/InstallAppSection';
+import { useConfirm } from '../components/primitives/ConfirmDialog';
 
 // v0.75: display price of the annual Pro variant, e.g. "$49.99". Unset = monthly only.
 const ANNUAL_PRICE = import.meta.env.VITE_ANNUAL_PRICE || null;
@@ -1133,6 +1134,7 @@ export default function Profile() {
   const { user } = useAuth();
   const { go, route } = useRouter();
   const t = useT();
+  const confirm = useConfirm();
   const tNode = useTNode();
   const { lang } = useI18n();
   const fileRef = useRef(null);
@@ -1785,8 +1787,8 @@ export default function Profile() {
         <div className="pf-section">
           <button
             className="btn-danger"
-            onClick={() => {
-              if (confirm(t('profile.confirmReset'))) {
+            onClick={async () => {
+              if (await confirm({ message: t('profile.confirmReset'), confirmLabel: t('profile.resetProfile'), danger: true })) {
                 resetAll();
                 go('dashboard');
               }

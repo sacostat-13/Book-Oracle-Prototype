@@ -6,6 +6,7 @@ import { useState } from 'react';
 import { useData } from '../lib/DataContext';
 import { useT } from '../lib/I18nContext';
 import AddToListModal from './AddToListModal';
+import { useConfirm } from './primitives/ConfirmDialog';
 
 export default function SelectionBar({
   count,
@@ -25,6 +26,7 @@ export default function SelectionBar({
     showToast,
   } = useData();
   const t = useT();
+  const confirm = useConfirm();
   const [showListPicker, setShowListPicker] = useState(false);
   const [working, setWorking] = useState(false);
 
@@ -43,7 +45,7 @@ export default function SelectionBar({
   async function handleRemove() {
     const books = selectedBooks();
     const label = t('common.books');
-    if (!confirm(`${t('common.remove')} ${books.length} ${label}?`)) return;
+    if (!(await confirm({ message: t('selection.confirmRemove', { count: books.length, label }), confirmLabel: t('common.remove'), danger: true }))) return;
     if (context === 'wishlist') {
       await runOnAll(b => removeFromWishlist(b), `${books.length} ${t('selection.removedWishlist')}`);
     } else if (context === 'library') {

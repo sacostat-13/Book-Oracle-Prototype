@@ -19,6 +19,7 @@ import { useT } from '../lib/I18nContext';
 import { useOracleQuota } from '../lib/OracleQuotaContext';
 import { useProLimits } from '../lib/proGates';
 import { fetchTitlesByUserId } from '../lib/titles';
+import { useConfirm } from './primitives/ConfirmDialog';
 
 // ── Oracle question suggestion fetch ─────────────────────────────────────────
 
@@ -194,6 +195,7 @@ function QuestionBlock({ question, isAdmin, onPostAnswer, onDelete, onEditCommen
 export default function SessionDiscussion({ sessionId, clubId, isAdmin, book = {} }) {
   const { postComment, deleteComment, editComment, addQuestion, deleteQuestion } = useData();
   const t = useT();
+  const confirm = useConfirm();
   const { handleQuotaError, onCallSucceeded, confirmOracleCall } = useOracleQuota();
   const { isPro, goUpgrade } = useProLimits(); // v0.72: Oracle prompts are Pro
   const [discussion, setDiscussion] = useState(null);
@@ -259,7 +261,7 @@ export default function SessionDiscussion({ sessionId, clubId, isAdmin, book = {
   }
 
   async function handleDeleteQuestion(questionId) {
-    if (!confirm(t('discussion.confirmRemoveQuestion'))) return;
+    if (!(await confirm({ message: t('discussion.confirmRemoveQuestion'), confirmLabel: t('common.remove'), danger: true }))) return;
     await deleteQuestion(questionId);
     await loadDiscussion();
   }

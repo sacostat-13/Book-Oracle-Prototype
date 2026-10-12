@@ -15,6 +15,7 @@ import AnthologyInsights from '../components/AnthologyInsights'; // v0.74
 
 // How many covers to show per list before collapsing into a "+N more" box.
 const COVER_PREVIEW = 6;
+import { useConfirm } from '../components/primitives/ConfirmDialog';
 
 function CreateListModal({ genres, onSave, onClose }) {
   const [title, setTitle] = useState('');
@@ -94,6 +95,7 @@ export default function Lists() {
   const { state, createList, updateList, deleteList, setListGenres, setListMoods } = useData();
   const { go } = useRouter();
   const t = useT();
+  const confirm = useConfirm();
   const tNode = useTNode();
   const { lang } = useI18n();
   const [creating, setCreating] = useState(false);
@@ -115,7 +117,7 @@ export default function Lists() {
 
   async function handleDelete(list, e) {
     e.stopPropagation();
-    if (!confirm(`${t('common.delete')} "${list.title}"?`)) return;
+    if (!(await confirm({ title: list.title, message: t('lists.confirmDelete'), confirmLabel: t('common.delete'), danger: true }))) return;
     await deleteList(list.id);
   }
 

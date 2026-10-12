@@ -37,6 +37,7 @@ import { useAuth } from '../lib/AuthContext';
 import { fetchRecommendationReason } from '../lib/oracleProvenance';
 import OracleLongReading from '../components/OracleLongReading';
 import BookMark from '../components/BookMark';
+import { useConfirm } from '../components/primitives/ConfirmDialog';
 
 
 // ─── Similar books ────────────────────────────────────────────────────────────
@@ -236,6 +237,7 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
   } = useData();
   const { route, go } = useRouter();
   const t = useT();
+  const confirm = useConfirm();
   const { lang } = useI18n();
 
   // The book is passed via App-level state (route.params.bookKey) and resolved
@@ -1529,8 +1531,8 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
                   <button
                     className="memory-entry__delete"
                     title={t('memory.delete')}
-                    onClick={() => {
-                      if (window.confirm(t('memory.deleteConfirm'))) {
+                    onClick={async () => {
+                      if (await confirm({ message: t('memory.deleteConfirm'), confirmLabel: t('common.delete'), danger: true })) {
                         deleteReadingMemory(currentlyReadingRow || libraryRow || display, m.id);
                       }
                     }}

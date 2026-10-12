@@ -8,6 +8,7 @@ import { I18nProvider } from './lib/I18nContext';
 import { ThemeProvider } from './lib/ThemeContext';
 import { OracleQuotaProvider } from './lib/OracleQuotaContext';
 import PWAUpdatePrompt from './components/PWAUpdatePrompt.jsx';
+import { ConfirmProvider } from './components/primitives/ConfirmDialog.jsx';
 import './styles/main.scss';
 // Side-effect import: must register beforeinstallprompt before any view mounts.
 import './lib/installPrompt';
@@ -20,7 +21,9 @@ ReactDOM.createRoot(document.getElementById('root')).render(
           <DataProvider>
             <OracleQuotaProvider>
               <RouterProvider>
-                <App />
+                <ConfirmProvider>
+                  <App />
+                </ConfirmProvider>
               </RouterProvider>
             </OracleQuotaProvider>
           </DataProvider>

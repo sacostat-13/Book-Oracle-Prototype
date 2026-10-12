@@ -16,6 +16,7 @@ import ShelfFilters from '../components/ShelfFilters';
 import { useShelfFilters } from '../lib/useShelfFilters';
 import { useShelfGrouping } from '../lib/useShelfGrouping';
 import BookMark from '../components/BookMark';
+import { useConfirm } from '../components/primitives/ConfirmDialog';
 
 // v0.15 phase 2.5: two-dropdown filter (genres + categories) + Oracle genre grouping.
 // v0.16 DS pass: migrated to .lv-* / .btn-* / .select tokens.
@@ -34,6 +35,7 @@ export default function Library({ onOpenBook }) {
   const { state, removeFromLibrary, updateReadBook, getCategoriesForBook } = useData();
   const { go } = useRouter();
   const t = useT();
+  const confirm = useConfirm();
   const tNode = useTNode();
   const [bulkOpen, setBulkOpen] = useState(false);
   const [editing, setEditing] = useState(null);
@@ -300,9 +302,9 @@ export default function Library({ onOpenBook }) {
                           </button>
                           <button
                             className="btn btn-danger btn--sm"
-                            onClick={(e) => {
+                            onClick={async (e) => {
                               e.stopPropagation();
-                              if (confirm(`Remove "${b.t}" from your library?`)) removeFromLibrary(b);
+                              if (await confirm({ message: t('library.confirmRemove', { title: b.t }), confirmLabel: t('common.remove'), danger: true })) removeFromLibrary(b);
                             }}
                           >
                             {t('library.remove')}

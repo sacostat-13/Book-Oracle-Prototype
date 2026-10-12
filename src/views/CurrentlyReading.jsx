@@ -7,11 +7,13 @@ import BookCover from '../components/BookCover';
 import RatingModal from '../components/RatingModal';
 import ProgressUpdateModal from '../components/ProgressUpdateModal';
 import EmptyState from '../components/EmptyState';
+import { useConfirm } from '../components/primitives/ConfirmDialog';
 
 export default function CurrentlyReading({ onOpenBook }) {
   const { state, removeFromCurrentlyReading, finishReading, updateReadingProgress } = useData();
   const { go } = useRouter();
   const t = useT();
+  const confirm = useConfirm();
   const tNode = useTNode();
   const [finishing, setFinishing] = useState(null);
   const [updatingProgress, setUpdatingProgress] = useState(null);
@@ -146,8 +148,8 @@ export default function CurrentlyReading({ onOpenBook }) {
                     </button>
                     <button
                       className="btn-danger"
-                      onClick={() => {
-                        if (confirm(t('currentlyReading.confirmRemove', { title: b.t }))) {
+                      onClick={async () => {
+                        if (await confirm({ message: t('currentlyReading.confirmRemove', { title: b.t }), confirmLabel: t('common.remove'), danger: true })) {
                           removeFromCurrentlyReading(b);
                         }
                       }}
