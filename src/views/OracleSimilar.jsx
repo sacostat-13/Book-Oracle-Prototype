@@ -42,7 +42,7 @@ function fallbackSimilar(selection, candidates) {
     // This score is a genuine computation against the SEED books you picked
     // (not your overall taste profile) — "similar to these" is the whole
     // point of this mode, so that's the more correct basis here.
-    books: scored.slice(0, 5).map((s) => ({
+    books: scored.slice(0, SIMILAR_COUNT).map((s) => ({
       ...s.book,
       match: maxPossible > 0 ? Math.round((s.score / maxPossible) * 100) : undefined,
     })),

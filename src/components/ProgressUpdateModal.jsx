@@ -1,7 +1,7 @@
 // ProgressUpdateModal.jsx — v0.37.3
-// v0.44: Reading Memory capture + recall (docs/reading-memory-v1-spec.md)
-// v0.65: reader editions (docs/reader-editions-v1-spec.md)
-// v0.65.1: audiobooks (docs/audiobook-progress-v1-spec.md)
+// v0.44: Reading Memory capture + recall (docs/specs/reading-memory-v1-spec.md)
+// v0.65: reader editions (docs/specs/reader-editions-v1-spec.md)
+// v0.65.1: audiobooks (docs/specs/audiobook-progress-v1-spec.md)
 //
 // FORMAT DECIDES THE FORM.
 //

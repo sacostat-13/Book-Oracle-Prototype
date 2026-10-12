@@ -3,7 +3,7 @@
 //   ISBNDB_API_KEY=... node batch-scripts/probes/isbndb.probe.mjs 9788419680877
 //
 // Written for the 7-day trial, and deliberately NOT a backfill. See
-// docs/isbndb-evaluation.md: the recommendation is not to subscribe, and if you
+// docs/audits/isbndb-evaluation.md: the recommendation is not to subscribe, and if you
 // do trial it, the thing to spend the week on is answering two questions the
 // documentation does not:
 //

@@ -149,9 +149,11 @@ export function computeLocalMatch(book, tasteProfile, genresByBookId) {
   const genres = (tagged && tagged.length > 0) ? tagged : (book.g ? [{ name: book.g }] : []);
   const genreNames = genres.map((g) => g.name).filter(Boolean);
 
-  // Genre affinity (0-1): best-matching genre's average rating, scaled from
-  // 1-5★ to 0-1. If no rating history but it matches a stated favorite
-  // genre, give partial credit rather than nothing.
+  // Genre affinity (0.2-1): best-matching genre's average rating divided by 5,
+  // so a 1★ genre still counts 20%. Intended (decided 2026-10-12, docs/reference/MATH.md
+  // §3): a genre the reader rated low is weak evidence, not proof of dislike.
+  // If no rating history but it matches a stated favorite genre, give partial
+  // credit rather than nothing.
   let genreScore = null;
   if (genreNames.length > 0) {
     const ratedMatches = genreNames
@@ -204,4 +206,27 @@ export function suggestLevelFromTaste(tasteProfile) {
   const earned = Math.round(tasteProfile.avgComplexity);
   if (earned <= stated) return null;
   return stated + 1; // one step at a time, regardless of how far ahead earned is
+}
+
+// ---------- weighted draws (docs/reference/MATH.md §8) ----------
+// How strongly a local draw favours better-matching books. The draw weight is
+// (match / 100) ^ DRAW_WEIGHT_POWER, so with power 2 a 90% book is 4x as likely
+// as a 45% one: high matches dominate, but a draw still varies between calls
+// instead of always returning the same top three. Raise the power for "show me
+// the best fits", lower it (1 = proportional, 0 = uniform) for more variety.
+export const DRAW_WEIGHT_POWER = 2;
+
+// Books with no usable signal (computeLocalMatch → null) are drawn as if they
+// matched this well — neither favoured nor buried.
+export const UNSCORED_DRAW_MATCH = 50;
+
+/**
+ * Relative weight of a candidate in a local Oracle draw.
+ *
+ * @param {number | null | undefined} match  Local Match % (0-100) or null
+ * @returns {number} weight ≥ 0
+ */
+export function drawWeight(match) {
+  const m = match == null ? UNSCORED_DRAW_MATCH : Math.max(0, Math.min(100, match));
+  return (m / 100) ** DRAW_WEIGHT_POWER;
 }

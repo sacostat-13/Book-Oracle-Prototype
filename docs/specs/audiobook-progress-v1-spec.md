@@ -40,7 +40,7 @@ converted number would flow into `accomplishments.js`, into share cards, into a
 reader's sense of their own year, and nothing downstream could tell it from a
 counted one.
 
-Two units, two stats, never mixed. `docs/isbndb-evaluation.md` refused a paid
+Two units, two stats, never mixed. `docs/audits/isbndb-evaluation.md` refused a paid
 source over a data-provenance obligation; this is the same instinct applied to
 a number we would be inventing ourselves.
 

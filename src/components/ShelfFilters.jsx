@@ -11,7 +11,7 @@
 //
 // Behaviour-neutral extraction: no new controls here yet. The advanced filters
 // (pages, prose, depth, author) attach to this component in a later step; see
-// docs/shelf-filters-v1-spec.md.
+// docs/specs/shelf-filters-v1-spec.md.
 
 import { useMemo, useState } from 'react';
 import { useT } from '../lib/I18nContext';

@@ -12,6 +12,9 @@ import { useAuth } from '../lib/AuthContext';
 import { useOracleQuota } from '../lib/OracleQuotaContext';
 import { callClaude, QuotaExceededError } from '../lib/claudeApi';
 import { bookKey, openBookTab } from '../lib/bookHelpers';
+import { sample } from '../lib/random';
+import { monthlyReadingStreak, streakTemperature } from '../lib/readingStreak';
+import { parseIsoDate } from '../lib/dates';
 import { buildTasteProfile, suggestLevelFromTaste, goalDirective, describeTasteProfile } from '../lib/matchHelpers';
 import { getFollowingFeedEvents } from '../lib/useFollows';
 import { supabase } from '../lib/supabase';
@@ -187,8 +190,9 @@ function OracleSparkWidget({ wishlist, go, t, profile, tasteProfile }) {
     if (!(await confirmOracleCall('spark'))) return;
     setState('loading'); setResult(null);
     try {
-      const titles = (wishlist || [])
-        .sort(() => Math.random() - 0.5).slice(0, 20)
+      // sample() copies before shuffling — `wishlist` is state.wishlist, and the
+      // old in-place .sort() reordered the reader's real wishlist on every draw.
+      const titles = sample(wishlist, 20)
         .map((b) => `"${b.t}" by ${b.a}`).join('\n');
       // v0.38: fold onboarding personalization into the Spark prompt when present —
       // favorite genres bias the pick, current mood shapes the "reason" framing.
@@ -355,7 +359,7 @@ function ReadingStatsWidget({ library, editions, currentlyReading, go, t }) {
   //
   // It is not fixed by giving audiobooks a page count. There is no honest
   // pages-per-hour rate, and a fabricated one would be indistinguishable here
-  // from a counted page — see docs/audiobook-progress-v1-spec.md. Two units,
+  // from a counted page — see docs/specs/audiobook-progress-v1-spec.md. Two units,
   // two tiles, and `pages` now explicitly SKIPS audio editions rather than
   // relying on them happening to be null.
   //
@@ -581,40 +585,35 @@ function SeriesProgressWidget({ library, wishlist, readNext, go, t }) {
 }
 
 // ─── Reading Streak ────────────────────────────────────────────────────────────
+// Consecutive months with a finished book. The counting rule (including the
+// current-month grace period) lives in lib/readingStreak.js — see docs/reference/MATH.md.
 function StreakWidget({ library, t }) {
-  const sorted = [...library].filter((b) => b.dateRead)
-    .sort((a, b) => new Date(b.dateRead) - new Date(a.dateRead));
-  if (!sorted.length) return null;
+  const { months, includesCurrentMonth, lastFinishedOn } = monthlyReadingStreak(library);
+  if (!lastFinishedOn) return null;
 
-  const lastDate = new Date(sorted[0].dateRead);
-  const now = new Date();
-  let streak = 0;
-  for (let i = 0; i < 24; i++) {
-    const m = now.getMonth() - i;
-    const y = now.getFullYear() + Math.floor(m / 12);
-    const key = `${y}-${String(((m % 12) + 12) % 12 + 1).padStart(2, '0')}`;
-    if (sorted.some((b) => b.dateRead?.slice(0, 7) === key)) streak++;
-    else break;
-  }
-
-  const numMod = streak >= 6 ? ' db-streak__num--hot' : streak >= 3 ? ' db-streak__num--warm' : ' db-streak__num--cold';
+  const lastDate = parseIsoDate(lastFinishedOn);
+  const statusKey = months === 0
+    ? 'dashboard.streakWidgetNone'
+    : includesCurrentMonth ? 'dashboard.streakWidgetActive' : 'dashboard.streakWidgetAtRisk';
 
   return (
     <WidgetShell icon={<IconBook />} label={t('dashboard.streakWidgetTitle')}>
       <div className="db-streak">
         <div className="db-streak__num-col">
-          <div className={`db-streak__num${numMod}`}>{streak}</div>
-          <div className="db-streak__unit">{streak === 1 ? 'month' : 'months'}</div>
+          <div className={`db-streak__num db-streak__num--${streakTemperature(months)}`}>{months}</div>
+          <div className="db-streak__unit">
+            {t(months === 1 ? 'dashboard.streakUnitMonth' : 'dashboard.streakUnitMonthPlural')}
+          </div>
         </div>
         <div>
-          <div className="db-streak__label">
-            {t('dashboard.streakWidgetDays', { count: streak })}
-          </div>
-          <div className="db-streak__sub">
-            {t('dashboard.streakWidgetLastRead', {
-              date: lastDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
-            })}
-          </div>
+          <div className="db-streak__label">{t(statusKey)}</div>
+          {lastDate && (
+            <div className="db-streak__sub">
+              {t('dashboard.streakWidgetLastRead', {
+                date: lastDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
+              })}
+            </div>
+          )}
         </div>
       </div>
     </WidgetShell>

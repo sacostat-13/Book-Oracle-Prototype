@@ -41,7 +41,7 @@ function StatCard({ value, label, sub }) {
 
 // ── v0.45: The Ledger — retroactive trophy shelf ─────────────────────────────
 // A record of what the reader's library has already earned, grouped and dated.
-// Ledger discipline (docs/reading-accomplishments-v1-spec.md): past tense,
+// Ledger discipline (docs/specs/reading-accomplishments-v1-spec.md): past tense,
 // dated, no streaks, no countdowns, no "N to go". Tapping a plaque re-opens
 // its branded share card. The forward-looking "next rung" line is deliberately
 // omitted in v1 — it could not be made to read as a ledger line rather than a
@@ -103,7 +103,7 @@ function ledgerPlaqueLabel(entry, t) {
 // A TRACK, NOT A PROGRESS BAR — and the distinction is the whole design.
 // A bar 76% filled toward 50 is a picture of what you have NOT done, and it
 // invites you to finish it. That is habit-app grammar, and rule 1 of
-// docs/reading-accomplishments-v1-spec.md exists to refuse it. Dots are stops
+// docs/specs/reading-accomplishments-v1-spec.md exists to refuse it. Dots are stops
 // you have made; the connecting line ends where your reading ended rather than
 // stretching toward a target. The next rung is drawn as one hollow dot with its
 // number and nothing else — no fill, no percentage, no "12 to go", no colour

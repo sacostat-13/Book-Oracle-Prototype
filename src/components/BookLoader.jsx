@@ -47,6 +47,7 @@ import { useT } from '../lib/I18nContext';
 import { prefersReducedMotion } from './landing/motion';
 import OracleWaitSpread from './OracleWaitSpread';
 import burst from './landing/burst';
+import { shuffle } from '../lib/random';
 
 const QUOTES = [
   // ── Adventure ──
@@ -745,15 +746,6 @@ const FADE_MS = 500;      // fade transition length
 const LEAVES = 4;         // pages turning in the book mark
 
 gsap.registerPlugin(SplitText);
-
-function shuffle(arr) {
-  const a = [...arr];
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
-  }
-  return a;
-}
 
 const norm = (s) => String(s || '').toLowerCase().replace(/&/g, 'and').replace(/[^a-z0-9]+/g, ' ').trim();
 

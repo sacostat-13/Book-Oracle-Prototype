@@ -8,7 +8,7 @@
 // 417-page English novel saw one number in the modal and a different one
 // everywhere else, and finishing the book deleted the override entirely.
 //
-// See docs/reader-editions-v1-spec.md.
+// See docs/specs/reader-editions-v1-spec.md.
 
 /**
  * The page count to use for THIS reader and THIS book.
@@ -96,7 +96,7 @@ export function normalizeLanguage(raw) {
 // in accomplishments.js and on share cards indistinguishable from a counted
 // one. Two units, two stats.
 //
-// See docs/audiobook-progress-v1-spec.md.
+// See docs/specs/audiobook-progress-v1-spec.md.
 
 /**
  * Total minutes this reader's audio edition runs to, or null.

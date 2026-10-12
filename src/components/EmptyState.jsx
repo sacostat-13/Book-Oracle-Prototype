@@ -1,6 +1,6 @@
 // src/components/EmptyState.jsx — v0.46
 //
-// The shared zero-state (docs/feature-discovery-v1-spec.md, Move 1). Replaces
+// The shared zero-state (docs/specs/feature-discovery-v1-spec.md, Move 1). Replaces
 // the bespoke variants (.lv-empty, .fp-empty, .clubs-empty-*, ad-hoc
 // .empty-state markup) with one component that TEACHES what a feature is for
 // and, optionally, offers the action that fills it — the moment-of-intent place

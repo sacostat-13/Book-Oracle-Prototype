@@ -2,7 +2,7 @@
 //
 // Rules of thumb:
 //   - The popup is for end-users, not developers. Skip the schema/RPC
-//     details — those live in the README. Talk about what the user
+//     details — those live in CHANGELOG.md. Talk about what the user
 //     can now SEE or DO.
 //   - Keep each release to 2-4 short bullets. The popup gets long fast
 //     if every release is a wall of text.

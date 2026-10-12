@@ -1,6 +1,6 @@
 // src/components/CoachMark.jsx — v0.46
 //
-// A single contextual coach-mark (docs/feature-discovery-v1-spec.md, Move 2):
+// A single contextual coach-mark (docs/specs/feature-discovery-v1-spec.md, Move 2):
 // one quiet, dismissible pointer at the one non-obvious thing on a page a
 // first-time visitor would miss. NOT a multi-step tour, never blocking.
 //

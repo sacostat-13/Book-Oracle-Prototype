@@ -16,7 +16,7 @@
 // refactor and reviewing a feature at the same time is how a silent change in
 // filtering gets shipped.
 //
-// See docs/shelf-filters-v1-spec.md.
+// See docs/specs/shelf-filters-v1-spec.md.
 
 import { useState, useMemo, useCallback, useEffect } from 'react';
 
