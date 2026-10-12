@@ -6,7 +6,7 @@ import { useState } from 'react';
 import { useData } from '../lib/DataContext';
 import { useRouter } from '../lib/RouterContext';
 import { useT } from '../lib/I18nContext';
-import CornerBrackets from './CornerBrackets';
+import Modal from './primitives/Modal';
 import ProGate from './ProGate';
 import { useProLimits } from '../lib/proGates';
 
@@ -56,108 +56,109 @@ export default function AddToListModal({ books = [], onClose }) {
   }
 
   return (
-    <div className="overlay" onClick={onClose}>
-      <div className="modal" onClick={e => e.stopPropagation()}>
-        <CornerBrackets />
-        <button className="modal__close" onClick={onClose}>✕</button>
+    <Modal
+      onClose={onClose}
+      label={isSingle ? t('addToList.title') : t('addToList.addMultiple', { count: bookList.length })}
+      sheetOnMobile
+    >
+      <button className="modal__close" onClick={onClose} aria-label={t('common.close')}>✕</button>
 
-        <div className="bp-section__label">
-          {isSingle
-            ? (t('addToList.title'))
-            : t('addToList.addMultiple', { count: bookList.length })}
+      <div className="bp-section__label">
+        {isSingle
+          ? (t('addToList.title'))
+          : t('addToList.addMultiple', { count: bookList.length })}
+      </div>
+
+      {/* Book preview(s) */}
+      {isSingle && singleBook && (
+        <div className="atl-book-row">
+          {singleBook.coverUrl && (
+            <img src={singleBook.coverUrl} alt={singleBook.t}
+              className="atl-cover" />
+          )}
+          <div>
+            <div className="atl-book-title">
+              {singleBook.t}
+            </div>
+            <div className="atl-book-author">
+              {singleBook.a}
+            </div>
+          </div>
         </div>
+      )}
 
-        {/* Book preview(s) */}
-        {isSingle && singleBook && (
-          <div className="atl-book-row">
-            {singleBook.coverUrl && (
-              <img src={singleBook.coverUrl} alt={singleBook.t}
-                className="atl-cover" />
-            )}
-            <div>
-              <div className="atl-book-title">
-                {singleBook.t}
-              </div>
-              <div className="atl-book-author">
-                {singleBook.a}
-              </div>
-            </div>
-          </div>
-        )}
+      {!isSingle && (
+        <div className="session-form__book-row">
+          {bookList.slice(0, 3).map(b => b.t).join(', ')}
+          {bookList.length > 3 && ` ${t('common.and')} ${bookList.length - 3} ${t('common.more')}…`}
+        </div>
+      )}
 
-        {!isSingle && (
-          <div className="session-form__book-row">
-            {bookList.slice(0, 3).map(b => b.t).join(', ')}
-            {bookList.length > 3 && ` ${t('common.and')} ${bookList.length - 3} ${t('common.more')}…`}
-          </div>
-        )}
-
-        {/* Lists */}
-        {lists.length === 0 && !creating ? (
-          <p className="fp-empty">
-            {t('addToList.noLists')}
-          </p>
-        ) : (
-          <div className="pf-series-list">
-            {lists.map(list => {
-              const already = allInList(list);
-              const status = results[list.id];
-              const done = status === 'done' || already;
-              const adding = status === 'adding';
-              return (
-                <button key={list.id}
-                  onClick={() => handleAdd(list)}
-                  disabled={done || adding || saving}
-                  className="atl-list-item" style={{ opacity: done ? 0.7 : 1 }}
-                >
-                  <span className="atl-list-name">
-                    {list.title}
-                  </span>
-                  <span className="pf-overline" style={{ flexShrink: 0, marginLeft: "0.75rem", marginBottom: 0 }}>
-                    {adding ? '…' : done ? t('addToList.addedDone') : t('addToList.bookCount', { count: list.books?.length || 0 })}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-        )}
-
-        {/* Create new list */}
-        {creating ? (
-          <div className="lists-modal-form">
-            <input
-              className="input"
-              placeholder={t('addToList.listNamePlaceholder')}
-              value={newTitle}
-              onChange={e => setNewTitle(e.target.value)}
-              autoFocus
-              onKeyDown={e => e.key === 'Enter' && handleCreate()}
-            />
-            <div className="lists-modal-actions">
-              <button className="btn-primary" onClick={handleCreate} disabled={!newTitle.trim() || saving} style={{ flex: 1 }}>
-                {saving ? '…' : (t('addToList.createAndAdd'))}
+      {/* Lists */}
+      {lists.length === 0 && !creating ? (
+        <p className="fp-empty">
+          {t('addToList.noLists')}
+        </p>
+      ) : (
+        <div className="pf-series-list">
+          {lists.map(list => {
+            const already = allInList(list);
+            const status = results[list.id];
+            const done = status === 'done' || already;
+            const adding = status === 'adding';
+            return (
+              <button key={list.id}
+                onClick={() => handleAdd(list)}
+                disabled={done || adding || saving}
+                className="atl-list-item" style={{ opacity: done ? 0.7 : 1 }}
+              >
+                <span className="atl-list-name">
+                  {list.title}
+                </span>
+                <span className="pf-overline" style={{ flexShrink: 0, marginLeft: "0.75rem", marginBottom: 0 }}>
+                  {adding ? '…' : done ? t('addToList.addedDone') : t('addToList.bookCount', { count: list.books?.length || 0 })}
+                </span>
               </button>
-              <button className="btn-tertiary" onClick={() => { setCreating(false); setNewTitle(''); }}>
-                {t('common.cancel')}
-              </button>
-            </div>
-          </div>
-        ) : (
-          <div className="modal-foot">
-            {canCreate('lists') ? (
-              <button className="btn-tertiary" onClick={() => setCreating(true)}>
-                + {t('lists.newListBtn')}
-              </button>
-            ) : (
-              <ProGate feature="lists" compact />
-            )}
-            <button className="btn-secondary" onClick={() => { onClose(); go('lists'); }}
-            >
-              {t('addToList.manageLists')}
+            );
+          })}
+        </div>
+      )}
+
+      {/* Create new list */}
+      {creating ? (
+        <div className="lists-modal-form">
+          <input
+            className="input"
+            placeholder={t('addToList.listNamePlaceholder')}
+            value={newTitle}
+            onChange={e => setNewTitle(e.target.value)}
+            autoFocus
+            onKeyDown={e => e.key === 'Enter' && handleCreate()}
+          />
+          <div className="lists-modal-actions">
+            <button className="btn-primary" onClick={handleCreate} disabled={!newTitle.trim() || saving} style={{ flex: 1 }}>
+              {saving ? '…' : (t('addToList.createAndAdd'))}
+            </button>
+            <button className="btn-tertiary" onClick={() => { setCreating(false); setNewTitle(''); }}>
+              {t('common.cancel')}
             </button>
           </div>
-        )}
-      </div>
-    </div>
+        </div>
+      ) : (
+        <div className="modal-foot">
+          {canCreate('lists') ? (
+            <button className="btn-tertiary" onClick={() => setCreating(true)}>
+              + {t('lists.newListBtn')}
+            </button>
+          ) : (
+            <ProGate feature="lists" compact />
+          )}
+          <button className="btn-secondary" onClick={() => { onClose(); go('lists'); }}
+          >
+            {t('addToList.manageLists')}
+          </button>
+        </div>
+      )}
+    </Modal>
   );
 }

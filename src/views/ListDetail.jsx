@@ -7,7 +7,7 @@ import { useRouter, RouteLink } from '../lib/RouterContext';
 import { useT, useI18n } from '../lib/I18nContext';
 import { openBookTab, bookKey, shelfStateOf, shelfKeySets } from '../lib/bookHelpers';
 import { moodTitleKey } from '../lib/moods';
-import CornerBrackets from '../components/CornerBrackets';
+import Modal from '../components/primitives/Modal';
 import { useSelection } from '../lib/useSelection';
 import SelectionBar from '../components/SelectionBar';
 import BookCover from '../components/BookCover';
@@ -72,48 +72,45 @@ function AddBookPicker({ list, onClose }) {
   }
 
   return (
-    <div className="overlay" onClick={onClose}>
-      <div className="modal" onClick={e => e.stopPropagation()}>
-        <CornerBrackets />
-        <button className="modal__close" onClick={onClose}>✕</button>
-        <div className="bp-section__label">
-          {t('listDetail.addBook')}
-        </div>
-        <input
-          className="input"
-          placeholder={t('listDetail.searchPlaceholder')}
-          value={query}
-          onChange={e => setQuery(e.target.value)}
-          autoFocus
-        />
-        <div className="ldetail-scroll">
-          {candidates.length === 0 && (
-            <div className="ldetail-empty">
-              {t('listDetail.noResults')}
-            </div>
-          )}
-          {candidates.map((b, i) => (
-            <div key={bookKey(b) + i}
-              className="ldetail-pick-row"
-              onMouseEnter={e => e.currentTarget.style.background = 'rgba(176,140,63,0.06)'}
-              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-              onClick={() => add(b)}
-            >
-              <div className="ldetail-pick-cover--placeholder">
-                <BookCover title={b.t} author={b.a} coverUrl={b.coverUrl} />
-              </div>
-              <div className="ldetail-pick-body">
-                <div className="ldetail-pick-title">{b.t}</div>
-                <div className="ldetail-pick-author">{b.a}</div>
-              </div>
-              <span className="btn-text">
-                {adding === b.bookId ? '…' : '+ Add'}
-              </span>
-            </div>
-          ))}
-        </div>
+    <Modal onClose={onClose} label={t('listDetail.addBook')} sheetOnMobile>
+      <button className="modal__close" onClick={onClose} aria-label={t('common.close')}>✕</button>
+      <div className="bp-section__label">
+        {t('listDetail.addBook')}
       </div>
-    </div>
+      <input
+        className="input"
+        placeholder={t('listDetail.searchPlaceholder')}
+        value={query}
+        onChange={e => setQuery(e.target.value)}
+        autoFocus
+      />
+      <div className="ldetail-scroll">
+        {candidates.length === 0 && (
+          <div className="ldetail-empty">
+            {t('listDetail.noResults')}
+          </div>
+        )}
+        {candidates.map((b, i) => (
+          <div key={bookKey(b) + i}
+            className="ldetail-pick-row"
+            onMouseEnter={e => e.currentTarget.style.background = 'rgba(176,140,63,0.06)'}
+            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+            onClick={() => add(b)}
+          >
+            <div className="ldetail-pick-cover--placeholder">
+              <BookCover title={b.t} author={b.a} coverUrl={b.coverUrl} />
+            </div>
+            <div className="ldetail-pick-body">
+              <div className="ldetail-pick-title">{b.t}</div>
+              <div className="ldetail-pick-author">{b.a}</div>
+            </div>
+            <span className="btn-text">
+              {adding === b.bookId ? '…' : '+ Add'}
+            </span>
+          </div>
+        ))}
+      </div>
+    </Modal>
   );
 }
 

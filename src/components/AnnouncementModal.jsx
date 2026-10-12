@@ -3,23 +3,14 @@
 // Receives the announcement data directly from the notification payload
 // so it works without an extra DB fetch.
 
-import { useEffect } from 'react';
+import { useId } from 'react';
 import { useT } from '../lib/I18nContext';
-import CornerBrackets from './CornerBrackets';
+import Modal from './primitives/Modal';
 
 export default function AnnouncementModal({ announcement, onClose }) {
   const t = useT();
 
-  useEffect(() => {
-    function onKey(e) { if (e.key === 'Escape') onClose?.(); }
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [onClose]);
-
-  useEffect(() => {
-    document.body.style.overflow = 'hidden';
-    return () => { document.body.style.overflow = ''; };
-  }, []);
+  const titleId = useId();
 
   if (!announcement) return null;
 
@@ -28,47 +19,41 @@ export default function AnnouncementModal({ announcement, onClose }) {
   const content = (body || preview || '').replace(/\\n/g, '\n');
 
   return (
-    <div
-      className="rating-modal-overlay"
-      onClick={(e) => { if (e.target === e.currentTarget) onClose?.(); }}
-    >
-      <div className="rating-modal modal-wide">
-        <CornerBrackets />
-        {/* Header */}
-        <div className="modal-head">
-          <div>
-            <div className="rn-version">
-              {t('notifications.announcement')}
-            </div>
-            <h2 className="rn-title">
-              {title}
-            </h2>
+    <Modal onClose={onClose} labelledBy={titleId} size="lg" layout="sections">
+      {/* Header */}
+      <div className="modal-head">
+        <div>
+          <div className="rn-version">
+            {t('notifications.announcement')}
           </div>
-          <button
-            onClick={onClose}
-            aria-label={t('common.close')}
-            className="modal-close-btn"
-          >
-            ×
-          </button>
+          <h2 className="rn-title" id={titleId}>
+            {title}
+          </h2>
         </div>
-
-        {/* Body */}
-        <div className="modal-body">
-          {content.split('\n').filter(Boolean).map((para, i) => (
-            <p key={i} className="about-section__body">
-              {para}
-            </p>
-          ))}
-        </div>
-
-        {/* Footer */}
-        <div className="modal-foot">
-          <button className="btn-primary" onClick={onClose}>
-            {t('common.close')}
-          </button>
-        </div>
+        <button
+          onClick={onClose}
+          aria-label={t('common.close')}
+          className="modal-close-btn"
+        >
+          ×
+        </button>
       </div>
-    </div>
+
+      {/* Body */}
+      <div className="modal-body">
+        {content.split('\n').filter(Boolean).map((para, i) => (
+          <p key={i} className="about-section__body">
+            {para}
+          </p>
+        ))}
+      </div>
+
+      {/* Footer */}
+      <div className="modal-foot">
+        <button className="btn-primary" onClick={onClose}>
+          {t('common.close')}
+        </button>
+      </div>
+    </Modal>
   );
 }

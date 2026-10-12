@@ -1,0 +1,111 @@
+// Modal.module.scss — the modal shell (CSS Modules pilot, spike item S4).
+//
+// Moved here from pages/_social.scss (.rating-modal-overlay, .rating-modal),
+// pages/_misc.scss (.modal-wide) and components/_modal.scss (.overlay, .modal,
+// .modal--scroll and the mobile sheet). Values are unchanged.
+//
+// Every rule is wrapped in :where() — zero specificity — so a page class passed
+// through `className` / `overlayClassName` (e.g. .oracle-gate, .share-modal)
+// always wins, even though module CSS is emitted after main.scss.
+@use '../../styles/tokens';
+
+// ── Backdrop ────────────────────────────────────────────────────────────────
+:where(.overlay) {
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 8, 6, .78);
+  backdrop-filter: blur(4px);
+  z-index: 1000;
+  display: flex;
+  // flex-start, not center: a centred flex item that outgrows its container
+  // spills past the top edge where nothing can scroll to it. `margin: auto` on
+  // the panel restores centring whenever it fits.
+  align-items: flex-start;
+  justify-content: center;
+  padding: 1rem;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+// ── Panel (card layout, the default) ────────────────────────────────────────
+:where(.panel) {
+  position: relative;
+  margin: auto;
+  background: var(--ro-surface);
+  border: 1px solid var(--ro-border-strong);
+  border-radius: var(--ro-radius-xl);
+  width: 100%;
+  padding: 32px;
+  box-shadow: var(--ro-shadow);
+  // No modal may exceed the viewport (v0.60.3): on a short screen the footer
+  // buttons must stay reachable, so the panel caps and scrolls itself.
+  max-height: calc(100vh - 2rem);  // fallback
+  max-height: calc(100dvh - 2rem); // excludes mobile browser chrome
+  overflow-y: auto;
+  overscroll-behavior: contain;
+
+  &:focus { outline: none; } // focus lands here only when nothing inside is focusable
+}
+
+:where(.sm) { max-width: 420px; }
+:where(.md) { max-width: 480px; }
+:where(.lg) { max-width: 640px; max-height: 85vh; }
+
+// ── Sections layout: pinned head and foot, only the body scrolls ───────────
+// `min-height: 0` on the body is what lets it shrink: a flex child defaults to
+// min-height:auto and would otherwise push the footer off screen.
+:where(.sections) {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 0;
+
+  > :where(:global(.modal-head), :global(.modal__head), :global(.modal-foot), :global(.modal__actions)) {
+    flex: 0 0 auto;
+  }
+  > :where(:global(.modal-body), :global(.modal__body)) {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+  > :where(:global(.modal__actions)) {
+    background: var(--ro-surface);
+  }
+}
+
+// ── Mobile bottom sheet (opt-in: sheetOnMobile) ─────────────────────────────
+@keyframes sheet-in {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}
+
+@include tokens.ro-down(mobile) {
+  :where(.sheetOverlay) {
+    align-items: flex-end;
+    padding: 0;
+  }
+  :where(.sheet) {
+    margin: 0;
+    max-width: none;
+    border-radius: var(--ro-radius-xl) var(--ro-radius-xl) 0 0;
+    max-height: 92vh;
+    animation: sheet-in .28s ease;
+  }
+}
+
+// ── Fullscreen (camera scanner): backdrop only, no panel chrome ─────────────
+:where(.fullscreenOverlay) {
+  padding: 0;
+  align-items: stretch;
+  justify-content: stretch;
+}
+:where(.fullscreen) {
+  width: 100%;
+  &:focus { outline: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :where(.sheet) { animation: none; }
+}

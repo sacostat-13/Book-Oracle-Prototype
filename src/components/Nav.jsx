@@ -16,6 +16,8 @@ import { CURRENT_VERSION, currentRelease } from '../lib/releases';
 import NavSearch from './NavSearch';
 import ScanModal from './ScanModal';
 import { useT } from '../lib/I18nContext';
+import { useClickOutside } from '../hooks/useClickOutside';
+import { useScrollLock } from '../hooks/useScrollLock';
 
 
 // ── SVG icons ─────────────────────────────────────────────────────────────────
@@ -54,16 +56,6 @@ const LogoMark = () => {
 };
 
 // ── Utility: close-on-outside-click hook ──────────────────────────────────────
-function useClickOutside(ref, onClose) {
-  useEffect(() => {
-    function handler(e) {
-      if (ref.current && !ref.current.contains(e.target)) onClose();
-    }
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, [ref, onClose]);
-}
-
 // ── Notification item ─────────────────────────────────────────────────────────
 function NotifItem({ n, t, onClose, go, markOneRead, onAnnouncement }) {
   const actor = n.actor;
@@ -193,7 +185,9 @@ export default function Nav({ onPreviewBook, guestMode = false }) {
     if (!release?.major) return;
     const devReplay = import.meta.env.DEV && devReplayNonce > 0;
     if (!devReplay && state.lastSeenVersion === CURRENT_VERSION) return;
-    if (document.querySelector('.rating-modal-overlay, .overlay')) return;
+    // Any open dialog — every modal renders role="dialog" aria-modal="true"
+    // (primitives/Modal, ScanModal). Not a class name: Modal's are hashed.
+    if (document.querySelector('[aria-modal="true"]')) return;
     announceChecked.current = true;
     setAnnounceOpen(true);
     // The dev replay deliberately does not mark it seen, so ?whatsnew=reset
@@ -230,10 +224,9 @@ export default function Nav({ onPreviewBook, guestMode = false }) {
     setMenuOpen(false);
   }, [route.name]);
 
-  useEffect(() => {
-    document.body.style.overflow = menuOpen ? 'hidden' : '';
-    return () => { document.body.style.overflow = ''; };
-  }, [menuOpen]);
+  // Counted lock shared with modals, so closing the menu can't unlock the page
+  // behind a dialog that is still open.
+  useScrollLock(menuOpen);
 
   function nav(name, params) {
     setMenuOpen(false); setBooksOpen(false); setSocialOpen(false);

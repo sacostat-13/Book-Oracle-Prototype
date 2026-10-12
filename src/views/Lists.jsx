@@ -6,7 +6,7 @@ import { useRouter, RouteLink } from '../lib/RouterContext';
 import { useT, useTNode, useI18n } from '../lib/I18nContext';
 import { openBookTab } from '../lib/bookHelpers';
 import BookCover from '../components/BookCover';
-import CornerBrackets from '../components/CornerBrackets';
+import Modal from '../components/primitives/Modal';
 import EmptyState from '../components/EmptyState';
 import ListMetaEditor from '../components/ListMetaEditor';
 import { useProLimits } from '../lib/proGates'; // v0.72: Free curates up to three Anthologies
@@ -33,63 +33,60 @@ function CreateListModal({ genres, onSave, onClose }) {
   }
 
   return (
-    <div className="overlay" onClick={onClose}>
-      {/* modal--scroll, not the plain modal: this form grew a genre picker and
-          a mood picker, and on a phone the Create button was sitting below all
-          of them. Head and actions are now pinned; only the middle scrolls. */}
-      <div className="modal modal--narrow modal--scroll" onClick={e => e.stopPropagation()}>
-        <CornerBrackets />
-        <button className="modal__close" onClick={onClose}>✕</button>
-        <div className="modal__head">
-          <div className="bp-section__label">
-            {t('lists.newListBtn')}
-          </div>
-        </div>
-        <div className="modal__body lists-modal-form">
-          <div>
-            <label className="field-label">{t('report.fieldTitle')}</label>
-            <input
-              className="input"
-              placeholder={t('lists.newListPlaceholder')}
-              value={title}
-              onChange={e => setTitle(e.target.value)}
-              autoFocus
-              onKeyDown={e => e.key === 'Enter' && handleSave()}
-            />
-          </div>
-          <div>
-            <label className="field-label">
-              {t('bookModal.description')}{' '}
-              <span className="lists-optional-label">({t('lists.optional')})</span>
-            </label>
-            <textarea
-              className="textarea"
-              placeholder={t('lists.descPlaceholder')}
-              value={description}
-              onChange={e => setDescription(e.target.value)}
-              rows={3}
-            />
-          </div>
-
-          <ListMetaEditor
-            genres={genres}
-            genreIds={genreIds}
-            moods={moods}
-            onGenresChange={setGenreIds}
-            onMoodsChange={setMoods}
-            disabled={saving}
-            hint={t('lists.metaHint')}
-          />
-
-        </div>
-        <div className="modal__actions lists-modal-actions">
-          <button className="btn-tertiary" onClick={onClose}>{t('common.cancel')}</button>
-          <button className="btn-primary" onClick={handleSave} disabled={!title.trim() || saving}>
-            {saving ? '…' : (t('lists.createList'))}
-          </button>
+    // layout="sections", not a plain card: this form grew a genre picker and a
+    // mood picker, and on a phone the Create button sat below all of them. Head
+    // and actions are pinned; only the middle scrolls.
+    <Modal onClose={onClose} dismissible={!saving} label={t('lists.newListBtn')} size="sm" layout="sections" sheetOnMobile>
+      <button className="modal__close" onClick={onClose} aria-label={t('common.close')}>✕</button>
+      <div className="modal__head">
+        <div className="bp-section__label">
+          {t('lists.newListBtn')}
         </div>
       </div>
-    </div>
+      <div className="modal__body lists-modal-form">
+        <div>
+          <label className="field-label">{t('report.fieldTitle')}</label>
+          <input
+            className="input"
+            placeholder={t('lists.newListPlaceholder')}
+            value={title}
+            onChange={e => setTitle(e.target.value)}
+            autoFocus
+            onKeyDown={e => e.key === 'Enter' && handleSave()}
+          />
+        </div>
+        <div>
+          <label className="field-label">
+            {t('bookModal.description')}{' '}
+            <span className="lists-optional-label">({t('lists.optional')})</span>
+          </label>
+          <textarea
+            className="textarea"
+            placeholder={t('lists.descPlaceholder')}
+            value={description}
+            onChange={e => setDescription(e.target.value)}
+            rows={3}
+          />
+        </div>
+
+        <ListMetaEditor
+          genres={genres}
+          genreIds={genreIds}
+          moods={moods}
+          onGenresChange={setGenreIds}
+          onMoodsChange={setMoods}
+          disabled={saving}
+          hint={t('lists.metaHint')}
+        />
+
+      </div>
+      <div className="modal__actions lists-modal-actions">
+        <button className="btn-tertiary" onClick={onClose}>{t('common.cancel')}</button>
+        <button className="btn-primary" onClick={handleSave} disabled={!title.trim() || saving}>
+          {saving ? '…' : (t('lists.createList'))}
+        </button>
+      </div>
+    </Modal>
   );
 }
 
