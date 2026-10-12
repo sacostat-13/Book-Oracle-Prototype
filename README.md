@@ -8,7 +8,8 @@ English / Spanish (rioplatense).
 React + Vite + Sass on the front, Supabase for auth and data, Netlify Functions as
 API proxies.
 
-> Current version: **v0.72.2** — release history in [CHANGELOG.md](CHANGELOG.md).
+> Current version: **v0.72.3** — release history in [CHANGELOG.md](CHANGELOG.md).
+> The app announces **v0.72.2** (`CURRENT_VERSION`): internal releases aren't shown to readers.
 
 ## Where to read next
 
@@ -101,11 +102,15 @@ Netlify builds from `netlify.toml` — connect the repo and set the variables ab
 
 ## Releasing
 
-Every release updates three things together:
+Every release gets a version and an entry in [CHANGELOG.md](CHANGELOG.md) (what was wrong,
+what changed, files, how to verify) and bumps the version line at the top of this README.
 
-1. `src/lib/releases.js` — the bilingual EN/ES entry readers see, and `CURRENT_VERSION`;
-2. [CHANGELOG.md](CHANGELOG.md) — the technical entry (what was wrong, what changed, files, how to verify);
-3. the version line at the top of this README.
+What else depends on whether readers should hear about it:
+
+| Release | Also update |
+|---|---|
+| **Reader-facing** — something a reader will see or use | `src/lib/releases.js`: the bilingual EN/ES entry **and** `CURRENT_VERSION`. Bumping `CURRENT_VERSION` shows the What's New dot/popup and the PWA update prompt (`app-version.json` is built from it). |
+| **Internal** — refactors, docs, tooling, fixes nobody would notice | nothing else. Leave `releases.js` and `CURRENT_VERSION` alone, and say so at the top of the CHANGELOG entry. |
 
 ## Google OAuth setup
 

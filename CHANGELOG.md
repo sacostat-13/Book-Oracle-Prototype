@@ -9,10 +9,11 @@ Moved here from README.md on 2026-10-12 (code-health spike, item O1). Entries ar
 
 ---
 
-# Unreleased — code health (branch `sprint1-code-health`)
+# v0.72.3 — Code health (2026-10-12)
 
-Internal work from the 2026-10-12 code-health spike, plus three scoring decisions.
-Reader-visible changes are marked ★ — add them to `releases.js` when this ships.
+Internal release: work from the 2026-10-12 code-health spike, plus three scoring decisions.
+**Not announced in the app** — `releases.js` and `CURRENT_VERSION` stay at v0.72.2, so readers get
+no What's New popup and no update prompt. Changes a reader could notice are marked ★.
 
 ### Fixed
 - ★ Oracle Spark reshuffled the reader's real wishlist on every draw (`.sort` on state). Now samples from a copy.
