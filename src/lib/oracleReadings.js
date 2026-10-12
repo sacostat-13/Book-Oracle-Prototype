@@ -1,7 +1,7 @@
 // src/lib/oracleReadings.js — v0.72.2
 //
 // The Pro Oracle extras, and the loop the miss button opened.
-// Spec: docs/pro-tier-v1-spec.md §6 · Schema: 20260925120000_oracle_readings.sql
+// Spec: docs/specs/pro-tier-v1-spec.md §6 · Schema: 20260925120000_oracle_readings.sql
 //
 //   - loadReading / saveReading: long-form Oracle output worth keeping —
 //     "Why this book" (per book) and the reader's chart (one per reader).

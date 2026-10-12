@@ -1,6 +1,6 @@
 // src/views/Changelog.jsx — v0.46
 //
-// Public, indexable changelog (docs/feature-discovery-v1-spec.md, Move 3).
+// Public, indexable changelog (docs/specs/feature-discovery-v1-spec.md, Move 3).
 // The same bilingual content as the ReleaseNotesModal, but on its own crawlable
 // route (/changelog) with real per-version headings — an SEO asset that
 // captures product- and feature-name searches, rather than a modal buried in

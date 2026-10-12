@@ -1,9 +1,9 @@
 # Architecture
 
 How The Books Oracle is put together: where things live, how data flows, and the
-decisions behind the less obvious parts. Setup is in the [README](../README.md);
+decisions behind the less obvious parts. Setup is in the [README](../../README.md);
 every ranking, weight and threshold is in [MATH.md](MATH.md); release history is
-in [CHANGELOG.md](../CHANGELOG.md).
+in [CHANGELOG.md](../../CHANGELOG.md).
 
 > Split out of README.md on 2026-10-12 (code-health spike, item O1). The *Data
 > model* and *Architecture notes* sections below are carried over unchanged
@@ -58,7 +58,7 @@ for splitting — see the code-health spike.
 │   └── legacy/                Pre-CLI hand-applied schema_vN files (reference only)
 ├── batch-scripts/             Catalog maintenance (scheduled/, manual/, probes/, _shared/)
 ├── tests/                     vitest — batch-script logic, contracts, scoring
-├── docs/                      Specs, audits, MATH.md, this file
+├── docs/                      reference/ (this file, MATH.md), specs/, sql/, audits/ — see docs/README.md
 └── src/
     ├── main.jsx               Mount + providers
     ├── App.jsx                Route switch
@@ -211,6 +211,6 @@ and forward requests. Locally you need `netlify dev` to make them work.
 
 **Activity feed.** The dashboard feed is synthesised client-side from already-loaded state — no extra Supabase queries. Paginated at 5 events per page.
 
-**Styles.** `src/styles/main.scss` is the single entry point and loads every partial with `@use` (Dart Sass modules) in four layers: foundation (tokens, themes, reset, typography, global) → `layout/` → `components/` → `pages/`. Conventions — naming, state classes, tokens, breakpoints — are in [`src/styles/README.md`](../src/styles/README.md).
+**Styles.** `src/styles/main.scss` is the single entry point and loads every partial with `@use` (Dart Sass modules) in four layers: foundation (tokens, themes, reset, typography, global) → `layout/` → `components/` → `pages/`. Conventions — naming, state classes, tokens, breakpoints — are in [`src/styles/README.md`](../../src/styles/README.md).
 
 **Session cache.** `DataContext` caches Supabase state in `sessionStorage` so new tabs render instantly from cache, then validate in background. Cache keyed by userId with 30-minute expiry. Validation checks **two** stamps: `catalog_meta.version` (did the catalogue change?) and a shelf fingerprint from `read_books.updated_at` (did this reader's shelf change under us?). Both only decide whether the cache is *usable* — neither overwrites in-memory state, so no background-refresh race. Before v0.65 only the first existed, which is why a read date corrected outside the tab stayed invisible for 30 minutes and survived a hard refresh.

@@ -1,7 +1,7 @@
 // src/components/OracleMissButton.jsx — v0.71
 //
 // "None of these call to me." Sits under an Oracle result set.
-// Spec: docs/pro-tier-v1-spec.md §4 · RPC: report_oracle_miss (v0.71 migration)
+// Spec: docs/specs/pro-tier-v1-spec.md §4 · RPC: report_oracle_miss (v0.71 migration)
 //
 // Two jobs, in this order:
 //   1. The signal. Every miss marks the draw's recommendations 'dismissed' and

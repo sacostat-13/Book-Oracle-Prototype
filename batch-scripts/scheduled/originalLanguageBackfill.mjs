@@ -27,7 +27,7 @@
 // original_language and, today, almost always finds null and falls back to
 // whichever row has a cover. Filling it is what makes that choice principled —
 // and it is a precondition for the "More about the author" rule in
-// docs/reader-editions-v1-spec.md, which is supposed to show an author's
+// docs/specs/reader-editions-v1-spec.md, which is supposed to show an author's
 // original-language work rather than an arbitrary translation of it.
 //
 // SOURCES — ALL FREE, IN DESCENDING ORDER OF AUTHORITY
@@ -76,7 +76,7 @@
 // original_language, no translated_from, no translator and no original_title
 // field anywhere in the schema. This is not an oversight on ISBNdb's part:
 // original language is a fact about a work and ISBNdb is an edition database.
-// docs/isbndb-evaluation.md reached the same conclusion from the published
+// docs/audits/isbndb-evaluation.md reached the same conclusion from the published
 // docs; this script re-checked the v2 OpenAPI spec (api2.isbndb.com/doc.json)
 // in August 2026 and it still holds.
 //

@@ -74,7 +74,7 @@ export default function OracleCategories({ onOpenBook }) {
   }
 
   // Local draw: score every candidate, then pick `count` with probability
-  // weighted toward higher Match % (docs/MATH.md §8). Unscored books stay in
+  // weighted toward higher Match % (docs/reference/MATH.md §8). Unscored books stay in
   // the running at a neutral weight.
   function drawByMatch(pool, count) {
     return weightedSample(withLocalMatch(pool), count, (b) => drawWeight(b.match));

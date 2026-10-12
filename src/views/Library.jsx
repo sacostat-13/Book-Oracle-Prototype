@@ -56,7 +56,7 @@ export default function Library({ onOpenBook }) {
 
   // v0.62: filter state, options and the filtered result all live in
   // useShelfFilters now — Wishlist.jsx held an identical copy of what used to be
-  // here. See docs/shelf-filters-v1-spec.md.
+  // here. See docs/specs/shelf-filters-v1-spec.md.
   const filters = useShelfFilters(lib, { genresByBookId, getCategoriesForBook, storageKey: 'library_filters' });
   const { filtered, resetKey } = filters;
 

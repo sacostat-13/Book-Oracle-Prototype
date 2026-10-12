@@ -1,6 +1,6 @@
 // src/lib/proGates.js — v0.72
 //
-// What Free can create, in one place. Spec: docs/pro-tier-v1-spec.md §5.
+// What Free can create, in one place. Spec: docs/specs/pro-tier-v1-spec.md §5.
 //
 // The server is the authority: BEFORE INSERT triggers in
 // 20260924120000_pro_gates.sql refuse the row past these numbers, and

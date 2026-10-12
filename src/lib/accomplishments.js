@@ -1,7 +1,7 @@
 // src/lib/accomplishments.js — v0.45
 //
 // Pure logic for Reading Accomplishments: the persistent, retroactive ledger
-// (docs/reading-accomplishments-v1-spec.md). This is the durable counterpart
+// (docs/specs/reading-accomplishments-v1-spec.md). This is the durable counterpart
 // to shareMoments.js — same milestone ladders, but earned once and kept.
 //
 // Two responsibilities, both pure (no React, no Supabase):

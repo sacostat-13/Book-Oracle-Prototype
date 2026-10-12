@@ -2,7 +2,7 @@
 --
 -- "I corrected a book's read date and the old date came back."
 --
--- Companion to docs/duplicate-books-diagnostic.sql, which finds duplicate rows
+-- Companion to docs/sql/duplicate-books-diagnostic.sql, which finds duplicate rows
 -- in the CATALOGUE. This one finds what those duplicates do to a reader's
 -- shelf: two `read_books` rows for one book, because the reader finished the
 -- work under one catalogue row and The Stacks later served them the other.
@@ -91,7 +91,7 @@ ORDER BY dates_disagree DESC, shelf_rows DESC;
 -- merging the catalogue rows underneath them means the same pair can re-form
 -- the next time The Stacks serves the other copy.
 --
--- So: run docs/duplicate-books-diagnostic.sql first, decide which catalogue row
+-- So: run docs/sql/duplicate-books-diagnostic.sql first, decide which catalogue row
 -- survives for each pair, and repoint the shelf rows at it. Something like,
 -- per pair, inside a transaction:
 --

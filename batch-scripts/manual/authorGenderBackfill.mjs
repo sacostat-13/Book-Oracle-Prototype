@@ -120,7 +120,7 @@ const env = Object.fromEntries(
 );
 
 const SUPABASE_URL = env['VITE_SUPABASE_URL'] || '';
-// Legacy service_role JWTs are being retired (docs/KEY_ROTATION.md). That
+// Legacy service_role JWTs are being retired (docs/reference/KEY_ROTATION.md). That
 // runbook's call is that the variable NAME stays SUPABASE_SERVICE_ROLE_KEY and
 // only the value changes to an sb_secret_… key — renaming thirteen call sites
 // mid-rotation risks more than the inaccurate label costs. SUPABASE_SECRET_KEY
@@ -141,7 +141,7 @@ if (SERVICE_KEY.startsWith('eyJ')) {
   console.warn(
     '  ⚠ The Supabase key in .env.local is a legacy service_role JWT.\n' +
     '    If legacy keys are disabled on the project this will 401 on the first\n' +
-    '    query. Replace the value with an sb_secret_… key — see docs/KEY_ROTATION.md.\n'
+    '    query. Replace the value with an sb_secret_… key — see docs/reference/KEY_ROTATION.md.\n'
   );
 }
 if (!DRY_RUN && !ANTHROPIC_KEY) {

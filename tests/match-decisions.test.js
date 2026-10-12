@@ -1,4 +1,4 @@
-// match-decisions.test.js — the three decisions recorded in docs/MATH.md on
+// match-decisions.test.js — the three decisions recorded in docs/reference/MATH.md on
 // 2026-10-12, as executable examples:
 //   §1  share/address keys fold accents (and agree with the SQL migration)
 //   §3  a 1★ genre still counts 20% in Local Match %

@@ -150,7 +150,7 @@ export function computeLocalMatch(book, tasteProfile, genresByBookId) {
   const genreNames = genres.map((g) => g.name).filter(Boolean);
 
   // Genre affinity (0.2-1): best-matching genre's average rating divided by 5,
-  // so a 1★ genre still counts 20%. Intended (decided 2026-10-12, docs/MATH.md
+  // so a 1★ genre still counts 20%. Intended (decided 2026-10-12, docs/reference/MATH.md
   // §3): a genre the reader rated low is weak evidence, not proof of dislike.
   // If no rating history but it matches a stated favorite genre, give partial
   // credit rather than nothing.
@@ -208,7 +208,7 @@ export function suggestLevelFromTaste(tasteProfile) {
   return stated + 1; // one step at a time, regardless of how far ahead earned is
 }
 
-// ---------- weighted draws (docs/MATH.md §8) ----------
+// ---------- weighted draws (docs/reference/MATH.md §8) ----------
 // How strongly a local draw favours better-matching books. The draw weight is
 // (match / 100) ^ DRAW_WEIGHT_POWER, so with power 2 a 90% book is 4x as likely
 // as a 45% one: high matches dominate, but a draw still varies between calls

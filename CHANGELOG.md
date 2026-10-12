@@ -21,7 +21,7 @@ Reader-visible changes are marked ★ — add them to `releases.js` when this sh
 - `OracleSimilar` fallback ignored `SIMILAR_COUNT`; biased `sort(() => Math.random() - 0.5)` shuffles replaced with Fisher–Yates.
 
 ### Changed
-- ★ Wishlist / Vault Oracle draws favour books with a higher Match % (weighted, power 2) instead of a uniform draw. `docs/MATH.md` §8.
+- ★ Wishlist / Vault Oracle draws favour books with a higher Match % (weighted, power 2) instead of a uniform draw. `docs/reference/MATH.md` §8.
 - ★ Share links fold accents: `/book/cienanosdesoledad|…` instead of `/book/cienaosdesoledad|…`. Old links still resolve via `client_*_key_legacy`. **Requires migration `20261012120000_accent_folded_share_key.sql`** — deploy it before (or with) the frontend, or links built by the new client won't resolve.
 - "More by this author" now groups `Garcia` with `García` (same key change, SQL `client_author_key`).
 - A 1★ genre keeps counting 20% in Match % — documented as intended.
@@ -30,7 +30,7 @@ Reader-visible changes are marked ★ — add them to `releases.js` when this sh
 - Unimported modules (~1,500 lines): `BookModal`, `FeatureCarousel`, `lib/BookLoader`, `hardcoverService (1).js`, `prhService`, `reportService`, `useShelfBooks`; plus `src/styles.zip`, `_b.mjs`, `Claude outputs/`.
 
 ### Docs & tooling
-- README split into README / `CHANGELOG.md` / `docs/ARCHITECTURE.md`; new `docs/MATH.md`, `src/styles/README.md`.
+- README split into README / `CHANGELOG.md` / `docs/reference/ARCHITECTURE.md`; new `docs/reference/MATH.md`, `src/styles/README.md`.
 - New tests: orphan modules, reading streak + shuffle + dates, scoring decisions.
 
 ### Verify after deploy
@@ -189,7 +189,7 @@ fails the suite instead of 400ing in production. 418 passing.
 
 Unlimited Pro, the welcome month, "None of these call to me", Pro gates, the
 Oracle extras, Anthology insights and an optional annual plan. This is all five phases of
-`docs/pro-tier-v1-spec.md` in one release.
+`docs/specs/pro-tier-v1-spec.md` in one release.
 
 **Five migrations, in order, BEFORE deploying the client** (the client selects
 `profiles.pro_mark`, which does not exist until the second one has run, and
@@ -316,7 +316,7 @@ monthly only, as before. `public/app-version.json` goes to `0.71`.
 | `src/views/Dashboard.jsx` | welcome-month note |
 | `src/styles/components/_oracle-quota.scss` | `.oracle-miss*` |
 | `src/i18n/{en,es}.json` | `oracle.miss*`, `oracleHistory.costRefunded`, `dashboard.aiQuotaWelcome`; pricing, landing, Terms, Privacy copy |
-| `docs/pro-tier-v1-spec.md` | new |
+| `docs/specs/pro-tier-v1-spec.md` | new |
 
 ### Verify
 
@@ -1456,7 +1456,7 @@ create a row.
   unseen-release dot had nowhere to appear.
 - **The footer Pricing link** goes to About's pricing anchor instead of the
   subscription tab.
-- **`docs/stacks-genre-coverage.sql`** — eligible books per genre, mirroring
+- **`docs/sql/stacks-genre-coverage.sql`** — eligible books per genre, mirroring
   `useStacks.baseQuery()` exactly, with a stricter column that excludes stub
   descriptions.
 
@@ -1478,7 +1478,7 @@ two things v0.64 got wrong that only showed up once it was running.
 
 ## 1. Audiobooks are measured in time
 
-Spec: `docs/audiobook-progress-v1-spec.md`.
+Spec: `docs/specs/audiobook-progress-v1-spec.md`.
 
 A reader who says their copy is an audiobook is now asked how far in they are
 and how long the book runs, in hours and minutes, and can record who narrates
@@ -1997,7 +1997,7 @@ at `api2.isbndb.com/doc.json` in August 2026.
 `books.language`, which is already at zero nulls. There is no
 `original_language`, no `translated_from`, no `translator`, no `original_title`.
 This is not an oversight: original language is a fact about a *work*, and ISBNdb
-is an *edition* database. `docs/isbndb-evaluation.md` reached the same
+is an *edition* database. `docs/audits/isbndb-evaluation.md` reached the same
 conclusion from the published docs and the finding still holds.
 
 ### Provenance
@@ -2018,7 +2018,7 @@ column, but the next paid source should find the shape already built.
 
 ## 4. `reader_editions` — the edition belongs to the reader
 
-Spec: `docs/reader-editions-v1-spec.md`. One work in the catalog; the edition is
+Spec: `docs/specs/reader-editions-v1-spec.md`. One work in the catalog; the edition is
 a fact about *this reader and this work*.
 
 `currently_reading.user_page_count` was the right idea in the wrong place: it
@@ -2390,7 +2390,7 @@ was created by *looking at* a search result, not by adding anything.
 
 **Deploy ordering matters.** Nulling the author changes the key, so the ~29
 existing placeholder rows must be updated in the same window or the new client
-will miss them and insert twins. See `docs/placeholder-author-cleanup.sql` —
+will miss them and insert twins. See `docs/sql/placeholder-author-cleanup.sql` —
 pre-flight, transactional update, then `merge_books` for the known duplicate.
 Run the SQL *before* the deploy: that ordering fails soft.
 
@@ -2691,7 +2691,7 @@ a leftover. Whole row, keyboard-accessible, same-tab (popup blockers eat
 nine more views, and ~40 other unstyled class names. Fixed here: the nine
 headers, the global `.toast` (every confirmation and error in the app was an
 unstyled block in normal flow), `.quota-badge` and friends, and `.sign-in-legal`.
-The remainder is triaged in `docs/DEAD_CLASS_AUDIT_v0.62.3.md`, along with the
+The remainder is triaged in `docs/audits/DEAD_CLASS_AUDIT_v0.62.3.md`, along with the
 resolver method — note that checking compiled CSS alone produces false positives
 on declaration-less parent selectors.
 
@@ -2959,7 +2959,7 @@ this is the copy that will be missed.
 
 # Update Notes — v0.61.2 → v0.62: advanced shelf filters
 
-Spec: `docs/shelf-filters-v1-spec.md`. Eligibility SQL:
+Spec: `docs/specs/shelf-filters-v1-spec.md`. Eligibility SQL:
 `supabase/legacy/oracle_eligibility_audit.sql`.
 
 ## The feature
@@ -3084,7 +3084,7 @@ killed bot prerendering.
 - `batch-scripts/_shared/supabaseClient.mjs` — new; all 10 scripts migrated
 - `batch-scripts/manual/authorGenderBackfill.mjs` — new
 - `batch-scripts/manual/oracleBatch.mjs` — gender, paging, exact count, source guard
-- `supabase/legacy/oracle_eligibility_audit.sql`, `docs/shelf-filters-v1-spec.md` — new
+- `supabase/legacy/oracle_eligibility_audit.sql`, `docs/specs/shelf-filters-v1-spec.md` — new
 
 ## Open follow-ups
 
@@ -3532,7 +3532,7 @@ pretty quickly and I'm not actually fully sure how" is a report of.
 
 ## Oracle provenance — `supabase/schema_v45_migration.sql`
 
-Spec: `docs/oracle-provenance-v1-spec.md`. Instrumentation only — nothing about
+Spec: `docs/specs/oracle-provenance-v1-spec.md`. Instrumentation only — nothing about
 what the Oracle recommends changes.
 
 `oracle_recommendations` records **every book the Oracle surfaces, when it is
@@ -4242,7 +4242,7 @@ Genre milestones, series, reading goals, year milestones, and book-completed now
 
 **Migrations required:** none. Two new preference keys ride the existing `profiles.preferences` jsonb (and guest localStorage): `coachmarksSeen` (string[]) and `lastSeenVersion` (string). No new dependencies.
 
-**Feature-discovery pass** (`docs/feature-discovery-v1-spec.md`), organic and non-blocking, in three moves.
+**Feature-discovery pass** (`docs/specs/feature-discovery-v1-spec.md`), organic and non-blocking, in three moves.
 
 *Move 1 — teaching empty states.* New shared `EmptyState` component (`src/components/EmptyState.jsx`, styles in `_global.scss`) renders the canonical `.empty-state` DOM plus an optional primary action; it reads crisp (`is-actionable`) when there's an action or a `children` button group, and stays quietly dimmed when purely informational. Rolled out to seven zero-states — Read Next, Lists, Plans, Book Clubs, Currently Reading, Wishlist, Library — each now teaching what the feature is for and offering the action that fills it. This also fixed a latent bug: the Library empty state was hardcoded English; it's now bilingual via the existing `library.*` keys plus a new `library.emptyCta`.
 
@@ -4266,13 +4266,13 @@ Delivers the v0.43.x follow-up flagged below: the share-card *image* is now rend
 
 **Migrations required:** `schema_v32_migration.sql` (new `reading_accomplishments` table + `unique(user_id, key)`; adds `profiles.accomplishments_backfilled_at`). No new dependencies.
 
-**Reading Accomplishments v1** (`docs/reading-accomplishments-v1-spec.md`). The persistent, retroactive counterpart to v0.43's ephemeral share moments — a dated ledger of earned milestones on Profile, framed as a record, not a scoreboard. The milestone logic is unchanged: `shareMoments.js` already computes every moment (`goal_completed`, `series_completed`, `plan_completed`, `nth_book`, `genre_count`, `new_genre`), so the new work is persistence, retroactivity, and the shelf. New pure module `accomplishments.js` translates between a live moment and a stored row (`keyForMoment`/`momentToMeta`/`rowToMoment`) and replays the ladders over an existing library (`computeBackfillAccomplishments`), so both the live earn path and the backfill converge on identical stable `key`s and are idempotent against the DB unique key. **Earning** rides the existing `fireCompletionMoment`: one computation now feeds two consumers — the share modal (unchanged) and the ledger. **Retroactivity**: a one-time, date-ordered backfill runs on first load where `profiles.accomplishments_backfilled_at` is null, dating each rung to the read that crossed it; Goodreads imports still skip the celebration *modal* but earn through this backfill (dated to each book's read date), so imported history fills the shelf without firing hundreds of cards. **UI**: a new "The Ledger" section on the Profile Overview tab — plaques grouped by kind (goals, series, plans, milestones, genres), each tappable to re-open its `ShareMomentModal` card via `shareAccomplishment`. **No-streaks** is a permanent, load-bearing rule (see spec): no cadence mechanics, no countdowns, no "N to go"; the optional next-rung line was cut in v1 because it couldn't be made to read as a ledger line rather than a nudge. Data: owner-only RLS in all directions, no update policy (accomplishments are immutable). Guests get the same feature via `state.accomplishments` in localStorage. i18n `ledger.*` (EN/ES); styles `_profile-extensions.scss` (`pf-ledger-*`, DS tokens only); the share *card* keeps its hardcoded brand palette.
+**Reading Accomplishments v1** (`docs/specs/reading-accomplishments-v1-spec.md`). The persistent, retroactive counterpart to v0.43's ephemeral share moments — a dated ledger of earned milestones on Profile, framed as a record, not a scoreboard. The milestone logic is unchanged: `shareMoments.js` already computes every moment (`goal_completed`, `series_completed`, `plan_completed`, `nth_book`, `genre_count`, `new_genre`), so the new work is persistence, retroactivity, and the shelf. New pure module `accomplishments.js` translates between a live moment and a stored row (`keyForMoment`/`momentToMeta`/`rowToMoment`) and replays the ladders over an existing library (`computeBackfillAccomplishments`), so both the live earn path and the backfill converge on identical stable `key`s and are idempotent against the DB unique key. **Earning** rides the existing `fireCompletionMoment`: one computation now feeds two consumers — the share modal (unchanged) and the ledger. **Retroactivity**: a one-time, date-ordered backfill runs on first load where `profiles.accomplishments_backfilled_at` is null, dating each rung to the read that crossed it; Goodreads imports still skip the celebration *modal* but earn through this backfill (dated to each book's read date), so imported history fills the shelf without firing hundreds of cards. **UI**: a new "The Ledger" section on the Profile Overview tab — plaques grouped by kind (goals, series, plans, milestones, genres), each tappable to re-open its `ShareMomentModal` card via `shareAccomplishment`. **No-streaks** is a permanent, load-bearing rule (see spec): no cadence mechanics, no countdowns, no "N to go"; the optional next-rung line was cut in v1 because it couldn't be made to read as a ledger line rather than a nudge. Data: owner-only RLS in all directions, no update policy (accomplishments are immutable). Guests get the same feature via `state.accomplishments` in localStorage. i18n `ledger.*` (EN/ES); styles `_profile-extensions.scss` (`pf-ledger-*`, DS tokens only); the share *card* keeps its hardcoded brand palette.
 
 ### v0.44 — Reading Memory, Goodreads import polish, book-status consistency
 
 **Migrations required:** `schema_v30_migration.sql` (new `reading_memories` table) and `schema_v31_migration.sql` (repairs the `upsert_book`/`upsert_series` overloads — fixes the RPC 404 on add/mark-read and the `verified` 42703). No new dependencies.
 
-**Reading Memory v1** (`docs/reading-memory-v1-spec.md`). A private note attached to the moment you put a book down, returned the moment you pick it back up. Capture is one collapsed link inside the existing progress-update modal ("Leave a note for your future self") that expands to an optional textarea and saves with the progress — no second modal, no required field, nothing changes if you never use it. Resurfacing is passive: the newest memory renders read-only at the top of the same modal ("Last time — p. 145, Jun 12: …"), and Book Pages of collected books show the full thread (newest first, date + page, delete-only — no editing; memories are moments, not documents) under a `Private` chip. Notes written in the finish-flow RatingModal are recorded into the same thread as `kind='finished'` — `read_books.notes` itself is untouched. Data: new `reading_memories` table (owner-only RLS in all directions, deliberately **no update policy**), loaded with the initial fetch in one flat query; guests get the same feature via `state.memories` in localStorage, keyed by `bookKey` instead of `book_id`. Deliberately out of scope for v1: Oracle involvement, prompts/notifications, editing, sharing, series resurfacing.
+**Reading Memory v1** (`docs/specs/reading-memory-v1-spec.md`). A private note attached to the moment you put a book down, returned the moment you pick it back up. Capture is one collapsed link inside the existing progress-update modal ("Leave a note for your future self") that expands to an optional textarea and saves with the progress — no second modal, no required field, nothing changes if you never use it. Resurfacing is passive: the newest memory renders read-only at the top of the same modal ("Last time — p. 145, Jun 12: …"), and Book Pages of collected books show the full thread (newest first, date + page, delete-only — no editing; memories are moments, not documents) under a `Private` chip. Notes written in the finish-flow RatingModal are recorded into the same thread as `kind='finished'` — `read_books.notes` itself is untouched. Data: new `reading_memories` table (owner-only RLS in all directions, deliberately **no update policy**), loaded with the initial fetch in one flat query; guests get the same feature via `state.memories` in localStorage, keyed by `bookKey` instead of `book_id`. Deliberately out of scope for v1: Oracle involvement, prompts/notifications, editing, sharing, series resurfacing.
 
 **Goodreads import polish.** Four changes to the read-shelf/to-read import path: (1) *series parsing* — Goodreads encodes series in the title ("The Fellowship of the Ring (The Lord of the Rings, #1)"); `splitGoodreadsSeriesTitle()` strips the suffix and emits a real series object (`s: {name, n}`, decimal positions like `#0.1` included, first series wins in multi-series parentheticals), which flows through `upsert_book`'s existing `_series_name`/`_series_position` args — imported libraries now land with series intact and cleaner titles that actually match the catalog; (2) *in-CSV dedupe* — re-added editions export as multiple rows; the kept row absorbs rating/date from its duplicates; (3) *edition-insensitive duplicate detection* — `findExistingDuplicate` gained a fallback pass comparing `cleanTitle`-normalized keys, so "The Hobbit (75th Anniversary Edition)" is recognized as the "The Hobbit" you already have (runs only after every exact pass missed); (4) *import progress* — `importGoodreads`/`bulkAddToLibrary` accept an `onProgress` callback and the confirm button counts "Adding 214 of 500…" instead of an indeterminate "Adding…" for the minutes a 500-book import takes.
 

@@ -113,7 +113,7 @@ const env = Object.fromEntries(
 
 const SUPABASE_URL = env['VITE_SUPABASE_URL'] || '';
 // v0.62: SUPABASE_SECRET_KEY accepted first, for the sb_secret_… keys replacing
-// the legacy service_role JWT (docs/KEY_ROTATION.md). The old name still works —
+// the legacy service_role JWT (docs/reference/KEY_ROTATION.md). The old name still works —
 // that runbook deliberately keeps it, since the value changes but the name does
 // not. Same chain as netlify/functions/_shared/auth.js.
 const SERVICE_KEY = env['SUPABASE_SECRET_KEY'] || env['SUPABASE_SERVICE_ROLE_KEY'] || '';

@@ -1741,7 +1741,7 @@ export function DataProvider({ children }) {
             'same book and not adding a second library entry.\n' +
             `  incoming: ${book.bookId} "${book.t}" by ${book.a || '(no author)'}\n` +
             `  in library: ${already.bookId} "${already.t}" by ${already.a || '(no author)'}\n` +
-            '  See docs/duplicate-books-diagnostic.sql to find every affected work.'
+            '  See docs/sql/duplicate-books-diagnostic.sql to find every affected work.'
           );
         }
         showToast(`"${already.t}" is already in your library`);
@@ -2027,7 +2027,7 @@ export function DataProvider({ children }) {
    * A sibling of updateReadingProgress rather than a parameter on it, and the
    * separation is the point: pages and minutes are different units on different
    * columns, and a reader who switches format mid-book must not have one
-   * reinterpreted as the other. See docs/audiobook-progress-v1-spec.md.
+   * reinterpreted as the other. See docs/specs/audiobook-progress-v1-spec.md.
    *
    * `null` clears the position — a reader who empties the field is saying they
    * do not know where they are, which is different from saying zero.
@@ -2225,14 +2225,14 @@ export function DataProvider({ children }) {
           `[updateReadBook] "${book.t}" has ${updated.length} read_books rows ` +
           `(book_ids: ${workIds.join(', ')}). All were updated, so the edit holds — ` +
           'but the book is still double-counted in reading stats. ' +
-          'See docs/duplicate-read-books-diagnostic.sql.'
+          'See docs/sql/duplicate-read-books-diagnostic.sql.'
         );
       }
       if (!updated || updated.length === 0) {
         console.warn(
           `[updateReadBook] no read_books row for book_id ${bookId} — upserting one. ` +
           'Usually means this library entry predates the current catalogue row for the work; ' +
-          'see docs/duplicate-books-diagnostic.sql.'
+          'see docs/sql/duplicate-books-diagnostic.sql.'
         );
         const { error: upsertError } = await supabase.from('read_books').upsert(
           { user_id: user.id, book_id: bookId, source: 'manual', ...update },

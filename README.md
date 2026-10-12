@@ -14,13 +14,13 @@ API proxies.
 
 | You want to… | Read |
 |---|---|
-| Understand how the app is put together | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) |
-| Change a ranking, weight, threshold or match % | [docs/MATH.md](docs/MATH.md) |
+| Understand how the app is put together | [docs/reference/ARCHITECTURE.md](docs/reference/ARCHITECTURE.md) |
+| Change a ranking, weight, threshold or match % | [docs/reference/MATH.md](docs/reference/MATH.md) |
 | Write or change styles | [src/styles/README.md](src/styles/README.md) |
 | Touch the database schema | [supabase/SETUP.md](supabase/SETUP.md) |
 | Run catalog maintenance scripts | [batch-scripts/README.md](batch-scripts/README.md) |
 | See what changed and why | [CHANGELOG.md](CHANGELOG.md) |
-| Read a feature spec | `docs/*-spec.md` |
+| Find any other doc (specs, SQL diagnostics, audits) | [docs/README.md](docs/README.md) |
 
 ## Setup
 
@@ -76,7 +76,7 @@ Server-side (Netlify → Site → Environment variables; for local `netlify dev`
 | `RESEND_API_KEY`, `WEBHOOK_SECRET` | notification emails |
 | `ALLOWED_ORIGINS` | CORS allow-list for the proxies |
 
-Rotating a key? See [docs/KEY_ROTATION.md](docs/KEY_ROTATION.md).
+Rotating a key? See [docs/reference/KEY_ROTATION.md](docs/reference/KEY_ROTATION.md).
 
 ### 4. Run locally
 

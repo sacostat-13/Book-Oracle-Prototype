@@ -1,6 +1,6 @@
 // src/lib/anthologyInsights.js — v0.74
 //
-// Which Anthologies move readers. Spec: docs/pro-tier-v1-spec.md §7 ·
+// Which Anthologies move readers. Spec: docs/specs/pro-tier-v1-spec.md §7 ·
 // Schema: 20260926120000_anthology_insights.sql
 //
 // Writers (all fire-and-forget, all silent, all skipped under Do Not Track or

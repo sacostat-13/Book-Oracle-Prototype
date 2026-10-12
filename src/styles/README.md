@@ -90,7 +90,7 @@ saying which. (There are 20 today; `@layer` should remove most.)
 ## Removing styles
 
 When you delete a component or class from JSX, delete its rules in the same
-change. `docs/DEAD_CLASS_AUDIT_v0.62.3.md` describes how to find unstyled and
+change. `docs/audits/DEAD_CLASS_AUDIT_v0.62.3.md` describes how to find unstyled and
 unused classes.
 
 ## Where this is heading

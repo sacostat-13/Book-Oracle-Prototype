@@ -336,7 +336,7 @@ writes them; `--force` refuses to overwrite them. This mirrors
 the printing's language, which is `books.language` — and no
 `original_language`, `translated_from`, `translator` or `original_title` field.
 Original language is a fact about a work; ISBNdb is an edition database. See
-`docs/isbndb-evaluation.md`.
+`docs/audits/isbndb-evaluation.md`.
 
 ## Nightly curation — billable, capped
 

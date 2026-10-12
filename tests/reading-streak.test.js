@@ -1,6 +1,6 @@
 // reading-streak.test.js — lib/readingStreak.js, lib/random.js, lib/dates.js.
 //
-// The streak cases are the rules in docs/MATH.md → "Reading streak", as
+// The streak cases are the rules in docs/reference/MATH.md → "Reading streak", as
 // examples. The shuffle cases pin the property that broke the Oracle Spark:
 // the input array must never be reordered.
 

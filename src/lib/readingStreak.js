@@ -10,7 +10,7 @@
 // if this month has a finish it counts; if it doesn't YET, the run is measured
 // from last month and is still alive. Only a missing *completed* month breaks it.
 //
-// See docs/MATH.md → "Reading streak".
+// See docs/reference/MATH.md → "Reading streak".
 
 /** Month key for a Date in the reader's local calendar, e.g. "2026-10". */
 function monthKeyOf(date) {

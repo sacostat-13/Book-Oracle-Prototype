@@ -66,7 +66,7 @@
 //
 // The disagreements are reported at the end rather than resolved. They are the
 // rows where books.isbn and books.title genuinely describe different editions,
-// which is the reader-editions problem itself (docs/reader-editions-v1-spec.md)
+// which is the reader-editions problem itself (docs/specs/reader-editions-v1-spec.md)
 // and not something a language backfill gets to decide.
 //
 // WHAT IT WILL NOT DO
@@ -456,7 +456,7 @@ if (conflicts.length) {
   if (conflicts.length > 25) console.log(`  … and ${conflicts.length - 25} more`);
   console.log('\nThese are the rows where the catalog is holding one work and one');
   console.log('foreign edition in the same row — the reader-editions problem itself.');
-  console.log('See docs/reader-editions-v1-spec.md. Do not resolve them by guessing.');
+  console.log('See docs/specs/reader-editions-v1-spec.md. Do not resolve them by guessing.');
 }
 
 if (disagreements.length) {

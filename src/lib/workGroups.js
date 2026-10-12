@@ -10,7 +10,7 @@
 // shows a LIST of one author's books, because then the same six novels appear
 // twelve times, in whatever languages the site's readers happen to have added.
 //
-// The real fix is a work/edition split (docs/reader-editions-v1-spec.md). This
+// The real fix is a work/edition split (docs/specs/reader-editions-v1-spec.md). This
 // file is not that. This is the part that can be done without touching the
 // identity of every book in the app: given a handful of candidate rows, work
 // out which of them are provably the same book, and show one.

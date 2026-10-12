@@ -14,7 +14,7 @@ import { prefersReducedMotion } from './motion';
 
 gsap.registerPlugin(ScrollTrigger, useGSAP);
 
-// v0.71.1: rows follow docs/pro-tier-v1-spec.md — keep in step with About's pricing.
+// v0.71.1: rows follow docs/specs/pro-tier-v1-spec.md — keep in step with About's pricing.
 const SEEKER_ROWS = [1, 2, 3, 4, 5, 6];
 const ADEPT_ROWS = [1, 2, 3, 4, 5, 6, 7];
 

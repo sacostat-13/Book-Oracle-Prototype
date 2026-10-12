@@ -8,7 +8,7 @@
 -- "García Márquez" as `garcamrquez`. Everywhere else the app FOLDS accents —
 -- compute_book_key (identity) via unaccent, workGroups.titleVariantKey via NFD —
 -- and for a bilingual catalog the dropped-letter keys are both uglier URLs and a
--- source of collisions. Decision recorded in docs/MATH.md §1 (2026-10-12).
+-- source of collisions. Decision recorded in docs/reference/MATH.md §1 (2026-10-12).
 --
 -- THE RULE (identical in src/lib/bookHelpers.js addressKey):
 --   NFD-normalise → strip combining marks U+0300–U+036F → lower → keep [a-z0-9]

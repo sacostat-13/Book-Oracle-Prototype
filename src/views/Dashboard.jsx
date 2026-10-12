@@ -359,7 +359,7 @@ function ReadingStatsWidget({ library, editions, currentlyReading, go, t }) {
   //
   // It is not fixed by giving audiobooks a page count. There is no honest
   // pages-per-hour rate, and a fabricated one would be indistinguishable here
-  // from a counted page — see docs/audiobook-progress-v1-spec.md. Two units,
+  // from a counted page — see docs/specs/audiobook-progress-v1-spec.md. Two units,
   // two tiles, and `pages` now explicitly SKIPS audio editions rather than
   // relying on them happening to be null.
   //
@@ -586,7 +586,7 @@ function SeriesProgressWidget({ library, wishlist, readNext, go, t }) {
 
 // ─── Reading Streak ────────────────────────────────────────────────────────────
 // Consecutive months with a finished book. The counting rule (including the
-// current-month grace period) lives in lib/readingStreak.js — see docs/MATH.md.
+// current-month grace period) lives in lib/readingStreak.js — see docs/reference/MATH.md.
 function StreakWidget({ library, t }) {
   const { months, includesCurrentMonth, lastFinishedOn } = monthlyReadingStreak(library);
   if (!lastFinishedOn) return null;

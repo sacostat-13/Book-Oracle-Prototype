@@ -1,7 +1,7 @@
 // src/lib/oracleProvenance.js — v0.58
 //
 // Records which books the Oracle offered, and what became of them.
-// Spec: docs/oracle-provenance-v1-spec.md · Schema: schema_v45_migration.sql
+// Spec: docs/specs/oracle-provenance-v1-spec.md · Schema: schema_v45_migration.sql
 //
 // ── The one rule ─────────────────────────────────────────────────────────────
 // Nothing in this module may ever surface to the reader or interrupt a caller.
