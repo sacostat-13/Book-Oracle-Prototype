@@ -3,6 +3,7 @@ import BookLoader from '../components/BookLoader';
 import { useData } from '../lib/DataContext';
 import { useRouter } from '../lib/RouterContext';
 import { ALL_BOOKS, bookKey } from '../lib/bookHelpers';
+import { sample } from '../lib/random';
 import { callClaude, parseJSONResponse, QuotaExceededError } from '../lib/claudeApi';
 import { logRecommendations, attachRecommendationIds } from '../lib/oracleProvenance';
 import OracleMissButton from '../components/OracleMissButton';
@@ -177,8 +178,7 @@ export default function OracleCategories({ onOpenBook }) {
         showToast(`Nothing left to draw in that genre from ${mode === 'wishlist' ? 'your wishlist' : 'the Vault'}.`, true);
         return;
       }
-      const shuffled = [...available].sort(() => Math.random() - 0.5);
-      showDraw(withLocalMatch(shuffled.slice(0, Math.min(3, shuffled.length))));
+      showDraw(withLocalMatch(sample(available, 3)));
       return;
     }
 
@@ -320,8 +320,7 @@ Return ONLY valid JSON in this format:
         // toast promising a fallback.
         const v = vault || (await loadVault());
         const drawFrom = (rows) => {
-          const shuffled = [...rows].sort(() => Math.random() - 0.5);
-          showDraw(withLocalMatch(shuffled.slice(0, Math.min(3, shuffled.length))));
+          showDraw(withLocalMatch(sample(rows, 3)));
         };
         const usable = (rows) => rows.filter((b) => !inUse.has(bookKey(b)));
 

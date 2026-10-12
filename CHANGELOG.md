@@ -1,0 +1,5065 @@
+# Changelog
+
+Technical release notes, newest first: root causes, what changed, files, and how to verify.
+The reader-facing, bilingual version of each release lives in `src/lib/releases.js` and is shown in the app's What's New.
+
+Moved here from README.md on 2026-10-12 (code-health spike, item O1). Entries are unchanged.
+
+**For each release:** prepend an entry here, add the bilingual entry to `releases.js`, and bump `CURRENT_VERSION` there and the version line in README.md.
+
+---
+
+# v0.72.2 — New logo (2026-10-01)
+
+The blackletter TBO monogram and the eye-with-laurels social image are retired.
+Their replacement is a single mark: an open book whose pages form an eye. It was
+traced 1:1 from the chosen design, and the only change was removing one stray
+artifact. No migrations.
+
+- **Nav / landing nav:** `public/logo-dark-mode.png` and `logo-light-mode.png`
+  are replaced in place (same filenames, so `Nav.jsx` and `LandingNav.jsx` are
+  unchanged). Dark mode is parchment + gold; light mode is ink navy + gold.
+- **Favicons:** one set (`/favicon.ico`, `icons/favicon-16/32/48.png`) replaces
+  the `prefers-color-scheme` pair: the light-mode mark (navy + gold) on a full
+  parchment square, which stays visible on dark tabs too. It uses a bolder
+  trace so it survives 16px. Source: `docs/brand/svg/favicon-light.svg`.
+- **PWA:** `icons/icon-192.png` and `icon-512.png` are regenerated at their true
+  sizes. A new `icon-maskable-512.png` is added to the manifest with
+  `purpose: maskable`. The new `icons/apple-touch-icon.png` is a 180px
+  full-bleed tile.
+- **Link previews:** `og:image` / `twitter:image` now point at
+  `/brand/og-image.png` (1200×630, with width/height/alt tags).
+  `og-prerender.js` also strips `og:image:alt` on entity pages, so a book
+  preview never carries the homepage alt text.
+- **Share cards:** the server card (`share-card.mjs`, portrait and OG layouts)
+  and the DOM card (`ShareCard.jsx`) draw `/brand/mark-on-dark-96.png` in the
+  footer in place of the ✦ glyph. The server falls back to ✦ if the fetch
+  fails.
+- **Removed:** `Logo-Social.jpeg`, `icons/favicon-dark.png`,
+  `icons/favicon-light.png`, and three unreferenced files with the wrong
+  contents for their names: `icons/icon.svg` (a PNG),
+  `icons/icon-maskable.svg` (JSON) and `icons/icon-maskable-192.png` (an SVG).
+- **Sources:** `docs/brand/` holds the SVG masters (mark, app icon, lockups,
+  wordmark), the social images and `src/build.py`, which regenerates all of
+  them from the traced geometry. The masters are kept out of `public/` on
+  purpose: workbox precaches every `svg` there, and each traced master is about
+  100 KB.
+
+# v0.72 — Series in every order (2026-09-30)
+
+Publication years, publication order, series share cards, hand-checked series
+descriptions, and public About / What's New pages. Also ships the work merged
+since v0.71: the Reading Sky in Profile, the three.js motion layer, the
+open-book mark replacing the ❦ fleuron, and mobile/landing fixes. Full notes in
+`claude/series-share-and-publication-year-2026-09-30.md` (project docs).
+
+**Three migrations, in order, BEFORE deploying the client.** The third changes
+`upsert_book`'s signature, and the new client sends `_first_published_year` on
+every write — against the old 21-argument function that is a PGRST202 and every
+add-to-shelf fails.
+
+1. `20260930120000_books_first_published_year.sql`: `books.first_published_year`
+   (smallint, range-checked, NULL = unknown), a partial index for the backfill's
+   worklist, and `series_volumes` recreated with the column appended as the
+   earliest year across collapsed editions.
+2. `20260930130000_series_editorial_descriptions.sql`: generated from
+   `batch-scripts/_shared/seriesEditorial.mjs` by
+   `batch-scripts/manual/seriesEditorialSql.mjs` — edit the data file and
+   regenerate, never the SQL. 25 top-impression series. Overwrites only a NULL,
+   `composed` or `wikipedia` description; stamps `description_source = 'oracle'`.
+   Run the verification query at the bottom: `n = 0` means the catalog spells
+   that series differently.
+3. `20260930140000_upsert_book_first_published_year.sql`: `upsert_book` gains
+   `_first_published_year integer` (drop 21-arg, create 22-arg, regrant). Out-of-range
+   years are dropped, not raised. Merge is `coalesce(existing, incoming)` like
+   every other field — `least()` was rejected because the client's OpenLibrary
+   title match is loose enough that one bad match would backdate a book for good.
+
+**No new env vars. `public/app-version.json` goes to `0.72`.** Not announced on
+load (`major` unset).
+
+**Backfill.** `node batch-scripts/scheduled/publicationYearBackfill.mjs --all`
+(`--dry-run`, `--limit N`, `--verbose`, `--repair`, `--recheck-days N`). Three
+sources: Hardcover (by `hardcover_id`, or search), OpenLibrary `first_publish_year`
+(first doc by relevance that passes the guards), and Wikidata P577 as the
+tiebreaker, asked only when the first two do not already agree. The rule lives in
+`batch-scripts/_shared/publicationYear.mjs` and is tested in
+`tests/publication-year.test.js`: **a year is written when two sources agree within
+3 years** (the earliest of the agreeing ones), or when exactly one source answers
+with a year ≥ 1000. Anything else stays NULL and is listed in
+`batch-scripts/output/publication-year-conflicts.csv`. Every hit must pass
+`titleMatches` + `authorMatches`; rows with a placeholder author are skipped.
+
+The first full run used "earliest year wins" on conflict, and the 423-row conflicts
+CSV showed why that was wrong: both sources carry junk, and the junk is not biased
+late — OpenLibrary sentinel years (Frankenstein 1718, Lolita 1777, "1800", "1900"),
+Hardcover fragments (8, 20, 197) and reissue years (Harry Potter 2016). **Run once
+with `--repair`**: it resets every row in that CSV whose stored year still equals
+what the bad run wrote, and every stored year below 1000, then re-resolves them
+under the new rule.
+
+Paced at ~1.5s per Hardcover request, ~1.2s per OpenLibrary request, ~0.25s per
+Wikidata request — the very first version used a pure sliding window, burst its
+first batch, and got a wall of 429s. `catalog-maintenance.yml` runs it weekly with
+`--all --recheck-days 8`: fills new NULLs, and re-derives the years the app wrote
+at add time in the last week, overwriting only when two other sources agree on a
+different year.
+
+**Dated at write time — from Hardcover only.** `hardcoverService` asks for
+`release_year` (book-level, so the work's year) and returns it as `fy` when it is
+≥ 1000; `DataContext` round-trips `fy` and sends it from both `upsert_book`
+callers; `oracleCategorizationService.topUpIsbn` and `catalog-crawl` pass it too.
+OpenLibrary's year is NOT used at add time (sentinel years, above), nor Google
+Books' (`publishedDate` is an edition's). A reissue year from Hardcover cannot be
+caught at add time; the weekly `--recheck-days 8` is what corrects it.
+
+### Series pages
+
+- **Prerender** (`og-prerender.js`): year after each title; a "Published between X
+  and Y" sentence; a separate `<h2>… in publication order</h2><ol>` when it differs
+  from reading order; `datePublished` on each `hasPart`. Same honesty rule as the
+  page total — nothing about years is said of the series unless **every** listed
+  volume is dated.
+- **Branded link preview**: series were the one public surface still unfurling as a
+  bare link. `ogCardImage` with the series name, "N books · author · 1950–1955" and
+  the first volume that has a cover.
+- **`SeriesPage.jsx`**: Share this series (signed out too) via `ShareModal` +
+  `seriesShareUrl`; Reading order / Publication order toggle under the same
+  every-volume-dated rule; year beside the page count.
+- **Descriptions reach readers.** The page used to read only Wikipedia, so
+  `series.description` reached Googlebot and nobody else. It now shows the catalog
+  description first (`manual` / `oracle` / `wikipedia` / NULL as-is) and treats
+  `composed` as a fallback behind Wikipedia.
+
+### About and What's New are public
+
+`about` and `changelog` were missing from `PUBLIC_ROUTES`, so a signed-out
+visitor got `<SignInGate/>` while the prerender served Googlebot the page — the
+same divergence the series route had before 2026-08-24. Signed out they now
+render in the landing chrome, like the legal pages; signed in, unchanged.
+
+### Tests
+
+`tests/prerender.test.js`: a Narnia fixture where the orders differ; year per
+volume, the agree/differ sentences, the publication-order list, a partly dated
+shelf making no claim, `datePublished`, and the series OG card. The `SCHEMA` stub
+carries `first_published_year` on `series_volumes`, so dropping it from the view
+fails the suite instead of 400ing in production. 418 passing.
+
+### Verify after deploy
+
+1. `curl -s -A "Googlebot/2.1" "https://www.thebooksoracle.com/series/The%20Chronicles%20of%20Narnia"`
+   — publication-order list present, `og:image` points at `share-card?layout=og`.
+2. `/about` in a private window renders without a sign-in prompt.
+3. Paste a series URL into WhatsApp or Slack; the card shows.
+4. Add a book from search and check `books.first_published_year` on the new row.
+
+---
+
+# v0.71 — Pro, rethought (2026-09-23)
+
+Unlimited Pro, the welcome month, "None of these call to me", Pro gates, the
+Oracle extras, Anthology insights and an optional annual plan. This is all five phases of
+`docs/pro-tier-v1-spec.md` in one release.
+
+**Five migrations, in order, BEFORE deploying the client** (the client selects
+`profiles.pro_mark`, which does not exist until the second one has run, and
+every profile read fails without it):
+
+1. `20260923120000_pro_unlimited_and_misses.sql`: guard, grants, quota, misses
+2. `20260924120000_pro_gates.sql`: `is_pro`, creation limits, `pro_mark`
+3. `20260925120000_oracle_readings.sql`: cached long readings and charts
+4. `20260926120000_anthology_insights.sql`: `anthology_events` and insights
+5. `20260927120000_anthology_covers.sql`: `lists.cover_image_url`, the
+   `anthology-covers` Storage bucket and its policies, the cover guard, and cards that
+   show a custom cover in place of the strip
+
+All four are idempotent and were run twice against a Postgres 16 scratch copy
+of the schema. A scenario script covered the guard, grants, quota tiers,
+the fair-use ceiling, refunds and the refund cap, all three gates, RLS on
+readings, and the insight thresholds.
+
+**Env vars (optional, both or neither):** `LEMON_SQUEEZY_REDIRECT_URL_ANNUAL`
+(function) and `VITE_ANNUAL_PRICE` (client, for example `$49.99`). Unset means
+monthly only, as before. `public/app-version.json` goes to `0.71`.
+
+**Announced on load** (`major: true`). The CTA opens About → Pricing: `ctaAction: 'pricing'` is handled in `Nav.jsx` `takeAnnouncementCta` as `go('about', { anchor: 'pricing' })`.
+
+### What was wrong
+
+- **Pro sold a limit nobody reached.** Free was 5 calls per month, Pro 5 per
+  *day*. A reader uses 3–4 calls to find a book and then goes and reads it, so the
+  daily cap was invisible and Pro had nothing to offer.
+- **`profiles` was self-writable, privileged columns included.** The policy
+  "Users can update own safe profile fields" is `USING (auth.uid() = id)` with
+  no column restriction, `authenticated` holds `GRANT ALL`, and nothing guarded
+  it. `supabase.from('profiles').update({ subscription_status: 'active' })` from
+  the browser console made anyone Pro. The same went for `is_curator` and for resetting
+  your own counters. An unlimited Pro makes that worth doing, so it had to close first.
+- **`consume_oracle_call(p_user_id, …)` was executable by `anon` and
+  `authenticated`.** It trusted the id it was given, so anyone could spend another
+  reader's quota. `get_oracle_quota` had the same shape for reads.
+- **A bad draw had no way to say so.** `oracle_recommendations` learned about
+  rejections only by their silence, and the reader had paid for them.
+
+### What changed
+
+- **Guard trigger `profiles_guard_privileged`.** For `anon`/`authenticated`
+  sessions, an UPDATE that touches `subscription_status`, `is_curator` or any
+  `oracle_calls_*` column raises `42501`. An INSERT has them reset to defaults.
+  The webhook (service role) and the definer RPCs (owner `postgres`) are
+  unaffected. No client code writes these columns (checked: `DataContext`
+  profile patch, `Onboarding`, notification prefs, `markIntroSeen`).
+- **Grants.** `consume_oracle_call` is service-role only. `get_oracle_quota` is
+  revoked from `anon`, and it refuses when `auth.uid()` is set and differs
+  from `p_user_id`.
+- **Quota.** Free gets `oracle_free_limit(created_at)`: 10 during the first 30 days
+  after signup, 5 after. `get_oracle_quota` returns `welcome`. Pro is
+  `unlimited: true` under a fair-use ceiling of 30/day. At the ceiling it
+  answers in the existing day-wall shape (`period: 'day'`, 0 remaining),
+  so the UI needed no new state. Pro charges log as `period = 'pro'`.
+- **Misses.** `oracle_misses` plus `report_oracle_miss(surface, ids, reason)`.
+  It validates that the ids are the caller's, from that surface, shown in the last 24h,
+  unresolved and not already reported. It marks them `dismissed` and records the
+  reason. It refunds a charged Free draw from the current month, 2 per month, by
+  flipping the originating `oracle_call_log` row to `charged = false, period =
+  'refunded'` and decrementing the counter. The charge is found by time window
+  (up to 10 min before the first `shown_at`), because `oracle_recommendations.call_id`
+  is never populated. Flipping the row rather than inserting a credit keeps
+  `get_oracle_call_history`'s charged-only totals matching the bar.
+- **Client.** `OracleMissButton` sits under the results in Ask, Similar and By
+  genres, and only renders when the books carry recommendation ids. Spark is
+  deliberately out of scope. The history shows "refunded". The dashboard bar names the
+  welcome month. Every "5 a day" string is now Unlimited. Terms and
+  Privacy still said Paddle and $5, and now say Lemon Squeezy and $5.99,
+  with a fair-use sentence for Unlimited.
+
+### Phases 2–5, in brief
+
+- **Gates (§5).** `enforce_free_limit()` BEFORE INSERT on `book_clubs` (1),
+  `lists` (3) and `plans` (1). It is keyed on the request's JWT role, so the service role
+  and the SQL editor pass through, and it is serialised per reader with an advisory lock.
+  Errors start `pro_required:<kind>`. `claude.js` returns 403 for
+  `club_poll` / `club_discussion` / `why_long` / `taste_chart` unless the reader is Pro or a curator. The UI gates live in
+  `useProLimits()` plus `ProGate`, and they check *before* the Oracle is
+  paid (PlanCreate). `profiles.pro_mark` is a generated column, shown as the
+  Adept pill on reader profiles and in Kindred.
+- **Extras (§6).** `OracleLongReading` in BookModal (any book) and `TasteChart`
+  in Profile → Overview (5+ books, redraw after 30 days), both cached in
+  `oracle_readings`. `fetchMissHint()` appends recent misses and their reasons to
+  the Ask, Similar and By genres prompts.
+- **Insights (§7).** ListView logs `view`/`open` with a random per-browser
+  visitor id (never under DNT/GPC, never the owner). BookPage logs `add` when
+  a book opened from an Anthology is shelved. Onboarding claims a 7-day
+  referral as `signup` for accounts under 2 days old. `get_anthology_insights()`
+  returns counts only: views for Free, the full table for Pro, and adds and signups
+  from 5 up. The Privacy page (cookies, recommendation history) is updated.
+- **Annual (§8).** `create-checkout-session` takes `{ plan }`, allowlisted.
+- **Found in testing.**
+  - The reader's chart suggested books already on the shelf. It now sends
+    the exclude hint, asks for 6 directions, keeps 3 after `filterAlreadyKnown`
+    against read-next, currently-reading, library and wishlist, and re-filters
+    cached charts on render. A chart left with fewer than 3 doors can be redrawn early.
+  - Anthologies had no way to edit the title or description. `AnthologyEditor` in
+    ListDetail now edits them, plus the custom cover (Pro). The cover is
+    re-encoded in the browser to WebP at 1200px or less, which strips EXIF, and is
+    uploaded to `<uid>/`. It shows on ListDetail, the public ListView, the owner's
+    Anthologies page, and the Discover and Following cards.
+  - `updateList` now returns `{ error }` and skips the optimistic update on failure.
+  - The long reading and the one-line Oracle reason were only in `BookModal`, which nothing renders anymore (every book link goes to `BookPage`), so neither was visible. Both now render on `BookPage` for signed-in readers.
+  - The landing Offering was updated to 6 Seeker rows and 7 Adept rows, and About
+    pricing to 7 Pro rows.
+
+### Files
+
+| File | |
+| --- | --- |
+| `supabase/migrations/2026092{3,4,5,6}120000_*.sql` | new (4) |
+| `src/lib/proGates.js`, `src/components/ProGate.jsx` | new: gates |
+| `src/lib/oracleReadings.js`, `src/components/OracleLongReading.jsx`, `src/components/TasteChart.jsx` | new: extras |
+| `src/lib/anthologyInsights.js`, `src/components/AnthologyInsights.jsx` | new: insights |
+| `src/views/{BookClubCreate,Lists,PlanCreate,ListView,BookPage,Onboarding,Profile,Kindred,ReaderProfile}.jsx`, `src/components/{AddToListModal,ClubPolls,SessionDiscussion,BookModal}.jsx`, `src/lib/useFollows.js` | wiring |
+| `netlify/functions/claude.js`, `netlify/functions/create-checkout-session.js` | Pro-only sources, annual plan |
+| `src/components/OracleMissButton.jsx` | new |
+| `src/views/OracleAsk.jsx`, `OracleSimilar.jsx`, `OracleCategories.jsx` | mount the button |
+| `src/lib/OracleQuotaContext.jsx` | `welcome`; shape comment |
+| `src/components/OracleCallHistory.jsx` | `refunded` label |
+| `src/views/Dashboard.jsx` | welcome-month note |
+| `src/styles/components/_oracle-quota.scss` | `.oracle-miss*` |
+| `src/i18n/{en,es}.json` | `oracle.miss*`, `oracleHistory.costRefunded`, `dashboard.aiQuotaWelcome`; pricing, landing, Terms, Privacy copy |
+| `docs/pro-tier-v1-spec.md` | new |
+
+### Verify
+
+```sql
+-- as the anon role this must be false
+select has_function_privilege('anon', 'public.consume_oracle_call(uuid,uuid,text,text)', 'execute');
+-- a client update to a privileged column must fail with 42501
+-- (Console, signed in:) await supabase.from('profiles').update({ subscription_status: 'active' }).eq('id', me)
+select * from public.oracle_misses order by created_at desc limit 20;
+```
+
+Setting a reader to Pro by hand still works from the SQL editor (`postgres`).
+
+---
+
+# v0.70 — Scan a shelf with the camera (2026-09-16)
+
+**No migrations. No new env vars. `public/app-version.json` goes to `0.70`.**
+One new dependency (`@zxing/library`), one new SCSS partial, and a
+`netlify.toml` header change that the feature does not work without.
+
+Readers add books by scanning the EAN-13 barcode on the back cover. Scanning is
+continuous — no tap between books — and the pile commits to one destination
+(wishlist or library) at the end. Entry points are the top bar, so a reader
+standing in a bookshop does not have to navigate to a shelf first, and the title
+importer.
+
+### Files
+
+| File | |
+| --- | --- |
+| `src/lib/barcodeScanner.js` | new — camera, engine selection, the four filters, torch, photo decode |
+| `src/lib/scanResolve.js` | new — ISBN → book, session-cached |
+| `src/components/ScanModal.jsx` | new — the scanning UI |
+| `src/styles/components/_scan.scss` | new |
+| `src/styles/main.scss` | `@use 'components/scan'` |
+| `src/components/Nav.jsx` | global Scan entry (desktop icon + mobile menu row) |
+| `src/components/BulkImport.jsx` | "scan instead" onto the same pipeline |
+| `src/i18n/{en,es}.json` | `scan.*` (42 keys), `nav.scan`, `bulkImport.scanInstead` |
+| `package.json` | `@zxing/library@^0.21.3` — run `npm install` |
+| `netlify.toml` | `Permissions-Policy: camera=(self)` |
+
+Scanned books go through the existing `hardcoverLookupByIsbn` →
+`googleBooksLookupByIsbn` chain and the existing `bulkAddToWishlist` /
+`bulkAddToLibrary`. The scanner is another mouth on the import pipeline, not a
+second importer. `src/lib/isbn.js` already had `isValidIsbn`, `isbn10to13` and
+`registrantLanguage`; the scanner uses those rather than its own copies.
+
+### Three failures that each cost a day, and the code that prevents them
+
+**`Permissions-Policy` must allow the camera.** The header shipped `camera=()`,
+which denies `getUserMedia` for this site's own pages: it rejects with
+`NotAllowedError` before any permission prompt appears, so there is nothing the
+reader can grant. It is `camera=(self)` now — `microphone` and `geolocation`
+stay denied. Without that deploy the feature is dead on the live site and
+perfectly healthy on localhost, which is the worst possible way to find out.
+
+**`'BarcodeDetector' in window` is not a capability check.** On Windows, Chrome
+exposes the constructor but ships no barcode backend: construction succeeds and
+`detect()` rejects on every frame. `getSupportedFormats()` is the only honest
+gate. `barcodeScanner.js` uses it and also counts runtime rejections so a
+backend that disappears mid-session falls back to ZXing instead of going quiet.
+
+**The decoder must be bundled, not fetched.** It is a dynamic
+`import('@zxing/library')`, so Vite emits a local chunk and first paint is
+untouched. A CDN tag would be blocked by `script-src 'self'` and fail
+*silently* — a decoder that never arrives is indistinguishable from one that is
+broken.
+
+All three produce the same symptom: a working camera that decodes nothing. So
+every non-decoding state in `ScanModal` renders *over* the camera view, never
+behind it. (The prototype's error panel sat in normal flow behind an absolutely
+positioned `<video>`, and later an "invisible" `display:flex` overlay covered the
+live feed because the `hidden` attribute loses to `display`. Both shipped a
+scanner that looked broken while reporting its own failure to nobody.)
+
+### Not in this release
+
+The shared `book_isbns` cache, the `resolve_isbn` RPC, the confidence ladder and
+`reader_editions` writes are specified in `claude/isbn-scan-v1-spec.md` and
+deliberately deferred: they need a migration and an RLS surface, and none of it
+has to exist for a reader to scan their shelf.
+
+The duplicate-trap guard is the first thing to add. A scanned Spanish ISBN can
+still resolve to a *new* `books` row for a work the catalogue already holds in
+English — the exact duplication `reader-editions-v1-spec.md` exists to stop.
+`workGroups.js` hides it at display time; nothing prevents it at write time, and
+the scanner will become its largest source. Watch `books` row creation after
+this ships: a spike in `discovered` rows with non-English `language` values is
+this firing.
+
+The library-sticker question is still open. Loan barcodes are often pasted over
+the ISBN, which would hurt the in-a-library case; the decoder deliberately
+accepts Codabar and Code 39 so the rejection path can tell us rather than us
+guessing.
+
+# Maintenance Notes — 2026-09-10 → 09-18: the series backfill, and the gate that reviews it
+
+**No migrations. No env vars. No schema changes. No version bump —
+`public/app-version.json` stays at `0.69`.** This is catalogue and tooling work:
+`batch-scripts/`, `tests/`, one diagnostic and one hand-run fix file. The bundle
+is unchanged, so the deploy carries nothing user-visible except the series pages
+filling in as volumes land.
+
+## What was wrong
+
+`seriesBackfill.mjs` proposes volumes from Hardcover and pre-approves the ones it
+is confident about. Over eight review passes the pre-approvals were wrong in nine
+distinct ways, none of which the script could see, and each of which was found by
+a human reading the CSV:
+
+| Run | Series | Pre-approved | Wrong | What it was |
+|---|---|---|---|---|
+| 09-10 | 99 | 194 | 0 | — |
+| 09-11 | 99 | 122 | 49 | comics collections into single-issue series; one book into two series; 14 Gibson pulps into Lila Bowen's *The Shadow* |
+| 09-12 | 92 | 289 | 2 | an omnibus picked over *The Crystal Shard*; the Arabic *Ozma of Oz* |
+| 09-13 | 93 | 50 | 0 | — |
+| 09-14 | 96 | 67 | 12 | five *Untitled Stormlight Archive* placeholders; *The Doors of Stone*; *The Winds of Winter* |
+| 09-16 | 98 | 67 | 6 | *Soulless: The Manga* into The Parasol Protectorate; Absolute omnibuses and single issues into The Sandman |
+| 09-17 | 94 | 40 | 37 | 36 episodes of Dan Carlin's podcast into Hardcore History |
+| 09-18 | 92 | 105 | 65 | the 09-11 cohort again, on a run that predates the fix |
+
+The recurring shape is worth stating plainly, because it governs every guard
+below: **every check the script made compared a candidate to something the series
+already claimed.** On a series that claimed nothing — no positioned volume, no
+`total_books` — all of them were inert, and the gate silently degraded to "sole
+candidate, has an English edition, confidence ≥ 80". That is a match test, not a
+gate. Measured on 2026-09-11: 41 pre-approvals in series holding a book, all
+correct; 77 in series holding nothing, 49 wrong.
+
+## What changed
+
+**`batch-scripts/_shared/seriesGate.mjs` (new).** The pre-approval decision,
+extracted from a 700-line function that also talks to Supabase and Hardcover, as
+a pure function over plain data. It was untestable in place; that is the only
+reason the rules below could break silently. Carries:
+
+- `no-frame-of-reference` — refuses a series with no positioned held volume and
+  no claimed total. Replayed across every run: 473 pre-approvals over four
+  consecutive passes untouched, 37 of 40 caught on the pass that produced it. The
+  way out is one human field — number the first volume, or set `total_books`.
+- `disowned` — a candidate that names its authors and names none of ours.
+- `structurally-odd` — position 0, or past the claimed total. Both were
+  confidence penalties that landed on exactly 80 and passed a ≥ 80 threshold.
+- `non-latin-title` — a title in another script is a translated edition whatever
+  its edition list reports. One-directional on purpose: Latin-script
+  translations (*Kış Ustası*, *Anschlag auf den Präsidenten*) are the same error
+  and are still uncaught.
+- `withdrawCrossSeriesDuplicates()` — one book proposed into two series withdraws
+  from both. *Stardust Crusaders* is genuinely part 3 of *JoJo's Bizarre
+  Adventure*, so both rows were right in their own frame; the file was wrong, and
+  with a single `series_id` the apply *order* decided which page kept the book.
+
+**`batch-scripts/_shared/seriesQueue.mjs` (new).** `--stale` served the same
+hundred series every night. The first sort key was a boolean — never-examined
+before examined — which stops discriminating once everything carries a stamp, and
+the order then fell through to two static keys. Wicked, Marvel Zombies and The
+Godfather opened three consecutive runs; 60 of 238 distinct series appeared in
+three or more. Now ordered by recency, nulls first. The next run after the fix
+returned **89 of 98 series that had never been examined**.
+
+**`batch-scripts/_shared/seriesCandidates.mjs`.** `readsAsCollectedSet()` — a
+title ending in a collective noun with no volume number is a collected set
+(9 omnibuses caught across three runs, 12 real volumes kept). `COLLECTION_RE`
+gains collector's and anniversary editions, and `omnibus` outside the word
+boundary so *Venomnibus* matches. `namesADifferentFormat()` refuses a containment
+hit whose residue is only a format qualifier — `manga`, `collectededitions`,
+`singleissues`, a bare year — while keeping `wardstonechronicles`, `trilogy`,
+`quartet`. The series-name tiebreak now needs a name of 4+ characters, because
+`oz` is a substring of every volume in the Oz series and the exclusion left only
+the Arabic edition standing.
+
+**`tests/` — 117 passing**, up from 63. `series-gate.test.js`,
+`series-queue.test.js` and `series-collections.test.js` are transcribed from real
+CSV rows, not invented. The negative cases are the bad pre-approvals; the positive
+cases are what each rule must **not** refuse, which is the measure of whether the
+trade is still the one that was agreed — Dungeon Crawler Carl's unbounded tail,
+the audiobook narrator credit, and Laundry Files, ten Stross novels with no page
+counts anywhere upstream.
+
+The queue test is a different shape from the others on purpose. Every individual
+ordering the queue produced was correct; the defect existed only across runs. So
+it simulates several passes, stamps what each one served, and asserts the
+population rotates.
+
+**`batch-scripts/manual/oracleBatch.mjs` — `--ids-file`.** The drain order is
+`created_at` ascending, which was right when the backlog was the original import
+and is wrong now: an applied volume lands as `unreviewed` and is among the newest
+rows, so the pages just repaired sort behind ~1,300 books. `--ids-file` spends on
+an explicit list instead. It does not widen eligibility — the ids are intersected
+with `books_needing_curation` exactly as the default path is.
+
+**`batch-scripts/probes/pickSeriesEnrichment.mjs` (new).** Writes that list,
+ranked by enrichment debt. It picks and does not enrich, deliberately:
+`buildPrompt()` was already duplicated once into `oracleCategorizationService`
+and the two drifted, so a second enrichment script would be the third copy.
+
+**`supabase/diagnostics/series_enrichment_debt.sql` (new).** `series_completeness`
+has carried `held` and `held_live` since `20260909120000`. Every applied volume
+lands as `unreviewed`, so it counts in `held` and not in `held_live`, and the gap
+is the enrichment backlog seen from the series side. The query that matters is
+`would_fail_a_three_volume_floor`: series complete in the catalogue and invisible
+on the page. **A series floor built on `held_live` would noindex exactly those.**
+
+**`supabase/fixes/2026-09-13-drizzt-oz-undo.sql`.** Two rows applied in error —
+*The Icewind Dale Trilogy* at The Legend of Drizzt 4, the Arabic *Ozma of Oz* at
+Oz 3 — unnumbered by id, with the correct volumes placed via `upsert_book`. Worth
+recording why it needed a hand fix: **a wrong book at a position makes the
+position read as satisfied, so the right book stops being proposed.** *The Crystal
+Shard* appeared nowhere in the 3,209 rows of the following run. A bad row does not
+announce itself afterwards; it removes the evidence that it is wrong.
+
+## Where the catalogue is
+
+502 distinct series examined across eight passes, **340 still queued.** Reviews
+continue; the eight CSVs and their findings are in the project docs, one per run.
+
+## Known state — what this does NOT fix
+
+- **38 series rows are keyed under a rule the app no longer uses.** They store a
+  `normalized_name` that keeps a leading "the", which `normalizeSeriesName()`
+  strips, so they are unreachable by the app's own lookup. Volumes and impressions
+  split across two pages — `Fitz and the Fool` and `The Fitz and the Fool` both
+  hold books. This is the largest single piece of series work outstanding, and no
+  amount of backfilling touches it.
+- **Wanted language is a global `eng`.** *La catedral del mar* had all 18
+  candidates rejected, the Spanish original filtered out of its own series. The
+  Spanish side of the catalogue cannot be served by this pipeline as written.
+- **The `unnumber` note asserts something false.** It says "Hardcover does not
+  list it in this series at all" when what happened is a failed title match —
+  *Blood Rain (novel)* against *Blood Rain*, *Raven of the Inner Palace* against
+  *Raven of the Inner Palace, Vol. 1*. `unnumber` is the one action that removes
+  data and its note argues for approving it.
+- **No placeholder guard.** Two batches produced titles that are literally the
+  word `Untitled`, plus announced-but-unpublished volumes. A publication date
+  would catch all of them; whether Hardcover exposes one is unprobed.
+- **No held-page median.** Would retire both the Drizzt omnibus class and the
+  Sandman issue/collection mix. Needs `pages` on the held query, and a wrong
+  column name 400s the whole query, so it wants a probe first.
+
+
+# Update Notes — v0.68 → v0.69: the design system, applied
+
+**No migrations. No env vars. No schema changes. Deploy the bundle.**
+
+`public/app-version.json` bumped to `0.69`, `critical` false.
+
+## What was wrong
+
+The site was being read as AI-generated. Auditing the source against the usual
+list of tells found that most of the accusations did not stick — the type stack,
+the parchment palette, the gradient count and the landing page's narrative
+structure are all fine, and the landing page in particular was already doing the
+right thing. The problem was the app pages, and it was one problem wearing four
+costumes: **a design system that is declared and then not followed.**
+
+- **The body font was Inter.** `$ro-font-body` led with `'Inter'` while
+  `_typography.scss` two files away documented `Body = EB Garamond`. EB Garamond
+  was in the stack but only as a fallback, so it never rendered, and the italic
+  the system calls "the Oracle's softer voice" was Inter italic. Six families
+  were loaded across three link tags; two of them (Cormorant Garamond, Special
+  Elite) had one CSS rule each.
+- **Every widget card was the same composite.** `_dashboard.scss` opened with a
+  spec comment mandating `linear-gradient(150deg, …)` + `1px solid` +
+  `border-radius: 13–16px` on every card, and implemented it as one placeholder
+  `@extend`ed eleven times. Gradient fill, thin stroke and soft radius applied
+  uniformly is the single most-cited generated-UI signature. Note the spec gave a
+  *range*, which is why this file alone carried seven different radii.
+- **The eyebrow had replaced headings.** `Dashboard.jsx` is 1,346 lines with one
+  `<h1>` and zero `<h2>`. All section hierarchy was a 11px gold mono overline,
+  rendered by `WidgetShell` for every widget — twelve of them down one column. A
+  document-outline problem as much as a visual one.
+- **Italic had no meaning.** 27 declarations in `_dashboard.scss` alone, on stat
+  numbers, streak counts, author names, button labels and empty states. Book
+  titles were italic too, correctly — and invisibly, because the author name
+  beside them was italic as well.
+- **Every page title was one formula.** `<em class="accent">` inside 39 i18n
+  strings, splitting each title into a plain half and a burgundy italic half,
+  often on an arbitrary word (`Privacy <em>Policy</em>`, `Books I've <em>Read</em>`).
+  Invisible to a CSS audit because it lived in the catalogs.
+
+## What changed
+
+- `$ro-font-body` and `--ro-font-body` lead with EB Garamond; the five hardcoded
+  `"Inter"` faces use the token. `index.html` drops Inter and Cormorant Garamond
+  and adds `0,600`/`1,500` to EB Garamond so the ramp's 600 steps stop
+  synthesizing bold. Six families across three link tags → four across two.
+- Body-font ramp steps up ~1.15×. Measured with canvas `TextMetrics`, EB
+  Garamond's x-height is 6.0px at 14px against Inter's 8.0px, so matching sizes
+  read markedly smaller. Display (Instrument Serif) and label (Plex Mono) steps
+  are untouched — different faces, different metrics. The ratio is recorded in a
+  comment in `_tokens.scss`.
+- `%widget-surface` is a flat `var(--ro-surface)` at one `var(--ro-radius-lg)`,
+  no gradient and no stroke. The same stroke came off 14 further card blocks in
+  `_book-pages`, `_social`, `_clubs` and `_misc`; popovers, modals, inputs and
+  cover art keep theirs, where an edge is doing real work.
+- Widget headings are real `<h2>`s (`.db-widget-title`) in Instrument Serif
+  roman. The mono overline survives as a `%eyebrow` placeholder for the four
+  genuine metadata labels — hero kicker, AI label, Oracle result line, settings
+  groups.
+- Italic is rationed to book, series and edition titles, the Oracle's voice,
+  quiet asides, `::placeholder` and inline `<em>`. Stat values and streak counts
+  are roman with `font-variant-numeric: tabular-nums`. 106 declarations → 57
+  across the five page files.
+- The accent is colour-only (`<span class="accent">`, never `<em>`) and lands on
+  the noun the page is about, one per heading — including the seven dashboard
+  quick actions, which read too plain without it once the cards went flat.
+
+## Note for the next pass
+
+The type ramp in `_tokens.scss` is used 25 times, 19 of them for `overline`.
+There are **488 hardcoded `font-size: Npx` declarations** in the SCSS. The ramp
+change above is therefore nearly a no-op in practice, and the real type scale of
+this app is those 488 values. Same shape as the radius ramp (~90 ad-hoc values),
+the breakpoint map (`ro-up`/`ro-down`/`ro-between` used 4 times against 19
+hardcoded `@media` widths) and the `13–16px` spec range. Consolidating them is
+the remaining half of this release's premise.
+
+# Update Notes — v0.67 → v0.68: the genre surface, findable
+
+**No migrations. No env vars. Deploy the bundle, then resubmit the sitemap.**
+
+`public/app-version.json` bumped to `0.68` (the `vite.config.js` guard fails the
+build otherwise), `critical` false.
+
+## What was wrong
+
+v0.67 built the genre surface and then left it hard to find. Six things, all of
+them the same class of problem — a page that exists and cannot be reached, or a
+signal that says one thing to a crawler and another to a browser.
+
+- **`/genres` was an orphan.** `sitemap.js` submits it at priority 0.8 and its
+  own comment calls it "the hub every genre page hangs off". Nothing in the app
+  linked to it: the genre pages linked *up* to the hub, and no page linked *in*.
+  A hub with no inbound links has no internal weight, and for a reader it simply
+  did not exist. Now in both footers and on the sitemap page.
+- **The client overwrote the SEO title.** The prerender emitted
+  `Horror books — what to read | The Books Oracle`; `useDocumentMeta` in
+  `GenrePage.jsx` then set `Horror books — The Books Oracle`. Google fetches the
+  prerendered head *and* runs the JS, so the phrase written to catch the query
+  was not reliably the one indexed. The strings now live in two files and say
+  the same thing, with a comment in each pointing at the other.
+- **The family page had no books on it.** It listed its ten sub-genres and
+  stopped. That is a menu, not an answer to "what to read in horror" — the query
+  this page is the best-placed one on the site to win, because it spans every
+  genre on the shelf. It now carries the same cover wall the genre page does,
+  over the deduped union of its genres' books, plus the Oracle hand-off.
+- **`/genres` was not prerendered**, on the reasoning that it is "static enough".
+  It is not static: its sixteen links come from a fetch at runtime, so a crawler
+  that does not execute JS got an empty shell on the site's top genre hub. The
+  new branch also lists each shelf's three most-read genres inline, which turns
+  one fetch into ~64 discoverable destinations.
+- **Six families share a name with a genre on them** — horror, fantasy, science
+  fiction, gothic, romance, adventure — so `/genres/horror` and `/genre/horror`
+  are one character apart and both read as "horror books". Left alone they
+  compete and Google picks one, usually the weaker. The family now owns the
+  intent phrase ("— what to read"), the genre keeps the plain noun
+  ("Horror books"). Deliberately **not** a cross-page canonical: these are not
+  duplicates, and Google ignores a canonical between pages it can see are
+  different, so it would buy nothing and hide a hierarchy the breadcrumbs state
+  honestly.
+- **The family page opened with 900px of prose.** The first pass put the books
+  under ten genre rows, each carrying a full description — measured at a
+  headless 390×844, the first cover sat at **y=1227px**, half a screen past the
+  fold on a phone. The layout said "read about horror"; the page is for finding
+  a horror novel.
+
+  The fix is not to demote the genres. Baymard and NN/g both find sub-category
+  navigation belongs *above* the listing on a page like this, and both name
+  pushing it below the fold as the common damaging mistake. What ate the fold
+  was not the LINKS but the DESCRIPTIONS attached to them — and Baymard's
+  guidance on category intro copy is explicit: put it at the bottom, because
+  Google indexes it wherever it sits, so the move costs nothing in search.
+
+  So: chips (navigation, compact) → books → the full annotated genre list.
+
+  The chip row itself took three tries, and the measurements are why. A
+  horizontal scroller gives every family the same fixed height but hides genres
+  behind a gesture nobody performs on a trackpad. Plain `flex-wrap` is obvious
+  and fine on desktop — Fantasy's 21 chips take three rows — but on a 390px
+  phone the same 21 chips take **eleven rows and 506px**, putting the first
+  cover at y=821 against an 844px fold: a sliver of one cover, which is the
+  original bug reintroduced on the five largest families. What ships is wrap
+  **clamped to two rows** with a "Show all 21 genres" toggle: obvious like wrap,
+  fixed-height like scroll. First cover at **y=444px** on the worst family, on
+  a phone, in portrait or landscape.
+
+  Whether the toggle appears at all is **measured in the DOM**
+  (`scrollHeight > clientHeight`, re-measured through a `ResizeObserver`), not
+  inferred from the number of genres: 21 chips overflow two rows on a phone and
+  not on a desktop, so any threshold on genre count is wrong at one of the two
+  breakpoints. The chips filter in
+  place rather than navigate, because every genre's rows are already loaded —
+  going to `/genre/folkhorror` for a subset already in memory would be a network
+  round trip to show less — and the active chip offers the way through to the
+  real page. The genre page got the same treatment: its sibling-genre chips sat
+  between the description and the first cover, leading *away* from the genre the
+  reader had just chosen.
+- **No breadcrumbs, and the wrong list shape.** `BreadcrumbList` added to all
+  three genre shapes; `CollectionPage` moved from `hasPart` to
+  `mainEntity`/`ItemList`, which is the shape Google documents for a list page
+  and the only one that can carry position.
+
+- **`robots.txt` was never deployed.** It sat at the repo root; Vite only copies
+  `public/` into `dist`, which is what netlify.toml publishes. A request for
+  `/robots.txt` fell through the SPA catch-all and returned the **404 page with a
+  200 status** — verified live before the fix. Nothing was ever blocked (an
+  unparseable robots file reads as no rules), so it went unnoticed, but the
+  `Sitemap:` directive never reached any crawler that looks for it there rather
+  than in Search Console. Moved to `public/robots.txt`. `index.html`'s own
+  comment already listed robots.txt as one of four places the domain is written
+  down, which is how a file nobody had fetched stayed believed-in.
+- **The genre prerender had been listing no books since v0.67.** It asked
+  `book_genres_view?select=book_id,title,author`. That view is `book_genres`
+  joined to `genres` — it carries the GENRE's name and description and has **no
+  title, author or cover_url**. PostgREST answered
+  `400 column book_genres_view.title does not exist` on every request; the caller
+  did `bRes.ok ? await bRes.json() : []`, so every prerendered genre page shipped
+  an empty book list for two weeks. Confirmed against the production database,
+  not inferred from the migration.
+
+  This is the **sixth** time this codebase has turned a failed request into an
+  ordinary empty result, and the second on this exact view — `genreService.js`
+  carries a fifteen-line comment about the same trap ending "it will happen a
+  third time." It did, in the file that comment was written to warn. Both
+  branches now use one `booksForGenres()` helper: ids from `book_genres`,
+  hydrate from `books`, loud on either failure.
+- **No `og:image` on any of the three genre shapes.** Every other entity page has
+  had a branded card since v0.48, so a shelf pasted into Slack or WhatsApp was a
+  bare text row next to a book link that renders a card. Nothing to do with
+  ranking; everything to do with whether the link gets clicked.
+- **`INDEX_FLOOR` was a bare `5` here** and a named constant in the other two
+  places that must agree with it. Named, with the other two listed by path.
+
+## Verify
+
+```
+node batch-scripts/probes/genrePrerender.probe.mjs
+```
+
+New probe. It runs the three genre branches through the **real**
+`injectMeta`/`injectBody` with Supabase stubbed and no network, and asserts on
+the injected HTML: title parity, one robots tag (not two), noindex below the
+floor and the permissive default above it, breadcrumbs present, and — the one
+that needs stub data to prove — that a book on two genres of the same family
+appears **once** on the family wall.
+
+**The stub enforces the real schema.** It carries the column list for each
+table and answers `400 column X.y does not exist` exactly as PostgREST would.
+That is the half that matters: the probe's first version returned whatever the
+caller asked for, so it passed *while the bug above was live in production*. A
+stub that answers questions the database would refuse is not a test, it is a
+second implementation that agrees with the bug.
+
+Every bug listed above is invisible in a passing build and invisible in a
+browser; you see them only by asserting on the bytes the crawler receives.
+
+## Tests
+
+`npm run test` (Vitest — Jest needs babel and ESM workarounds on a Vite project;
+Vitest reuses `vite.config.js`). `npm run verify` runs lint, build and test in
+that order, which is the order CI uses and the order that matters: the
+build-output tests assert on `dist/` and **skip themselves when it is absent**,
+so running them before a build makes them quietly do nothing.
+
+Four files, chosen by what has actually gone wrong here rather than by coverage:
+
+| File | Catches |
+|---|---|
+| `tests/contracts.test.js` | Lists written down in two files that cannot see each other: `EARNABLE_TYPES` vs the SQL kind-check, `INDEX_FLOOR` across three files, client vs prerendered `<title>`. |
+| `tests/failure-is-not-empty.test.js` | A rejected query returning what an empty result returns. |
+| `tests/prerender.test.js` | The head and body a crawler receives, against a **schema-aware** Supabase stub. |
+| `tests/build-output.test.js` | Files that must reach `dist/`, not merely exist in the repo. |
+
+Only two of the six expensive bugs on this project were rendering faults; the
+rest were contract drift, which no component test can see, because each file is
+individually correct and it is their disagreement that is the bug. That is why
+there are no React tests yet and no jsdom — they can be added when a rendering
+bug costs a day, not before.
+
+**The suite was verified by reintroducing the bugs.** Each of the six was put
+back and the suite confirmed red, then reverted:
+
+| Reintroduced bug | Result |
+|---|---|
+| `female_authors_count` dropped from the constraint (the v0.55 bug) | 1 failed |
+| Client title drifts from the prerendered one (v0.67) | 1 failed |
+| `INDEX_FLOOR` raised in one file only | 1 failed |
+| Prerender asks `book_genres_view` for `title` (v0.67) | 4 failed |
+| A read swallows its error again | 1 failed |
+| `robots.txt` not in `dist/` | 2 failed |
+
+A test suite nobody has seen fail is a suite of unverified claims. The first
+attempt at the fourth mutation **passed**, because it put `title` in a filter
+rather than the `select` and so was not the bug it claimed to reproduce —
+worth recording, since a mutation that does not reproduce the bug proves
+nothing about the test.
+
+The prerender stub carries each table's real column list and answers
+`400 column X.y does not exist` exactly as PostgREST would. Keep it in step with
+`supabase/migrations` when a view changes: a stub that answers questions the
+database would refuse is not a test, it is a second implementation that agrees
+with the bug.
+
+## CI
+
+`.github/workflows/ci.yml` — lint, build, test on every push to `main` and every
+pull request. Nothing ran automatically before v0.68; the other three workflows
+are batch jobs and none of them looks at the code. Node is pinned to 20 to match
+`netlify.toml`; if those drift, CI is testing a runtime the site does not deploy
+on.
+
+## After deploying
+
+Search Console → Sitemaps → resubmit `https://www.thebooksoracle.com/sitemap.xml`.
+Google retired the anonymous sitemap ping endpoint in 2023, so there is no URL
+to curl — resubmitting in the console is the request. The sixteen family URLs
+and the above-floor genre URLs were already in the file from v0.67; what changed
+is that they now lead somewhere worth crawling.
+
+Worth watching in Search Console over the next month, in this order: whether
+`/genres` starts accruing impressions at all (it had no inbound links, so a flat
+line there was expected), and whether `/genres/horror` or `/genre/horror` is the
+URL Google surfaces for broad horror queries. If it picks the genre page over
+the family page, the title split above is the lever to pull again — not a
+canonical.
+
+# Update Notes — v0.66.1 → v0.67: the genre layer
+
+**Fourteen migrations. No env vars. Two build scripts to re-run.**
+
+```
+20260902140000_books_needing_curation.sql
+20260902150000_genre_descriptions_backfill.sql
+20260902160000_merge_genres_function.sql
+20260902160100_genre_cleanup.sql
+20260902170000_genre_naming_rule.sql
+20260902180000_genre_families.sql
+20260903090000_family_frame_asset.sql
+20260903100000_historical_romance_description.sql
+20260903110000_book_genres_view_family.sql
+20260903120000_genre_families_public_read.sql
+20260903130000_backfill_version.sql
+20260903140000_accomplishment_kinds.sql
+20260903150000_reset_stale_backfill_stamp.sql
+20260903160000_drop_backfill_gate.sql
+```
+
+Apply in filename order. `140000` must land before the backfill replays, or the
+replay hits the same constraint; `150000` cleans up the stamps written while it
+did.
+
+`130000` and `150000` are kept in the sequence but are superseded by `160000`,
+which drops `accomplishments_backfill_version` outright — a fresh database
+adds the column and then removes it, which is noise but not a hazard, and
+rewriting applied migrations is worse. The gate is gone: the replay now runs on
+every mount and relies on `on conflict do nothing` rather than on a stamp that
+could record work that never happened. `accomplishments_backfilled_at` stays —
+it is history, not a gate, and nothing reads it any more.
+
+Then, in the repo:
+
+```
+node scripts/build-genre-cards.mjs    # expect 167 / 16 / 0 / 0
+node scripts/build-share-cards.mjs    # expect ready=22, no warnings
+```
+
+## 1. The catalogue had 282 books with no genre, and two drains that could not reach them
+
+`oracleBatch` chose its work by `status` — `unreviewed`, `incomplete`, or
+`oracle_categorized` with a null complexity. Nothing in that predicate asked
+whether a book had genres, and `verified` is one of the six values
+`books_status_check` permits. **A verified book with zero rows in `book_genres`
+was ineligible on every run, forever**: 189 of them.
+
+`metadataBackfill` fetched `LIMIT * 4` rows ordered by `metadata_checked_at` and
+decided need in memory afterwards. That sort has no relation to need. With 3,674
+books never checked, the 800-row window at `--limit 200` was filled entirely by
+books that already had everything, and the run printed `0 book(s) to process`
+while 282 books had no genre at all.
+
+Both now select from **`books_needing_curation`**, a view that does the anti-join
+PostgREST cannot express and exposes `needs_genres` / `needs_description` /
+`needs_depth` as filterable booleans. 282 → 9.
+
+## 2. The Oracle had never seen a single genre description
+
+`buildPrompt()` renders the catalogue as `- Name: description`, falling back to
+`- Name`. But `search_genres` — the RPC it read from — does not return the
+`description` column at all, so that ternary could never take its first branch.
+**Every genre reached the prompt as a bare word**, under an instruction that says
+to invent only when nothing in the catalog fits.
+
+That is the origin of most of the near-duplicates in the table. Measured effect
+of the fix:
+
+| Run | Books curated | New genres invented | Rate |
+| --- | ---: | ---: | ---: |
+| Before | 40 | 11 | 0.275 / book |
+| After | 251 | 5 | **0.020 / book** |
+
+`manual/genreDescriptions.mjs` now runs nightly after `oracleBatch`, so a genre
+invented tonight is described tonight rather than arriving at tomorrow's prompt
+as a bare word — every undescribed genre was a seed for its own duplicate.
+
+## 3. Sixteen families
+
+167 genres, each on exactly one of 16 shelves. `genre_families` is a separate,
+admin-only table: the Oracle creates genres nightly and must never be able to
+invent a shelf.
+
+**`family_id` and `parent_id` are different axes and are allowed to disagree.**
+`parent_id` answers "is this a kind of that?" — sparse, optional, nests.
+`family_id` answers "which shelf does a reader find this on?" — total, exactly
+one per genre, never nests. Irish Literature is a child of Literary Fiction and
+sits on the Place & Period shelf. Do not derive one from the other.
+
+The migration ends with a guard that refuses to apply if any genre is
+unassigned; the same query is the weekly curation check.
+
+## 4. Genre and family pages — which did not exist at all
+
+There was no genre route. Genre tags had a cursor and no `href`. 167 genres were
+unreachable to a reader and invisible to a crawler, and the 2026-08-24 postmortem
+found every prerendered page carrying exactly one link, `<a href="/">`.
+
+- `/genres` — the sixteen-family index
+- `/genres/:familySlug` — a family, its genres and their descriptions
+- `/genre/:genreSlug` — the genre, its shelf, its siblings
+
+All three are public and prerendered, and the tags are links now. **Correct when
+logged out** is the constraint that shapes them: personal data is a thin
+client-side overlay, never the page. `genre_families` needed an explicit anon
+grant for that to be true — the prerender runs with the service key and the
+browser as `anon`, so without it a crawler would have seen a full page while a
+human following that link saw nothing.
+
+The cover wall **rotates daily, not per request**: seeded by genre + UTC day, so
+the prerender and the client agree, the cache stays valid for a day, and the link
+graph still varies across a week. Below 5 books a genre page is reachable and
+linked but `noindex` and out of the sitemap — a page with one book on it is
+precisely the thin page Search Console declined in August, and the sitemap and
+the page must agree or Google reports the contradiction.
+
+## 5. One grouped picker, everywhere
+
+`GenreSelect` existed since v0.63 but had only been adopted in one view; Wishlist,
+Library and Passages were still on native `<select>`s holding the whole taxonomy.
+
+It is now an accordion: sixteen family rows and nothing else until one opens, one
+open at a time. **Typing bypasses it entirely** and returns a flat ranked list —
+the accordion serves readers who do not know what they want, and typing is proof
+that you do. This is why it is not two dependent dropdowns: those force a reader
+who knows they want Folk Horror to first answer a question they may not be able
+to, and punish a wrong guess with an empty second control.
+
+Shelves group by family, and **stop grouping once you have filtered**. Sections
+used to be keyed on each book's primary genre, so filtering to Science Fiction
+still produced an "Adventure" heading.
+
+## 6. The Ledger records shelves
+
+The genre ladders could mint **835 plaques** (167 genres × 4 rungs, plus 167
+first-in-genre). Worse, one book minted three: a necromancer novel earned *First
+in Necromancy*, *First in Dark Fantasy* and *First in Fantasy*, because the Oracle
+assigns specific + umbrella by design.
+
+Replaced by `family_count` (10/25/50/100/250/500/1000), `family_breadth`
+(distinct genres within one family) and `new_family` — 176 possible, and one book
+earns at most one. Breadth is capped by the family's book count, or a single
+multi-tagged book would earn "3 genres" on its own.
+
+`genre_count` and `new_genre` are **retired, not deleted**. Rows already earned
+stay in the table and on the shelf — rule 3 of the accomplishments spec — and are
+simply never minted again. They render in a collapsed group.
+
+The family row is a **milestone track, not a progress bar**. Dots are stops made;
+the line ends where the reading ended. A bar filled toward a target is a picture
+of what the reader has not done, which is the habit-app grammar rule 1 refuses.
+
+## 7. Clean URLs
+
+Route params were always two kinds, treated as one. **Addressable** — `tab`,
+`anchor`, `auth`, `scrollTo`, `lang` — must survive a reload. **Transient** —
+`snap` (a base64 blob of the whole book so `BookPage` paints before its fetch),
+`from`, `fromLabel`, `plan` — are an in-app handoff.
+
+`buildPath()` serialised both, producing
+
+```
+/book/galahadandthegrail%7Cmalcolmgui?from=app&snap=JTdCJTIyYm9va0lkJTIy…
+```
+
+which is what a reader copies when they mean to share a book — and, with 3,742
+book URLs already in *Discovered — currently not indexed*, an invitation to treat
+every entry path as a separate document. Transient params now stay in
+`route.params` and never reach the address bar, and a `replaceState` on mount
+scrubs URLs that arrive with them.
+
+## Found along the way
+
+- **`Japanese & East Asian Horror`** said its own category twice; renamed to
+  `East Asian Horror`, the same redundancy merged on the literary side.
+- **Folk Horror's description illustrated a book genre with two films.**
+- **`comedywit` had a hand-measured frame box** keyed to a slug that no longer
+  existed after the card folders moved to families, so it silently fell back to
+  the default box.
+- **`BookCover` takes flat props, not a book object** — passing one renders every
+  tile as an empty placeholder.
+- **Never embed off a view.** PostgREST resolves embeds from foreign keys and a
+  view carries none. This cost a query in `oracleBatch` and again in
+  `genreService`.
+- **The backfill was gated on a boolean, not a version.** `accomplishments_backfilled_at`
+  is set once and never cleared, so changing the ladders would have left every
+  existing reader with no family accomplishments — the redefinition inert for
+  exactly the readers with the most history to honour. The first fix was a
+  version column; the second was to delete the gate. A stamp asserts "this has
+  been done", which is only ever as true as the write it was recorded beside —
+  and when the write failed, the stamp made the failure permanent. Recomputing
+  every mount is O(library) of redundant, conflict-ignored inserts, which is a
+  cheaper problem than a cache that can lie. The visible cost is a short gap
+  before the family rows appear; that gap is now a skeleton.
+- **`female_authors_count` has never persisted.** It was added to
+  `EARNABLE_TYPES` in v0.55 and never added to the
+  `reading_accomplishments_kind_check` constraint, so every insert 400'd. The
+  error is logged and swallowed and the share card renders from the in-memory
+  moment, so the milestone was celebrated and never recorded. Found because the
+  family kinds hit the same wall. The backfill replay recovers them.
+- **`earnAccomplishments` reported success on a failed write.** It logged the
+  upsert error and returned `undefined` either way, so the backfill stamped its
+  version over a rejected insert and marked profiles as backfilled against
+  ladders they had never computed. It now returns `{ ok, written, error }` and
+  nothing stamps anything any more. This is the same shape as the four
+  earlier instances — a failed request rendering as an ordinary empty result —
+  and it is the reason the "loud on failure" rule keeps earning its place.
+
+# Update Notes — v0.66 → v0.66.1: the app had no links in it
+
+**No migrations. No env vars. Deploy the bundle.**
+
+`public/app-version.json` bumped to `0.66.1` (the `vite.config.js` guard fails
+the build otherwise), and `critical` flipped back to **false**. It was sitting
+at `true`, which is the v0.59 hotfix setting that v0.63.3 exists to have caught:
+`critical: true` makes PWAUpdatePrompt auto-apply a new service worker instead
+of showing the dismissible toast, so every open tab force-reloads on deploy and
+loses component state. Nothing in this release is a hotfix a stale client must
+take immediately, so it ships as an ordinary prompt.
+
+Search Console, 2026-09-01: 1,460 pages indexed, 2,760 not. 1,460 impressions,
+3 clicks, median position 60. The not-indexed bucket breaks down as 2,316
+"Discovered – currently not indexed", 358 "Page with redirect", 89 "Crawled –
+currently not indexed".
+
+Three separate causes. None of them is content quality, and one of them is that
+the app was redirecting Googlebot away from its own pages.
+
+## 1. The app was rewriting every URL it served
+
+`I18nContext`'s effect ran `syncLangParam(lang)` on mount, unconditionally. The
+effect fires once with whatever `detectInitialLang()` returned — localStorage,
+then `navigator.language`, then `'en'` — so *every* page load rewrote its own
+URL, a few hundred ms in:
+
+```
+GET /book/thereformatory%7Ctananarive     → 200, no server redirect
+after React mounts                        → /book/thereformatory%7Ctananarive?lang=en
+```
+
+Google's renderer treats a `replaceState` to a different URL as a redirect. The
+URL in the sitemap was never the URL that finished rendering, which is the 358.
+Nothing server-side redirects — `netlify.toml` has only 200 rewrites — the app
+was doing it to itself, and had been since the param was introduced.
+
+`?lang=` is a *share* feature: v0.33's note says "append ?lang=es to force a
+language for the link recipient". A language inherited from localStorage or the
+browser is a UI preference and has no business in the URL, for the same reason
+`siteUrl.js` strips query strings from the canonical. So the write is now gated
+on a `langChosenExplicitly` ref, set by `setLang` **and** `toggleLang` — the ···
+menu goes through `toggleLang`, which calls `setLangState` directly and would
+otherwise have switched languages without ever arming the flag.
+
+Incoming `?lang=es` links are untouched: `detectInitialLang()` reads the param,
+and the param is already in the URL, so there is nothing to sync.
+
+## 2. The sitemap advertised keys with no author
+
+`sitemap.js` guarded against `"|author"` — a title that normalises to nothing —
+and had a comment explaining exactly why that case is worth catching. It did not
+guard the mirror image. `"title|"`, a book whose *author* half normalises away,
+passed `startsWith('|')` and shipped:
+
+```
+https://www.thebooksoracle.com/book/shehauntsmestill%7C
+```
+
+`endsWith('|')` added alongside it. Same reasoning as the original guard, other
+half.
+
+## 3. Search Console was showing us the wrong page
+
+`BOT_UA_PATTERN` in `og-prerender.js` matches `/bot/`, so Googlebot has always
+been served the prerendered head. `Google-InspectionTool` and `GoogleOther`
+contain no `bot` substring and fell through to `context.next()` — the generic
+`index.html`, including its homepage canonical.
+
+Indexing was never affected. But URL Inspection and "Test live URL" run as
+`Google-InspectionTool`, so the console was showing a page with
+`<link rel="canonical" href="https://www.thebooksoracle.com/">` on every book
+URL — i.e. it lied about exactly the pages you open it to debug. Both agents are
+now matched explicitly.
+
+## 4. The 2,316, which is the real number
+
+This one `sitemap.js` had already diagnosed, in a comment dated 2026-08-24:
+
+> crawl priority follows internal links, and the app emits almost none (every
+> in-app navigation is an onClick handler on a div, so `/book/:key` is reachable
+> only from og-prerender.js's series list)
+
+Confirmed by counting. Before this release there were **three** `<a href>`
+elements in all of `src/`, and all three pointed off-site — Wikipedia, purchase
+links, share intents. The app emitted no internal links whatsoever. Google had
+2,316 URLs from a sitemap, on a new domain, with no path to any of them. A
+sitemap is a hint; a link is a path.
+
+### `hrefFor()` and `<RouteLink>`
+
+Both in `RouterContext.jsx`, next to `go()`.
+
+`hrefFor(name, params)` builds the **canonical** URL for a route: path params
+only. Everything else a view hands `go()` — `from`, `fromLabel`, `snap`,
+`anchor` — is in-app state, and none of it may reach an `href` or one page gets
+advertised under a dozen URLs. It returns `null` rather than
+`/book/undefined` when a segment param is missing, same call `buildPath()` makes.
+
+`<RouteLink to params navParams>` renders a real `<a href>` whose onClick calls
+`go()`. The split matters: `params` builds the href, `navParams` goes to `go()`,
+so the crawler sees `/book/:key` while the reader still gets the breadcrumb and
+the instant-render snapshot. Modified clicks (cmd/ctrl/shift/alt, middle button)
+fall through to the browser untouched, so open-in-new-tab and copy-link-address
+work — they never did on a `<div onClick>`, and that is the only part of this
+release a reader will notice.
+
+No SCSS was needed: `_reset.scss` already carries
+`a { color: inherit; text-decoration: none; }`, so a `<div>` or `<button>`
+converted to an `<a>` keeps its exact appearance.
+
+### Converted in this release
+
+Scoped to what Googlebot can actually reach. `/book/:key`, `/series/:name` and
+the static pages are public; Dashboard, Profile, PlanView and ListView are all
+behind auth, so converting those buys UX and no crawl.
+
+| Where | What |
+| --- | --- |
+| `BookPage.jsx` | series dots → sibling volumes (the current volume stays an inert `<div>`, not a link to itself) |
+| `BookPage.jsx` | series name + "open series" pill |
+| `SeriesPage.jsx` | every book title in the series |
+| `SitemapPage.jsx` | all section links, and the breadcrumb |
+| `BookCard.jsx` | "See more" |
+
+`hrefFor` verified against the route table: `{ bookKey: 'thereformatory|tananarive' }`
+→ `/book/thereformatory%7Ctananarive`, byte-identical to the sitemap entry;
+extra params dropped; `null` for a missing or empty key.
+
+## 5. Known state — what this does NOT fix
+
+- **The 89 "Crawled – currently not indexed" are untouched.** Google fetched
+  those and declined. That is a content judgement about pages built from
+  Google Books / Hardcover metadata — data Google already has — and no amount
+  of plumbing answers it. It needs something on a book page that exists nowhere
+  else: reviews, ratings, club activity, reading-plan context.
+- **The sitemap is still ~4,200 URLs on a domain with no authority.** The
+  quality bar in `sitemap.js` (§2, plus the digits-only and `cover_url` filters)
+  should probably tighten to "books with something unique on the page". 400
+  URLs that all get indexed beat 4,200 that do not.
+- **`openBookTab()` in `bookHelpers.js:195` still builds a legacy hash URL** —
+  `?lang=xx#book-page?bookKey=…`, the pre-v0.39 shape. It works only because
+  `migrateLegacyHash()` rewrites it on arrival, which means every Stacks
+  "See more" opens a tab that immediately `replaceState`s to a different URL:
+  the same self-inflicted redirect as §1, from a different direction. It also
+  writes `?lang=` back in. Not fixed here because it opens a new tab with a
+  snapshot payload and deserves its own change.
+- **Nothing here creates inbound links.** Internal linking makes a crawl
+  possible; it does not make the site authoritative. Position 60 with 3 clicks
+  on 1,460 impressions is what a domain with no external links looks like.
+
+# Update Notes — v0.65 → v0.66: Kindred
+
+**Migrations required, in order:**
+
+1. `20260820180000_follows.sql` — `user_follows`, `profiles.bio` / `favorite_genres` / `shelf_visibility`, `lists.visibility`, `curator_requests`, the `read_books` RLS rewrite, and the drop of `friendships` + `friend_pairs`
+2. `20260820210000_reader_search.sql` — `search_readers()`
+3. `20260820220000_kinship_notification.sql` — `kinship_formed`, and the reciprocity check on the follow trigger
+
+**Apply these and deploy the bundle together.** Migration 1 drops `friendships`
+and the `friend_pairs` view, both of which the v0.65 bundle still reads. Old
+code against the new schema breaks the dashboard feed and every profile page,
+so this is one deploy, not two. Verify on a Supabase branch first — §2 is the
+part worth watching.
+
+Spec: `claude/social-model-follows-v1-spec.md`.
+
+Friendships are gone. One asymmetric relationship replaces them, and the
+approval step that used to guard shelf access is now a setting.
+
+## 1. Why a follow rather than a friendship
+
+We had already shipped a follow. `list_followers` (v0.63) is asymmetric, needs
+no approval, and notifies on change. So the question was never "should this app
+have follows" — it was whether to extend that primitive to people, and whether
+the friendship survives alongside it.
+
+It does not, for four reasons:
+
+- **A friendship is a state machine.** `friendships.status` was
+  pending/accepted/blocked, which is five flows — request, accept, decline,
+  cancel, re-request — each needing UI, notifications and edge cases. A follow
+  has one.
+- **The curator goal is asymmetric by nature.** Following a curator is one-way.
+  Modelled as a friendship, a curator with 400 readers approves 400 requests.
+- **Two relationship types would need distinguishing everywhere** — the feed,
+  the profile, notifications, privacy, empty states, onboarding — and readers
+  would have to answer "friend or follow?", a question with no good answer.
+- **It matches the positioning.** A quiet companion does not run a
+  pending-request inbox.
+
+Existing rows were **dropped, not migrated**. There were two in production, both
+belonging to the same account, and both parties re-follow in under a minute.
+
+## 2. The consent boundary moved, and it moved in the same transaction
+
+This is the piece to review.
+
+`read_books`' SELECT policy read "mine, or an accepted friend's". The friendship
+*was* the permission. Deleting friendships without replacing that boundary would
+have silently opened every reader's shelf — so `profiles.shelf_visibility`
+(`public` | `followers` | `private`, default `followers`) lands in the same
+migration, and the policy now calls:
+
+```sql
+create policy "read_books select" on public.read_books
+  for select using (public.can_view_shelf(user_id));
+```
+
+`can_view_shelf()` is SECURITY DEFINER because the check has to read the
+*owner's* profile row to learn their setting, and the viewer has no business
+selecting that row directly. It is `stable`, not `volatile`, so Postgres
+evaluates it once per statement rather than per row of a shelf. `search_path` is
+pinned, because a SECURITY DEFINER function without one is a privilege
+escalation waiting to happen.
+
+Section 6 of the migration is ordered deliberately: repoint the policy, *then*
+drop the view, *then* the table. The other order fails on the dependency, and
+dropping the policy without a replacement leaves `read_books` with no SELECT
+policy at all — which under RLS denies everything, including the reader's own
+shelf.
+
+**The client no longer filters for privacy anywhere.** `useFriends` used to read
+`preferences.friendsCanSeeLibrary` in JavaScript and drop rows, which made the
+setting only as strong as the client honouring it — anyone could call
+`getFriendLibrary` directly. Rows the viewer may not see now never arrive.
+`ReaderProfile` reads `shelf_visibility` for one purpose only: choosing which
+sentence to show in the gap.
+
+## 3. `lists.is_public` is now derived
+
+Lists needed a third tier (`private` / `followers` / `public`), and that is not
+a boolean. Fourteen places read `is_public`.
+
+Rather than rewrite all fourteen, `visibility` became the source of truth and
+`is_public` is maintained by a `before insert or update` trigger. Every existing
+policy, query and RPC keeps working and keeps meaning exactly what it meant —
+"is this on the open web?". **Write to `visibility`; never to `is_public`.**
+
+`clear_followers_on_private()` was rewritten in the same pass. It fired on the
+boolean, so a list moving from public to followers-only would have dropped its
+followers — which is the opposite of what that tier is for.
+
+## 4. `search_readers()`, and what it will not do
+
+The first Kindred build searched `profiles.username` with an exact match. That
+fails in the two most ordinary cases there are: `username` is nullable and
+nothing forces one, so a reader who only set a display name was unfindable by
+any spelling of their name; and "mari" does not equal "marisol".
+
+One SECURITY DEFINER function now handles username prefix, display-name
+substring, and email — the last of which the client cannot do at all, since
+email lives in `auth.users`.
+
+Two deliberate limits:
+
+- **Email matches exactly, never as a prefix or substring.** A partial match
+  turns this into an address-harvesting endpoint: type `@gmail.com`, read back
+  the user list. Exact-match means you can only confirm an address you already
+  had.
+- **The email is never returned.** Matching on it is allowed; reading it back is
+  not.
+
+`is_discoverable` is honoured, the caller is excluded, and execute is granted to
+`authenticated` only — a signed-out visitor can open a profile by URL, but
+enumerating the user base is not on offer.
+
+## 5. Notifications: one event is worth an email
+
+`new_follower` notifies one person, **in-app only**, and
+`send-notification-email.js` hard-refuses to email it regardless of the reader's
+preferences. Following is one-way and costless, so followers arrive in bursts —
+an email each is the most reliable way to teach someone to filter your domain.
+
+`kinship_formed` is different: reciprocal, rare, and it takes two people, so it
+cannot spam. It notifies **both** readers, because it is news to each of them —
+the one who followed back just learned it is mutual, and the original follower
+never knew until now. It is the only social event allowed to become an email.
+
+The preference key was renamed `friends` → `follows` **in place**, so a reader
+who had friend emails switched off is not opted back in to what replaced them.
+
+## 6. Vocabulary
+
+The verb stays plain — a button that says anything other than **Follow** is a
+button people press with hesitation. The room is branded:
+
+| Concept | Interface | Code |
+|---|---|---|
+| People you follow | Your Kindred | `following` |
+| A mutual follow | Kinship | `mutual` (derived) |
+| People who follow you | Readers following you | `followers` |
+
+"Kindred" beat *Acolytes* because the Oracle is already the AI: devotional
+vocabulary implies the reader you follow is an oracle, colliding with the
+product's most established name.
+
+Also renamed, **in-app labels only**: Reading Plans → **Passages**, Curated
+Lists → **Anthologies**. Routes, page titles, meta and the sitemap keep the
+plain words — the Anthologies directory renders signed-out by design and is a
+landing surface, and "curated list" is what a stranger types into a search box.
+
+## 7. Found along the way
+
+`notifications_type_check` never included `'list_updated'`, but the
+curated-lists digest has been inserting exactly that type since v0.63. Either
+the constraint was altered outside migrations, or **every list-follower
+notification has been failing its insert since that feature shipped**. The
+rebuilt constraint includes it. Worth confirming which — if it is the latter,
+list follows have never notified anyone.
+
+## 8. Known state
+
+- `useFriends.js`, `Friends.jsx` and `FriendProfile.jsx` are deleted.
+- No curator directory yet. `favorite_genres` is a real column and filterable,
+  but nothing queries it — that is Phase 3.
+- Curator grants are a `service_role` action. `curator_requests` holds the ask;
+  there is no admin UI, and deliberately no client path to approval.
+- Onboarding's follow step was dropped until there are curators to point it at.
+- `package.json` still reads `0.2.0` and has for many releases. The README line
+  and `CURRENT_VERSION` are the ones kept current.
+
+---
+
+# Update Notes — v0.64.1 → v0.65: dates nobody chose, and a cache that outlived the truth
+
+**Migration required:**
+
+1. `20260820140000_read_books_updated_at.sql` — `read_books.updated_at` plus its
+   trigger and index
+
+Shipped to production ahead of v0.66; written up here after the fact.
+
+## 1. The Stacks stopped inventing read dates
+
+`bulkAddToLibrary` stamped `read_at = today` on every book it added. All three
+of its callers — The Stacks, OnboardingStacks, BulkImport — are a reader saying
+*"I have read this"*, not *"I finished this today"*, so every tap became a
+fabricated data point: the book counted toward this year's reading challenge,
+this month's bar on the pace chart, and the streak. Clearing forty cards off the
+wall in one sitting read as forty books finished that afternoon.
+
+Undated now, extending the v0.59 `importGoodreads` rule to every bulk path. A
+read date the reader never gave us is a guess, and a guess that feeds stats is
+worse than a blank.
+
+`markAsRead` also hard-coded `today` while ignoring `extra.readAt` — so the
+"Finished on" field RatingModal has offered since v0.63 silently did nothing on
+the create path. Only the edit path ever respected it.
+
+## 2. Three separate reasons a corrected read date would not stick
+
+Reported as one bug. It was three.
+
+**A silent no-op.** A PostgREST `UPDATE` matching zero rows returns 204 with no
+error object. An edit aimed at a `book_id` with no `read_books` row reported
+success, patched local state, and reverted on the next load. `updateReadBook`
+now `.select()`s to check, and falls back to an upsert.
+
+**A timezone shift.** `new Date(patch.readAt).toISOString()` parses
+`'2025-11-15'` as UTC midnight, so a reader west of Greenwich got `2025-11-14`
+back out. `read_at` is a DATE column and the input is already `YYYY-MM-DD`; the
+correct handling is to leave it alone.
+
+**The cache, which is why a hard refresh did not help.** `DataContext` treats
+its `sessionStorage` cache as authoritative, and exactly one thing invalidated
+it: `catalog_meta.version`, bumped by a trigger on `books`. That covers
+catalogue changes and nothing about the reader's own shelf — so a change made in
+another tab, on another device, or by hand in the SQL editor stayed invisible
+for the full 30-minute cache lifetime. And `sessionStorage` survives F5 by
+design, so "hard reset" cleared nothing.
+
+`read_books.updated_at` exists so the client can carry a shelf fingerprint
+(`max(updated_at)` + row count) in the cache and compare it in one cheap
+request, in the same shape as the `catalog_meta` check: it decides whether the
+cache is *usable* and never overwrites in-memory state, so it does not
+reintroduce the background-refresh race the no-background-refresh comment
+guards against. `created_at` cannot do this job — editing a read date does not
+create a row.
+
+## 3. The rest
+
+- **Reading Challenge leads the Overview tab.** The goal frames the numbers
+  underneath it. It also renders outside `hasStats`, so an empty shelf opens on
+  "set a goal" rather than on nothing.
+- **Date inputs.** v0.63 styled everything reachable and left the one lever that
+  reaches the popup calendar: `accent-color`. The selected day was still painted
+  system blue. Set now, alongside a `color-scheme` default that applies before
+  React mounts, and a selector that matches on input *type* rather than the
+  `.input` class.
+- **`--ro-label-gap: 1.4rem`** above section labels — more air above than below,
+  or the label reads as a caption on the control it follows rather than a
+  heading for the one it introduces.
+- **A `midnav: 1180px` breakpoint** and a condensed topbar for 768–1180px. The
+  full desktop bar needs ~1180px, so iPad portrait ran off the right edge with
+  no scroll and no overflow menu. Nothing in that tier is `display:none` — a
+  control that vanishes between 1179px and 1180px is a worse bug than the one
+  being fixed.
+- **The what's-new icon renders on mobile**, at a 44px touch target. It lived in
+  `.nav-icons`, which is `display:none` below the tablet breakpoint, so the
+  unseen-release dot had nowhere to appear.
+- **The footer Pricing link** goes to About's pricing anchor instead of the
+  subscription tab.
+- **`docs/stacks-genre-coverage.sql`** — eligible books per genre, mirroring
+  `useStacks.baseQuery()` exactly, with a stricter column that excludes stub
+  descriptions.
+
+---
+
+# Update Notes — v0.64 → v0.64.1: audiobooks, and a backfill that finishes
+
+**Migrations required, in order:**
+
+1. `20260819180000_original_language_checked_at.sql` — `books.original_language_checked_at`
+2. `20260820120000_audiobook_progress.sql` — `reader_editions.duration_minutes`, `reader_editions.narrator`, `currently_reading.progress_minutes`
+
+Apply the first **before the weekly cron next fires** (Mondays 06:00 UTC) — see
+§2. Apply both before deploying the bundle: §4 is what happens if you do not.
+
+A patch release with one new surface. v0.64 gave `reader_editions` a `format`
+column and then gave an audiobook nothing to put in it; this is that gap, plus
+two things v0.64 got wrong that only showed up once it was running.
+
+## 1. Audiobooks are measured in time
+
+Spec: `docs/audiobook-progress-v1-spec.md`.
+
+A reader who says their copy is an audiobook is now asked how far in they are
+and how long the book runs, in hours and minutes, and can record who narrates
+it. `reader_editions` gains `duration_minutes` and `narrator`;
+`currently_reading` gains `progress_minutes`.
+
+**Minutes, not hours.** An audiobook is `11h 47m`; as hours that is `11.783`,
+which every render has to un-round and which accumulates error when summed
+across a library. The input is still two fields, because nobody types 707.
+
+**Two columns, not one unit-tagged column.** `reader_editions` is unique per
+`(user_id, book_id)`, so a reader can change format part-way through a book —
+started the paperback, switched to the audiobook for a commute. With a single
+`progress` number whose unit is decided by `format`, page 143 silently becomes
+143 minutes.
+
+**The total is optional, and that is a design decision rather than laziness.**
+Most listeners do not know the length of the book they are in the middle of.
+Cumulative hours works without it; only the progress bar needs a total. So the
+feature is not gated on the number that is hardest to get.
+
+**Duration lives on `reader_editions`, not `currently_reading`.** It has to
+survive the book being finished, because that is what a completed audiobook
+contributes to the stat. Putting it on the shelf row would repeat the
+`user_page_count` mistake exactly one release after fixing it.
+
+### The Dashboard was telling audiobook listeners they had read nothing
+
+`ReadingStatsWidget` summed `effectivePages` across the library. An audiobook
+has no page count, so it contributed **zero**, and a reader who finished forty
+of them saw a pages total that said they had read nothing. That was live.
+
+It is now two tiles. `pages total` explicitly **skips** audio editions rather
+than relying on them happening to be null — same number, stated as a rule
+instead of an accident — and `listened` sits next to it, hidden when it is
+zero, because an empty tile is a worse answer than no tile.
+
+It is **not** fixed by giving audiobooks a page count. The tempting arithmetic —
+250 wpm, ~9,300 words an hour, so ten hours is "about 340 pages" — has an
+invented number in every term, and the result would land in
+`accomplishments.js` and on share cards indistinguishable from a counted page.
+Two units, two tiles, nothing sums them.
+
+### `editions.js`
+
+`effectiveMinutes`, `isAudioEdition`, the minutes↔h/m translation, and
+`progressFraction(book, edition, progress)` — which is the one that matters.
+Almost every caller that divides by pages actually wants a *fraction*, so the
+audio case is handled once. It returns `null` for "cannot be known" and every
+caller renders that as **no bar**, which also fixes a print book with no page
+count that used to render stuck at 0%.
+
+## 2. The original-language backfill did not terminate
+
+`originalLanguageBackfill.mjs` went into `scheduled/` on the grounds that it is
+free **and it terminates**. The first was true.
+
+Its filter was `original_language IS NULL`. It resolves about 40% of what it
+examines; the other 60% are books Wikidata genuinely does not have, so they stay
+NULL, so they stay eligible — and the weekly cron would re-ask the same ~2,000
+indie novellas, Warhammer tie-ins and single-issue comics every Monday forever.
+Slow, poor manners toward a free service that asks for a contact address in its
+User-Agent, and a report that never shrinks, which is worse than either: a queue
+that cannot drain gives no signal about whether anything is working.
+
+`books.original_language_checked_at` is the fix, and it is
+`authorGenderBackfill.mjs`'s rule verbatim — **stamp even when the answer is
+nothing**, so an honest shrug is recorded as asked-and-answered.
+
+**A failed request never stamps.** `search-failed` and `entities-unfetchable`
+mean the row was *attempted*, not asked; a timestamp there converts an outage
+into a permanent "we checked, there is nothing" — the 2026-08-17 postmortem's
+root cause with a date on it. `shouldStampChecked()` owns that decision, in the
+library half so the probe can assert on it, including that an *unknown* stage
+does not stamp. Stamps are written per row rather than batched, for the reason
+that cancelled run kept 98 of its answers: immediate writes survive.
+
+`--recheck` reverts to the value filter for a deliberate sweep after a source
+improves. Not for a schedule.
+
+## 3. The progress modal follows the format
+
+The v0.64 layout asked for a page count *first* and the edition afterwards,
+behind a disclosure link. That ordering was wrong in a way only audiobooks made
+visible: it asks "how many pages?" before knowing whether the book has pages at
+all, and an audio listener got a disabled field, a note apologising for it, and
+nowhere to record what they had actually done.
+
+The form now establishes **what the copy is** before asking **how far in** you
+are, in one order for every format:
+
+```
+ISBN → Format → Title → Language
+  ├── print / ebook : Pages read · Pages in your edition · Translator
+  └── audio         : How far are you · Total length · Narrator
+```
+
+ISBN stays first because it is the one field a reader can copy off the back
+cover without deciding anything, and filling it fills several of the others.
+Format is second because it is the switch. The disclosure link is gone: a form
+whose primary field lives inside a collapsed section has no primary field.
+
+Two consequences that are data-safety rather than layout:
+
+- **Switching format is not lossy.** The hidden branch's numbers are preserved
+  on save, never nulled. A reader who read 76 pages of the paperback before
+  switching to the audiobook has not un-read them.
+- **The ISBN lookup will not write a page count onto an audio edition.**
+  Google's count is the print edition's, and copying it there would give an
+  audiobook pages — the exact thing this release exists to prevent.
+
+**The action buttons no longer scroll out of reach.** `.rating-modal` caps
+itself at the viewport and scrolls its own content (v0.60.3); that stopped
+modals growing *past* the screen but never stopped the buttons sitting below the
+fold of that scroll, and this form is now always long enough that they do.
+`.pu-actions` is `position: sticky` against the bottom of the surface —
+inside the modal, inheriting its background, knowing nothing about where the
+modal happens to be on screen.
+
+**And every control is full width.** The form had accumulated
+`.pf-input--narrow` (a fixed 120px borrowed from the reading-challenge target),
+full-width text inputs and intrinsically-sized selects, so five stacked fields
+had four different right edges. Nothing here benefits from being narrow — a page
+count in a 120px box is not easier to read, just a ragged column. Scoped to
+`.pu-form`; `.pf-input--narrow` is doing the right thing where it came from.
+
+## 4. A failed shelf query was being cached as an empty library
+
+Postmortem: `claude/cached-empty-shelf-2026-08-20-postmortem.md`. Caught in
+development; production was running the previous bundle and never named the
+column, so no reader saw it.
+
+Adding `progress_minutes` to the `currently_reading` SELECT made the **whole
+query** fail on a database without the migration — PostgREST loses the entire
+result set over one unknown column. That much was a deploy-ordering mistake.
+What it exposed was not.
+
+`loadFromSupabase` did not throw. Every result is consumed as
+`(res.data || [])`, so it returned a well-formed state object with
+`currentlyReading: []` — indistinguishable, to its caller, from a reader who
+genuinely has nothing on the go. So the caller did what it does with any
+successful load:
+
+```js
+supabaseLoadedRef.current = true;   // "this is real data now"
+setState(remote);                   // renders the empty shelf
+saveSessionCache(user.id, remote);  // caches it for 30 minutes
+saveLocal(state);                   // and writes it to localStorage
+```
+
+On the next load the session cache **hits and deliberately does not refetch
+state** — by design, so a stale read cannot clobber in-memory mutations. It
+re-checks only the catalog-version integer, which had not changed. **So applying
+the migration changed nothing**: the database was fixed and the app was reading
+a cached lie. And because `sessionStorage` survives F5 and dies only with the
+tab, the reload that should have proved the fix was the one action guaranteed
+not to.
+
+The column was not the defect. **A failed query was laundered into cached
+truth**, and any outage or dropped connection could have done the same.
+
+Two fixes:
+
+- `selectTolerant()` retries without the new column when the error names it, and
+  logs `[schema] …`. A deployed bundle running against a not-yet-migrated
+  database is the normal state for the minutes around a deploy, not an edge
+  case. It also caught that `reader_editions` was missing `duration_minutes` and
+  `narrator` from its SELECT — written by `saveReaderEdition`, never read back.
+- **The four shelf queries throw on error** — `currently_reading`,
+  `wishlist_items`, `read_books`, `plans`. That puts them on the path that
+  already handled this correctly: the caller catches, falls back to
+  localStorage, and does **not** set `supabaseLoadedRef`, so neither cache
+  learns anything from a failed load.
+
+`memories`, `accomplishments` and `reader_editions` still degrade to empty on
+purpose. Losing those costs a progress bar's precision, not a reader's library.
+That distinction is the rule worth keeping: **degrade the enrichment, never the
+shelf.**
+
+## 5. Known state
+
+- **Check PostgREST's schema cache before believing a migration is applied.**
+  `NOTIFY pgrst, 'reload schema';` — the dashboard does it, a direct psql or CLI
+  migration may not, and the symptom is `column ... does not exist` against a
+  column that plainly exists.
+- **When testing a cache-related fix, close the tab.** F5 does not clear
+  `sessionStorage`.
+- `loadFromSupabase` returns a bare state object, so "this load is complete" is
+  something the caller assumes rather than reads. The `throw` added in §4 is the
+  only thing enforcing it. Returning `{ ok, state }` would be cheap
+  belt-and-braces; not blocking.
+- The two stat labels beside the new one (`avg per month`, `pages total`) are
+  hardcoded English rather than run through `t()`. The new tile matches them
+  rather than half-translating the widget. Worth closing on its own.
+- `originalLanguageBackfill` resolves ~40% of what it examines and the residual
+  is a genuine coverage ceiling, not a tuning problem — see
+  `claude/v0.64-original-language-tuning-log.md` before reaching for it again.
+  Rows it cannot answer stay NULL and are the nightly Oracle pass's job.
+
+# Update Notes — v0.63.3 → v0.64: the catalog learns what language a book is in
+
+**Migrations required, in order:**
+
+1. `20260817120000_author_works.sql` — `find_books_by_author` RPC
+2. `20260817140000_book_language.sql` — `books.language`, `books.original_language`, `upsert_book` gains both
+3. `20260818120000_reader_editions.sql` — `reader_editions` table, owner-only RLS, backfill of `currently_reading.user_page_count`
+4. `20260819120000_original_language_source.sql` — `books.original_language_source`
+
+Commit them as SQL and apply them from the repo. `SECURITY_AUDIT_v0.39.md` (H2)
+is a list of tables whose RLS nobody can verify because the change was made in
+the dashboard; `reader_editions` must not join it.
+
+**Run after migrating** — free, no keys beyond the ones already in `.env.local`:
+
+```bash
+node batch-scripts/probes/originalLanguage.probe.mjs                          # 55 offline checks
+node batch-scripts/scheduled/languageBackfill.mjs --dry-run
+node batch-scripts/scheduled/languageBackfill.mjs
+node batch-scripts/scheduled/originalLanguageBackfill.mjs --probe "Dune|Frank Herbert"
+node batch-scripts/scheduled/originalLanguageBackfill.mjs --dry-run --limit 50 --verbose
+node batch-scripts/scheduled/originalLanguageBackfill.mjs
+```
+
+---
+
+This release is two conversations that turned out to be one problem.
+
+The first was about translations: a Spanish-speaking reader tracking *Cien años
+de soledad* against 417 English pages, and "More by this author" listing
+*Aprendiz del Asesino*, *La Nef Du Crépuscule* and *Die Tochter des Wolfs* as
+three separate Robin Hobb books. The second was about ISBNs: 971 rows the
+weekly maintenance job could not resolve, and a report full of zeros that all
+meant "did not run" rather than "nothing to do".
+
+They are the same problem seen from two ends. `books` is a **work** table
+carrying **edition** facts — `isbn` and `pages` — on a row whose identity
+(`normalized_key`) is title plus author. That mismatch is invisible in English.
+In Spanish it produces duplicate rows, split ratings, wrong page counts and
+unresolvable ISBNs, and every one of those looks like its own unrelated bug
+until the catalog can say which language a row is in.
+
+It can now. `books.language` and `books.original_language` were added in
+`20260817140000`; this release is the work that fills them.
+
+## 1. Two language columns, because there are two questions
+
+| Column | Question | Kind of fact |
+| --- | --- | --- |
+| `books.language` | what language is **this row** in? | edition |
+| `books.original_language` | what language was **the work** written in? | work |
+
+*Cien años de soledad* is `language = 'es'`, `original_language = 'es'`.
+*One Hundred Years of Solitude* is `language = 'en'`,
+`original_language = 'es'`. That second row is why the pair exists: without
+`original_language` there is no way to tell an original from a translation, and
+"show the reader the original" has nothing to consult.
+
+`upsert_book` writes `language` from lookup metadata for every new row.
+Neither column has a CHECK constraint listing valid codes — there are ~184
+living two-letter subtags, the list changes, and a constraint that rejects a
+real language fails an upsert of a real book. The client normalises to the
+BCP-47 primary subtag; the column records.
+
+## 2. Filling `language`: zero nulls, and why that took three scripts
+
+`languageBackfill.mjs` fills the column for rows that predate the migration,
+from OpenLibrary, Google Books, and — for the printings no API has indexed —
+the ISBN registration group, which is offline and free and answers for
+9788419680877 (*Aprendiz de asesino*, Nocturna Ediciones) when neither API
+does.
+
+It could only work once the rows had ISBNs, which is what the ISBN work was
+for. That work is written up in full in
+`claude/catalog-maintenance-2026-08-17-postmortem.md`; the short version is six
+bugs, of which two were structural:
+
+- **Hardcover failures were invisible.** `gql()` reported non-2xx responses and
+  GraphQL `errors` through `vlog()` — silent without `--verbose` — and
+  `return json.data || null` made an errored response indistinguishable from an
+  empty one at every call site. A transient outage produced a 971-row worklist
+  asserting Hardcover has no edition of *Dune*, and a GitHub issue recommending
+  ~$39 of curation on books that were never missing. Transport and GraphQL
+  failures are now logged unconditionally; 10 consecutive failures aborts, and
+  401/403 aborts immediately.
+- **A cancelled step reported as complete.** `fallback.log` stopped mid-entry at
+  `[187/971]`. Per-book writes survived; the summary and worklist CSV, built
+  after the final loop, did not. The workflow counted rows in a file that did
+  not exist and printed `Still unresolved after OL/Google: 0`. Outputs now flush
+  on completion, error and SIGINT/SIGTERM, the summary reads machine-readable
+  counters lines rather than CSV row counts, and a missing line renders
+  `— (did not finish)` instead of `0`.
+
+Also fixed: Google Books was hard-gated to `langRestrict=en` against the file's
+own stated policy, so "no English edition exists" was unreachable through it;
+`Unknown author` was being matched as if it were an author, poisoning the query
+and rejecting *Winnie-the-Pooh*, *Don Quixote* and *The Fellowship of the Ring*;
+search `per_page` was 10 where "Dune Frank Herbert" returns 70; the 429 handler
+never passed `attempt` through, so against an exhausted daily quota it retried
+forever; and `normTitle` stripped `&` rather than expanding it, so
+*Rock Bottom & Nowhere* and *Rock Bottom and Nowhere* diverged mid-word.
+
+**ISBNdb** was added to `isbnFallback.mjs` as a source, queried first when
+`ISBNDB_API_KEY` is set. The ordering is deliberate and was initially got wrong:
+money was not the scarce resource. 5,000/day against a residual in the low
+hundreds makes ISBNdb abundant and Google's ~1,000/day scarce, so putting the
+paid source last meant paying the free one's backoff first.
+
+Result: `select count(*) from books where isbn is null` and
+`select count(*) from books where language is null` both return **0**.
+
+## 3. Filling `original_language` — the piece this release adds
+
+`original_language` was the last null column of that work, and it was null for a
+structural reason. `20260817140000` named exactly one writer for it: the nightly
+Oracle categorisation pass. That pass does not revisit books it has already
+categorised, so every row predating v0.64 was permanently outside the reach of
+the only thing allowed to fill it. `author_gender` hit this identical wall in
+v0.62.
+
+`batch-scripts/scheduled/originalLanguageBackfill.mjs` is the answer, and it is
+free. Three sources, in descending order of authority:
+
+1. **Wikidata**, via the MediaWiki action API. No key, no account, CC0 data —
+   so nothing written from here carries a deletion obligation. The property that
+   answers is **P407** ("language of work or name"), not P364 ("original
+   language of film, TV show, novel…"): P364 reads like the right one and is a
+   film property in practice, answering **zero** of the first fifty rows where
+   P407 answered fourteen. P364 still wins where both are present. P407 is taken
+   only from an item whose P31 declares it a written work — an **edition** item
+   is followed through P629 to its work rather than believed, because an
+   edition's language is the printing's, which is `books.language`.
+2. **OpenLibrary `translated_from`** on the edition record. Present only where a
+   librarian filled it in, so coverage is low; where it is there it is the most
+   direct possible answer.
+3. **Propagation across the catalog's own work groups.** If two rows share a
+   `hardcover_id`, a `goodreads_id` or an ISBN and one has an answer, the other
+   has the same answer. No requests, and it is the source that scales — every
+   Wikidata hit pulls its translations along with it.
+
+### A title match is not an identification
+
+Searching Wikidata for "Dune" returns the novel, the films, the video games, a
+desert and a surname. The rule the script is built around is that **no candidate
+answers until it has been verified against the author** — and verified against
+the author item's own labels and aliases, not against a description string:
+
+| Candidate | Outcome |
+| --- | --- |
+| has P364, and a P50 author's label or alias matches the row's author | accept |
+| has P364, no author corroboration | discard |
+| two accepted candidates that disagree | conflict — write nothing, report it |
+| row's author is null or a placeholder | never searched at all |
+
+The last line is the postmortem's §4 taken literally. 31 rows store the literal
+string `Unknown author`; a row with no author cannot have a title match
+verified, so it is skipped rather than searched and hoped over.
+
+`authorLikelySame()` is the whole guard, so it is deliberately asymmetric:
+surnames must match and given-name evidence must not *contradict*. An initial
+agreeing with a first letter is agreement, because the catalog holds both
+"G. García Márquez" and "Gabriel García Márquez" — and diacritics come off both
+sides, because it also holds "Gabriel Garcia Marquez" from a Goodreads CSV. Two
+different full given names on a shared surname is a rejection: Stephen King and
+Owen King are not the same person, and if that ever stops being true every King
+in the catalog inherits the wrong answer.
+
+### What it will not do
+
+- **Guess.** Not from the author's nationality, not from `books.language`, not
+  from the shape of the title. *Los peligros de fumar en la cama* is
+  Spanish-original and *Lágrimas en H Mart* is not, and nothing about either
+  title says which.
+- **Write `'unknown'`.** `oracleBatch.mjs` stores it deliberately, as a resolved
+  answer that stops a book being re-billed. This script has no per-book cost, so
+  it has nothing to protect by claiming an answer it does not have. Unresolved
+  rows stay NULL and stay eligible — for the next run, and for the Oracle, which
+  knows things Wikidata does not.
+- **Overwrite.** Write-once, matching `oracleBatch`'s guard: the language García
+  Márquez wrote in does not change, so a second and different answer means one
+  of the two is wrong, and the older one has at least had a chance to be
+  corrected by hand. `--all` re-checks and reports; `--force` applies; neither
+  reaches a value whose source is `self_stated` or `verified`.
+
+### The first dry run found nothing, and that was two bugs
+
+Worth recording, because both have precedent in this repo and one of them is
+the postmortem's root cause reproduced verbatim. The first `--dry-run --limit 50`
+resolved **0 of 48** rows with usable authors and reported every one as
+"no answer".
+
+1. **`getJson` returned MediaWiki's error payload as data.** The action API
+   answers **HTTP 200** with `{"error": {…}}` for a rejected parameter, so a
+   systematically broken request was indistinguishable, at every call site, from
+   a book Wikidata has never heard of. This is `gql()`'s
+   `return json.data || null` again, in a new file, three days after writing it
+   up. API errors are now detected, printed once per error code, and counted as
+   failures that trip the circuit breaker.
+2. **One English prefix search was the whole search.** `wbsearchentities`
+   matches labels and aliases by prefix, in a single language. The catalog's
+   titles are Spanish (*Los peligros de fumar en la cama*), accent-stripped
+   (*Hadriana en todos mis suenos*), truncated (*Emily wilde's encyclopedia*)
+   and sometimes mistyped (*En la tierra somos fuzgazmente grandiosos*). A
+   prefix match on an English label finds none of them.
+
+The search is now the union of three lookups — `wbsearchentities` in English,
+`wbsearchentities` in the row's own language, and CirrusSearch full text on
+title plus author. The second of those is only possible because
+`books.language` reached zero nulls in this same release. Loosening the search
+does not loosen the answer: every candidate still has to be corroborated by the
+author before it may write anything.
+
+The reporting changed too, and that is the more durable fix. "No answer" was
+five outcomes wearing one number. Every run now prints a **funnel** —
+`no-search-hits`, `no-language-property`, `author-not-corroborated`,
+`no-iso-639-1-code`, `search-failed` — and says so in words when more than a
+quarter of rows fail at the request level, so a broken connection cannot be
+read as coverage. `--diagnose` adds the per-row version and never writes.
+
+### What the funnel then found
+
+14 of 48. The distribution is what made the next three fixes obvious, and one
+of them was a live hazard:
+
+- **P364 answered 0 times; P407 answered 14.** P364 is a film-and-television
+  property in practice. The comments in this file had it as the primary and
+  P407 as a grudging fallback; that is now inverted.
+- **`Q3331189` — "version, edition or translation" — was in the written-work
+  whitelist, and should never have been.** On an edition item, P407 is the
+  language of *that printing*, which is `books.language`, which is precisely the
+  thing this column exists to be different from. The funnel caught it as two
+  conflicts: *Cress* came back `en vs sv` and *Carpe Jugulum* `en vs cs`,
+  because a Swedish and a Czech edition item each stated its own language and
+  both were correctly corroborated against the right author. Nothing was
+  written — a conflict writes nothing — but the same pair on a row where *only*
+  the translation item surfaced would have written `sv` for an English novel,
+  silently and permanently. Editions are now **followed** through P629 to the
+  work rather than believed, which turns both conflicts into agreements and
+  turns a translation item from a hazard into a route to the right answer.
+- **21 of the 48 were `no-search-hits`, and most were not obscure books —
+  they were annotated ones.** *Passage to Dawn (Legacy of the Drow, #4; The
+  Legend of Drizzt, #10)*, *Turn Coat (The Dresden Files, #11)*, *Cribsheet: A
+  Data-Driven Guide to…*, a JoJo volume stored as native title plus a bracketed
+  romanisation. Wikidata holds *Passage to Dawn*, *Turn Coat* and *Cribsheet*;
+  it does not hold the Goodreads annotation stapled to them. The search now
+  walks a ladder of title forms, most specific first, using `titleForms()` from
+  `titleMatch.js` — the one place in the repo that owns that rule — plus the
+  bracketed romanisation, which is promoted to the front because for a Japanese
+  or Korean title it is the string Wikidata is most likely to hold. A reduction
+  is only reached when the precise form found nothing, and the summary counts
+  how often one was needed: a high count is an importer problem, not a lookup
+  problem.
+
+Two smaller ones from the same output: `P170` ("creator") joins P50 and P2093 as
+author evidence, because comics and anthologies carry it where a novel carries
+P50 (*Batman: The Long Halloween*, *X-Men: Days of Future Past*), and `(ed.)` is
+stripped from an author string, because *Damnable Tales* is stored as "Richard
+Wells (ed.)" and normalised to "richard wells ed", which matches nothing.
+
+The rest of the funnel is the guard working. *Fanning the Flames*, *Exhume* and
+*Root Rot* found items with a stated language that are **not by that author** —
+a different book with the same title — and were correctly refused.
+
+### Where it settled, and why that is the stopping point
+
+**20 of 48, zero conflicts.** Every fix landed: *Cress* and *Carpe Jugulum*
+resolved to `en` through their work items instead of colliding with their
+Swedish and Czech editions, *Batman: The Long Halloween* corroborated through
+P170, and *Passage to Dawn*, *Turn Coat* and *Cribsheet* answered on a reduced
+title — 4 of the 20, which the counters line reports as `reducedtitle=4`.
+
+The residual is not a tuning problem, and the funnel is what makes that
+legible rather than a matter of opinion:
+
+| | | |
+| --- | --- | --- |
+| 16 | `no-search-hits` | *Glass Girls*, *Wolf Worm*, *An Oral Fixation*, *Demon Driven*, a Free Comic Book Day issue, a single JoJo volume. Indie horror, small-press novellas, Warhammer tie-ins and comics volumes. **Wikidata does not have these books.** It is the same tail the ISBN work bottomed out on, for the same reason. |
+| 6 | `no-language-property` | Found the item, it states no language. A genuine Wikidata gap — *Dig*, *Hex*, *King Sized*. The Oracle's job. |
+| 6 | `author-not-corroborated` | Mostly the guard working: *Fanning the Flames*, *Exhume*, *Root Rot* are different books with the same title. |
+| 2 | `placeholder-author` | Never searched, by design. |
+
+Pushing on any of these means loosening acceptance, and acceptance is the one
+thing that must not move. A free source has told us what it knows.
+
+**One row in the residual is worth naming**, because it is the case this whole
+release is about: *Contraataque a los 30* by Won-pyung Sohn is a Spanish
+translation of a Korean novel. Its original language is `ko`, no free source
+we query will say so from the Spanish title, and it is precisely the row
+`original_language` exists to describe. That one is the Oracle's, and it is the
+honest division of labour — Wikidata answers what is written down, Claude
+answers what is known.
+
+### *Hellblazer* is the evidence the design holds
+
+*Hellblazer: Rake at the Gates of Hell* moved from `no-search-hits` to
+`author-not-corroborated` when the title ladder shipped. That is not a
+regression — it is the ladder reducing to `Hellblazer`, finding the **series
+container**, and the author gate refusing it because the series is not credited
+to Garth Ennis.
+
+This is the exact failure `titleMatch.js` warns about in its own comments: the
+one that put *Tainted Love* and *Dangerous Habits* on the same ISBN. Here the
+reduction happened and cost nothing, because the answer is gated on author
+corroboration rather than on the search being careful. **Loosen the search, keep
+the gate** — that is the whole design, and this row is the proof it works.
+
+### ISBNdb cannot answer this, and that is not a coverage gap
+
+We now pay for ISBNdb, so the question will be asked again. Its Book model is
+`title`, `title_long`, `isbn`, `isbn13`, `isbn10`, `binding`, `publisher`,
+`language`, `date_published`, `edition`, `pages`, `dimensions`, `overview`,
+`image`, `msrp`, `excerpt`, `synopsis`, `authors[]`, `subjects[]`, `reviews[]`,
+`prices[]`, `related[]`, `other_isbns` — re-checked against the v2 OpenAPI spec
+at `api2.isbndb.com/doc.json` in August 2026.
+
+`language` is there. `language` is the **printing's** language, which is
+`books.language`, which is already at zero nulls. There is no
+`original_language`, no `translated_from`, no `translator`, no `original_title`.
+This is not an oversight: original language is a fact about a *work*, and ISBNdb
+is an *edition* database. `docs/isbndb-evaluation.md` reached the same
+conclusion from the published docs and the finding still holds.
+
+### Provenance
+
+`20260819120000` adds `books.original_language_source`, mirroring
+`author_gender_source` and for the same reason: the column now has more than one
+writer, so "who said this?" has to be answerable. Values are `wikidata`,
+`openlibrary`, `catalog_sibling`, `oracle_inferred`, `self_stated`, `verified`.
+The last two are the human tier, are never written by a script, and are what
+`--force` refuses to overwrite. `oracleBatch.mjs` now stamps `oracle_inferred`
+alongside every value it writes, and the migration retro-stamps the existing
+rows, which are all its work by definition.
+
+There is a second reason to want this in place. ISBNdb's terms require deleting
+cached data if the subscription lapses — an obligation only satisfiable if the
+catalog records which values came from where. No ISBNdb value can reach this
+column, but the next paid source should find the shape already built.
+
+## 4. `reader_editions` — the edition belongs to the reader
+
+Spec: `docs/reader-editions-v1-spec.md`. One work in the catalog; the edition is
+a fact about *this reader and this work*.
+
+`currently_reading.user_page_count` was the right idea in the wrong place: it
+lives on the currently-reading row, so a reader tells us their copy is 512 pages,
+finishes the book, and the app forgets. `reader_editions` is one row per
+(reader, work), independent of which shelf the book is on, carrying `language`,
+`isbn`, `edition_title`, `translator`, `page_count` and `format`. The migration
+backfills from `user_page_count`; the old column stays for one release so a
+stale client does not break.
+
+In the progress modal, the "edition pages" link became **"Which edition are you
+reading?"** — language, format, page count, and an ISBN field that runs the
+lookup already in the app and fills in the rest. Type thirteen digits, get the
+language, page count and translated title. An audiobook (`format = 'audio'`)
+shows no progress bar rather than a bar stuck at 0%.
+
+`effectivePages(book, edition)` in `src/lib/editions.js` is the one rule, used
+everywhere a page number is shown or divided by — with one deliberate exception:
+`computeSimilar` still uses `book.pp`. Similarity is a fact about the work, and
+using edition pages there would make one reader's recommendations differ from
+another's for no reason a reader could name.
+
+**Owner-only RLS, no public read.** `SECURITY_AUDIT_v0.39.md` (C3) is about a
+table made world-readable to support one small feature; `reader_editions` has no
+cross-user use case in v1, so it gets none.
+
+## 5. Where the language columns are actually read
+
+`src/lib/workGroups.js` collapses rows that are provably the same work — shared
+`hardcover_id`, ISBN, `goodreads_id`, or series position — so a novel and its
+translations appear once. It then has to choose which row to show, and that
+choice is what `original_language` is for.
+
+**"More about the author" now stays in the original language.** The section
+lists an author's works, and a list that mixes *Assassin's Apprentice*,
+*Aprendiz del Asesino* and *Die Tochter des Wolfs* is not a bibliography — it is
+the same book three times. `find_books_by_author` (`20260817120000`) answers
+from our own catalog first, because a catalog hit resolves to a real page with a
+validated cover; Google Books `inauthor:` tops it up only when the catalog
+answer is thin, so a mid-list or non-Anglophone author does not get "More by
+this author: (nothing)".
+
+`src/lib/titleLanguage.js` — the heuristic that guesses language from function
+words in the title — is the stopgap this release retires. It is deliberately
+weak (*Die Tochter des Wolfs* guesses French, because "des" is both), and every
+row the backfills fill is a row it never sees again. It survives in one place
+only: as a *guard* in `languageBackfill.mjs`, where it can veto a suspicious
+answer but never supply one.
+
+## 6. Verification
+
+1. `node batch-scripts/probes/originalLanguage.probe.mjs` — 55 offline checks
+   over author matching, placeholder rejection, language-code normalisation,
+   work-group propagation and write precedence. No network, no database; safe in
+   CI and safe before a backfill.
+2. `--probe "Title|Author"` on the backfill runs the **real** resolver against
+   inputs from the command line, printing every candidate and why it was
+   accepted or discarded. The postmortem's second wrong turn was a diagnostic
+   that hardcoded its inputs and came back clean while the job was broken; this
+   one cannot.
+3. `select count(*) from books where isbn is null` → 0.
+   `select count(*) from books where language is null` → 0.
+   `select original_language_source, count(*) from books where original_language is not null group by 1;`
+   after the run.
+4. `select count(*) from books where original_language_source is not null and original_language is null;`
+   → must be 0. A source with no value is a bug in whatever wrote it.
+5. Owner isolation on `reader_editions`: as user A, `select *` returns only A's
+   rows; as anon, zero. Run it — audit H2 is a list of tables where this was
+   assumed.
+6. A reader records a 496-page Spanish edition of a 417-page work, finishes it,
+   and reopens the book page: the edition line still reads 496. This is the exact
+   case `user_page_count` fails today.
+
+## 7. Known state
+
+- `.github/workflows/catalog-maintenance.yml` is updated in this release, not
+  left for hand-application: per-step `timeout-minutes` (40/55/30/35/10/45/60)
+  inside a 300-minute job, downstream steps `if: ${{ !cancelled() }}` so a failed
+  pass no longer skips the independent ones after it, and a summary that reads
+  each script's `[scriptName] …` counters line instead of counting CSV rows. A
+  missing counter renders `—  (did not finish)`; the billable-curation issue
+  fires only when `isbnFallback` reported `complete=1`. The two language passes
+  are steps 4c and 4d, and `languageBackfill.mjs` gained a counters line of its
+  own so the summary can read it.
+- `ISBNDB_API_KEY` needs adding to repo secrets **and** to the "Compose
+  .env.local from secrets" step. Missing it fails silently — the script just
+  skips the source.
+- The residual unresolved ISBNs are mostly things no source can fix: single-issue
+  comics and Free Comic Book Day issues (no ISBN exists), short stories, and
+  titles stored wrongly — *Crushed*, *Generation Why* and *No Normal* are Ms.
+  Marvel collections filed under their subtitles alone. Those need correcting
+  in-app, not a better lookup.
+- Rows `originalLanguageBackfill` cannot resolve stay NULL by design, and the
+  nightly Oracle pass will fill them for books it categorises from here on.
+  There is no third pass planned and none needed.
+
+# Update Notes — v0.63.2 → v0.63.3: the Oracle explains itself, and a tab that reloaded on its own
+
+**Migration required:**
+
+1. `20260814170000_oracle_recommendation_reason.sql` — adds `oracle_recommendations.reason`, updates `log_oracle_recommendations`
+
+A patch release. No new surfaces; the Oracle answers a question it was already
+being paid to answer, three things that were failing silently stopped, and the
+loading-screen pool caught up with a taxonomy that had grown past it.
+
+## 1. "Every suggestion tells you why" was true on three screens out of four
+
+The landing page claims it. `BookCard` has rendered a `reason` pull-quote since
+v0.38. Dashboard Spark, Oracle → Ask and Oracle → Similar all requested one.
+**Oracle → By genres never did** — its JSON schema asked only for `description`,
+a sentence about the book, and rendered `<BookCard book={b} />` with no `reason`
+prop at all. The call was already being made and paid for; it was returning
+about thirty tokens less than it could have.
+
+The reason now rides on the book object as `why` rather than in a title-keyed
+side map. The map was the older pattern and it broke in three ways: silently,
+whenever the model's `title` and the rendered title disagreed on punctuation;
+structurally, because it could not survive the client-side filter or the slice;
+and practically, because it could not reach `logRecommendations`.
+
+Shared `REASON_INSTRUCTIONS` now defines the rubric in one place — one sentence,
+max 25 words, grounded in a specific book the reader finished or rated highly,
+never a restatement of the plot.
+
+## 2. The reason is now a property of the recommendation, not of a render
+
+`reason` lived only in component state. Navigate away and the Oracle's argument
+for a book was gone, which makes a wishlist entry indistinguishable a week later
+from one you added at random.
+
+`oracle_recommendations` gains a nullable `reason` column, clamped to 400
+characters in `log_oracle_recommendations` (same reasoning as the existing
+`ord <= 25` cap — the client sends one sentence, and truncating costs a clipped
+line where rejecting would cost the whole result set). Nullable on purpose: rows
+written before this release have no reason, and local non-LLM draws never will.
+
+`fetchRecommendationReason()` reads it back and `BookModal` shows it above the
+description, gated on `isOracleSuggested` so the overwhelming majority of modal
+opens cost no query. The title fallback escapes LIKE metacharacters — `_` and
+`%` appear in real titles, and unescaped they would match some other book's
+reason and present it with full confidence.
+
+**This also makes the impression log answer a better question.** It recorded
+what was offered and what became of it, but not what we said about it, so it
+could not distinguish which *kinds* of argument get taken up. "Because you rated
+Piranesi 5★" and "a haunting modern gothic" are not the same pitch.
+
+## 3. The 413 that v0.63 fixed in one file and left standing in two
+
+v0.63 replaced the unbounded denylist in `OracleCategories` with a bounded hint
+plus exact client-side filtering. The fix was written *inside the component*, so
+`OracleAsk.jsx` and `OracleSimilar.jsx` kept shipping:
+
+```js
+[...readNext, ...library, ...wishlist].map(b => `"${b.t}"`).join(', ')
+```
+
+and kept failing at `MAX_PROMPT_CHARS = 50_000` for exactly the readers with the
+richest shelves. New `src/lib/oraclePrompt.js` holds `buildExcludeHint`,
+`filterAlreadyKnown`, `normalizeTitle` and `buildShelfSignature`; all three
+views import them. A fix that lives in a component is a fix for one screen.
+
+Ask and Similar now over-request (6→3, 8→5) so the local filter has slack, and
+Ask guards the case where filtering empties a non-empty response — it previously
+rendered "Found 0 books" under a heading promising results, which reads as a
+failure the reader caused.
+
+## 4. The shelf context was pointing at the wrong end of the shelf
+
+```js
+const libContext  = state.library.slice(-15)    // "Books they've read recently"
+const wishContext = state.wishlist.slice(0, 30)
+```
+
+`DataContext` returns `library` ordered `read_at DESC` and `wishlist` ordered
+`added_at ASC`. Both slices took the **oldest** end. The prompt has been
+promising recency and delivering 2011.
+
+`buildShelfSignature(state)` knows the orderings and adds what neither line
+carried: shelf sizes, star ratings, and the queue. Roughly 1.2 kB even against a
+1,600-book shelf. The ratings are the part that matters — `describeTasteProfile`
+already compresses the whole library into averages, and an average cannot
+produce a reason a reader recognises. "You gave Piranesi 5★" can.
+
+Spark also joins the taste profile, having been the only Oracle surface that
+knew the reader's *stated* favourite genres but not which genres they actually
+rate highly.
+
+Total AI-mode prompt is now ~8.5 kB against the 50 kB ceiling.
+
+## 5. Open tabs were force-reloading on every deploy
+
+`public/app-version.json` sat at `{"version": "0.59", "critical": true}` from the
+v0.59 hotfix. `critical` is read by both paths in `PWAUpdatePrompt`, and on the
+`needRefresh` path it means an arriving service worker **auto-applies instead of
+prompting** — reinstating the exact behaviour `registerType: 'prompt'` was
+adopted in v0.45 to remove. Anyone who stepped away mid-session came back to a
+reloaded page and lost whatever was in component state.
+
+Second consequence: because the version never moved, `__APP_VERSION__` always
+equalled the deployed value, so the stale-client check added in v0.56 could
+never fire. It had been inert for four releases.
+
+A version that must be hand-bumped in two places will drift again, so
+`vite.config.js` now derives the expected value from `releases.js`
+`CURRENT_VERSION` and **fails the build** on disagreement.
+
+## 6. Draws survive a reload
+
+Independent of the above, because tab discard and an accidental refresh look the
+same to the reader and neither is preventable. New `src/lib/oracleDrawCache.js`,
+wired into all three surfaces: `sessionStorage`, one-hour TTL, tab-scoped.
+
+Survives reload, discard and back-navigation; does not leak between tabs or hand
+yesterday's picks to someone opening fresh. Ask restores the question alongside
+its results and Similar restores the seed books — results without their question
+read as though they arrived from nowhere.
+
+Deliberately not the database: `oracle_recommendations` holds title, author and
+reason, not the genre/complexity/depth/match a card renders, and bending a
+provenance log to serve rendering is the wrong trade.
+
+## 7. The recommendation card was one large invisible button
+
+The whole card carried `onClick` → open the book page. Undiscoverable, because
+nothing said so, and hostile, because the card also holds buttons: every
+near-miss on "Read next" navigated away from results the reader had just spent
+an Oracle call on.
+
+The card is inert now. Four explicit actions — **Read next**, **Add to
+wishlist**, **I've read this**, **See more ↗** — collapsing to a single "In your
+library" state once the book is settled, rather than three separately-disabled
+buttons saying the same thing.
+
+"I've read this" opens `RatingModal` in `create` mode. Skipping still files the
+book, but a reader saying *I have read this* about an Oracle pick is the single
+most useful moment to ask for stars: it is when we find out whether the Oracle
+was right, and an unrated book contributes nothing to `buildTasteProfile`.
+
+Below `mobile` the row becomes a full-width column. `flex-wrap` at that width
+produces an arbitrary ragged break that differs per locale — Spanish labels are
+consistently longer — and a half-width button under a cover image people are
+already touching to scroll is a smaller target than it looks.
+
+## 8. `no-undef`, and what it caught
+
+Extracting the prompt helpers out of `OracleCategories` deleted a span that also
+held `AI_DRAW_REQUEST` and `AI_DRAW_COUNT`, still referenced twenty lines below.
+The build was green — Vite resolves imports, not identifiers — and the first
+thing that noticed was a reader clicking Draw and getting
+`ReferenceError: AI_DRAW_REQUEST is not defined`. Same shape as the v0.62.3
+hooks bug this lint config was created for: correct-looking code, green build,
+throws on click.
+
+`eslint.config.mjs` gains `no-undef` (with `globals.browser`, which the rule
+requires or every `document` and `fetch` reads as undeclared). Its one
+pre-existing hit was `src/lib/BookLoader.jsx:28` — `height = unset`, a CSS
+keyword used as a JS default parameter, which would throw for every call site
+that omits `height`. It never fired because **nothing imports that file**; the
+live loader is `src/components/BookLoader.jsx`. Fixed so the rule can stay on;
+the file is an orphan and safe to delete.
+
+## 9. Loading-screen quotes: 198 → 515, 49 shelves → 173
+
+The pool was written when the taxonomy had 49 genres. `public.genres` now holds
+137, and the pool had never caught up: **78 browsable shelves had no voice in
+the loader at all**, including Science Fiction (604 books), Young Adult (432),
+Children's Fiction (356), LGBTQ+ Fiction (273) and Thriller (240).
+
+Coverage is now 136 of 137. The exception is Flintlock Fantasy (0 books), whose
+one verifiable line is filed under Military Fantasy rather than duplicated.
+
+Every added quote was verified against a source — wording, author, title —
+before it was written in, and anything that could not be confirmed was dropped
+rather than approximated, which is why several sections carry two rather than
+three. The file header states that rule for whoever extends it next. In a
+product whose whole proposition is that it knows books, a confidently
+misattributed line costs more than a missing one.
+
+`QUOTES` remains a flat shuffled array; the genre headings are organisational
+only, so a line filed under Cosmic Horror can appear while the Oracle draws cozy
+mysteries. They exist so the shape of the coverage is legible at a glance.
+
+**Known, unfixed:** five headings predate the v0.63 genre split (`Arthurian`,
+`Biography`, `Social Commentary`, `Gothic & Haunted Houses`,
+`Southern & American Gothic`) and no longer match a row in `public.genres`. And
+`src/lib/genreDescriptions.js` carries **168 keys against the table's 137** —
+its own drift, worth reconciling separately.
+
+---
+
+# Update Notes — v0.63 → v0.63.2: book identity, and four things failing in silence
+
+A patch release. No new features; seven fixes, of which four were failing without
+producing an error anywhere.
+
+## 1. Genre chips arriving in two waves
+
+`state.genresByBookId` initialises to `{}` and is filled by chunked
+`book_genres_view` queries. Three surfaces (BookPage, BookCard, BookModal) each
+carried their own copy of:
+
+```js
+const oracleGenres = state.genresByBookId?.[book.bookId];
+const genres = oracleGenres?.length ? oracleGenres : [{ name: book.g }];
+```
+
+which reads as "use the real genres, fall back to the legacy scalar" and behaves
+as "use the legacy scalar until the network catches up" — because on first paint
+every book misses the lookup. New `src/lib/genreDisplay.js` exposes
+`resolveGenres(state, loading, book)` returning a `pending` flag, so an empty
+map while loading is distinguishable from a book that genuinely has no links.
+
+`pending` is only true when the book is on a shelf the context actually hydrates
+(`genresByBookId` covers wishlist + library ids only). A Book Page opened from
+The Stacks would otherwise wait forever.
+
+## 2. "Prompt too long" on Oracle → Categories
+
+`OracleCategories.jsx` built its denylist as:
+
+```js
+[...readNext, ...library, ...wishlist].map(b => `"${b.t}"`).join(', ')
+```
+
+Unbounded. Measured against a 1,500-title shelf: 57,388 characters, against
+`MAX_PROMPT_CHARS = 50_000` in `claude.js`. It degrades with library size, so it
+was invisible in testing and only affected the readers with the richest profiles.
+
+Two things were wrong. The size, and the method — a 1,500-item denylist is not
+reliably honoured even when it fits, and we were paying input tokens for a filter
+that runs locally for free with perfect accuracy. The prompt now carries a
+bounded ~6k-character sample as a hint; exact dedupe happens client-side against
+`bookKey` plus an accent- and series-suffix-tolerant title match. The request
+asks for 8 and shows 3 so filtering has slack.
+
+## 3. Book identity — the substantive one
+
+Three reported symptoms turned out to be one root cause.
+
+`compute_book_key(title, author)` is a book's identity. The checked-in dump in
+`supabase/dump/schema.sql` is **stale** — production already runs the
+`dedupe_title_key`/`dedupe_author_key` version from `schema_v47_migration.sql`.
+Subtitle normalisation was never the problem.
+
+The problem was `'Unknown author'`. It is a *display* placeholder, substituted by
+`bookLookup.js`, `hardcoverService.js` and `googleBooksService.js` when a
+provider returns no author — six call sites — and it was being persisted into
+the key column. Since author is half the key, the placeholder forks one work
+into two catalogue rows.
+
+`upsert_book` has **three** callers, not one:
+
+| caller | file | previously |
+| --- | --- | --- |
+| `upsertBookOnServer` | DataContext.jsx | `_author: book.a \|\| null` |
+| `upsertDiscoveredBook` | DataContext.jsx | `_author: book.a \|\| null` |
+| `topUpIsbn` | oracleCategorizationService.js | `_author: book.a \|\| null` |
+
+All three now pass `storableAuthor()` from `bookHelpers.js`, which maps the six
+placeholder spellings to NULL. `displayAuthor()` is its counterpart and keeps
+the placeholder on screen — including in the document title, where a raw null
+interpolated as the literal string `"null"`.
+
+`upsertDiscoveredBook` is the one that produced the reported duplicate: viewing
+a book page from search silently upserts with `status='discovered'`, so the row
+was created by *looking at* a search result, not by adding anything.
+
+**Deploy ordering matters.** Nulling the author changes the key, so the ~29
+existing placeholder rows must be updated in the same window or the new client
+will miss them and insert twins. See `docs/placeholder-author-cleanup.sql` —
+pre-flight, transactional update, then `merge_books` for the known duplicate.
+Run the SQL *before* the deploy: that ordering fails soft.
+
+## 4. ISBN as an ownership signal
+
+`useStacks` ran four ownership checks — `bookId`, `bookKey`, `editionKey`,
+`authorLooseKey` — and every one folds the author into the comparison, so they
+all miss together when two rows disagree about who wrote the book. The catalogue
+holds 17 pairs sharing an ISBN while disagreeing on title or author.
+
+ISBN is now a fifth check and runs first: it is the only one of the five that is
+a fact rather than an inference. `normalizeIsbn` handles ISBN-10/13, hyphens and
+the `X` check digit, and returns null for anything implausible so two blank
+ISBNs cannot match.
+
+This masks the symptom without merging rows. Deliberate — two of those 17 pairs
+are different works that collided on a bad ISBN, and hiding a card is reversible
+where merging book rows is not. See "Book identity" in Architecture notes for
+why ISBN is not a candidate for the primary key.
+
+## 5. markAsRead failing silently
+
+```js
+if (state.library.some((b) => bookKey(b) === k)) return;
+```
+
+Before any server write, returning undefined, with no toast. So: no `read_books`
+row, no completion moment, no share modal, and no error — while the Read label,
+which is keyed on the same `bookKey`, correctly showed the *other* row's library
+entry. Four symptoms, one bare `return`. It now reports, and logs both ids when
+the collision is between two distinct catalogue rows.
+
+## 6. Genre backlog
+
+`metadataBackfill.mjs` decided "missing genre" from the scalar `books.genre`
+while the app reads `book_genres`. A row with a scalar genre and zero links was
+counted by `CurationNotice` and skipped by the script on every run, permanently.
+It now checks the join table. The cover gate applies to descriptions only —
+withholding genres from ~32% of the catalogue pending `coverBackfill` was the
+other reason the backlog would not drain.
+
+`catalog-maintenance.yml` gains a `regenreCatalog --apply` step. Free and
+offline, so the "the schedule spends nothing" premise holds; `--fetch` and
+`--replace` stay manual.
+
+## 7. UI
+
+- `.modal__actions` could not wrap and was justified to `flex-end`, so overflow
+  went off the *left* edge and took the dismiss button with it. Surfaced in
+  Spanish first — three actions are about a third wider than the English the
+  layout was built against. `flex-wrap` is now global; the share modal stacks
+  from 768px rather than 640px.
+- Date inputs: `color-scheme` is set per theme on `html[data-theme]`, which is
+  the only lever over the browser-drawn calendar popup. WebKit pseudo-elements
+  style the segments, separators and picker glyph; the glyph is masked rather
+  than a coloured data URI so it follows the theme tokens.
+- The genre picker on Oracle → Categories is a searchable anchored listbox
+  (`GenreSelect.jsx`). At 136 options the native `<select>` drew its popup
+  pinned to the top of the window — an OS-level list no CSS could reposition.
+
+---
+
+# Update Notes — v0.62.3 → v0.63: Curated Lists, and a genre system that had been silently broken
+
+**Migrations required, in order:**
+
+1. `20260812150000_curated_lists.sql` — list genres/moods/followers, change log, RPCs
+2. `20260812210000_genre_taxonomy_consolidation.sql` — splits, merges, `genres.parent_id`
+3. `20260812230000_cache_source_subjects.sql` — `books.source_subjects`
+4. `20260812180000_genre_descriptions.sql` — 93 descriptions (order-independent)
+
+**New scheduled workflow:** `.github/workflows/list-notifications.yml`, daily at
+16:00 UTC. Needs `VITE_SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`, both of
+which already exist.
+
+**One-off data pass, already run:** `batch-scripts/manual/regenreCatalog.mjs`.
+
+---
+
+## 1. Curated Lists
+
+Three routes replace one. `/lists` is the hub (lists you follow, above your
+own), `/lists/mine` is the management view, `/lists/discover` is the directory.
+
+`lists-discover` is in `PUBLIC_ROUTES`. Unlike `search_public_clubs`,
+`search_public_lists` does **not** raise on a null `auth.uid()` — the premise of
+curated lists is that they get posted on social media, so the directory is a
+landing page as much as an internal one. Everything caller-specific degrades:
+`caller_follows` returns false and the Follow button opens the sign-in gate
+in place rather than navigating away and losing context.
+
+`list_followers` has no INSERT policy. Follows go exclusively through
+`follow_list()`, which enforces "public only" and "not your own" server-side.
+The UI must not be the only thing between a private list and a follower who
+cannot read it.
+
+**Notifications are rolled up daily, and that is not an optimisation.** Someone
+building a fifty-book list adds books one at a time; per-insert notification
+means fifty per follower for one afternoon, which teaches people to unfollow.
+Triggers append to `list_change_log`; `rollup_list_notifications()` claims the
+pending rows with `UPDATE … RETURNING` and aggregates what it claimed in one
+statement, so a change logged mid-run waits for the next run instead of being
+marked processed and lost.
+
+`notification_preferences->>'curated_lists'` is read with
+`coalesce(…, true)`. The key does not exist on rows predating the migration and
+defaulting those to off would make the feature look broken for every existing
+account.
+
+**Mobile.** `.chip` is `white-space: nowrap`, and at 11px mono with 0.12em
+tracking "JAPANESE & EAST ASIAN HORROR" measures ~254px against ~236px of room
+on a 320px screen. Combined with a flex item's default `min-width: auto` it
+pushed the whole create-list form out of the modal. Chips wrap below the mobile
+breakpoint, `min-width: 0` guards were added, and `.modal--scroll` pins the
+head and actions so the Create button is not below fifty chips. Applied to the
+Book Clubs filter modal too, which had the same defect since v0.40.
+
+## 2. THE GENRE BUG
+
+`oracleBatch.mjs` upserted into `book_genres` with `source: 'oracle'`. The
+column is `assigned_by_source`. PostgREST rejected every request and **the
+result was never checked**, so not one genre link was written by nightly
+curation for months — while the very next statement stamped each book
+`oracle_categorized`, so everything looked fine.
+
+The evidence was sitting in the data the whole time: `usage_count` is
+incremented by a trigger on `book_genres` INSERT, and 116 Oracle-created genres
+sat at exactly **0**. The genres were created — that upsert used correct column
+names — but no book was ever attached to any of them.
+
+Fixed, and the error is now thrown rather than swallowed. **When writing to
+`book_genres`, always destructure `{ error }`.** A genre write that fails must
+not be reported as a successful enrichment; that is the entire reason this
+survived so long.
+
+The free pass had a quieter version of the same problem: `rankGenres()` scored
+the whole taxonomy and `inferGenre()` threw away everything but the winner. It
+now links the full qualifying set.
+
+## 3. Taxonomy
+
+Five compounds split into halves that already existed as empty rows — Southern
+Gothic + American Gothic, Dark Fantasy + Epic Fantasy, Science Fiction +
+Speculative Fiction, Gothic + Haunted Houses, Climate Fiction + Eco-Fiction.
+Three zero-usage duplicates merged. Existing links were **remapped, never
+dropped**.
+
+`genres.parent_id` gives the umbrella hierarchy — 90 pairs, deliberately one
+level deep. Umbrellas are applied ALONGSIDE the specific genre, so a folk horror
+novel is on both shelves. **The hierarchy is read from the database, never from
+a map in JS** — a second copy would disagree within a month.
+
+Four retired genres owned bespoke card art covering 737 books. Their successors
+inherit those folders; `slug` is an asset path, not an identity. `booksData.js`
+had 51 entries on retired names, remapped.
+
+## 4. The re-genre pass
+
+`batch-scripts/manual/regenreCatalog.mjs`, three phases:
+
+```
+--report   where things stand, and what the Claude residue would cost
+--fetch    ask the sources, STORE subjects on the row   (slow, free, once)
+--apply    run rules against stored subjects            (seconds, offline)
+```
+
+**Fetching and inferring are separate on purpose.** As one step, improving a
+rule meant re-fetching 3,260 books over HTTP — hours per iteration, long enough
+that nobody iterates and the rules never improve. Split, the loop is: edit a
+rule, `--apply`, look, repeat. `books.source_subjects` is also the audit trail
+when a book lands somewhere surprising.
+
+Result: **53% → 77% placed**, most books now carrying two to five genres.
+
+Four things learned the hard way, all now encoded:
+
+- **Open Library inverts headings.** It writes `"Fiction, historical"`, never
+  `"Historical fiction"`, and every rule was in natural order. `subjectVariants()`
+  tests each subject in both forms — one fix for the whole class, rather than an
+  inverted twin for all 139 rules that the next person would half-forget.
+- **Title+author search fails on a third of a real catalogue** — null authors,
+  translated titles, unstripped subtitles. ISBN and `hardcover_id` were sitting
+  unused on every row. ISBN-first addressing rescued ~420 books.
+- **"Stored something" is not "stored something useful."** 339 books held
+  `["Fiction"]` — Google Books' coarsest category while the other two found
+  nothing. Neither null nor empty, so a retry filtering on emptiness skipped them
+  forever. `--retry-empty` now re-asks for anything the *rules cannot place*,
+  computed with the same `planFor()` `--apply` uses.
+- **Nationality and difficulty markers are not genres.** `"American fiction"`
+  is a shelving nationality; matching it put American Literature above Historical
+  Fiction. `"Reading Level-Grade 11"` is text difficulty, not audience; matching
+  it took Young Adult from 149 to 367 on an adult-heavy catalogue. Both reverted.
+  A wrong genre is worse than a missing one.
+
+`--apply` only ADDS. `--replace` clears `assigned_by_source = 'oracle'` links,
+which is exactly what the Oracle's own judgement calls produced — the report
+lists every shelf the rules cannot reproduce before you reach for it.
+
+## 5. Known state
+
+**~350 books carry no genre.** Safe: The Stacks shows every book with a cover
+and genres only shape the order, and BookPage falls back to `books.genre`. They
+are browsable, just not genre-seeded. Their sources returned nothing usable —
+mostly Spanish, German and French cataloguing vocabulary the rule table does not
+speak. A Claude pass over the residue is the remaining option, ~$5.
+
+**`books.genre` is a liability.** It is a scalar column holding one genre, and
+reading it in the Supabase editor is what makes a correctly multi-genred book
+look single-genred. `book_genres` is the real store and what the app reads.
+`supabase/genre_audit.sql` has queries for both. Retiring the scalar is worth
+doing once the residue is cleared.
+
+**`genres.usage_count` can drift.** Trigger-maintained, recomputed once by the
+taxonomy migration, nothing keeps it honest through bulk writes. Query 5 in
+`genre_audit.sql` detects it and carries the fix.
+
+---
+
+# Update Notes — v0.62.2 → v0.62.3: password auth, and a stylesheet that had drifted away from the markup
+
+**Migrations required:** one — `supabase/migrations/20260812120000_metadata_lookup_tracking.sql`
+(adds `books.metadata_checked_at` + `books.metadata_attempts`). No new dependencies.
+No `public/app-version.json` bump: nothing here invalidates a cached client.
+
+**Supabase config:** email/password sign-in must be enabled under
+**Authentication → Providers → Email**. The client's `MIN_PASSWORD_LENGTH`
+(`src/lib/AuthContext.jsx`) is a mirror of the server minimum, not a
+replacement — change both together.
+
+---
+
+## 1. Email + password authentication
+
+Readers reported that a magic link is a poor *only* option: it costs an inbox
+round-trip every time, breaks when opened on a different device from the one
+that asked, and is unfamiliar enough that some people assume the form failed.
+
+`AuthContext` gains `signInWithPassword`, `signUpWithPassword`,
+`sendPasswordReset` and `setPassword`, plus a `recoveringPassword` flag raised
+by the `PASSWORD_RECOVERY` event. The flag lives in context rather than being
+derived from the URL because the Supabase client consumes and clears the hash
+fragment before any component mounts.
+
+`SignInGate` becomes four modes — `signin` / `signup` / `magic` / `forgot` —
+with Sign in and Create account as visible tabs. Google is untouched; the magic
+link is demoted to a secondary option and deliberately kept, since it is the
+only route in for an account created through Google that never set a password.
+
+New `PasswordResetGate` (`src/components/PasswordResetGate.jsx`) is checked in
+`App.jsx` **before** the public-route branch and before the auth gate. A
+recovery link can land on any URL, and letting a public route render first would
+swallow the one moment available to ask for the new password.
+
+New `PasswordSection` in Profile → Account, so accounts created through Google or
+a magic link can adopt a password without signing out. No "current password"
+prompt: `updateUser` authenticates with the live session, and asking an OAuth
+user for a password they do not have is theatre.
+
+### The silent-signup case
+
+Signing up with an address that already has an account returned success and sent
+no mail. That is Supabase's email-enumeration protection working as designed —
+the response is fabricated so the signup form cannot be used to discover who has
+an account. The tell is `data.user.identities.length === 0`; a genuinely new user
+always comes back with one identity.
+
+Detected now, with copy that is true whether or not the address exists and that
+offers reset-password and Google as exits. **Do not "fix" this by reporting
+"that address is taken"** — that is precisely the disclosure the protection
+exists to prevent.
+
+### Gmail nudge
+
+A `gmail.com` / `googlemail.com` address on the Create account tab surfaces an
+inline suggestion to use Google instead. Scoped to those two domains only:
+Workspace domains are indistinguishable from any other custom domain client-side,
+so nudging them would misfire as often as it helps. Suggestion, never a redirect.
+
+## 2. The public list view, and a class-name drift problem behind it
+
+`ListView.jsx` was reported as "styling from before the redesign". It was not
+old styling — it was **no** styling. `page-header`, `page-eyebrow`, `page-title`,
+`list-item`, `li-num`, `li-content`, `li-title`, `li-author`, `li-actions` and
+`level-pill` had zero definitions between them anywhere in `src/styles/`. The
+markup was correct and rendering at browser defaults.
+
+Ported to the current vocabulary (`ls-page-head`, `lv-list` / `lv-row`,
+`BookCover`, `BookLoader`, `lv-empty`), and the plan branch to PlanView's
+`plan-month-card`. The hand-rolled `CoverImg` is gone — it hardcoded
+`rgba(233,217,182,.5)`, against the standing token rule.
+
+Books are clickable for signed-out visitors. The action was wrapped in
+`{user && …}`, but `book-page` has been a public route since v0.39; the gate was
+a leftover. Whole row, keyboard-accessible, same-tab (popup blockers eat
+`window.open` on shared links).
+
+**This was not isolated.** An audit found the same three dead header classes in
+nine more views, and ~40 other unstyled class names. Fixed here: the nine
+headers, the global `.toast` (every confirmation and error in the app was an
+unstyled block in normal flow), `.quota-badge` and friends, and `.sign-in-legal`.
+The remainder is triaged in `docs/DEAD_CLASS_AUDIT_v0.62.3.md`, along with the
+resolver method — note that checking compiled CSS alone produces false positives
+on declaration-less parent selectors.
+
+## 3. i18n integrity
+
+Eleven keys referenced in code did not exist, each rendering its own key string
+to the reader. Most were the wrong *section* rather than missing copy:
+`library.goodreadsHelp` → `profile.goodreadsHelp`, `library.targetLibrary` →
+`bulkImport.targetLibrary`, `clubs.titleAccent` → `nav.bookClubs`, and so on.
+Genuinely added: `bookPage.match`, `common.goHome`, `nav.dashboard`,
+`profile.confirmReset`, `common.legal`.
+
+Three related failures worth remembering, all the same root cause — **`t()` runs
+`String()` over its vars and strips HTML, so passing a React element renders
+`[object Object]`; use `tNode()`**:
+
+- `lists.curatedBy` / `plans.planBy` had no `{name}` placeholder *and* were being
+  passed a `<strong>` through `t()`. The curator's name never rendered on any
+  shared list.
+- `JoinClub` called `invalidTitle` / `joinedTitle` / `previewTitle`, which do not
+  exist. The correct keys were already in both catalogs with markup and
+  placeholders.
+- `About`'s `<h1>` used `about.eyebrow` as its template, which has no `{accent}`
+  placeholder. The heading rendered as the bare word "About".
+
+Full EN/ES parity verified across the whole catalog, including 13 dynamic
+template-literal families (``t(`shelfFilters.author_${g}`)`` and similar).
+
+## 4. Nightly curation
+
+**The workflow error.** `Report books, errors and cost` failed with
+`Invalid format '0'`. Cause:
+
+```bash
+BATCH_ERRORS=$(grep -c 'FAILED:' curate.log || echo 0)
+```
+
+`grep -c` prints `0` **and** exits 1 when there are no matches, so `|| echo 0`
+appended a second one. The two-line value made the runner read line 2 as a new
+`key=value` pair. It was also the stray empty row in the job summary table.
+Every value written to `$GITHUB_OUTPUT` is now squeezed to one line.
+
+**The 186 re-queried books.** `metadataBackfill.mjs` had no memory of failure, so
+a book none of the three free sources could answer was re-queried every night
+forever — three HTTP calls plus delays each, consuming the `--limit` budget that
+should go to books the sources *can* answer. The queue could never drain because
+its head was permanently occupied.
+
+New columns record the dead end, with backoff at 1 / 7 / 30 / 60 / 90 days and a
+stop at six consecutive failures. Counters reset on any success. Deliberately
+**not** a permanent `dead` flag: Open Library gains records constantly, and a
+tombstone would need clearing by hand and never would be. Exhausted books are
+excluded server-side via `.lt('metadata_attempts', MAX_ATTEMPTS)`, not just
+filtered client-side — otherwise they still fill the `LIMIT * 4` overshoot
+window. New `skippedExhausted` counter in the summary: expect it to climb for a
+few nights then flatten while `nothingFound` falls toward zero.
+
+## 5. Oracle fixes
+
+**AI Recommends genre list.** The picker was fed `sourceBooks`, which in AI mode
+is `ALL_BOOKS` — the ~280-title bundled catalog — so it offered only the genres
+that bundle happens to cover. AI mode now uses the full `public.genres` taxonomy;
+Wishlist and Vault keep the source-derived list, since they can only return a
+book they hold. The AI-failure fallback drops the genre filter when it would
+otherwise empty the pool, which is now reachable for taxonomy-only genres.
+
+**"You might also like".** The candidate pool was
+`wishlist + library + readNext`, and `library` *is* the read shelf, so a reader
+with a large library got recommendations made largely of books they had
+finished. Read books are excluded on `BookPage` and in `BookModal`'s strip.
+
+## 6. Lint — and why there wasn't any
+
+This release shipped, and then immediately un-shipped, a `useMemo` placed below
+an early return in `BookPage` and `BookModal`. React matches hooks by call
+order, so the hook ran on some renders and not others, and every book page threw
+`Rendered more hooks than during the previous render`.
+
+The build was green throughout. Vite has no opinion on hook placement, and the
+repo had **no linter at all** — nothing between writing that line and a reader
+hitting it would ever have objected.
+
+Added `eslint.config.mjs` with exactly two rules: `rules-of-hooks` at error and
+`exhaustive-deps` at warn. Deliberately minimal, and it should stay that way —
+this is not a formatting pass, and a config that emits a hundred cosmetic errors
+is a config that gets ignored and then deleted.
+
+Its first run found a third instance nobody had reported: `useSelection` in
+`ListDetail`, below the `!list` guard, latent since selection mode was added.
+The lists array is normally already in state when that view mounts, which is
+what kept it hidden.
+
+```bash
+npm install     # pulls eslint + eslint-plugin-react-hooks
+npm run lint
+```
+
+### The 15 warnings the first run produced
+
+Cleared rather than tolerated — a baseline of "15 warnings, all fine" is one
+nobody reads, and the next real one hides in it. Four of them were genuine:
+
+- **`BookLoader`** read `threadRef.current` in an unmount cleanup. React detaches
+  DOM refs before passive-effect cleanups run, so that ref can be null exactly
+  when it is wanted. The existing `if (!el) return` masked it. Both refs are now
+  captured in the effect body while the node is still attached.
+- **`NavSearch`** declared `collectionStatus` as a plain function, rebuilt every
+  render, and `search` listed the shelves it closes over but not the function
+  itself. The badge was correct by coincidence, not by construction. Now
+  `useCallback` on the same inputs, and `search`'s deps narrowed to the two
+  memoised values it actually reads.
+- **`Library` / `Wishlist`** grouped by `primaryGenreOf` while depending on
+  `genresByBookId` as a stand-in for it. Same fix.
+- **`OracleQuotaContext`** listed `[user?.id]` on three hooks whose bodies read
+  `user`. The dependency was the *correct* one — AuthContext deliberately holds
+  the previous `user` reference through a token refresh — so the code now
+  destructures `userId` and says so, rather than suppressing the warning.
+
+Four are deliberate and now carry an `eslint-disable` naming the reason:
+`BookPage`'s resolution effect (`upsertDiscoveredBook` is rebuilt every provider
+render, and this effect *writes* — the loop would be a write loop), `JoinClub`
+and `ListView` (`t` changes identity on a language toggle; re-running would fire
+`join_club_by_token` twice / refetch the list), and `SeriesPage` (the shelves are
+read once to pick an author for Wikipedia).
+
+Three were artifacts of a two-rule config reporting `eslint-disable` directives
+aimed at rules it does not enable — see the note in `eslint.config.mjs`. Two
+genuinely-stale directives were deleted.
+
+Current state: **0 errors, 0 warnings across 152 files.** Keep it there; that is
+the only reason the tool is worth running.
+
+## 7. List search performance
+
+`AddBookPicker` rebuilt its pool in the render body on every keystroke, with
+`findIndex` inside `filter` — O(n²), over a million `bookKey()` calls at ~1,200
+books, before the search filter started. `Set` dedupe, `useMemo`, and one
+precomputed lowercase haystack per book. No debounce needed once the
+per-keystroke work is linear.
+
+---
+
+# Update Notes — v0.62 → v0.62.2: the URL follows the view
+
+## The bug
+
+Opening a book from the global search bar changed the view but not the address
+bar. Open five books in a row from `/` and the URL still read `/`. Back,
+refresh, copy-link and share were all wrong for every book found by search that
+wasn't already in the collection.
+
+## Root cause
+
+`NavSearch.selectResult()` had two branches. The in-collection branch passed
+`bookKey`; the preview branch did not:
+
+```js
+go('book-page', { preview: 'true', from: 'search', fromLabel: … });
+```
+
+`book-page` is the dynamic route `/book/:bookKey`. `buildPath()` checks that
+every segment param is present and **returns `null`** when one is missing —
+correct in itself, since writing `/book/undefined` into the address bar is worse
+than writing nothing. `RouterProvider.go()` then guards on `if (url && …)` and
+skips the `pushState`. React state updated, the URL did not, and nothing said
+so.
+
+The reasoning behind the omission was sound as far as it went: `BookPage`
+resolves a preview from `previewBookRef` and never reads `bookKey` on that path.
+True for rendering — and irrelevant to the URL, which is built from the same
+params.
+
+## Fix
+
+`NavSearch` now uses `buildBookPageParams(book, 'search', …)` on the preview
+branch, which supplies `bookKey` **and** the `snap` payload. That helper's own
+doc comment describes precisely this failure ("Without snap, BookPage shows Not
+Found for uncollected books, and the back button also stays broken") — it
+existed, and this call site predated it. `previewBookRef` still wins in-session,
+so the immediate render is unchanged; a reloaded or shared URL now renders from
+the snapshot instead of 404ing.
+
+## Two more instances of the same fault, found by grepping every dynamic-route `go()`
+
+- `Dashboard.jsx :: PlanEvent` — `go('plan-view')` with no `planId`. Besides not
+  moving the URL, every plan row in the activity feed opened whichever plan was
+  current rather than the one named on the row.
+- `PlanCreate.jsx` — the series path did `await setCurrentPlan(plan);
+  go('plan-view')`, discarding the saved plan's id. The themed path three
+  hundred lines below already did this correctly; the series path (added v0.58)
+  didn't follow it.
+
+## The follow-on: the URL moved, the page didn't
+
+Giving preview URLs real addresses made them reachable by Back and Forward for
+the first time, which exposed a second fault immediately behind the first.
+
+`previewBookRef` is a **single slot on `App` that is never cleared** — it holds
+the last book chosen from search for the rest of the session. `BookPage` tested
+it for presence only:
+
+```js
+if (isPreview && previewBookRef?.current) { setBook(previewBookRef.current); return; }
+```
+
+So `preview === 'true'` meant "render whatever was searched most recently",
+not "render this book". Search A, search B, press Back: the address bar returned
+to A and the page kept showing B until a refresh discarded the ref.
+
+Latent before v0.62.2 — with no `bookKey`, no history entry was ever written, so
+a preview URL could not be arrived at, only created.
+
+The guard now compares identity, not presence:
+
+```js
+const previewIsThisBook = !!previewBook && (!bookKey_ || bookKey(previewBook) === bookKey_);
+```
+
+A stale ref falls through to the collection lookup, then the URL snapshot — both
+keyed on `bookKey_`, which preview URLs now always carry. `bookKey_` is optional
+in the test so an older keyless in-session URL still resolves from the ref rather
+than 404ing. Verified across six cases, including that a fresh search still uses
+the ref (its Hardcover record is richer than the snapshot) and that non-preview
+navigation is untouched.
+
+## The silence is the real defect
+
+A router that declines to write a URL and says nothing turns a one-line mistake
+into a bug only findable by watching the address bar. `go()` now
+`console.warn`s in dev (`import.meta.env.DEV`) when `buildPath()` returns null,
+naming the route and the params it did get. Production behaviour is byte-identical.
+
+## Also in this release
+
+**Quick Actions on the dashboard** gains Stacks, Curate a List, and Find a Book
+Club — all three already existed and were reachable only from the nav. Ordered
+after the original four: these are places to wander, not what a reader most
+often arrives wanting to do. EN + rioplatense ES, matching the existing
+`richLabel` (`Verb <em class="accent">Noun</em>`) and short-`sub` pattern.
+
+`.db-ctas` was a fixed `1fr 1fr` grid, exact for four cards and leaving a lone
+half-width card on the last row at seven. An odd last child now spans both
+columns. Written as a rule rather than a one-off so it self-corrects at 8, 9, 10.
+
+## Files
+
+- `src/components/NavSearch.jsx` — preview branch uses `buildBookPageParams`
+- `src/views/BookPage.jsx` — preview ref checked against the URL's bookKey
+- `src/App.jsx` — comment recording that `previewBookRef` is a single, uncleared slot
+- `src/lib/RouterContext.jsx` — dev warning on a skipped URL write
+- `src/views/Dashboard.jsx` — `PlanEvent` planId; three new quick actions
+- `src/views/PlanCreate.jsx` — series path passes the saved plan id
+- `src/styles/pages/_dashboard.scss` — orphan-card rule
+- `src/i18n/en.json`, `es.json` — six new `dashboard.cta*` keys each
+
+## Noted, not fixed
+
+`ListView.jsx:113` builds a book key inline with a hand-rolled regex rather than
+calling `bookKey()`. It currently produces the same string, so it works — but it
+is a second copy of a rule that also exists in `compute_book_key()` in SQL and in
+`computeBookKey()` in `curateManualBooks.mjs`. If the normalisation ever changes,
+this is the copy that will be missed.
+
+---
+
+# Update Notes — v0.61.2 → v0.62: advanced shelf filters
+
+Spec: `docs/shelf-filters-v1-spec.md`. Eligibility SQL:
+`supabase/legacy/oracle_eligibility_audit.sql`.
+
+## The feature
+
+Wishlist and Library gain a "More filters" disclosure panel: page count, prose
+complexity (1-5), thematic depth (1-5), and author gender. All four read columns
+that already existed — `books.pages`, `complexity`, `depth`, `author_gender` —
+via the client fields `pp`, `c`, `p`, `ag`. **No migration.** Filtering is
+entirely client-side over the already-loaded shelf arrays; no new query.
+
+## Four bugs found on the way, three of them pre-existing
+
+**1. `author_gender` was never written by anything.** Added to the schema in
+v0.55 and to the prompt in `oracleCategorizationService.js` — which stopped
+executing in the browser at v0.61, leaving `oracleBatch.mjs` as the only writer.
+That script's prompt was a v0.22 copy and had no gender field at all; grepping it
+for "gender" returned zero hits. Meanwhile `nightly-curation.yml` documented the
+job as filling it. The column was null on every row for six versions.
+
+Fixed in two parts: `oracleBatch.mjs` now asks for and writes it (prompt rules
+ported verbatim from `oracleCategorizationService.js`), and the existing
+catalogue was drained by a new one-shot script, `authorGenderBackfill.mjs`. That
+script keys on **author** rather than book — gender is a property of a person,
+so asking once per book re-asks for every Le Guin title — batches 50 authors per
+call with no web search, and cost $0.85 for the whole catalogue.
+
+`fetchEligibleBooks()` was deliberately **not** widened to pick up already-
+categorised rows. Doing so would make every one of them eligible again on a
+nightly cron: a recurring charge nobody approved. One-shot work got a one-shot
+script.
+
+**2. `books.author_gender_source` was never written either.** Constrained to
+`oracle_inferred | verified | self_identified`. Both scripts now set
+`'oracle_inferred'`, and `oracleBatch` refuses to overwrite a row whose source is
+`verified` or `self_identified`. The DB constraint validates the value, not the
+precedence — without the guard, a gender confirmed by hand is silently clobbered
+on the next run.
+
+**3. `fetchEligibleBooks()` reported the PostgREST row cap as a count.** No
+`.range()`, so the select was capped at 1000 and a manual run reported "1000
+found" regardless of the true backlog. Now paged, ordered by `created_at, id`
+(the non-unique `created_at` alone can skip or duplicate rows across page
+boundaries), and the reported figure comes from a separate exact `count` query
+rather than the length of a page.
+
+**4. The Node 20 WebSocket crash took down the nightly job.** `createClient()`
+constructs a `RealtimeClient` unconditionally and realtime-js requires a global
+`WebSocket`. None of these scripts open a channel, but the constructor throws at
+import time. This had already been hit and fixed **four times, four different
+ways** — `send-notification-email.js`, `catalog-crawl.mjs`, `sitemap.js`,
+`seedCuratedCatalog.mjs` — before anyone put the fix somewhere reusable. All ten
+scripts now import `createServiceClient` from
+`batch-scripts/_shared/supabaseClient.mjs`; no raw `createClient()` remains in
+`batch-scripts/` or `scripts/`. It detects the capability
+(`typeof globalThis.WebSocket === 'function'`) rather than the Node version, so
+bumping `node-version` in the workflows is explicitly *not* the fix — that would
+hide it in CI while leaving local Node 20 runs broken.
+
+## The refactor underneath
+
+`Wishlist.jsx` and `Library.jsx` held byte-identical filter logic. Extracted to
+`src/lib/useShelfFilters.js` + `src/components/ShelfFilters.jsx` as a separate,
+behaviour-neutral commit first (16 insertions, 182 deletions across the two
+views; every added line an import, a comment or a call site), then the new
+filters were added on top. Verifying a refactor and reviewing a feature at the
+same time is how a silent change in filtering ships.
+
+## Design decisions worth keeping
+
+**Nulls fail visibly or pass — never silently.** `pp`, `c`, `p` and `ag` are all
+sparse. A naive `pp <= 300` drops every book with no page count, so the shelf
+looks broken or, worse, wrong without looking broken. One "include books the
+Oracle hasn't measured yet" checkbox governs all four filters and carries a live
+count; `unmeasuredCount` is asserted to equal exactly the delta between
+filtering with it on and off, so there is no third, silent bucket.
+
+**Filters self-hide below 10% coverage / 5 books**, measured against the
+unfiltered shelf so controls don't flicker as the reader narrows. Gender
+coverage uses `agChecked`, not `ag` — `ag` collapses `'unknown'` and
+never-checked into `undefined`, so a shelf the Oracle has honestly answered
+"no reliable signal" for would look identical to one it has never seen.
+
+**Prose and depth are multi-select, not a maximum.** Appetite is not monotonic:
+"nothing heavy tonight" is 1-2, "challenge me" is 4-5, and a ceiling only serves
+the first.
+
+**`b.p` is depth; `b.pp` is pages.** One character apart and adjacent in
+`bookRowToClient`. Explicitly asserted in both directions.
+
+**Advanced filters persist; search does not.** A saved query hiding most of a
+shelf on the next visit is the hardest version of this bug to notice.
+
+## Also in this release: the pre-mount flash
+
+`index.html`'s `.pre-mount` block is the homepage's SEO floor (v0.61.2) and is
+replaced when React mounts — so it flashed on every load, worst of all returning
+from Google SSO, where `redirectTo: window.location.origin` lands the OAuth
+return on `/` and React must boot *and* exchange the `?code=` before it can
+replace anything.
+
+It is now rendered but not painted for 900ms (CSS opacity delay), with the dark
+canvas moved to `html/body` so the delay doesn't trade a copy flash for a white
+one, and a decorative ornament shown immediately. A blocking inline script
+removes the block outright when the URL carries OAuth params or a
+`sb-*-auth-token` key exists in `localStorage` — a signed-in reader never sees
+landing copy at all.
+
+**No SEO impact.** Never `display:none`, never clipped, never off-screen; the
+raw HTML Googlebot indexes is byte-identical. The removal path triggers only on
+signals a crawler does not have. The `<!--PREMOUNT-->` markers still match
+`og-prerender.js`'s regex — verified, since breaking that would have silently
+killed bot prerendering.
+
+## Files
+
+- `src/lib/useShelfFilters.js`, `src/components/ShelfFilters.jsx` — new
+- `src/styles/components/_shelf-filters.scss` — new, `@use`d from `main.scss`
+- `src/views/Wishlist.jsx`, `src/views/Library.jsx` — migrated; empty state now
+  names the active filters instead of "Try clearing your filters"
+- `src/i18n/en.json`, `es.json` — new `shelfFilters.*` block (20 keys each)
+- `index.html` — pre-mount delay + auth-aware removal
+- `batch-scripts/_shared/supabaseClient.mjs` — new; all 10 scripts migrated
+- `batch-scripts/manual/authorGenderBackfill.mjs` — new
+- `batch-scripts/manual/oracleBatch.mjs` — gender, paging, exact count, source guard
+- `supabase/legacy/oracle_eligibility_audit.sql`, `docs/shelf-filters-v1-spec.md` — new
+
+## Open follow-ups
+
+- The `unmeasured` pill on rows admitted by the checkbox: CSS class
+  (`.lv-row__unmeasured`) exists, row markup not yet wired.
+- ES non-binary label is `Autoría no binaria`. There is no existing `-es`
+  inclusive form anywhere in `es.json`, so this fits the sibling
+  `Autoría` / `Autoría mixta` options rather than introducing a convention.
+- `package.json` still reads `0.2.0` and `public/app-version.json` still reads
+  `0.59`. Both predate this release and are tracked separately.
+
+---
+
+# Update Notes — v0.61 → v0.61.2: the homepage becomes indexable
+
+## The problem
+
+Searching for the exact brand name returned nothing from the site. The cause was
+not the name — it was that `https://www.thebooksoracle.com/` served a `<title>`,
+a meta description, and `<div id="root"></div>`. No body copy at all.
+
+`netlify/edge-functions/og-prerender.js` prerenders entity routes for
+link-preview bots, and its header states the assumption behind leaving the
+landing page out: *"fine for Google (which executes JS before indexing)"*. Google
+can render JS, but it is a deferred second pass with no guaranteed timing,
+deprioritised hardest for new domains with no crawl history. The result was that
+Slack and Facebook received fully populated HTML while Google received an empty
+shell.
+
+A second, compounding problem: the apex domain 301s to `www`, but `robots.txt`,
+`sitemap.js`, `og-prerender.js` and the client-side canonical in `App.jsx` all
+declared the **non-www** host. Every sitemap URL redirected, and the canonical
+named a URL that was never the one served.
+
+## The fix
+
+**Static content in `index.html`.** The `#root` div now ships real copy — an h1,
+the opening line, a description, and a feature list — which React replaces on
+mount. Not cloaking: identical markup for every visitor, saying what the rendered
+page says. Styled inline so first paint is not unstyled text.
+
+**Static `<head>`.** Canonical, Open Graph, Twitter Card, hreflang and a JSON-LD
+`@graph` (`WebSite` + `SoftwareApplication` with both pricing tiers) are now in
+the HTML rather than injected by `useDocumentMeta()` after mount. The client hook
+still runs and still overrides per route — the static block is the floor.
+
+**One host.** Everything now declares `https://www.thebooksoracle.com`, matching
+Netlify's primary domain. Four files must change together if that ever flips:
+`index.html`, `robots.txt`, `netlify/functions/sitemap.js`,
+`netlify/edge-functions/og-prerender.js`.
+
+**De-duplicated structured data.** `Landing.jsx` was injecting its own
+`SoftwareApplication` node with a different description and price than the static
+one. It now emits only `FAQPage`, which is built from translated strings and
+cannot be static without duplicating copy.
+
+## What was NOT changed, and why
+
+The brand name. `The Books Oracle` competes with tarot and Oracle Corp in generic
+search, but brand queries are the easiest class to win once *any* page is
+indexed, and the site was absent from the index entirely rather than
+outranked. Renaming would have reset domain age and existing links while
+inheriting the same divination-adjacent neighbours. Re-measure in Search Console
+about two weeks after this deploys before reopening the question.
+
+## Also in this release: two silent-degradation bugs
+
+Both found while verifying the sitemap, both invisible by construction.
+
+**`sitemap.js` served 7 URLs instead of ~1,400.** Two independent bugs, either
+one sufficient.
+
+The real one: `createClient()` from `@supabase/supabase-js` **throws on Netlify's
+Node 20 runtime**.
+
+```
+Error: Node.js 20 detected without native WebSocket support.
+  at WebSocketFactory.getWebSocketConstructor (@supabase/realtime-js/…)
+  at new SupabaseClient (…)  at createClient (…)  at sitemap.js:57
+```
+
+`createClient` constructs a `RealtimeClient` unconditionally, and realtime-js now
+requires a global `WebSocket` — Node 20 has none, Node 22 does. The throw landed
+inside the `try`, the `catch` did exactly what it was written to do, and the
+function returned its 7 static entries with a clean 200. Search Console reported
+"Success · 7 pages discovered". Not one book or series page had ever been
+submitted to Google.
+
+`sitemap.js` now talks to PostgREST over plain `fetch`, with `Range` headers for
+pagination.
+
+Worth noting how this bug survived: **the same crash had already been hit and
+fixed twice**, and this function missed both.
+
+- `send-notification-email.js` imports `ws` and passes it as
+  `realtime.transport`, satisfying the `RealtimeClient` constructor without ever
+  opening a channel.
+- `catalog-crawl.mjs` dropped supabase-js entirely for `fetch`, reasoning that
+  "pulling a websocket stack into a function that only makes one RPC call is the
+  wrong shape."
+
+Both carry that reasoning in their own headers. `sitemap.js` predates them, kept
+the naive `createClient()` call, and — because its `catch` degraded so
+gracefully — never announced that it had stopped working. It now follows
+`catalog-crawl`'s route, which makes it immune to the Node version rather than
+dependent on a workaround.
+
+`NODE_VERSION` stays at **20**. Node 22 would give every function a native
+WebSocket and let `send-notification-email.js` drop both the `ws` dependency and
+the transport option — that alternative is already recorded in its header — but
+it is a runtime change for the whole site and does not belong in an SEO release.
+
+The second bug, found first and fixed anyway: `sitemap.js` read
+`process.env.SUPABASE_URL` with no `VITE_SUPABASE_URL` fallback — the only
+Supabase consumer in `netlify/functions` without one. It would have produced an
+identical 7-entry sitemap on its own. Both env vars must also be scoped to
+**Functions** in Netlify, not Builds only; a build-scoped variable is inlined
+into the client bundle and invisible at runtime.
+
+**`og-prerender.js` had the identical bug**, via `Deno.env.get('SUPABASE_URL')`.
+When it fires, the function returns `context.next()` — which is *also* the
+correct response for a non-public entity, so a total credential failure is
+indistinguishable from normal operation. Every book, series, list and plan
+shared to Slack, WhatsApp or Discord would have fallen back to the generic site
+preview.
+
+Both now read `SUPABASE_URL || VITE_SUPABASE_URL` and log a `DEGRADED` line, so
+the next occurrence shows up in the function log rather than as a suspiciously
+round number weeks later. **Check the Netlify env vars** — if only the `VITE_`
+name is set, the fallback fixes it; if neither is, the log will now say so.
+
+**Service worker swallowed `/sitemap.xml` in the browser.** `vite-plugin-pwa`
+registers a Workbox `NavigationRoute` bound to `index.html` with no denylist.
+That is right for client-side routes and wrong for Netlify-served paths: typing
+`/sitemap.xml` into the address bar is a navigation, so the worker answered from
+cache, React routed on an unknown path, and rendered the app's 404 — while the
+server was returning `application/xml` the whole time. Googlebot never runs
+service workers, so indexing was unaffected; this was purely a "you cannot check
+your own work" bug. `navigateFallbackDenylist` now covers `/sitemap.xml`,
+`/robots.txt` and `/.netlify/*`. Existing clients need every tab closed before
+the new worker takes control.
+
+## Also in this release: CI logging
+
+`catalog-maintenance.yml` ran green while doing nothing. GitHub executes `run:`
+blocks as `bash -e {0}` — no `pipefail` — and every script step is
+`node script.mjs | tee x.log`. In a pipeline without `pipefail` the exit status
+is **tee's**, and tee always succeeds. So a script dying on startup (each exits 1
+via its own `main().catch`) produced: a green step, an empty log, no CSVs, a
+summary of zeros, `needs_review=false`, and therefore no issue. Both workflows
+now set `defaults.run.shell: bash`, which opts into `-eo pipefail`.
+
+Three further reporting fixes:
+
+- The summary parses `metadataBackfill`'s own `descriptions=N genres=N
+  nothingFound=N` line. Nothing read it before, so a run that filled hundreds of
+  descriptions reported nothing about them — the table counted only CSV rows, and
+  that CSV lists *failures*, so total success rendered identically to never
+  having run.
+- Missing or empty logs are now reported as warnings instead of being skipped
+  with `continue`, which is what made silent failure indistinguishable from
+  having nothing to say.
+- `nightly-curation.yml` reports books enriched, books failed, failed batches,
+  cost for the run, cost per book, and a 30-night projection. It fails loudly if
+  it spends money and enriches zero books, and warns when failures exceed
+  successes.
+
+# Update Notes — v0.59 → v0.61: catalogue curation moves to a nightly cron
+
+## What changed
+
+The in-app "Let the Oracle categorize my books" button is gone from Wishlist and
+Library, along with `runOracleCategorization()` in
+`src/lib/oracleCategorizationService.js`. Nothing in `src/` calls Anthropic for
+categorisation any more — the `claudeApi` import was removed from that module
+specifically so an unused `callClaude` cannot quietly reintroduce the path.
+
+The work moved to `.github/workflows/nightly-curation.yml` (07:00 UTC daily),
+which runs `metadataBackfill.mjs` free first, then `oracleBatch.mjs` under the
+service role key at a capped `NIGHTLY_LIMIT` of 40 books (~$0.28/night at
+~$0.007/book).
+
+## Why
+
+The button billed a reader's own Oracle quota for work that lands on the
+**shared** `books` table. Genres, series linkage, complexity, depth and author
+gender benefit every user who ever sees that title; charging whoever pressed the
+button was the wrong party. Free-tier readers get five calls a month, and those
+now go entirely to suggestions, plans and asking.
+
+## Knock-on changes
+
+- `EXEMPTIBLE_FEATURES` in `netlify/functions/claude.js` is now empty.
+  `'categorization'` was its only member, and the curator exemption existed
+  solely to stop catalogue maintenance eating a curator's quota. The array and
+  its allowlist logic are kept deliberately — the mechanism is sound and the
+  next exemption will want it — so `feature` always resolves to `null` and the
+  RPC never takes its exemption branch. The `get_oracle_quota` exemption
+  branches (`schema.sql:327`, `:899`) are now unreachable but harmless; leave
+  them until a schema pass tidies them.
+- `dashboard.aiQuotaCuratorNote` and its two render sites (Dashboard, Profile)
+  are removed. With no exemption, there is no longer a class of user for whom
+  part of the quota bar behaves differently.
+- `oracleHistory.source.categorization` is **kept** — historical call logs still
+  render that label.
+- `buildPrompt()` and its GENRE RULES stay in `oracleCategorizationService.js`
+  as the canonical classification spec that `oracleBatch.mjs` mirrors. They are
+  reference, not a live path. Deleting them would leave the copy as sole source
+  of truth for rules that took a long time to get right.
+- `batch-scripts/manual/oracleBatch.mjs` read `env['ANTHROPIC_KEY']`, matching
+  neither its own usage docs, its error message, nor any sibling script. It
+  worked only because a hand-written `.env.local` carried the short name; the
+  first CI run would have failed. Now accepts `ANTHROPIC_API_KEY` first.
+- `oracleBatch.mjs` stays in `manual/` despite running on a cron.
+  `batch-scripts/README.md` documents why: the folder answers "safe to run
+  unattended and free?", and for that script the answer is still no. A billable
+  workflow must announce itself in its own header.
+
+## New user-facing surface
+
+`src/components/CurationNotice.jsx` occupies the slot the button vacated. It is
+not a control — it counts books awaiting genres via `getBooksNeedingGenres()`
+and states that the Oracle reaches them overnight. It renders nothing when the
+queue is empty. Copy: `oracle.curationPending` / `curationPendingPlural`, EN+ES.
+
+Marketing copy updated to match: `landing.questions.a2`, the import-complete
+next-step card, and the Pro feature lists (which advertised "5 book
+categorization runs per day" — no longer a thing a reader can buy). That slot
+now reads "Book club polls & discussion prompts", which is a real metered
+feature.
+
+## Note on versioning
+
+`CURRENT_VERSION` was still `v0.59` while code comments referenced v0.60 and
+v0.60.1. This release jumps to **v0.61** without a v0.60 entry in `releases.js`
+— the v0.60.x work (descriptions removed from the Oracle) never got user-facing
+notes. Worth backfilling one if the gap matters.
+
+# Update Notes — v0.58 → v0.59: Goodreads import without the CSV
+
+**The headline:** onboarding stopped depending on an export queue we don't control.
+Goodreads generates CSV exports asynchronously — minutes to hours — so the old flow
+asked a brand-new user to leave, wait for an email, and come back. Most didn't. The
+reader now pastes a profile link and their shelves arrive in seconds.
+
+**How it works.** There is no Goodreads API; key issuance stopped in December 2020.
+The remaining public surface is the per-user review feed at
+`review/list_rss/{USER_ID}?shelf={SHELF}`. No auth, no key, but it requires a public
+profile and is IP rate-limited — which is why `netlify/functions/goodreads-rss.js`
+throttles its page loop to 1 req/s and caps at 20 pages (2,000 books). A shared
+Netlify egress address means one tight loop would degrade the feature for everyone.
+
+**Deliberately a parsing layer only.** The function emits the exact shape
+`parseGoodreadsCSV()` already produces (`{ t, a, rating, dateRead, fromGoodreads, s? }`)
+and hands off to `importGoodreads` → `upsertBookOnServer`. No new ingestion path, no
+new matching logic, no second code path to drift. `splitGoodreadsSeriesTitle` is
+duplicated into `netlify/functions/_shared/goodreadsTitle.js` because Functions bundle
+separately from the Vite client — **these two must be kept in sync**, or the same book
+imported via CSV and via RSS produces two different titles and two rows.
+
+**All three shelves, one destination each.** `read`, `to-read` (the URL slug for
+"Want to Read") and `currently-reading` are fetched sequentially. Goodreads doesn't
+clear the old shelf for everyone, so a book routinely sits on several at once;
+`fetchGoodreadsShelves` resolves each to exactly one destination — finished beats
+in-progress beats intended. Done at parse time, not write time, because the library
+and wishlist are written in separate awaits and React state isn't guaranteed to have
+settled in between.
+
+**New: `bulkAddToWishlist`.** `bulkAddToLibrary` has existed since v0.44; its wishlist
+counterpart never did, so `BulkImport` looped `addToWishlist` — one `showToast` and one
+`setState` per book. Tolerable for a deliberate CSV import, fatal once "Want to Read"
+arrives automatically, since to-read is routinely the largest shelf on an account.
+The old loop is replaced.
+
+**`read_at` is left NULL when Goodreads has no date.** `user_read_at` is empty for most
+readers — Goodreads only records it when the shelving was explicitly dated. Falling
+back to `user_date_added` would put books in the wrong year and corrupt the reading
+challenge and streak. Undated is correct; wrong-dated is not. **Dashboard surfaces must
+tolerate NULL-dated read rows.**
+
+**Ratings** carry over unchanged — `read_books.rating` (1–5, NULL = unrated) with the
+same `0 → NULL` normalization the CSV path has used since v0.3.
+
+**Schema:** `schema_v46_migration.sql` — `books.goodreads_id` (exact re-import match
+key), `books.enrichment_attempts`, `profiles.goodreads_user_id` +
+`goodreads_last_import_at` (for a later re-sync). No RLS changes.
+
+**CSV is not removed** — demoted to a `<details>` fallback, and still the only route for
+a private profile.
+
+**Import progress is global, and the view-swap bug is fixed.**
+
+The first attempt put progress inside `Onboarding`. That was wrong: `App.jsx` renders
+`<Onboarding/>` only while `!state.onboarded`, and `finish()` calls `setOnboarded(true)`
+*before* the write begins — so React unmounted the progress UI about a second after the
+import started, while the loop kept running in a detached closure for another two or
+three minutes. That is what read as "the page reloaded several times for no reason,"
+and why the completion toast never appeared.
+
+The job now lives in `DataContext` (`importJob` + `runGoodreadsImport`), above the
+router. `ImportProgressToast` renders it fixed to the viewport from `App`, mounted in
+both the onboarding branch and the main app, so it survives the swap and every
+subsequent navigation. Onboarding fires the job and navigates immediately rather than
+awaiting it.
+
+The completion state is **sticky** — it does not auto-dismiss. It is the only signal
+that a multi-minute background job finished, so it waits for an explicit
+acknowledgement, and opens `ImportCompleteModal`: a one-time teaching moment pointing at
+Oracle Categorize and Oracle Similar, the two surfaces that only become useful once
+there are books to work with.
+
+**The Stacks (`/stacks`).** A paged wall of covers over the shared `books` catalog.
+Reads `books` directly — the "Anyone can read books" RLS policy makes it world-readable
+— so a long browse costs no external API calls and no Oracle quota.
+
+The pool is deliberately **wide**: it excludes only `flagged`, rather than requiring
+`verified`/`oracle_categorized` the way `get_curated_catalog` does. The Stacks exists to
+help readers grow their shelves, and Oracle Categorize is available once a book reaches
+a Library or Wishlist — so gating *discovery* behind review would starve the wall for no
+benefit. The real quality bar is `cover_url is not null`; an entry with no cover has
+nothing to show on a wall of covers.
+
+Ordering is stable (`order by id`), never random: the reader pages forward, and
+reshuffling per request would repeat some books and silently hide others. Page 1 is
+seeded from the reader's chosen genres via **`books.genre`**, not a `book_genres` join —
+`book_genres` is only populated after Oracle categorisation, so joining it would exclude
+every crawled and freshly imported title, i.e. exactly the books keeping the wall
+stocked. Coarser (one primary genre per book) but it covers the whole pool, and it
+degrades to the general pool when a reader's genres match nothing. Books already on any shelf, and books already shown this
+session, are filtered out — and `loadMore` keeps pulling until it has something to
+show, because a fully-filtered page would otherwise look like a dead button.
+
+**The overlay bug (fixed).** The first `StackCard` laid a full-tile `<button>` over the
+card to catch taps for flipping, relying on `z-index: 2` on the actions to sit above it.
+That cannot work: `.stack-card__inner` has a `transform`, which creates a stacking
+context, so its children's z-index only competes *inside* it — the overlay, a sibling
+outside that context, painted above everything. Every click landed on it. Symptoms:
+Read/Want did nothing, "Full details" did nothing, and the description couldn't be
+scrolled. There is no overlay now; the cover carries the flip affordance and the back
+face is plain content with real buttons and nothing layered on top.
+
+**Batch sizing.** Rows are filtered after fetching (owned / seen / dismissed), so a fixed
+page size gave wildly uneven results — 6 books, then 4, then 5 — and an entirely-filtered
+first page rendered the empty state on a catalog of thousands. `collectBatch` now keeps
+querying (40 rows a time, up to 8 queries) until it has 20 books to *show* or the catalog
+runs out, and the initial load uses that same path rather than a single query.
+
+**Randomness across sessions.** Ordering by `id` is stable, which is correct *within* a
+session — paging forward must not reshuffle — but meant an identical wall after every
+refresh. A random start offset is now chosen once per mount from an exact row count, and
+the window slides forward from there, wrapping once at the end so a high starting roll
+still reaches the books before it.
+
+`StackCard` flips to reveal description and actions. The flip is driven by an
+`is-flipped` class from JS — hover on pointer devices, tap on touch — never by `:hover`
+alone, which would hide the actions entirely on phones. The tile has a locked aspect
+ratio so the grid can't jump when a long description renders; the back scrolls
+internally instead. The full-card tap target sits at `z-index: 1`, beneath the action
+buttons at `z-index: 2`, so it can never swallow an add. `prefers-reduced-motion`
+cross-fades instead of spinning.
+
+Entry points: a primary pill in the top nav sitting beside the Oracle (`.nav-stacks`,
+gold to the Oracle's burgundy — two peers, not a CTA and a copy of it), plus the mobile
+menu. There is deliberately **no dashboard widget**: it was tried and cut, because
+anything below the fold on a long dashboard is invisible, and a browse habit needs to be
+reachable from every screen rather than from one you have to scroll.
+
+**Catalog growth — two engines.** Reader imports are the main one and need no code:
+every Goodreads import upserts unseen titles into `books`, so the catalog compounds as
+people join. `catalog-crawl.mjs` is the second: an hourly scheduled function pulling ~25
+books each for two rotating genres via Hardcover, filtered to ≥500 readers and ≥3.6
+rating, skipping anything without an author or cover. Rotation derives from the UTC
+hour, so a full sweep completes about every 8 hours with no stored cursor.
+
+**`GENRE_MAP` is the important part of that job.** Our taxonomy is specific — *Folk
+Horror*, *Sapphic & Feminist Gothic*, *Southern & American Gothic* — while Hardcover's
+tags are broad. Crawling Hardcover's generic genres directly would fill the catalog with
+mainstream bestsellers that map to none of our 15 canonical genres, can never be
+genre-seeded, and don't belong on a dark-academia shelf. The map pulls from one or more
+Hardcover tags per canonical genre, dedupes by Hardcover id, and writes the **canonical**
+name to `books.genre`.
+
+Crawled books land as `unreviewed` and are browsable immediately, per the relaxed filter
+above. Watch the logs after the first runs: the narrower tags (`Folk Horror`, `Sapphic`,
+`Motherhood`) may not exist in Hardcover's vocabulary. A missing tag logs and is skipped
+rather than failing the run, but prune any that never return rows.
+
+**i18n placeholder syntax — single braces.** `interpolatePlain` in `I18nContext` matches
+`/\{([a-zA-Z0-9_]+)\}/`. Strings written with `{{count}}` render literally as `{140}`,
+because the inner `{count}` is substituted and the outer braces survive. Every string
+added in this release was initially written double-braced and has been corrected. Use
+`{count}`, not `{{count}}`.
+
+**Superseded:** Writing an imported shelf is a sequential
+`upsert_book` per book: 500+ books is minutes, not seconds. Previously the reader
+finished onboarding, landed on a dashboard, and watched books appear two or three
+minutes later with no explanation — indistinguishable from a failed import. Onboarding
+now blocks on a progress overlay (`.onb-saving`) counting a single total across all
+three shelves, then confirms completion by toast before navigating. Profile shows the
+same bar inline. The panel's own post-fetch message was also reworded: it says books
+were *found*, because at that moment nothing has been written yet.
+
+**NULL `read_at` audit — one real bug, in `importGoodreads` itself.**
+
+Every *consumer* of read dates already guarded correctly: the dashboard's books-this-year
+and streak widgets, the activity feed, Profile's pace and year stats, `FriendProfile`,
+`shareMoments.readYear`, and `accomplishments.computeBackfillAccomplishments` (which
+replays dated books chronologically and appends undated ones last, gating per-year
+milestones on a truthy year). `Library` and `SeriesPage` render the date conditionally.
+Nothing throws, nothing miscounts.
+
+The defect was on the *write* side. `importGoodreads` correctly wrote `read_at: null`
+to Postgres but then pushed `dateRead: new Date().toISOString()` into local React state
+— on both the guest and authenticated paths. So an undated import counted toward the
+current year's reading challenge, the current month's streak, the pace chart and the
+activity feed, and then silently dropped out of all four on the next load, when
+`loadUserData` maps `read_at → undefined`. Counts that changed on refresh.
+
+Both backfills removed; undated now stays undated on both sides. This predates the RSS
+work (the CSV path had it too) but RSS makes it the common case rather than the rare one.
+
+`bulkAddToLibrary`'s `read_at: today` is *not* affected — a manual add genuinely means
+"read now", and that is left as-is. `RatingModal` still defaults its date field to today
+when opened on an undated book, which is correct: it only writes when the reader saves.
+
+**Consequence worth knowing:** a reader who imports 500 undated books sees a large
+library but `0` toward this year's challenge. That is accurate, not broken — but it may
+warrant an explanatory line on the challenge widget. Not built; flagged.
+
+**One home for Goodreads.** The CSV tab was removed from the Library and Wishlist
+`BulkImport` modals, which now offer title paste only and carry a note pointing at
+Profile. The **Amazon URL** tab was removed outright — it asked the reader to collect
+product URLs by hand, strictly more work than typing the titles into the box beside it.
+`lookupAmazonUrls`/`handleGoodreadsFile` and their state are gone;
+`extractAsinFromUrl` stays in `bookLookup` because `purchaseLinks` still uses it.
+The orphaned `bulkImport.goodreads*` / `bulkImport.amazon*` / `bulkImport.asin*` i18n
+keys were left in place — dead but harmless, and cheaper to leave than to risk a
+dynamic lookup.
+
+# Update Notes — v0.57 → v0.58: Oracle call history, consent before spend
+
+**The headline:** the quota stopped being a number and became a ledger. Users could see
+*how much* was gone and never *where it went*, which is what "I used my free calls up
+pretty quickly and I'm not actually fully sure how" is a report of.
+
+## Oracle provenance — `supabase/schema_v45_migration.sql`
+
+Spec: `docs/oracle-provenance-v1-spec.md`. Instrumentation only — nothing about
+what the Oracle recommends changes.
+
+`oracle_recommendations` records **every book the Oracle surfaces, when it is
+surfaced**, and the outcome afterwards. Stamping provenance only on accept was
+the obvious design and cannot answer the question: the Oracle's worst
+suggestions are exactly the ones nobody adds, so they would never be recorded
+and the average rating of "Oracle books" would flatter itself by construction.
+
+Titles are snapshotted rather than keyed on `book_id`, for the same reason. The
+Oracle recommends from world literature, not the catalog; most suggestions have
+no `public.books` row until someone adds them and `upsertBookOnServer` creates
+one. Keying on `book_id` alone would silently record the accepted subset.
+`book_id` is backfilled on accept.
+
+Write path: `logRecommendations()` on `setResults` in Ask / Similar /
+Categories / Spark (AI branches only — the wishlist and Vault fallbacks are
+local draws and must not be credited to the Oracle).
+`resolveRecommendation()` from `addToWishlist` and `markAsRead`, unawaited and
+unconditional — it no-ops for a book that was never recommended, and it is
+idempotent server-side so the two paths cannot double-count.
+`read_books.source` becomes `'oracle'`, which is the join key behind the
+Oracle-vs-self-chosen rating comparison.
+
+Everything in `src/lib/oracleProvenance.js` swallows its own errors. It is
+instrumentation hanging off a result the reader already paid for; if it fails
+they should never find out.
+
+Spark is logged with its own surface but is **not comparable** to the others —
+it recommends from the reader's own wishlist, so the book was already chosen
+once by them and there is no rejection to observe. The metrics queries exclude
+it.
+
+Privacy: this table holds book titles, which `oracle_call_log` deliberately does
+not. The v0.58 announcement promised "never which book you were reading" about
+the *call log*, and that stays true — the call log would have recorded what the
+reader **asked**, this records what the Oracle **offered**. The policy carries
+that distinction explicitly in `privacy.whatDataWeCollectPara6`; do not collapse
+the two paragraphs.
+
+## Deploy order (all four steps, in order)
+
+1. `supabase/schema_v44_migration.sql` — schema.
+   Then `supabase/schema_v45_migration.sql` if shipping provenance in the same
+   release.
+2. Deploy the frontend + Netlify Functions.
+3. `supabase/reset_oracle_quota_v058.sql` — zeroes everyone's metered counters
+   and re-arms the one-time disclosure.
+4. `supabase/announce_v058.sql` — bilingual broadcast. **Run once**; there is no
+   idempotency guard, and a second run duplicates every user's notification.
+
+Step 3 comes *after* step 2 deliberately: resetting while the old build is still
+serving hands back calls that the old `BulkImport` can immediately spend again on
+the same unresolved rows. Step 4 comes after step 3 because it tells people their
+calls have been restored.
+
+> **Repo gap found while writing step 3:** `profiles.subscription_status` and
+> `profiles.oracle_calls_this_month` are read and written by schema_v22/v36/v37
+> but have no `CREATE`/`ALTER` anywhere in `supabase/` — they were added outside
+> the migration files. The database cannot currently be rebuilt from this repo.
+> `reset_oracle_quota_v058.sql` step 0 asserts they exist before writing.
+
+## Migration — `supabase/schema_v44_migration.sql` (run this)
+
+- `oracle_call_log` — append-only, one row per call that actually reached Anthropic.
+  Surface, timestamp, `charged`, period, `run_id`. **No user content**: not the question,
+  not the book, not the plan goal. Written only by `consume_oracle_call` (SECURITY
+  DEFINER); RLS grants the owner SELECT and nothing else.
+- `consume_oracle_call` gains `p_source`. Dropped and recreated rather than replaced —
+  a defaulted 4th param alongside the 3-arg signature is ambiguous to Postgres (same
+  reason as v37).
+- `get_oracle_call_history(limit, offset)` — a page of rows plus current-period totals in
+  one call, so the two halves can't disagree across a period boundary. Invoker-rights,
+  scoped by `auth.uid()`; takes no user id.
+- `profiles.oracle_intro_seen_at` — backs the one-time disclosure.
+
+Uncharged calls **are** logged (`charged = false`): a curator's exempt categorization, and
+batches 2..n of an already-paid run. That is what lets the panel prove a 40-book run cost
+one call and not eight. Quota *refusals* are not logged — nothing happened.
+
+## `source` is not `feature`
+
+`netlify/functions/claude.js` allowlists them separately. `feature` decides whether the
+curator exemption applies and stays as narrow as it always was; `source` is display
+metadata the quota logic never reads, defaulting to `'unknown'` for anything
+unrecognised. Labelling a new surface therefore cannot widen an exemption by accident.
+
+## The gate — `confirmOracleCall(source)`
+
+A promise on `OracleQuotaContext` that each surface awaits in one line:
+
+```js
+if (!(await confirmOracleCall('ask'))) return;
+```
+
+Returns `true` synchronously for anyone who has seen the disclosure and isn't on their
+last call, so it is a no-op in the common case and no spinner appears before the answer.
+A surface that forgets it degrades to the old behaviour rather than breaking. The dialog
+(`OracleGateDialog`) is mounted once in `App` — inside `RouterProvider`, which
+`OracleQuotaProvider` is not, and its upgrade CTA needs the router.
+
+Gated only on paths that actually reach Anthropic: `OracleSimilar`'s wishlist mode,
+`OracleCategories`' wishlist/vault modes and `PlanCreate`'s series type are local and are
+deliberately not gated. Confirming a charge for free work trains people to click through.
+
+## Fixed: bulk import was eating the quota
+
+`BulkImport.claudeBookFallback` called `callClaude` with no `feature`, so every unmatched
+row of a CSV import was charged as a full metered Oracle call — a five-title gap emptied
+a free account's month before it touched an Oracle surface. Now `feature: 'search'`, the
+same free tier `NavSearch` and `bookLookup` already use (server-forced Haiku, 400-token
+cap, per-user rate limit). This is almost certainly the substance of the original report.
+
+## Fixed: an LS 404 was reported as a 502
+
+`manage-subscription.js` collapsed every non-2xx from Lemon Squeezy into
+`502 portal_unavailable` — "could not open the billing portal, try again
+shortly". But an LS **404** means the stored `ls_subscription_id` does not exist
+for the deployed API key: a test-mode subscription seen through a live-mode key
+(or the reverse), or one deleted LS-side. That is permanent. Retrying fails
+identically forever, and a data problem was hiding behind what read as an
+outage. 404 now returns `subscription_missing`; 5xx is reserved for LS actually
+being unwell, where a retry is worth making.
+
+The no-id path also now distinguishes `comped` (tier is already `active` — Pro
+granted directly, nothing to manage) from `no_subscription` (free tier — an
+invitation to upgrade). Same "there is no portal", opposite messages.
+
+Profile's subscription tab replaces the Manage button with a short explanation
+once either state is known, rather than offering a button whose only possible
+outcome is an error toast. `billingState` is set from the Manage response, not
+fetched on load: `profile_billing` has no client-readable policies (schema_v28),
+so answering "does this account have billing?" eagerly would cost a Netlify
+round trip on every visit to the tab.
+
+Operational counterpart: `supabase/fix_dead_subscription_id.sql` clears a dead
+handle while leaving `subscription_status` alone. Read its DANGER note first —
+never run it against a live paying subscription, as the webhook will not resend
+the id.
+
+## Fixed: invalid hook calls in `ClubPolls.jsx`
+
+`fetchOracleSuggestions` called `useOracleQuota()` and `useT()` from a plain async
+function, and six event handlers called `useT()` inside the handler body. Hooks outside
+render run with a null dispatcher and throw. Quota helpers are now passed in from the
+component (as `SessionDiscussion.jsx` already did); the redundant `t` locals are gone.
+
+---
+
+# Update Notes — v0.56 → v0.57: Direct purchase links, edition selection, catalog repair
+
+**The headline:** every book now links to its own product page on Amazon and Bookshop.org,
+carrying the affiliate IDs. Previously every link went to a search results page — which
+converts poorly and, on Bookshop, earned nothing at all.
+
+## Affiliate links
+
+- `src/lib/purchaseLinks.js` rewritten. Amazon `/dp/{ISBN-10}` (the ISBN-10 *is* the ASIN
+  for print), Bookshop `/a/{affiliate_id}/{ISBN-13}` (Bookshop attributes via the URL
+  **path**, not a query param — an `aid=` on a search URL earns nothing).
+- Foreign affiliate tags on imported `amazonUrl`s are stripped before ours is applied.
+- `VITE_AMAZON_AFFILIATE_TAG` / `VITE_BOOKSHOP_AFFILIATE_ID` were declared but unset —
+  now populated. **Must also be set in Netlify env** or production ships without them.
+- Books with no ISBN still fall back to a *tagged* Amazon search. Bookshop search carries
+  no attribution, so ISBN coverage is specifically a Bookshop revenue question.
+
+## Edition selection — `src/lib/editionPicker.js` (new, shared)
+
+Hardcover's `editions(limit: 3)` returned whichever edition came first. Fourth Wing
+resolved to the Empyrean #1-2 boxed set; A Dowry of Blood to an Audible edition. Now
+scored: physical ≫ ebook ≫ audio, English preferred but never mandatory, compilations
+disqualified, popularity log-scaled as a tiebreak, ISBNs checksum-validated.
+
+`edition_format` overrides a contradicting `reading_format_id` — real rows claim
+`reading_format_id=1` while reading "Audible Audio" or "Kindle Edition".
+
+## Title matching — `src/lib/titleMatch.js` (new, shared)
+
+Four distinct bugs, each found in production data:
+
+| Symptom | Cause |
+|---|---|
+| *Agatha Christie: An Autobiography* → a Poirot omnibus | subtitle stripped, then any prefix allowed |
+| 6 X-Men arcs sharing one ISBN | `Series: Instalment` titles all reduce to the series name |
+| *The Infinity Crusade* Vol. 1 and Vol. 2 sharing one ISBN | prefix rule's 4-char floor; "vol1" is exactly 4 |
+| 15 JoJo volumes sharing one ISBN | volume extractor read only the *first* number ("Part 1") |
+
+Matching is now **asymmetric**: the stored title is never reduced past its subtitle, only
+the candidate is. Reducing the stored side turns a specific collection into its series
+container, which is how *Hellblazer: Tainted Love* and *: Dangerous Habits* both matched a
+bare "Hellblazer" record.
+
+## Lookup chain — `src/lib/bookLookup.js`
+
+New stage 3: when every source misses, Claude repairs the **query**, then stages 1–2 run
+again. Claude never supplies book data — only a corrected title/author — so a
+misremembering cannot write a bad ISBN. Free Haiku tier, no Oracle quota charge.
+
+Raw records now distinguish `noApiMatch` (every source ran and missed) from
+`lookupIncomplete` (a stage never ran — throttle saturated, source threw). The second is
+retryable and must not be treated as "book doesn't exist".
+
+## Batch scripts (`batch-scripts/`)
+
+- `isbnBackfill.mjs` — Hardcover, batched `id: {_in: […]}`, sliding-window rate limiter,
+  resumable, learns and persists `hardcover_id`.
+- `isbnFallback.mjs` — OpenLibrary (no key) + Google Books (needs `GOOGLE_BOOKS_API_KEY`;
+  anonymous quota is 0). Rejects library rebinders and audio imprints. `--probe` dumps raw
+  upstream JSON to verify response shapes.
+- `curateManualBooks.mjs` — Claude + web search. Metadata fills are automatic; title
+  changes go to a CSV for approval, then `--apply-titles`. Prompt forbids translating a
+  title out of its original language and forbids mapping a single work onto a collection
+  that contains it.
+
+## Migrations
+
+`schema_v38` reset ISBNs · `v39` `merge_books()` · `v40` cleared bad-matcher ISBNs ·
+`v41` cleared the stale `hardcover_id`s that made v40 re-derive the same wrong answers ·
+`v42` serialized-work resets. `isbn_dupe_audit.sql` distinguishes duplicate *rows* from
+genuinely mismatched ISBNs.
+
+`merge_books()` discovers FK references from `pg_constraint` at runtime and repoints
+row-by-row inside a savepoint catching `unique_violation` — several tables carry
+`unique(user_id, book_id)`, so a user holding both books would otherwise break the merge.
+Every merge is logged to `book_merge_log` with the deleted row's full JSON.
+
+**Known limitation:** `refs_moved`/`refs_deduped` record counts, not row identities, so a
+merge is not precisely reversible.
+
+## Automation
+
+`.github/workflows/catalog-maintenance.yml` — Mondays 06:00 UTC, **free passes only**
+(backfill + fallback). `curateManualBooks` is billable and runs only via
+`workflow_dispatch` with an explicit `curate_limit`. Opens a GitHub Issue when proposals
+await approval or the ISBN-less backlog crosses 150, with an estimated cost.
+
+Oracle Categorization tops up missing ISBNs opportunistically — but only reaches
+`status IN ('unreviewed','incomplete')`, so it supplements the cron rather than replacing it.
+
+## Result
+
+ISBN coverage went from near-zero usable direct links to **86.4%** (2,146 of 2,484). The
+remaining ~338 are concentrated in serialized volumes, rows with no author, and
+non-English small-press titles.
+
+---
+
+# Update Notes — v0.55.4 → v0.56: Spanish-language discovery + free search tier
+
+Fixes book discovery for Spanish-language / Latin American titles (which the
+English-weighted lookup chain missed), and stops the search bar's AI fallback
+from spending a user's monthly Oracle quota.
+
+Not marked critical in `public/app-version.json`: the client changes are
+additive and the server accepts old and new clients. **One deployment step is
+required though:** set `GOOGLE_BOOKS_API_KEY` in Netlify (see below) — without it
+the Google Books tier returns 500 and the chain simply falls through as before.
+
+## What's new
+
+1. **Google Books added to the lookup chain, behind a keyed proxy.** Google
+   removed anonymous quota from the Books API — keyless calls now return HTTP 429
+   with `quota_limit_value: 0`, which had silently broken both search coverage
+   and cover fetching. A new `netlify/functions/googlebooks.js` injects
+   `GOOGLE_BOOKS_API_KEY` server-side (mirrors the Hardcover proxy). Google Books
+   runs only as a fallback when Hardcover has no strong match — its covers are
+   low-trust, so it never overrides the primary sources.
+2. **Order-agnostic, accent-insensitive, validated matching.** Spanish titles
+   often read `Collective: Title` (e.g. *Morras Malditas: Apaguemos la luz y
+   entremos a la noche*, where "Apaguemos la luz…" is the real title). Matching
+   now queries every colon/dash segment, strips diacritics, and — critically —
+   validates candidates by token overlap so fuzzy near-misses ("Antes que
+   Morras", "No apagues la luz") are rejected instead of imported. Editions are
+   de-duplicated by canonical work, not ISBN.
+3. **Bulk import no longer trusts fuzzy hits blindly.** `lookupByTitle` used to
+   accept any Hardcover/OpenLibrary result, which both imported the wrong book
+   and masked the Google Books fallback. It now validates the merged result
+   against the query (segment-aware, `TITLE_MATCH_MIN = 0.6`) and falls through
+   to Google Books, then to a `needsReview` record, rather than saving a wrong
+   match.
+4. **Search's AI fallback is now free.** The NavSearch book-identification call
+   (`feature: 'search'`) no longer consumes Oracle quota. Server-side it's forced
+   to **Haiku 4.5** with a small output cap and a per-user in-memory rate limit
+   (15/min); client-side it's cached per normalized query and gated behind an
+   extra ~500ms pause so it can't fire on every keystroke. The fallback also now
+   runs whenever Hardcover has no *strong* match (not just zero hits), so wrong
+   fuzzy hits stop masking it.
+
+## Env vars
+
+- **New:** `GOOGLE_BOOKS_API_KEY` (server-side). Create a Google Cloud project →
+  enable "Books API" → create an API key → set it in Netlify env + local `.env`.
+  Restrict the key to the Books API. Free tier is ~1,000 queries/day.
+
+## Database changes
+
+None. No migration required. The free-search rate limit is in-memory (per warm
+Lambda); a durable fleet-wide limit would need a Supabase table — deferred.
+
+## Code changes
+
+- `netlify/functions/googlebooks.js` — **new** keyed Google Books proxy
+- `netlify/functions/claude.js` — added `claude-haiku-4-5` to the allowlist;
+  new free `search` feature (Haiku, `SEARCH_MAX_TOKENS = 400`, per-user rate
+  limit `allowFreeSearch`), skips the quota read/consume for that feature
+- `src/lib/googleBooksService.js` — **new**: `googleBooksLookup`,
+  `googleBooksSearchMulti`, `googleBooksLookupByIsbn`, exported `titleMatchScore`
+  / `bestTitleMatch`; segment-aware validated matching, canonical-work dedupe
+- `src/lib/bookLookup.js` — validates the merged result via `bestTitleMatch`
+  before trusting it; Google Books fallback when the primary chain misses
+- `src/lib/coverService.js` — `tryGoogleBooks` now calls the proxy
+- `src/components/NavSearch.jsx` — segment-aware strong-match gate; Google Books
+  tier between Hardcover and Claude; `feature: 'search'`; per-query cache +
+  `CLAUDE_TIER_DELAY_MS` pause guard
+- `public/app-version.json` — bumped to 0.56, `critical: false`
+
+---
+
+# Update Notes — v0.55.3 → v0.55.4: Identity as the first onboarding step
+
+Moves display-name + username capture to the front of onboarding so the setting
+can't be missed, and adds a local-only way to replay the flow while testing.
+
+**Onboarding is now six steps.** A new first step (`views/Onboarding.jsx`, `step === 1`)
+asks for the reader's display name and `@username` before reading level. Both are
+required to continue: `identityValid` gates the Continue button on a non-empty
+display name plus `usernameStatus === 'available'`. The username field reuses the
+Profile-page validators (`validateUsername` / `checkUsernameAvailability` from
+`lib/useFriends`) with the same 400ms debounce and available/taken/invalid states.
+On `finish()`, the values are written straight to the `profiles` row via the
+existing `updateDisplayName` / `updateUsername` — no new schema. The five prior
+steps shifted to 2–6 (`TOTAL_STEPS = 6`); the step-eyebrow labels now read "of 6"
+in both `i18n/en.json` and `i18n/es.json`, and a new `onboarding.stepName*` /
+`labelName` / `labelUsername` / `usernameHint` / `usernameChecking` /
+`usernameError` string set was added to both locales.
+
+**Local-only onboarding replay.** Visiting the app with `?onboarding=reset` in a
+DEV build (`import.meta.env.DEV`) raises a `sessionStorage` flag
+(`bo_dev_replay_onboarding`) and strips the param from the URL. The App render
+gate shows onboarding whenever `!state.onboarded || devReplayOnboarding`, reading
+the flag directly rather than from React state — an earlier attempt that called
+`setOnboarded(false)` was overwritten by DataContext reloading `onboarded` from
+the DB, which bounced straight back to the dashboard. `finish()` clears the flag
+so the flow exits normally. It is a no-op in production regardless of the query
+string, and never touches the database, so the flow can be tested without a new
+account. To use: run locally and open `/?onboarding=reset`.
+
+# Update Notes — v0.55.2 → v0.55.3: Genre shelves counted right, split filter/order toolbar
+
+Fixes the genre-count artifact on Library and Wishlist, changes how a book's
+browse shelf is chosen, and reworks the list toolbars so filtering and ordering
+read as distinct controls.
+
+Not marked critical in `public/app-version.json`: this is a client-only
+rendering + styling change with no schema or RPC impact, so stale clients get
+the standard dismissible update prompt rather than a forced reload.
+
+## What's new
+
+1. **Genre shelves show their full count immediately** — Library and Wishlist
+   previously paged the *flat* filtered list and grouped only the loaded slice,
+   so a shelf header read "· 3" until you scrolled to the very end and it became
+   "· 48". Both views now group the full filtered set first and paginate over
+   *whole genre sections*, so every shelf renders all its titles and a correct
+   count the moment it appears. Still lazy — sections load
+   `GENRE_PAGE_SIZE = 6` at a time, so long wishlists (1000+) stay responsive.
+2. **A book's browse shelf is now its most specific genre** — the grouped view
+   used `genres[0]`, which (given `rollupGenres` sorts by global usage desc)
+   filed every book under its broadest genre; niche shelves stayed empty. A new
+   shared `getPrimaryGenre` helper picks the *least-common* genre instead, so
+   shelves like "Body Horror & Transgressive" populate. Each book still shows in
+   exactly one shelf when browsing and under any of its genres when filtering.
+3. **Split filter/order toolbars** — the Friend profile toolbar now separates a
+   labeled "Filter" group (search + genre + year) from an "Order" group (sort),
+   and the redundant book count beside the sort dropdown is gone (the hero stats
+   already show total + books this year). Library and Wishlist gain the same
+   "Filter" label for consistency. The toolbar stacks into a column on mobile
+   via the new `.lv-toolbar--split` styles.
+
+## Database changes
+
+None. No migration required.
+
+## Code changes
+
+- `src/lib/bookHelpers.js` — new `getPrimaryGenre(book, genres, fallback)`
+  helper implementing the least-common-genre rule
+- `src/views/Library.jsx`, `src/views/Wishlist.jsx` — group the full `filtered`
+  set, paginate `allGenreKeys` via `usePagedList` at `GENRE_PAGE_SIZE`, derive
+  `shownCount` for the load hint; genre count in the page head now reflects the
+  true total. Removed the per-view local `getPrimaryGenre`.
+- `src/views/FriendProfile.jsx` — toolbar split into filter/order groups; book
+  count removed
+- `src/styles/pages/_book-pages.scss` — `.lv-toolbar--split`,
+  `.lv-toolbar__group`, `.lv-toolbar__label`; mobile column layout
+- `src/i18n/en.json`, `es.json` — `common.filterLabel`, `common.orderLabel`
+- `public/app-version.json` — bumped to 0.55.3, `critical: false`
+
+---
+
+# Update Notes — v0.55.1 → v0.55.2: Landing toggles, parchment story, quota corrections
+
+Ships the visitor-facing light/dark and EN/ES controls on the landing story,
+narrows the curator Oracle exemption to catalog work only, and fixes two
+display bugs that made an unmetered account look walled.
+
+Marked **critical** in `public/app-version.json`: v0.55.1 shipped a quota
+badge that reads "5 of 5" on curator accounts and a categorization run that
+can exhaust a new user's monthly budget on its first pass. Stale clients need
+the new bundle, not a dismissible toast.
+
+## What's new
+
+1. **Language + appearance toggles on the landing page** — an EN/ES segmented
+   control and a sun/moon button, at the top of the story before the scroll
+   begins. Thin wrappers over the existing `I18nContext` / `ThemeContext`, so
+   a choice made while logged out carries into the app on sign-up. On mobile
+   they stay in the nav bar rather than the hamburger sheet.
+2. **The landing story has a parchment palette** — `_landing-story.scss` was
+   ink-only with ~100 hardcoded colour literals. It is now written entirely
+   against `--lps-*` tokens, and light mode is a channel swap on
+   `body.theme-parchment`.
+3. **Curator exemption is per-feature** — `is_curator` + categorization is
+   unmetered; a curator's Spark/Ask/Similar/Plan calls are metered normally.
+   v0.55.1's blanket exemption was wider than intended.
+4. **Categorization meters per run, not per batch** — `BATCH_SIZE = 5` meant
+   one charged call per 5 books: 25 books/month on Free, 25/day on Pro. A run
+   now costs one call via an idempotency ledger.
+5. **Removals** — the `.lps-tile-lines` gold curves across the companions grid
+   (the page already has one gold line with a job), and the About link from
+   `LandingNav`, which dropped signed-out visitors into the authenticated app
+   shell because `about` isn't in `App.jsx`'s `legalViews` map.
+6. **Spacing** — `.btn-oracle` no longer carries its own vertical margin, and
+   `.pf-section` owns one vertical rhythm via an owl selector instead of every
+   child setting its own margins.
+
+## Database changes
+
+`supabase/schema_v37_migration.sql` — **apply before deploying.** It drops and
+recreates both quota RPCs, so a half-applied migration leaves the Oracle
+uncallable. Run it in a transaction on a branch first.
+
+- Renames `oracle_calls_reset_at` → `oracle_calls_month_start` and
+  `oracle_calls_day_reset_at` → `oracle_calls_day_start`, with
+  `COMMENT ON COLUMN` on both. Neither column ever held a reset time — every
+  write since v22 set them to the period *start*, which is why a Pro account
+  showed `2026-07-01` on July 22nd and looked like it was on a monthly cycle.
+- Adds `profiles.oracle_calls_exempt_total` — exempt calls are counted for
+  cost visibility but must not touch the metered counters, or exempt catalog
+  work would spend the budget it is exempt from.
+- Adds `oracle_call_runs (user_id, run_id, charged_at)`, RLS on with zero
+  policies — reached only by the `SECURITY DEFINER` RPCs.
+- `consume_oracle_call(uuid, uuid, text)` and `get_oracle_quota(uuid, uuid,
+  text)` — both gain `p_run_id` and `p_feature`. `get_oracle_quota` also
+  returns `is_curator` so the UI can label the exemption without a second
+  query.
+- One-time correction: moves curators' existing `oracle_calls_today` into
+  `oracle_calls_exempt_total` and zeroes the metered counters, so nobody opens
+  the app already walled by calls that were exempt when they were made.
+
+## Code changes
+
+- `src/components/LandingToggles.jsx` (new) — the EN/ES + sun/moon pair
+- `src/components/LandingNav.jsx` — renders the toggles; About link removed
+- `src/views/Landing.jsx` — `dark` prop follows the theme instead of being
+  hardcoded true
+- `src/components/landing/Companions.jsx` — tile-line SVG and its timeline
+  removed; tile rise kept
+- `src/styles/pages/_landing-story.scss` — full tokenization + parchment
+  block. Note the `lps-derive` mixin: `var()` inside a custom property is
+  substituted at the element where it is *declared*, so the derived tokens
+  must be re-emitted in every palette block, not written once on `:root`
+- `src/styles/pages/_landing.scss` — `.lp-toggles*` styling, `--ro-*` only
+- `src/styles/components/_buttons.scss`, `pages/_profile-extensions.scss` —
+  spacing pass
+- `netlify/functions/claude.js` — validates `runId` as a uuid, allowlists
+  `feature`, threads both into the RPCs
+- `src/lib/oracleCategorizationService.js` — mints one run id per run; the
+  outer `catch` no longer swallows `QuotaExceededError` (it was rethrown by
+  the inner catch with a `// propagate to button` comment and then eaten,
+  so a run past the wall ground through every remaining batch)
+- `src/lib/OracleQuotaContext.jsx` — carries `is_curator`
+- `src/views/Dashboard.jsx`, `Profile.jsx` — branch on `unlimited` *before*
+  clamping. `calls_limit ?? 5` turned a null limit into 5 and
+  `Math.min(calls_used, limit)` turned 32 used into 5, so an unmetered account
+  read "5 of 5" and its bar sat at 100%
+- `src/i18n/en.json`, `es.json` — `landing.nav.*` toggle labels,
+  `dashboard.aiQuotaUnlimited`, `dashboard.aiQuotaCuratorNote`
+- `supabase/quota_diagnostic.sql` (new) — read-only triage for quota reports
+
+---
+
+# Update Notes — v0.40.1 → v0.41.0: Public Landing Page
+
+Adds a real, public-facing marketing page at `/` for signed-out visitors, per
+`landing-page-guideline.md`. Signed-in visitors are unaffected — they still
+land on the Dashboard exactly as before.
+
+## What's new
+
+1. **Landing page at `/`** — hero, "the problem," six feature carousels
+   (alternating text/thumbnail layout, per-feature slides), how-it-works,
+   pricing, FAQ, and a final CTA band. Parchment-only regardless of the
+   visitor's saved theme preference.
+2. **Legal pages get dual chrome** — Privacy/Terms/Refund/Sitemap render with
+   the app's Nav/Footer when you're signed in, and with the new
+   LandingNav/LandingFooter (marketing style) when you're signed out.
+3. **Language switcher** — an EN/ES dropdown in the landing footer, reusing
+   `I18nContext` and the same `src/i18n/*.json` catalogs as the rest of the
+   app (new copy lives under the `landing` key — nothing new to wire up for
+   translators).
+4. **SEO** — tuned title/description, JSON-LD (`SoftwareApplication` +
+   `FAQPage`) for rich-result eligibility, canonical tag reuses the existing
+   per-route logic.
+5. **Mobile** — a short slide-down quick-link sheet from the nav (not the
+   full-screen app hamburger menu), plus a sticky bottom CTA bar.
+
+## Database changes
+
+**None.**
+
+## Code changes
+
+- `src/views/Landing.jsx` (new) — the page itself
+- `src/components/FeatureCarousel.jsx` (new) — alternating text/thumbnail
+  carousel used by the 6 feature sections
+- `src/components/LandingNav.jsx`, `LandingFooter.jsx` (new) — public chrome,
+  shared between the landing page and signed-out legal pages
+- `src/components/SignInGate.jsx` (new) — extracted from `App.jsx` so the
+  landing page's "Start reading free" / "Log in" CTAs can open it as a modal
+  instead of navigating away
+- `src/App.jsx` — signed-out visits to `/` now render `<Landing>` instead of
+  the sign-in gate; signed-out legal-page visits use the public chrome
+- `src/i18n/en.json`, `es.json` — new `landing` key, both languages
+- `src/styles/pages/_landing.scss` (new) — all landing styling, scoped under
+  `.lp-root`
+- `src/lib/releases.js` — new `v0.41.0` entry (bilingual, user-facing)
+
+## Image assets needed before this goes live
+
+The page ships with real `<img>` tags pointing at files that don't exist yet
+— on purpose, so it's obvious exactly what to drop in and where. Until
+they're added, the page works and reads fine, just with broken-image icons
+in these spots:
+
+| Path | Used for | Suggested shape |
+|---|---|---|
+| `public/images/landing/hero-dashboard.png` | Hero "screenshot" | ~1200×825, real Dashboard or Oracle chat screenshot |
+| `public/images/landing/problem-bg.jpg` | "The problem" section background | ~1600×900, atmospheric library/reading photo |
+| `public/images/landing/how-it-works-bg.jpg` | "How it works" section background | ~1800×1000, same mood as above, visually distinct from problem-bg |
+| `public/images/landing/final-cta-bg.jpg` | Final CTA full-bleed band | ~2000×1100, warm/inviting, this one is the most prominent photo on the page |
+| `public/images/landing/og-share.png` | Social share preview (`og:image`) | 1200×630 per OG spec |
+| `public/images/landing/features/oracle-1-by-genre.png` | Oracle, slide 1 | ~800×500 screenshot |
+| `public/images/landing/features/oracle-2-by-other-books.png` | Oracle, slide 2 | ″ |
+| `public/images/landing/features/oracle-3-ask-in-plain-language.png` | Oracle, slide 3 | ″ |
+| `public/images/landing/features/readingLife-1-whole-library.png` | Reading Life, slide 1 | ″ |
+| `public/images/landing/features/readingLife-2-wishlist-at-a-glance.png` | Reading Life, slide 2 | ″ |
+| `public/images/landing/features/readingLife-3-custom-categories.png` | Reading Life, slide 3 | ″ |
+| `public/images/landing/features/readingLife-4-currently-reading-tracked.png` | Reading Life, slide 4 | ″ |
+| `public/images/landing/features/plans-1-built-around-you.png` | Reading Plans, slide 1 | ″ |
+| `public/images/landing/features/plans-2-watch-it-come-together.png` | Reading Plans, slide 2 | ″ |
+| `public/images/landing/features/friends-1-living-feed.png` | Friends & Activity, slide 1 | ″ |
+| `public/images/landing/features/friends-2-peek-at-shelves.png` | Friends & Activity, slide 2 | ″ |
+| `public/images/landing/features/friends-3-curated-lists.png` | Friends & Activity, slide 3 | ″ |
+| `public/images/landing/features/stats-1-yearly-goal.png` | Stats & Goals, slide 1 | ″ |
+| `public/images/landing/features/stats-2-see-your-pace.png` | Stats & Goals, slide 2 | ″ |
+| `public/images/landing/features/stats-3-keep-the-streak.png` | Stats & Goals, slide 3 | ″ |
+| `public/images/landing/features/clubs-1-powered-by-the-oracle.png` | Book Clubs, slide 1 | ″ |
+| `public/images/landing/features/clubs-2-inside-a-session.png` | Book Clubs, slide 2 | ″ |
+| `public/images/landing/features/clubs-3-discover-clubs.png` | Book Clubs, slide 3 | ″ |
+| `public/images/landing/features/clubs-4-spoiler-safe.png` | Book Clubs, slide 4 | ″ |
+
+Filenames are stable across languages (keyed off the feature/slide, not the
+translated title) so switching to Spanish never changes which file loads.
+Real screenshots are captured in the app's dark theme — frame them (browser
+chrome / drop shadow) so the contrast against the light landing page reads
+intentionally, per the design guideline.
+
+## Verify it works
+
+1. Sign out (or open in an incognito window) and visit `/` — should show the
+   landing page, not the sign-in screen.
+2. Sign in — `/` should still go straight to the Dashboard as before.
+3. Visit `/privacy` (or terms/refund/sitemap) signed out — public chrome;
+   signed in — app chrome.
+4. Click "Start reading free" / "Log in" from the landing page — opens the
+   sign-in modal in place, no navigation.
+5. Footer language dropdown — switches the whole page EN ↔ ES.
+6. Resize to mobile width — nav collapses to a short quick-link sheet (not
+   the full-screen app menu), and a sticky CTA bar appears at the bottom.
+
+## What didn't change
+
+- Pro pricing has no number yet — shows "Coming soon" deliberately, per the
+  guideline's "don't invent numbers" rule. Fill in `landing.pricing.proPrice`
+  in both i18n files once Lemon Squeezy is live.
+- No testimonials/social-proof section — skipped per guideline until there
+  are real quotes to show.
+
+## A note on the dev-server HMR error some may see mid-session
+
+If you pull these files into a repo with `npm run dev` / `netlify dev`
+already running, Vite's hot-reload may throw `Failed to reload
+/src/lib/I18nContext.jsx` once, since a lot of interdependent files (several
+of which import `I18nContext`) changed at the same time rather than through
+its normal one-file-at-a-time watch flow. It's a dev-server cache hiccup, not
+a real bug — a production build (`npm run build`) compiles clean, and a
+dev-server restart (or hard browser reload) clears it.
+
+
+### v0.55.1 — Unlimited Oracle calls for curators
+
+`get_oracle_quota` and `consume_oracle_call` (`schema_v22_migration.sql`) now short-circuit for `profiles.is_curator = true` (`schema_v36_migration.sql`) — curators skip the free/Pro quota gate entirely, in both the read-only check and the actual increment-and-gate call, independent of `subscription_status`. Both functions already returned an `unlimited` boolean in their JSON shape (always `false` until now — a leftover from an earlier "Pro = unlimited" design that became "Pro = 5/day"); this is the first time it's ever set `true`. `netlify/functions/claude.js` needed no changes: it already skips the 402 when `quota.unlimited`, and already calls `consume_oracle_call` unconditionally on success — the RPC itself now decides whether that call enforces anything. Call counters still tick for curators (cost visibility), just never against a limit.
+
+**Client:** `OracleQuotaContext.jsx` was hardcoding `unlimited: false` regardless of what the RPC returned — fixed to read `data.unlimited`, and `calls_limit`/`calls_remaining` are now left `null` (not coerced to the free-tier default) when unlimited. `OracleQuotaBadge` shows "Unlimited" instead of a countdown; `OracleQuotaWall` (the exhausted-quota empty state) no-ops for unlimited accounts, though the server was already going to prevent it from firing.
+
+Rationale: curator accounts are the ones whose libraries feed the Vault catalog (`schema_v34_migration.sql`) — running Oracle Categorization across a ~900-book personal wishlist at 10 books/batch is ~90 calls, far past the 5/day Pro limit that's meant for normal usage.
+
+### v0.55 — Books by women accomplishment
+
+Adds `author_gender` to `books` (`schema_v35_migration.sql`) — deliberately NOT a genre: it's an attribute of the author, not a thematic classification, so it lives as its own column rather than going through `genres`/`book_genres`. Values: `female | male | nonbinary | mixed | unknown`, plus `author_gender_source` (`oracle_inferred | verified | self_identified`) and `author_gender_checked_at` for provenance, mirroring the existing `status`/`verified_*` pattern.
+
+**Fed by the Oracle, not guessed from names.** `oracleCategorizationService.js`'s existing batch call (genres/series/description/complexity/depth) now also returns `authorGender` in the same pass — no extra API cost. The prompt is explicit: only return `female`/`male`/`nonbinary` from a real public signal (stated pronouns, official bio, a known interview) — a name "sounding" female or male is not a signal, and the Oracle is instructed to prefer `unknown` over a guess. `mixed` covers multi-author/anthology books whose credited authors aren't all one gender. Only NEW Oracle runs (`unreviewed`/`incomplete` books) get this — the existing catalog isn't retroactively re-enriched by this migration; that's a separate, deliberate decision given the API cost across ~900 books.
+
+**Accomplishment.** New milestone ladder `FEMALE_AUTHOR_MILESTONES = [5, 10, 25, 50, 100]` in `shareMoments.js`, counted across the whole library regardless of genre (`female` and `mixed` both count — a co-authored book isn't invisible for having one male co-author). Wired through the same live-earn (`fireCompletionMoment`) and retroactive backfill (`computeBackfillAccomplishments`) paths every other milestone type uses, under a new `female_authors_count` kind. New "Women writers" shelf on the Profile Ledger; new plain (unframed) share card — `cardResolve.js`'s `MOMENT_SLUGS` has no entry for it yet, so it renders like every other moment type did before its art shipped, and upgrades automatically once `/cards/moment-female-authors/` assets land and get one line added there.
+
+i18n: new `ledger.group.authors` / `ledger.femaleAuthorsLabel`, `share.card.femaleAuthors*`, `share.text.femaleAuthors` keys (EN + rioplatense ES).
+
+### v0.54 — The thread inside the app (Oracle waits + plan rail)
+
+The landing's gold-thread language crosses into the product, deliberately narrow: motion as punctuation at the two moments that earn it, never ambiance. **BookLoader** (the Oracle-wait surface used by Ask/Categories/Similar) keeps its page-flip and rotating genre quotes and gains a miniature thread SVG that draws itself on a CSS keyframe loop beneath the quote; on unmount — results landed — it fires a small `burst()` (12 sparks) at the thread's position, gated to waits > 1.5s and to the thread being on-screen. `burst` is imported from `components/landing/burst` (the `.lps-spark` style is duplicated into `_book-loader.scss` since the landing partial's copy also rides along; kept in sync by comment). **PlanView** gets `plan-months--thread`: a static gold rail (`::before`, gradient stroke) through the month cards with a `plan-thread-node` per book — read ✦ / currently-reading ☾ (first unread) / ahead ✧ — drawn once on mount (1.2s scaleY + staggered node fade via `--ti` custom-property delays), then completely still, so it reads as progress information rather than decoration. Both honor `prefers-reduced-motion` (final state rendered immediately, no spark). No Lenis, no ScrollTrigger, no pinning anywhere in-app.
+
+### v0.53 — Story landing (the scroll is the reading)
+
+Full rebuild of the public landing page per `LANDING_STORY_SPEC.md`: one continuous story — a reader lost in their TBR is guided by the Oracle to their next book, along a path, to the moment they claim it. Replaces the section-by-section marketing page AND the session-gated intro: `OracleIntro.jsx` (30s overlay + skip) and `ConstellationThread.jsx` are deleted, absorbed into the page itself. There is no gate and no curtain — the scroll *is* the reading.
+
+**Stack.** `gsap` + `@gsap/react` (`useGSAP` scoped cleanup) + ScrollTrigger, `lenis` smooth scroll driven by the single `gsap.ticker` (`lagSmoothing(0)`). New components under `src/components/landing/`: `OracleCard` (one shared card language — 2:3, gold border, inner frame, sigil/serif name/mono meaning; variants `back|front|mini|tier|cta`), `useCardTilt` (pointer tilt + travelling glare on `gsap.quickTo` springs; self-disables on touch and reduced motion), `burst.js` (gold spark burst — used exactly twice by design: the Act I reveal and the Epilogue claim), `GoldThread` (ONE document-spanning SVG path; ignites at the chosen card, terminates into the Epilogue card, scrubbed via dashoffset, rebuilt from live anchor rects on every `ScrollTrigger.refresh`), `ActSpread` (pinned hero theater, ~300% depth / 220% mobile: five-card fan → consideration → flip → burst → zoom-through → beyond copy), `RiteSuggestion` (three mini-cards dealt face-down, flipped into ranked suggestions with reasons), `RitePath` (plan-as-constellation; the global thread routes through its four star-nodes), `RiteRecord` (Rite III — reading memory, stats, streak, goal bar, and the app-granted title ladder as the Oracle's remembered chronicle; numbers count up on enter), `Companions` (six tiles + faint connection lines between related tiles), `Offering` (two tarot tier cards; quotas/pricing use the LIVE values — Seeker 5 suggestions/month, Adept 5/day at $5.99 — not the v4 prototype's "unlimited" placeholder), `Questions` (accordion; first answer rewritten to the voice rule: the Oracle *finds and suggests*, the reader chooses), `Claim` (the card is the CTA `<button>`; plain text button below for a11y/mobile).
+
+**Views/chrome.** `Landing.jsx` is now composition + Lenis provider + thread-anchor wiring; nav anchor ids (`lp-features`, `lp-pricing`) and the `?anchor=`/`?auth=` deep links survive. `LandingNav` gains a `dark` prop (dark logo + ink chrome via re-declared `--ro-*` tokens in `_landing-story.scss`); legal pages keep parchment untouched. JSON-LD FAQ entities now read `landing.questions.*`.
+
+**i18n.** The whole `landing.*` subtree is rebuilt (both catalogs): `act1`, `rite1`, `rite2`, `companions`, `offering`, `questions`, `epilogue` (+ kept `nav`/`mobileNav`). Old `hero/problem/features/howItWorks/pricing/founder/faq/finalCta/intro` keys removed — they had no remaining consumers.
+
+**Cross-cutting.** Reduced motion ⇒ no pin, no scrub, no Lenis, chosen card face-up, thread fully drawn at 0.15 opacity, FAQ toggles instantly (`.is-static` + `prefers-reduced-motion` CSS). Mobile: 220% pin, five-card spread collapses to three under 640px, tilt disabled on touch. Transforms/opacity only in scrubbed timelines; no hotlinked images (everything CSS/SVG — the Wikimedia library photos are gone); all copy is real DOM text, h1→h2 follows the acts. Fonts: IBM Plex Mono added to the landing Google-Fonts link (Instrument Serif was already loaded).
+
+### v0.52 — Avatars (Google photo fix + preset sigils)
+
+**The bug.** Google avatars (`lh3.googleusercontent.com`, captured into `profiles.avatar_url` by the `handle_new_user` trigger) were rendered with plain `<img>` tags — Google 403s those requests when a `Referer` header rides along, so photos "randomly" failed. Fix: `referrerPolicy="no-referrer"` on every avatar img, plus an `onError` fallback to the initials disc for stale URLs (user changed their Google photo since signup).
+
+**Consolidation.** Five copy-pasted local Avatar implementations (CommentThread, BookClubDetail, SessionDetail, Dashboard `ClubAvatar`, Friends — the last with off-brand colored fallback discs) collapse into one shared `src/components/Avatar.jsx` with both fixes baked in; existing `.friend-avatar` styling unchanged. Dashboard's `FriendAvatar` keeps its own `db-ff-avatar` styling but gains the same fixes; Nav's two raw imgs gain `no-referrer`.
+
+**Preset gallery (Design System V9, "Genre Avatars" pattern).** 108 static SVGs in `public/avatars/`, generated from the Claude Design package's own data (icon paths from `Avatar.dc.html`, genre→motif and palette assignments from the DS file): 49 genre motifs × solid + outline variants (`g-<key>.svg` / `g-<key>-o.svg`, ten-color rotating palette) + a 10-icon Standard Set (`s-<key>.svg`). One deliberate deviation: outline variants whose palette fg is dark (the gold entries) stroke the glyph in the palette color instead — dark-on-`--bg-deep` was illegible. Choosing one writes its site-relative path into `profiles.avatar_url` (no storage bucket, no migration). The gallery is folder-driven: a Vite virtual module (`virtual:avatar-manifest` in `vite.config.js`) lists `public/avatars/*.svg` at build/dev time and `src/lib/avatars.js` derives set, variant and label from the filename convention (`g-<label-slug>[-o].svg` = Genre solid/outline, anything else = Standard; slug title-cased for the label) — drop a new SVG in the folder and it appears in the picker, no manifest to maintain. The dev server hot-invalidates on add/remove. Profile's `AvatarSection`: current avatar, "use your Google photo" (recoverable any time from `user.user_metadata.avatar_url`), "use initials", then the Standard and Genre grids (lazy-loaded imgs; `.pf-avatar-*` in `_profile-extensions.scss`). i18n: `profile.sectionAvatar/avatar*` (EN + ES).
+
+**Fix.** Nav read `state.profile?.avatar_url` (snake_case) but the client profile object is camelCase (`avatarUrl`) — the nav avatar had never rendered. Now it does, and updates live when a preset is picked.
+
+**Title ladder extension.** Three tiers above Voice of the Oracle: `sage` 250 (Sage of the Athenaeum), `warden` 500 (Warden of the Grand Archive), `library` 1000 (The Living Library). 250 bridges the 100→500 gap; derived-from-`library.length` earning means existing heavy readers land on the right rung retroactively, and previously-worn titles are untouched (keys unchanged, ladder append-only).
+
+### v0.51 — Reader Titles (the app-granted rank ladder)
+
+Gamification gets an identity layer: six dark-academia epithets earned purely by books read (`titles.js` ladder: Initiate 1 → Seeker 5 → Scribe 15 → Archivist 30 → Keeper 60 → Voice of the Oracle 100). Titles cannot be self-assigned — the picker only offers earned tiers, `sanitizeTitleKey()` means unknown/hand-edited keys never render, and there is no input path — which is precisely what makes wearing one meaningful.
+
+**Model.** The worn title is a tier key in `profile.preferences.displayTitle` (no schema migration; rides `savePreferences` and the existing preferences spread on load, guest localStorage included). Earned state is derived live from `library.length` — nothing stored, nothing to backfill, retroactively correct for existing readers.
+
+**Surfaces.** Own Profile account card (subtitle) + a `TitlesSection` picker (earned tiers selectable, wear/set-down toggle; locked tiers show their threshold). FriendProfile hero (the `preferences` column was already in `getProfileByUsername`'s select). Club rosters and session discussions resolve authors' titles client-side via `fetchTitlesByUserId()` — one batched `profiles` query keyed by `user_id`/`created_by`, since `get_club_detail`/`get_session_discussion` RPCs predate the feature; failures degrade to no titles, never a broken page. ShareCard gains a byline (name · title) above the brand footer on both plain and framed cards (DOM/downloaded PNGs; the server-rendered OG card in `share-card.mjs` is a future pass).
+
+**Styling.** `.reader-title` (+ `--inline`) in `_social.scss`; `.pf-titles` ladder rows in `_profile-extensions.scss` — `--ro-` tokens only. i18n: `titles.*` (6 epithets) + `profile.sectionTitles/titlesHint/title*` (EN + ES).
+
+### v0.50 — Personalization, closed loop (level & goal everywhere)
+
+Closes the gap between what onboarding collects and what the Oracle actually uses. Audit found `goal` was persisted but never referenced in any prompt, and `readingLevel` was missing from Ask/Similar/Spark; both values were also uneditable after onboarding.
+
+**Prompt plumbing.** `buildTasteProfile` now carries `readingLevel`, `goal`, and `complexitySampleCount`; `describeTasteProfile` emits stated level + a goal directive (`goalDirective()` in `matchHelpers.js` — one canonical wording per goal chip, shared by every surface). OracleAsk's duplicated direct genre/mood lines removed (the taste summary already carried them). Spark gains level + goal lines; PlanCreate gains mood on level plans and mood + goal on genre plans (level plans deliberately skip the stored goal chip — the plan request itself is the goal). Batch categorization stays personalization-free by design: it writes global catalog data.
+
+**Profile editors.** `ReaderPrefsSection` extends with single-select Reading level (5 chips, onboarding titles, subs as tooltips) and Goal (3 chips) editors; the old read-only level block and dead `LEVEL_NAMES`/`GOAL_NAMES` constants removed.
+
+**Level growth nudge.** `suggestLevelFromTaste()` compares earned complexity (avg of 4–5★ rated books, ≥5 samples via `LEVEL_NUDGE_MIN_SAMPLES`) against stated level and suggests exactly one step up. `<LevelNudge>` renders on the Dashboard between the quota bar and widgets; accept sets the level, dismiss stores `profile.levelNudgeDismissed` (persisted in `savePreferences`) so the same suggestion never re-fires. Styles in `_dashboard.scss` (`.db-level-nudge`, `--ro-` tokens only). i18n: `profile.levelEditHint/goalEditHint`, `dashboard.levelNudge*` (EN + ES).
+
+### v0.49 — Vault Source Upgrade (curator-fed catalog)
+
+The Vault is now the live union of every curator's shelves instead of the 426 `source='curated'` rows (signed-in) / bundled ~280-book `booksData.js` (guests).
+
+**Migration (`schema_v34_migration.sql`).** `get_curated_catalog()` (v11, wishlist-only, never adopted by the client) is dropped and recreated: union of curator `wishlist_items` (taste signal) and curator `read_books` (experience signal, excluding explicit ratings < 3 — NULL ratings kept, since unrated ≠ disliked). Two new return columns: `vault_source` (`wishlist`|`library`|`both`, rolled up across curators) and `curator_rating` (max). Quality floor `status in ('verified','oracle_categorized')` — same line the sitemap draws. DROP+CREATE because the return type changed; grants (authenticated + anon) re-applied, `search_path` pinned inline (keeps the v29 audit green). Verification queries at the bottom of the file.
+
+**Client (`DataContext.loadVault`).** PostgREST caps every response — RPCs included — at the project's Max Rows setting (default 1000), which silently truncated the 1352-book catalog on first deploy. `loadVault` therefore paginates the RPC with `.range()` (1000/page, short-page stop, 20-page runaway guard; works because the function is `stable` and set-returning, and its `order by title` keeps pages disjoint). Both guest and signed-in paths now call the RPC (anon grant makes guest mode work); rows map through `bookRowToClient` with `vaultSource`/`curatorRating` carried as extras (stored, unused — future ranking signal: "curator read and loved this" > "curator has it on the list"). `ALL_BOOKS` demoted to emergency fallback on RPC error/empty; the `user` dependency drops out of the callback. `booksData.js` itself stays for now (guest wishlist seeding + BookModal candidates still import it) — retiring it fully is a separate pass.
+
+### v0.48 — Branded link previews (landscape OG cards)
+
+Every shared book, list, and reading-plan link now unfurls with a branded 1200×630 OG card instead of a raw cover (books), a bare first-cover (lists), or nothing (plans).
+
+**Rendering.** `share-card.mjs` gains a `?layout=og` path: a landscape 1200×630 layout (`ogCard()`) in the same brand language as the portrait card — ink gradient, gold double frame, Instrument Serif headline, Plex Mono footer. Cover (when present) sits left in a larger fit box (`OG_COVER_MAX_W/H` 310×460; `loadCover()` now takes max dims as params, defaults unchanged); without a cover the text column centers full-width, so plans and coverless books still get a fully branded preview. Headline clamps at 90 chars with a 68/56/46px size ladder. The og path takes priority over `?frame` and skips the portrait fallback.
+
+**Meta injection.** `og-prerender.js` gains `ogCardImage(origin, {ornament, eyebrow, headline, sub, cover})` building the share-card URL via `URLSearchParams` (origin from the request, so deploy previews render their own). The book (`❦` + "by <author>"), list ("A reading list" + count/curator + first cover), and plan ("A reading plan" + count/timeline/curator, text-only) branches now point `og:image` at it. `injectMeta()` additionally emits `og:image:width`/`og:image:height` (passed as 1200/630) and `twitter:image`. Series/clubs/profiles are deliberately unchanged this release — each is a two-line follow-up in its own branch if wanted.
+
+**Mobile share modal.** `_share.scss` gains a `ro-down(mobile)` block: the card's fixed `zoom: .72` (389px) overflowed phones, so it steps down by viewport (.58 ≤640px / .52 ≤380px / .46 ≤340px — each sized so card ≤ viewport − 56px of overlay+modal padding); `.modal__actions` stacks `column-reverse` (primary on top, "Not now" at the bottom, DOM/focus order unchanged) with full-width 44px-tall buttons; the modal itself gets `max-height: 100dvh − 24px` + `overflow-y: auto` so tall framed cards scroll instead of clipping. Overlay padding tightens to 12px via `:has(.share-moment-modal)` (older Firefox just keeps the 1rem default).
+
+**About page.** Roadmap pruned to match reality: Branded link previews, Goodreads import polish, Reading accomplishments, and Reading memory shipped; Curated reading paths reframed as "Hand-curated reading paths" (Reading Plans already cover the generated case). Tiers are now 2/2/1 items (About.jsx arrays + `roadmapTier*` keys in both i18n files; removed keys deleted).
+
+### v0.47 — Illustrated milestone share cards (framed genre + moment art)
+
+Genre milestones, series, reading goals, year milestones, and book-completed now render as an illustrated **framed** card: a per-slug gold-on-ink frame + artwork composed with the live copy. The frame/art are the only static per-slug assets — all text stays a render-time param.
+
+**Assets & build.** `public/cards/<slug>/` holds `frame.png` + `art.png` for each genre (49) and each moment (`moment-series` | `moment-milestone` | `moment-goal` | `moment-plan` | `moment-book`; book is frame-only, the reader's cover fills the slot). `scripts/build-share-cards.mjs` (needs `pngjs` + `jpeg-js`) reads png/jpg/jpeg, normalizes frames to `frame.png`, centre-trims art → `art-trim.png` (luminance-weighted centroid crop, so off-centre art still centres and the corner watermark drops), measures each frame's inner opening, and regenerates `src/lib/cardGenres.js` (the ready-slug gate) + `src/lib/cardBoxes.js` (per-frame opening box — the generated frames vary too much for one constant). Re-run it whenever assets change; `BOX_OVERRIDES` in the script handles any frame whose opening can't be auto-detected.
+
+**Resolution & copy.** `src/lib/cardResolve.js` maps a moment → its asset slug + readiness (`frameSlugFor`, `isFramedMoment`, `MOMENT_SLUGS`). `momentCopy()` wraps `baseCopy()` with `withFramed()`: for a ready slug it drops the book cover and adds `frameUrl`/`artUrl` + the per-frame `box` (book keeps its cover in the slot). Genre sub-lines live in `src/lib/genreCards.js` (`GENRE_CARD_META`, English) and are locale-gated. `shareCardImage.js` passes `frame`, `box`, and (book) `cover`; `share-card.mjs` renders the framed layout at that box, reserving art height for a possible two-line headline so nothing overlaps. The on-screen `ShareCard.jsx` renders the same framed layout in the DOM, so the preview matches the shared PNG without calling the function.
+
+**Prompts.** `public/cards/_PROMPTS-all-genres.md` + `_MOMENT-PROMPTS.md` — self-contained image-gen prompts (one locked gold-engraving style block) for every frame + art.
+
+### v0.46 — Feature Discovery (empty states, coach-marks, public changelog)
+
+**Migrations required:** none. Two new preference keys ride the existing `profiles.preferences` jsonb (and guest localStorage): `coachmarksSeen` (string[]) and `lastSeenVersion` (string). No new dependencies.
+
+**Feature-discovery pass** (`docs/feature-discovery-v1-spec.md`), organic and non-blocking, in three moves.
+
+*Move 1 — teaching empty states.* New shared `EmptyState` component (`src/components/EmptyState.jsx`, styles in `_global.scss`) renders the canonical `.empty-state` DOM plus an optional primary action; it reads crisp (`is-actionable`) when there's an action or a `children` button group, and stays quietly dimmed when purely informational. Rolled out to seven zero-states — Read Next, Lists, Plans, Book Clubs, Currently Reading, Wishlist, Library — each now teaching what the feature is for and offering the action that fills it. This also fixed a latent bug: the Library empty state was hardcoded English; it's now bilingual via the existing `library.*` keys plus a new `library.emptyCta`.
+
+*Move 2 — contextual coach-marks.* New `CoachMark` primitive (`src/components/CoachMark.jsx`, `_coachmark.scss`): one quiet, dismissible pointer per page, shown only if its `id` isn't in `state.coachmarksSeen`; dismissing (× or acting on the target) adds the id via `dismissCoachmark(id)` and it never returns. Seen-state persists like `dashboardLayout` (authed `profile.preferences`, guest localStorage). Five placements: Book Page categories, the Oracle "categorize" button (Wishlist + Library, only when uncategorised books exist), the progress-modal "note to your future self", and the Dashboard customize gear. Not a multi-step tour; never blocking.
+
+*Move 3 — public changelog + "what's new" dot.* New public, indexable `/changelog` route (`src/views/Changelog.jsx`) rendering `publishedReleases()` with real per-version headings — no login — added to `sitemap.js`, the human sitemap, and linked from About. A "what's new" button in the nav icon cluster (desktop) opens the existing `ReleaseNotesModal` and lights a dot when `CURRENT_VERSION` differs from `state.lastSeenVersion` (cleared by `markReleasesSeen()` on open). i18n `coachmark.*` / `changelog.*` / `nav.whatsNew` (EN + rioplatense ES). Known follow-up: the nav dot is desktop-only (the icon cluster is hidden on tablet-down); a mobile-menu entry is a candidate for a later pass. The blog phase from the spec is deliberately deferred.
+
+### v0.45.1 — Share Card images: server-rendered PNGs
+
+**No migration required.** New dependencies: `satori`, `@resvg/resvg-wasm`, `image-size` (server-side, used only by the function). Removed: `html-to-image`.
+
+Delivers the v0.43.x follow-up flagged below: the share-card *image* is now rendered by a Netlify Function (`netlify/functions/share-card.mjs`) instead of client-side `html-to-image`. The old path drew third-party covers (OpenLibrary/Wikimedia/Hardcover) onto a `<canvas>`; those hosts don't send CORS headers, so the canvas tainted and the export threw (the `share card export failed` / `img.error` you'd see) — meaning the "share as image" action never actually produced a shareable PNG. The function fetches the cover **server-to-server** (no CORS), so it always works.
+
+**Rendering.** `satori` (flexbox/JSX → SVG) + `@resvg/resvg-wasm` (SVG → PNG), output 1080×1350 — a faithful reproduction of `ShareCard.jsx`'s 4:5 brand template (ornament, mono eyebrow, serif headline, italic sub, cover with gold frame + shadow, book caption, footer wordmark). The function is **i18n-agnostic**: the client resolves all copy with its own `t()` via the now-exported `momentCopy()` and passes finished strings as query params (`src/lib/shareCardImage.js` → `momentCardUrl`/`momentCardFile`), so the endpoint just renders strings + cover and can double as the OG link-preview image later. Ornaments render from a symbol font (DejaVu Sans covers `✦☩❦✺⚜✧❧`); fonts and the resvg wasm are fetched from CDN once per cold start and cached across warm invocations.
+
+**Client.** `ShareMomentModal.handleShareImage` now fetches the PNG from the function and shares it as a `File` via the Web Share API (unchanged download + clipboard fallback on desktop). The on-screen `<ShareCard>` is now a **preview only** — its cover `<img>` dropped `crossOrigin="anonymous"` (it no longer feeds a canvas), which also removes the console `img.error`.
+
+**Netlify gotchas worth recording** (each cost a deploy): the function is **Functions v2** (`export default` returning a `Response`) so binary PNG bytes stream natively — the v1 `{ body, isBase64Encoded }` path corrupted the image (`asPng()` returns a `Uint8Array`, whose `.toString('base64')` yields `"137,80,…"`, and the base64 flag was mishandled for this ESM function). `satori`/`@resvg/resvg-wasm` must **not** be `external_node_modules`: marking them external forces esbuild to `require()` ESM-only packages, which fails on Lambda (`Cannot find module …/index.cjs`, then `import_satori.default is not a function`). satori embeds its Yoga engine inline (base64 wasm) so it bundles cleanly with no external config. File is `.mjs`. First (cold) render is ~4s, warm is sub-second — comfortably under the 10s limit.
+
+### v0.45 — Reading Accomplishments (The Ledger)
+
+**Migrations required:** `schema_v32_migration.sql` (new `reading_accomplishments` table + `unique(user_id, key)`; adds `profiles.accomplishments_backfilled_at`). No new dependencies.
+
+**Reading Accomplishments v1** (`docs/reading-accomplishments-v1-spec.md`). The persistent, retroactive counterpart to v0.43's ephemeral share moments — a dated ledger of earned milestones on Profile, framed as a record, not a scoreboard. The milestone logic is unchanged: `shareMoments.js` already computes every moment (`goal_completed`, `series_completed`, `plan_completed`, `nth_book`, `genre_count`, `new_genre`), so the new work is persistence, retroactivity, and the shelf. New pure module `accomplishments.js` translates between a live moment and a stored row (`keyForMoment`/`momentToMeta`/`rowToMoment`) and replays the ladders over an existing library (`computeBackfillAccomplishments`), so both the live earn path and the backfill converge on identical stable `key`s and are idempotent against the DB unique key. **Earning** rides the existing `fireCompletionMoment`: one computation now feeds two consumers — the share modal (unchanged) and the ledger. **Retroactivity**: a one-time, date-ordered backfill runs on first load where `profiles.accomplishments_backfilled_at` is null, dating each rung to the read that crossed it; Goodreads imports still skip the celebration *modal* but earn through this backfill (dated to each book's read date), so imported history fills the shelf without firing hundreds of cards. **UI**: a new "The Ledger" section on the Profile Overview tab — plaques grouped by kind (goals, series, plans, milestones, genres), each tappable to re-open its `ShareMomentModal` card via `shareAccomplishment`. **No-streaks** is a permanent, load-bearing rule (see spec): no cadence mechanics, no countdowns, no "N to go"; the optional next-rung line was cut in v1 because it couldn't be made to read as a ledger line rather than a nudge. Data: owner-only RLS in all directions, no update policy (accomplishments are immutable). Guests get the same feature via `state.accomplishments` in localStorage. i18n `ledger.*` (EN/ES); styles `_profile-extensions.scss` (`pf-ledger-*`, DS tokens only); the share *card* keeps its hardcoded brand palette.
+
+### v0.44 — Reading Memory, Goodreads import polish, book-status consistency
+
+**Migrations required:** `schema_v30_migration.sql` (new `reading_memories` table) and `schema_v31_migration.sql` (repairs the `upsert_book`/`upsert_series` overloads — fixes the RPC 404 on add/mark-read and the `verified` 42703). No new dependencies.
+
+**Reading Memory v1** (`docs/reading-memory-v1-spec.md`). A private note attached to the moment you put a book down, returned the moment you pick it back up. Capture is one collapsed link inside the existing progress-update modal ("Leave a note for your future self") that expands to an optional textarea and saves with the progress — no second modal, no required field, nothing changes if you never use it. Resurfacing is passive: the newest memory renders read-only at the top of the same modal ("Last time — p. 145, Jun 12: …"), and Book Pages of collected books show the full thread (newest first, date + page, delete-only — no editing; memories are moments, not documents) under a `Private` chip. Notes written in the finish-flow RatingModal are recorded into the same thread as `kind='finished'` — `read_books.notes` itself is untouched. Data: new `reading_memories` table (owner-only RLS in all directions, deliberately **no update policy**), loaded with the initial fetch in one flat query; guests get the same feature via `state.memories` in localStorage, keyed by `bookKey` instead of `book_id`. Deliberately out of scope for v1: Oracle involvement, prompts/notifications, editing, sharing, series resurfacing.
+
+**Goodreads import polish.** Four changes to the read-shelf/to-read import path: (1) *series parsing* — Goodreads encodes series in the title ("The Fellowship of the Ring (The Lord of the Rings, #1)"); `splitGoodreadsSeriesTitle()` strips the suffix and emits a real series object (`s: {name, n}`, decimal positions like `#0.1` included, first series wins in multi-series parentheticals), which flows through `upsert_book`'s existing `_series_name`/`_series_position` args — imported libraries now land with series intact and cleaner titles that actually match the catalog; (2) *in-CSV dedupe* — re-added editions export as multiple rows; the kept row absorbs rating/date from its duplicates; (3) *edition-insensitive duplicate detection* — `findExistingDuplicate` gained a fallback pass comparing `cleanTitle`-normalized keys, so "The Hobbit (75th Anniversary Edition)" is recognized as the "The Hobbit" you already have (runs only after every exact pass missed); (4) *import progress* — `importGoodreads`/`bulkAddToLibrary` accept an `onProgress` callback and the confirm button counts "Adding 214 of 500…" instead of an indeterminate "Adding…" for the minutes a 500-book import takes.
+
+**Book-status consistency.** Marking a book read now clears it from Currently Reading in both the guest and authed paths, and `finishReading` no longer re-queues the book into Read Next on completion. On the Book Page, an active re-read (currently-reading) takes precedence over the library state so live progress stays visible, and the rating modal closes on save. `upsert_book` gained a one-shot retry on PostgREST schema-cache misses (PGRST202/404) — the intermittent "add fails, but the book is there after refresh".
+
+**PWA fixes.** `icon-192.png` and `icon-512.png` had swapped contents (the 192 file was the 512×512 image and vice versa) — Chrome rejects manifest icons whose actual size differs from the declared size, which broke the install icon; swapped back. The service worker's `CacheFirst` route for `covers.openlibrary.org` was removed: when a cover wasn't cached and Open Library refused the hotlink, workbox surfaced one unhandled `no-response` rejection per image — pure console noise, since `BookCover` already falls back to a placeholder. Covers now use the plain browser HTTP cache. (Known leftover: `icons/icon-maskable-192.png` is an SVG wearing a `.png` name — unreferenced today, replace before adding a `maskable` manifest entry.)
+
+### v0.43.2 — Styling-debt sweep: bulk import, Discover filters, dead tokens, Sass module migration
+
+**No migration required.** No new dependencies.
+
+**Bulk import styling rebuilt.** `BulkImport.jsx`'s tabs referenced `.toggle-btn`/`.toggle-sub` — classes added for the Oracle pages in v0.37.1 but removed since, leaving the tabs unstyled. They now use the DS "Tabs" pattern (`.source-tab` with `__title`/`__sub`, same as the book-page source selector). `.bulk-form` is a proper raised panel (`%widget-surface` gradient + strong border + shadow) so the inline form stands apart from the page on both Wishlist and Library, in both themes. Four more classes in the component had no CSS anywhere (`manual-add-header/-close/-note`, `file-hidden` — the raw CSV file input was visible); all defined in `_misc.scss` now. The component also borrowed classes from unrelated pages (`.about-section__body`, `.session-form__book-wrap`, `.cat-auto__tag`, `.ldetail-scroll`); replaced with dedicated `bulk-summary`/`bulk-hl`/`bulk-error`/`bulk-result-list`/`bulk-result-info`/`bulk-status` classes so restyling those pages can't silently break the import flow. Result-row status badges were colored with dead `--gilt-bright`/`--paper-aged`/`--blood-bright` tokens (every status rendered the same); they now use `--ro-gold-text`/`--ro-muted`/`--ro-error`.
+
+**Missing `--ro-space-5` token.** The spacing scale skipped from 4 to 6, but eight rules across `_book-pages`, `_social`, and `_misc` referenced `var(--ro-space-5)` — all silently resolving to nothing (this was also why `.bulk-form` had no padding). Added `--ro-space-5: 20px` to `_themes.scss` and `5: 20px` to the `$ro-space` map.
+
+**Discover page decluttered.** `/clubs/discover` stacked genre chips + mood chips between the search bar and the results, pushing the actual clubs below the fold. Both chip rows moved into a Filters modal (existing `.overlay`/`.modal` pattern) opened from a toolbar button that shows the active-filter count; Clear all + Done actions; filters still apply live behind the overlay. New `clubs.directory.filters*` keys in both i18n files.
+
+**Dead-token sweep (post theme-rename stragglers).** Same class of bug the v0.37.1 sweep fixed, six more spots: `SessionCreate.jsx` still had the `inputStyle`/`labelStyle` objects built from `--paper`/`--gilt` that were removed from `SessionDetail.jsx` — replaced with `.field-label`/`.input`; `CategoryAutocomplete.jsx` inline styles (`--paper`, `--paper-aged` → `--ro-text`, `--ro-muted`); the loading spinner's `--gilt` accent in `_global.scss` (the spinner had no visible spinning segment); `.placeholder`'s `--paper` → `--ro-accent-on` to match its children; selection-bar count (`--paper-aged`/`--gilt`) and two `--text-muted` references in `_book-pages.scss`.
+
+**Sass module migration.** Every `@import` in the styles tree replaced with `@use` (`sass-migrator module` + manual follow-up): the module system scopes `@extend` to a file's own dependency graph, so the five partials extending selectors defined elsewhere (`.rating-modal` et al from `_social`, `%widget-surface` from `_dashboard`, `.btn-*` from `_buttons`, …) got explicit `@use` lines, each marked `// dependency for cross-file @extend`. Verified by compiling before/after and comparing rule-for-rule: zero rules changed or lost except six extend-generated selector combinations that cannot co-occur in the DOM (e.g. `.sign-in-confirm .report-book-trigger`). All `@import`/global-builtin deprecation warnings are gone; the build is Dart Sass 3.0-ready. `themes.css` — an unimported hand-synced copy of `_themes.scss` that had already drifted — deleted. Pre-migration styles snapshot in `styles-backup-pre-use-migration/` (delete after verifying).
+
+### v0.43 — Share Cards: page shares, action shares, and reading milestones
+
+**No migration required.** New dependency: `html-to-image` (client-side card → PNG export).
+
+**Page shares.** `ShareModal.jsx` (copy link, native `navigator.share`, X/WhatsApp/Telegram intents) wired into five destinations: Book Page, List detail (public lists only — the button stays gated on `is_public`, replacing the old bare copy-link button), Book Club detail (public clubs only; the join-token link remains the path for private invites), Plan view (any plan with an `_id` — plans were already publicly reachable by UUID via `get_public_plan`), and Profile (both the `/profile` settings page and the `/u/:username` self view). URL builders centralized in `src/lib/shareService.js` so client URLs always match the routes og-prerender covers.
+
+**og-prerender extended.** `netlify/edge-functions/og-prerender.js` now also serves OG/Twitter meta for `/l/:listId`, `/plans/:planId`, `/clubs/:clubId`, and `/u/:username` (config.path extended to match). Public gating is inherited rather than re-invented: lists/plans go through the same `get_public_list`/`get_public_plan` RPCs the share pages use (non-public → null → pass through untouched); clubs are only served when `visibility = 'public'` — enforced explicitly in the function since the service-role key bypasses RLS; profiles render for any username, matching the page's own behaviour. Static-route collisions (`/plans/new`, `/clubs/new`, `/clubs/discover`) are skipped before any fetch. New `callRpc()`/`respond()` helpers deduplicate the per-entity blocks; the book/series handlers are unchanged (series now uses `respond()` too).
+
+**Action shares (the "share moment" system).** New `src/lib/shareMoments.js` — pure, client-only milestone computation, deliberately table-free: milestones are recomputed from the library at the instant of completion and only fire on an *exact threshold crossing* (`count === milestone`), so nothing ever re-fires on reload and no persistence is needed. This is the cheap-accomplishments model; a real achievements system (persistent, retroactive, trophy shelf on Profile) stays post-1.0. `computeCompletionMoments()` returns every moment a completion produced, sorted by significance — goal completed → series completed → plan completed → Nth book of the year (5/10/25/50/75/100/150/200) → genre-count milestone (5/10/25/50 per canonical genre) → first book in a new genre (suppressed until the library has ≥5 books, so early reads aren't all "new territory") → plain book-completed fallback. Only the top moment is shown.
+
+**Wiring:** `DataContext.markAsRead` calls `fireCompletionMoment()` after both the guest and authed library updates (and therefore covers `finishReading` too, which delegates to it). Goodreads imports are excluded — a 400-book import is not 400 celebrations. Plan completion is detected here as well (all plan books present in the post-completion library, and the just-finished book must be one of them, so an unrelated completion can't claim credit for a plan finished weeks ago). Club sessions fire their own moments directly: `SessionCreate` shows a "now reading" card after insert when the club is public; `SessionDetail` offers a deliberate share button on past sessions (no auto-modal — there's no single moment a session "finishes" for a viewer). New DataContext state `shareMoment` + `showShareMoment()`/`dismissShareMoment()`, rendered globally by `<ShareMomentModal/>` in App.jsx's authed shell.
+
+**The card.** `ShareCard.jsx` renders at a fixed 540×675 (4:5) and exports at 2× (1080×1350) via `html-to-image`'s `toPng` — the DOM node stays true-size and is scaled down in the modal with `zoom` (with a `transform: scale()` fallback), so exports stay crisp regardless of viewport. The card is a fixed **brand asset, not an app surface**: its palette is deliberately hardcoded to the Dark Academia constants instead of `var(--ro-*)` so the PNG looks identical in both themes — the one sanctioned exception to the no-hardcoded-parchment rule, flagged as such in `_share.scss`. Cover images are third-party (OpenLibrary/Wikimedia/…); when a host refuses CORS the export throws and the modal degrades to text + link with an explanatory note — never a broken PNG. On no-file-share platforms (desktop) the image downloads and the caption is placed on the clipboard instead.
+
+**Follow-up (v0.43.x):** port the same card template to a satori-based Netlify function so OG *link previews* also show the branded card instead of the raw cover art. Keep `ShareCard.jsx` and that endpoint in sync when either changes. — **Done in v0.45.1** (`netlify/functions/share-card.mjs`): the satori template now renders the shared image; wiring it into the OG/Twitter `<meta>` tags in `og-prerender.js` is the remaining step to also brand link previews.
+
+i18n: full new `share.*` block (modal labels, card copy per moment type, share texts per entity) in both `en.json` and `es.json`.
+
+**Also in this release — four fixes:**
+
+**Friends Feed books are clickable.** `FriendsFeedWidget` rows made the avatar and friend name clickable but not the book — cover and title now call `openBookTab(ev.book, 'dashboard')` (the feed events already carried `t`/`a`/`coverUrl`, so `bookKey()` resolves).
+
+**Upgrade CTAs → Profile → subscription.** Every "Upgrade to Pro" button (Dashboard AI-quota bar, Spark widget quota states, About pricing card, and a new button on the Oracle quota wall — which previously had upgrade *text* but nothing to click) now does `go('profile', { scrollTo: 'subscription' })`. Profile's subscription section gained `id="pf-subscription"` and a mount effect that `scrollIntoView`s when `?scrollTo=subscription` is present, delayed 150ms so it wins over the router's own scroll-to-top. Checkout itself stays exactly one place: the Profile section's button.
+
+**Checkout hardening.** `create-checkout-session.js` now probes the Lemon Squeezy URL server-side before returning it; a 404/410 (stale `LEMON_SQUEEZY_REDIRECT_URL` — deleted/renamed product) returns a clean 502 the client shows as a toast, instead of letting the LS overlay open a full-screen 404 page that traps browser history. Root cause of the local "Page not found. Request ID: …" symptom is the env var pointing at a dead LS checkout link — verify it against the product's current Share URL in the LS dashboard (local `.env` and Netlify prod env separately).
+
+**Profile restructure: fully tabbed.** My Profile was one long undifferentiated scroll trying to be two pages at once — a reading identity and a settings screen. Now the whole page is one card with five tabs: **Overview** (default: stats grid, pace chart, top genres, most read author — now panel-wrapped instead of floating bare on the background — series in progress, and the Reading Challenge, panel-wrapped with no outer label since the component self-labels), **Account** (identity fields, favorite genres/mood, reading level, library + Goodreads import, danger zone), **Privacy**, **Subscription**, **Notifications**. The active tab is reflected in the URL as `?tab=<name>` via `history.replaceState` (deliberately not `go()` — the router scrolls to top on navigation, wrong for an in-place tab switch, and replaceState avoids one history entry per click). `?scrollTo=subscription` from the Upgrade CTAs is kept as an alias that opens the Subscription tab and scrolls the card into view. Guests see Overview + Account + Privacy. Spacing pass alongside: `pf-section` padding and title margins tightened from `space-6` to `space-4`, account card padding 34→28px, and flush-start rules so content after the tab row doesn't double up separators. Note this supersedes the DS note about stats sections living "directly on the page background" — they now live inside the card's Overview tab.
+
+**Quota display after Pro→Free downgrade.** `calls_used` can legitimately exceed the free limit mid-period after a downgrade (e.g. 14 used, limit 5). `OracleQuotaContext` now clamps `calls_remaining` at 0 (the raw limit−used went negative), and the Dashboard AI-quota bar caps both the displayed used count (`Math.min(used, limit)` → "5 of 5", not "14 of 5") and the fill percentage at 100%. Profile's quota bar percentage is capped the same way. Server values stay untouched — this is display-side only, so the real counter still resets correctly at period end.
+
+### v0.42 — Ask the Oracle, Match %, Dashboard widgets, and complexity/depth backfill
+
+**Migration required:** `supabase/schema_v27_migration.sql`.
+
+**Dashboard — "My Books at Glance."** The hero's numeric chips (previously small inline pills: level badge + Read/Wishlist/Currently Reading counts all mixed together) are now split: the level badge stays a small pill, and the counts move into a prominent `db-glance-grid` of stat cards reusing the exact `.db-stat-card`/`.db-stat-value`/`.db-stat-label` classes from the Reading Stats widget — no new visual language. Added **Reading Plans** and **Book Clubs** counts, which weren't surfaced at the top before (Currently Reading still only shows if > 0; Read/Wishlist/Plans/Clubs always show).
+
+**Dashboard — Book Clubs widget extension.** Previously just name + member count + a generic "View" link, pulled from the lightweight `state.clubs` index (no sessions/members — that's only fetched on demand via `get_club_detail()` per club). New `get_dashboard_clubs_summary()` RPC (v27 migration) aggregates all of the caller's clubs in one round trip instead: member count, the "current" session (active → most recent past → soonest upcoming, so the card never goes blank between sessions), that session's book, and up to 4 member avatars. `ClubsWidget` rebuilt to show the book cover, a `Session N` badge (colored by active/past/upcoming, reusing `--ro-forest` for active — matches the design spec's green pill), a "Reading *{title}*" line, and a stacked avatar row with a "+N reading along" overflow count. Falls back to the old plain name/count row if the summary hasn't loaded yet or a club has no sessions.
+
+**Bug found and fixed post-deploy:** the RPC's member-avatar ordering assumed `book_club_members` has a `created_at` column (to sort "admins first, then earliest joined") — that table predates what's tracked in this repo's migrations, so this wasn't verifiable ahead of time. Failed at runtime with `42703 column m.created_at does not exist` once deployed. Fixed by dropping that ordering criterion entirely (now: admins first, then `user_id` — stable but arbitrary tiebreak). If a `joined_at`/`created_at` column gets added to that table later, swap it back in.
+
+**Dashboard — Yearly Genre Breakdown, in the Reading Goal widget.** Reuses the same `state.genresByBookId` source as Profile's existing all-time "Top genres," but scoped to books read *this year* and capped to the top 3 (Profile's version stays all-time, top 8 — intentionally different, not a duplicate). Styled to match the design spec: 9px bars, one color per genre (burgundy/forest/gold, cycling), sitting below the goal progress bar. Shows even before a reading goal is set.
+
+**Bug found and fixed post-deploy:** the genre bars initially rendered with no visible fill. Root cause: `.db-goal__genre-track` kept `flex: 1` from an earlier side-by-side layout iteration — in that layout `flex: 1` meant "grow to fill remaining width," but after restructuring to a stacked (`flex-direction: column`) layout so long genre names wouldn't truncate, the same property meant "grow to fill remaining *height*" instead. With no fixed height on the row, the track's flex-basis of 0% never had freed space to grow into, so it collapsed to 0px. Fixed by switching to `width: 100%` and letting the column's default `align-items: stretch` handle the width instead.
+
+**New: Ask the Oracle** (`OracleAsk.jsx`, route `/oracle/ask`) — a third recommendation mode alongside By Genres and Based on Other Books, added as a third card on `OracleFork.jsx` (grid widened from 2 to 3 columns). Free-text request box, injects the reader's `favoriteGenres`/`currentMood` (from onboarding) as context alongside the query, with a nudge banner + CTA to Profile when neither is set. Shares the exact same `callClaude()` proxy and `useOracleQuota()` bucket as the other two modes — this is a different prompt shape hitting the same quota, not a separate billing path. Added to the human-readable `/sitemap` page and per-route document title.
+
+**New: Match %.** New shared module `src/lib/matchHelpers.js`:
+- `buildTasteProfile(library, genresByBookId, profile)` — computes average rating per genre from the reader's library (books with both a rating and known genres), plus `favoriteGenres`/`currentMood`, plus average complexity/depth of books rated 4-5★. All from data already loaded client-side — no new query.
+- `computeLocalMatch(book, tasteProfile, genresByBookId)` — zero-LLM score: genre affinity (best-matching genre's average rating, or partial credit for a stated-favorite genre with no rating history yet) weighted 70%, complexity/depth closeness weighted 30%. Returns `null` (not a fabricated number) when there's no usable signal at all for that book.
+- `describeTasteProfile()` + `MATCH_SCORING_INSTRUCTIONS` — shared text injected into every AI-mode prompt, so all three AI modes score against the same rubric. This is a reasoned LLM estimate grounded in real signals we provide, not a reproducible statistical computation — an intentional tradeoff to avoid a separate scoring subsystem.
+
+Wired into all five recommendation paths: `OracleCategories` wishlist/vault draws (previously pure random shuffle with **no scoring at all** — now get a real local match %, draw itself stays random to preserve the "surprise" framing); `OracleCategories` AI mode; `OracleSimilar`'s wishlist/fallback mode (its existing seed-based score — genre/complexity/depth distance to the 1-3 *selected seed books*, not the reader's overall taste profile — is now normalized into an honest 0-100 rather than left as an unbounded raw integer, since "similar to these specific books" is the more correct basis for that page anyway); `OracleSimilar` AI mode; `OracleAsk`. `BookCard.jsx` gained a `.match-badge` pill (gold fill, matching the design spec's `background: var(--ro-gold); color: var(--ro-gold-on)` badge exactly) shown whenever `book.match` is a number.
+
+**Oracle categorization now also assigns complexity/depth.** Both `oracleCategorizationService.js` (in-app "Let the Oracle categorize my books") and `oracleBatch.mjs` (standalone admin backfill script) previously returned only genres + series + description. `complexity`/`depth` were `-- curated only` per the schema comment — every book added via Hardcover/OpenLibrary/Goodreads import or manual entry has always had them `null`, which is what Match % needs to score a reader's own library (as opposed to Reading Plans, which turned out to be unaffected — see note below). Both prompts now also request `complexity`/`depth` (1-5, same rubric already used in `PlanCreate.jsx`: casual/mid/literary/challenging/experimental, with Faulkner/Han Kang/Donoso/Lispector as anchors for the top end) and write them back in the same DB update as the rest of the enrichment. New `sanitizeLevel()` guard (duplicated in both files, since one runs in-browser and one is a standalone Node script) clamps to an integer 1-5 or discards the value entirely — a missing complexity/depth degrades gracefully everywhere downstream; a wrong one baked into the DB would not.
+
+**Investigated, not changed:** confirmed Reading Plans are *not* affected by the complexity/depth gap — `PlanCreate.jsx` and `OracleCategories`'s Vault mode both draw exclusively from `loadVault()`, hard-filtered to `source = 'curated'`, which by construction always has complexity/depth populated. The `(b.c || 3)` fallback in `PlanCreate.jsx` is defensive code that in practice never fires. Worth revisiting if Plans ever expand beyond the curated Vault.
+
+**Fixed — CSP silently blocking OpenLibrary and Google Books.** `connect-src` in `netlify.toml` never included `covers.openlibrary.org`, `openlibrary.org`, or `www.googleapis.com`. `img-src` allows `https:` broadly, so `<img>` tags loading covers directly always worked — but `connect-src` governs `fetch()`, which is what broke two separate things: (1) the service worker's runtime image-caching (`workbox` calling `fetch()` to cache covers for offline use — the visible symptom that surfaced this), and (2) actual lookup calls in `coverService.js`, `bookLookup.js`, and `enrichmentService.js`, which all call these three domains directly via `fetch()` (not through a Netlify function proxy, unlike Hardcover and Wikipedia, which are proxied and unaffected). The OpenLibrary tier of the Hardcover → OpenLibrary → Wikipedia lookup chain, and the Google Books fallback, have likely been silently failing in production this whole time — caught in try/catch, falling through to the next source. Added all three domains to `connect-src`.
+
+**Found, not fixed this release:** `bookPage.verified`'s translation string already includes the ☩ symbol (`"☩ Verified"`), but `BookCard.jsx` also prepends a literal `☩` in JSX — the verified badge has likely been rendering a doubled symbol since it was introduced. Left as-is since it's unrelated to this release's scope; flagging for a future pass.
+
+i18n: new `oracle.forkByAsk`/`forkByAskDesc`/`ask*` keys (Ask the Oracle page + nudge banner), `dashboard.glanceRead`/`glanceWishlist`/`glanceClubs`/`goalWidgetGenresTitle`, `dashboard.clubSession`/`clubReadingMeta`/`clubMemberCount`/`clubReadingAlong`, and `bookPage.match` — all added to both `en.json` and `es.json`. `oracle.forkSubtitle` updated from "Two ways…" to "Three ways…".
+
+### v0.40.1 — Public Club Directory: search, join modes, waitlist
+
+**Migration required:** `supabase/schema_v26_migration.sql`.
+
+**First slice of v0.40.** Book clubs can now be discovered and joined from inside the app without an invite link — still fully auth-gated, no unauthenticated access anywhere in this release.
+
+**Schema.** `book_clubs` gains `visibility` (`private` | `public`, default `private`), `join_mode` (`auto` | `approval`), and `max_members` (nullable = unlimited). New `book_club_moods` mirrors the existing `book_club_genres` pattern against the same 8-id mood taxonomy from onboarding (`comfort`, `challenge`, `escapism`, `mind-bending`, `character-driven`, `atmospheric`, `fast-paced`, `short-read`), so clubs can be tagged and filtered by vibe as well as genre. New `club_join_requests` is a single queue table covering both "awaiting admin approval" and "waitlisted, club is full" — a partial unique index (`club_id, user_id` where status is active) allows a fresh request after a past one resolved.
+
+**RPCs, all `security definer`.** `join_public_club()` locks the club row before counting members, so two people can't race the last open seat — routes to instant membership, a pending-approval request, or the waitlist depending on `join_mode` and remaining capacity. `approve_join_request()` / `reject_join_request()` are the admin actions; approval re-checks capacity in case the club filled up since the request was made, holding on the waitlist instead of over-filling. A `promote_from_waitlist()` trigger fires `after delete on book_club_members`: frees exactly one seat, so promotes exactly the oldest waitlisted request — straight to member if `join_mode = 'auto'`, or back to `pending_approval` if `'approval'` (a freed seat doesn't waive admin review). `search_public_clubs()` powers the directory: text search, genre/mood filters, an open-only filter, and three sort orders (activity / members / newest), joined against each club's active `book_club_sessions` row (if any) for a "currently reading" preview.
+
+**Notifications.** `notifications.type` extended with `join_request`, `join_approved`, `join_rejected`, `waitlist_promoted`.
+
+**New UI.** `ClubDirectory.jsx` (`/clubs/discover`) — search bar, genre/mood chip filters, open-only toggle, sort dropdown, and a card grid showing each club's join-mode badge, member count vs. cap, and currently-reading book. Descriptions clamp to 3 lines with a "View more" toggle that only appears when the text actually overflows (measured via `scrollHeight` vs `clientHeight`, not a fixed word count). Linked from a new "Discover clubs" button next to "New book club" on the existing Book Clubs page. `BookClubCreate.jsx` gained a Private/Public toggle plus (when Public) join-mode, member-limit, and mood-tag fields.
+
+**Fixed in passing — `BookClubCreate.jsx` colors.** Its name/description fields were still using inline `style` objects referencing `--paper`/`--gilt`, pre-rename theme variables that don't exist since the `--ro-` token rename in v0.37.1 (that sweep covered `EditSessionModal` in the same file family but missed this one) — they were silently falling back to browser defaults instead of the DS. Replaced with `.field-label`/`.input`.
+
+**Deferred to the next slice (v0.40.2):** the admin-facing "Pending requests" / "Waitlist" panel in `BookClubDetail.jsx`. The data functions (`fetchClubJoinRequests`, `approveJoinRequest`, `rejectJoinRequest`) are already in `DataContext.jsx` — this release just doesn't have the UI wired up yet, so approvals/rejections need to go through Supabase directly until then.
+
+No i18n changes skipped — new `clubs.directory.*` keys and `clubs.fieldVisibility`/`fieldJoinMode`/`fieldMaxMembers`/`fieldMoods` and friends added to both `en.json` and `es.json`.
+
+### v0.37.1 — Design System redesign: sign-in, forms, Oracle, clubs, profile
+
+**Major redesign, no DB migrations required.** This is the first full pass powered by the Books Oracle Design System — sign-in/onboarding, both Oracle recommendation flows, the book club page, several forms, and the Profile page were rebuilt end-to-end to match the design system's components (corner-bracketed cards, the real button/input system, `.book-card`/`.oracle-fork-*`/`.bp-*` families) instead of a patchwork of styled and unstyled screens.
+
+This release is a design-system alignment pass across several views that had drifted from `main.scss` — either using class names with no matching CSS rule (rendering as unstyled browser defaults), or inline `style` objects referencing pre-rename theme variables like `--gilt`/`--paper`/`--paper-aged`/`--ink` that no longer exist since the `--ro-` token rename.
+
+**Fixed — crash in club sessions.** `MemberProgressRow` in `SessionDetail.jsx` called `t()` without ever calling `useT()` in its own scope, throwing `ReferenceError: t is not defined` for any session where a member had page-count progress to render. Same bug, same fix, also existed in `EditSessionModal` in the same file.
+
+**Fixed — i18n interpolation swallowed React elements.** `I18nContext.jsx`'s `t()`/`tNode()` interpolation coerced every `{var}` substitution with `String(value)`, so a translation call that embeds a live element (e.g. `t('signIn.guestPrompt', { link: <a>...</a> })`) rendered the literal text `[object Object]` instead of a clickable link. Added `interpolateNode()` for the plain-string path and reworked `htmlToReact()`'s substitution step to splice element vars in as real child nodes via a sentinel-split instead of stringifying them. No call sites needed to change other than switching `SignInGate` and `Onboarding`'s guest-link prompts from `t()` to `tNode()`.
+
+**Sign-in & onboarding.** `.onboarding-wrap`, `.onboarding-card`, `.onb-eyebrow/-title/-desc/-actions`, `.choice-grid/.choice/-title/-sub`, and `.upload-zone/-icon/-text/-sub/-help` had zero CSS behind them anywhere in the stylesheet — the sign-in gate and the whole 3-step onboarding flow rendered as plain unstyled text. Added `src/styles/components/_onboarding.scss` implementing the DS "Login & Onboarding" pattern (bracketed card, step segments, option cards, CSV dropzone), registered in `main.scss`.
+
+**Corner brackets on modals/cards.** `.rating-modal` and `.pf-account-card` drew their top-left/top-right corner brackets via `::before`/`::after` (automatic), but the bottom-left/bottom-right corners were defined as `.rating-modal__bl`/`.rating-modal__br` (resp. `pf-account-card__bl`/`__br`) — classes that require literal child `<div>`s no component ever rendered. Every modal and the profile account card has therefore only ever shown two of its four corners. Replaced with a single `ro-corner-brackets()` mixin (new, in `_tokens.scss`) that draws all four corners as one layered `background-image` on `::before` — no markup changes needed in any consuming component.
+
+**Book Club page.** `.page-header/-eyebrow/-title` → `.page-head/-head__eyebrow/-head__title` (matches `_global.scss`). `.li-genre-pill` → `.chip`. All `.li-action` buttons (a class with only a `--disabled` modifier defined, no base rule) replaced with the real button system: `.btn-tertiary`/`.btn-secondary` for toolbar actions, `.btn-text` for small inline row actions (promote/remove member), `.btn-danger` for the delete-club flow.
+
+**Oracle pages.** `OracleFork.jsx`, `OracleCategories.jsx`, `OracleSimilar.jsx`: same `.page-header` → `.page-head` fix, plus `.oracle-fork`/`.cta-card`/`.cta-title`/`.cta-desc` (undefined) → the real `.oracle-fork-grid`/`.oracle-fork-card`/`__label`/`__sub` classes already defined in `_book-pages.scss`. Added `.oracle-mode-toggle`, `.toggle-group`/`.toggle-btn`/`.toggle-sub`, `.controls`/`.field`, `.oracle-results-grid`, `.selection-tray`/`.tray-chip`/`.chip-title`/`.chip-remove`, and `.book-tile`/`.book-tile-grid` to `_book-pages.scss` — none of these existed. `BookCard.jsx` (used for every Oracle recommendation) was rebuilt on the real `.book-card` component from `_cards.scss`, including `.book-card__quote` for the AI's "why this book" line — previously an inline-styled `<em>` referencing `var(--gilt)`. `SelectableCard` in `OracleSimilar.jsx` now reuses the shared `BookCover` component instead of duplicating placeholder logic inline.
+
+**Forms.** `ReportBookForm.jsx`'s classes (`report-book*`) had no CSS at all — added a full definition to `_book-pages.scss` reusing `.btn-text`/`.bp-section__label`/`.textarea`. The "new list" modal (`Lists.jsx`) and `AddToListModal.jsx` now use `.field-label`/`.input`/`.textarea`/`.overlay` instead of `.form-label`/`.search-input`/`.modal-backdrop` (none of which exist). `EditSessionModal` in `SessionDetail.jsx` had its `inputStyle`/`labelStyle` objects (built from `--paper`/`--gilt`) removed in favor of `.field-label`/`.input`.
+
+**Profile page layout.** Per the DS profile pattern, Reading Stats / Pace / Top Genres / Most Read Author / Series in Progress are meant to be free-standing sections directly on the page (each already has its own bordered cards/rows) — not nested inside one shared panel. Un-wrapped them from the enclosing `.panel` into a new `.profile-stats` flex column (36px rhythm via `--ro-space-8`); the Account/Username/Privacy/Reading Challenge/Subscription block below remains a single bordered card, matching the DS spec exactly.
+
+**Codebase-wide cleanup.** Swept every `.jsx` file for two recurring anti-patterns: (1) a dead `"btn "` prefix in front of a real `.btn-primary`/`-secondary`/etc. class (`.btn` bare never existed), found in 23 files; (2) duplicate `className` attributes on a single element — invalid JSX where only the second value is ever applied, silently dropping the first. Fixed the instances directly tied to the views above (`BookModal.jsx` in `components/`, `ReleaseNotesModal.jsx`). Several more duplicate-`className` instances were found after this release shipped — see **v0.37.2** below for the full sweep.
+
+### v0.39.9 — Fixed silent 1000-row truncation in sitemap.xml and og-prerender
+
+**No migration required.**
+
+**Root cause, found from Simon's own production logs** (`Fetched 1000 verified books... Match found: false`): PostgREST caps the rows returned by any single query at the Supabase project's "Max Rows" setting, which defaults to **1000** — and it overrides whatever `.limit()`/`limit=` value the request asks for. Both `og-prerender.js` (`limit=5000`) and `sitemap.js` (`.limit(5000)`) silently got truncated to the first 1000 rows in whatever default order Postgres returned them, so any book past that point could never be found or listed — with zero error, since PostgREST doesn't consider this an error condition.
+
+**Fix:** both now paginate with `offset`/`.range()` in pages of 1000, capped at 20 pages (20,000 books) as a hard ceiling so a runaway catalog size can't hang either function indefinitely. `og-prerender.js` stops as soon as it finds a match, so most real bot requests should still only cost one or two round trips rather than scanning the whole catalog every time. `sitemap.js` always needs the full catalog regardless, so it pages straight through to the end.
+
+No i18n changes this release.
+
+### v0.39.8 — Fixed og-prerender's book lookup (never matched anything)
+
+**No migration required.**
+
+**Root cause, found via Simon's own debug logging added to the deployed function:** a version of `og-prerender.js` had replaced the fetch-all-and-match approach with an `ilike` search on a chunk of the already-normalized `bookKey()` string (e.g. searching for `"thehaunt"`). That can never match anything: `bookKey()` strips spaces and punctuation before comparing, but the `ilike` search runs against the raw `title` column, which still has them — `"The Haunting of Hill House"` does not literally contain the substring `"thehaunt"` (there's a space between "The" and "Haunting"). Every lookup silently failed, for every book, regardless of what was in the database. Verified against the exact book from the bug report: `bookKey("The Haunting of Hill House", "Shirley Jackson")` computes to `thehauntingofhillhouse|shirleyjac`, matching the requested URL exactly once the fetch-and-compare-in-JS approach (same tradeoff `sitemap.js` already makes — there's no stored `book_key` column to query by directly) is restored.
+
+**Also widened the status filter** in both `og-prerender.js` and `sitemap.js` from `status = 'verified'` to `status IN ('verified', 'oracle_categorized')` — the app's own `DataContext.jsx` treats those two as equivalent everywhere else (Oracle-categorized books show the same "verified" pill in the UI), so both were silently excluding a real chunk of the catalog for no good reason.
+
+No i18n changes this release.
+
+### v0.39.7 — OG-tag prerendering for social/link-preview bots
+
+**⚠️ Not yet verified on a live deploy.** This is the deferred piece flagged back in v0.39.2/v0.39.3: `useDocumentMeta()` (client-side) covers Google fine since it executes JS before indexing, but does nothing for Slack/Twitter/WhatsApp/Discord-style unfurl bots, which fetch HTML once and never run JS. Edge Functions run on a Deno runtime that can't be simulated in a sandbox, so this has only been reviewed for logical correctness — the pure logic (bot-UA regex, `bookKey()` matching, HTML `<head>` injection) was unit-tested against the real `index.html` and real bot user-agent strings, but the actual Supabase REST calls and Deno-specific APIs (`Deno.env.get`, edge `context.next()`) have not run against a real deploy. **Test with a real preview deploy before trusting this in production** — a bot-UA curl request or a tool like opengraph.xyz / Twitter's card validator against a real book URL, and check Netlify's edge function logs for the first few real hits.
+
+**No migration required.** No new env vars — reuses `SUPABASE_URL`/`SUPABASE_SERVICE_ROLE_KEY`, already configured for `sitemap.js` and `send-notification-email.js`.
+
+**`netlify/edge-functions/og-prerender.js`** — new Edge Function, scoped via its own `config.path = ['/book/*', '/series/*']` export (Netlify's modern per-function routing, no `netlify.toml` redirect needed for the routing itself). Checks the request's `User-Agent` against a bot pattern covering Facebook, Twitter/X, Slack, WhatsApp, Telegram, Discord, LinkedIn, Pinterest, Reddit, Tumblr, Applebot, Googlebot, and a handful of SEO/crawler tools (Ahrefs, Semrush) and generic `bot`/`crawl`/`spider` substrings. Real browsers and anything that doesn't match pass straight through via `context.next()` — completely untouched, zero risk to normal traffic.
+
+For a matched bot request to `/book/:bookKey`, fetches verified catalog books from Supabase and finds the one whose computed `bookKey()` matches the URL param (same tradeoff `sitemap.js` already makes — there's no stored `book_key` column to query by directly, so it scans and computes per-row; bounded to bot traffic only, a small fraction of real requests, so the cost is acceptable). For `/series/:seriesName`, looks the series up directly by its indexed `normalized_name` column — no scan needed there. Either way, injects a real `<title>`, `<meta name="description">`, `og:title`/`og:description`/`og:image`/`og:url`, a `twitter:card` tag, a canonical link, and Schema.org JSON-LD (`Book` or `BookSeries`) into the served HTML's `<head>` — removing the static `<title>`/description tags first so there's never a duplicate. Any Supabase error, missing env vars, or no-match falls through to the unmodified page rather than risking a broken response for a bot (or, in a request-mixing edge case, a real user).
+
+**`netlify.toml`** — added `edge_functions = "netlify/edge-functions"` to the `[build]` block, explicit alongside the existing `functions = "netlify/functions"` declaration (matches Netlify's default location either way, just made explicit for consistency with how the Node functions directory is already declared).
+
+No i18n changes this release (OG tags are generated server-side in English only — worth revisiting if Spanish-language link previews matter, since the client already knows the visitor's language but this Edge Function has no way to know it before the response is served).
+
+### v0.39.6 — Series page rebuilt, silent-fail bug in read-date/rating edits
+
+**No migration required.**
+
+**Profile stats not reflecting an edited read date.** `updateReadBook()` in `DataContext.jsx` had `if (!user || !book.bookId) return;` *after* the optimistic local `setState` had already run — meaning whenever `book.bookId` was falsy, the edit looked successful in the moment (local state updated, UI reflected the new date/rating immediately) but the Supabase write never fired. Next fresh load (new session, different device, or just the session cache expiring) pulled the old value back from the server, silently reverting the edit — exactly matching the report of a corrected read-date reverting to the wrong month in Profile stats. Fixed to mirror the same resolve-or-create fallback `markAsRead()` already uses: `const bookId = book.bookId || (await upsertBookOnServer(book))`, only giving up (with a toast) if that still fails. This is shared by every editor built on `updateReadBook` — `BookModal.jsx`, `Library.jsx`, and `BookPage.jsx`'s rating editor all get the fix automatically.
+
+**Series page was substantially unstyled.** Confirmed by request: `SeriesPage.jsx` renders ~25 `series-page-*` classes plus `page-eyebrow` and `book-modal-section-title`, and **none of them had a matching CSS rule anywhere in the codebase.** The only reason the page wasn't *completely* bare was that two classes it happens to share with `BookPage.jsx` — `sp-read-label` and `sp-purchase-link` — survived. The likely history: an earlier version of this page used a `.sp-*`/BEM naming scheme (`.sp-page`, `.sp-progress__label`, `.sp-bar__fill`, etc.), which still existed in `_book-pages.scss`, but the component was rewritten to use `.series-page-*` names without anyone updating (or removing) the old CSS. Rewrote the stylesheet from scratch against the classes the component actually renders, and removed the dead `.sp-page`/`.sp-progress*`/`.sp-bar*`/`.sp-description`/`.sp-books-label`/`.sp-no-books` rules that nothing used. Swapped the two other dead references directly in the JSX: `page-eyebrow` → `page-head__eyebrow`, `book-modal-section-title` → `bp-section__label` (both real, already-styled classes used elsewhere in the DS).
+
+**Given its own visual identity, not a reskinned Reading Plan.** Per explicit request — series and plans should read as different things. Three deliberate departures from `.plan-hero`: (1) upright, non-italic display title (both `.plan-hero__title` and `.bp-title` are italic); (2) forest-green progress bar/badges instead of the gold used everywhere else for progress (Oracle Spark, CurrentlyReading, Plans); (3) book list is a row-per-book layout with a position number and a colored left-border (forest for read, gold for queued) — closer to a table of contents than `.plan-month-card`'s stacked cards or `.book-tile-grid`'s cover grid.
+
+**`.li-action` had no base rule at all** — only `.li-action--disabled` existed. Every plain `<button className="li-action">` (and the `.danger`/`.success` modifiers used on the series page) rendered with zero styling, just browser button defaults. Added a proper small-text-button base plus `.danger` (burgundy) and `.success` (forest) color modifiers. This is shared markup used in `ListView.jsx` and `SessionCreate.jsx` too, so both incidentally get real styling now as well — not something previously reported, but the same missing base class, so worth knowing about.
+
+No i18n changes this release.
+
+### v0.39.5 — Mobile search, reading progress on BookPage, remaining phantom-scroll spots
+
+**No migration required.**
+
+**Mobile search bar was invisible.** `NavSearch.jsx`'s own root div always renders `className="nav-search"` regardless of the `compact` prop passed to it — the `compact` prop only changes internal layout, not the wrapper class. `.nav-search` has a `@include ro-down(tablet) { display: none; }` rule, correctly hiding the *desktop topbar* copy on small screens — but since the mobile hamburger menu's search (`.mobile-menu__search > NavSearch`) uses that same inner class, that rule hid it too, leaving mobile with no way to search at all. Fixed with a scoped override: `.mobile-menu__search .nav-search { display: block; ... }`.
+
+**"Mark as read" didn't open the rating prompt.** Both `markAsRead` buttons on `BookPage.jsx` (read-next → read, and neither → read) called `markAsRead(display)` and stopped there — same as every other call site in the app (`BookModal.jsx`, `SelectionBar.jsx`, `PlanView.jsx`, `ReadNext.jsx`, `SeriesPage.jsx` all do the same). `BookPage.jsx` already had a working rating-edit flow (`ratingEditorOpen` + `RatingModal`, triggered by a separate "Add rating" button once a book's already in the library) — it just wasn't wired to the initial mark-as-read action. Both buttons now `await markAsRead(display)` then `setRatingEditorOpen(true)`; by the time the promise resolves, `state.library` has the new entry, so `libraryRow` resolves and the modal opens with it already selected. Also switched the modal's `mode` from a hardcoded `"edit"` to `liveRating > 0 ? 'edit' : 'create'`, so the copy is correct for a freshly-rated book instead of always saying "Edit".
+
+**No way to track reading progress from BookPage.** The action-button chain only branched on `inLib` / `inNext` / neither — there was no case at all for a book currently in `state.currentlyReading`. Visiting a book you'd already started reading fell through to the "neither" branch, showing "Add to wishlist"/"Add to next" as if you hadn't touched it. Added a proper `inCurrentlyReading` branch, porting the exact progress-bar markup, `finishReading`/`updateReadingProgress` calls, and `RatingModal`/`ProgressUpdateModal` wiring already working in `CurrentlyReading.jsx` (same `.cr-progress-*` classes, already global in `_book-pages.scss` — no new CSS needed). Shows the progress bar + percentage, an "Update progress" button (opens `ProgressUpdateModal`), a "Mark finished" button (opens `RatingModal` in `finish` mode, same as the currently-reading list view), and a remove option.
+
+**Remaining phantom-scroll spots from v0.39.4:** that release fixed `.app`/`.onboarding-wrap`/`.loading`/`.book-loader`/`.modal`, but missed two real-world cases that only show up in nested contexts:
+- **`.onboarding-wrap`** is used by two different kinds of pages: standalone full-screen ones (`SignInGate`, `Onboarding.jsx` — correctly full-viewport) and, since v0.39.3, `NotFound.jsx`, which renders *nested* below `Nav` and above `Footer` via `App.jsx`'s `legalViews` map. Forcing another full `100dvh` inside a page that already has `.app`'s own `100dvh` plus `Nav` plus `.container` padding produced a page far taller than one screen — the huge whitespace reported on the 404 page. Added an `.onboarding-wrap--nested` modifier (applied only in `NotFound.jsx`) that drops the height force entirely rather than trying to compute an exact `calc()` offset.
+- **`.loading`** (used by `PlanCreate.jsx`, `ListView.jsx`, `BookClubDetail.jsx`, `PlanView.jsx`, `FriendProfile.jsx`, `SessionDetail.jsx`, `JoinClub.jsx`, `SeriesPage.jsx`) had the same `min-height: 100dvh` — but every single one of its usages is a spinner nested below `Nav`, never a standalone full-page state (those all use `.book-loader--full` instead, which was already correct). Reduced to `min-height: 50vh` — enough to center a spinner without pushing the page well past one screen.
+
+No i18n changes this release (all the reused progress/finish copy already existed from `CurrentlyReading.jsx`).
+
+### v0.39.4 — Fixed mobile phantom scroll (100vh bug)
+
+**No migration required. Pure CSS fix, 6 files.**
+
+**The bug:** several full-screen containers (`.app`, `.onboarding-wrap` used by both the sign-in gate and onboarding, `.loading`, `.book-loader`, plus `html`/`body` and `.modal`'s max-height) used `min-height: 100vh` / `calc(100vh - 52px)`. On mobile Safari and Chrome, `100vh` is measured against the *largest* possible viewport (address bar hidden), which is taller than what's actually visible when the address bar is showing — typically true on first load. That extra difference becomes phantom scroll space below content that should fill the screen exactly, which is what showed up on the sign-in page.
+
+**The fix:** every `min-height: 100vh` (and the modal's `max-height: calc(100vh - 52px)`) now has a second declaration right after it using `100dvh` (dynamic viewport height — tracks the *actual* visible viewport as the browser chrome shows/hides). Browsers that don't understand `dvh` simply ignore that second line and keep the `100vh` fallback; browsers that do (all mobile Safari/Chrome versions relevant here) use the accurate value. Same technique in both declarations — the second line always wins where supported, without needing a feature-detection JS check.
+
+Files touched: `src/styles/_reset.scss`, `src/styles/_global.scss`, `src/styles/layout/_shell.scss`, `src/styles/components/_onboarding.scss`, `src/styles/components/_book-loader.scss`, `src/styles/components/_modal.scss`.
+
+**On the second report (links not scrolling to top on click):** traced this to the still-live production build predating the v0.39.1 path-routing rewrite — the old hash router never called `window.scrollTo()` on navigation at all. The new `RouterContext.jsx` (shipped in v0.39.1, not yet deployed as of this writing) already calls `window.scrollTo({ top: 0, behavior: 'smooth' })` on every `go()`, so this should resolve once v0.39.1+ is deployed. Confirm after deploying — flag it again if it's still happening once the new router is live.
+
+**Also checked and confirmed fine:** the sign-in page's Privacy/Terms/Refund links (`<a href="#privacy" target="_blank">`) still work correctly under the new router — `target="_blank"` opens a fresh tab/app instance, and `RouterContext.jsx`'s legacy-hash migration (added in v0.39.1) catches bare `#privacy`-style hashes on load and redirects to `/privacy`. Not broken, but worth knowing it's currently depending on that "legacy bookmark" migration path rather than calling `go()` directly — fine for now, but flag if that migration code is ever removed down the line.
+
+### v0.39.3 — Real 404 page, human sitemap page
+
+**No migration required.**
+
+**Router fallback changed.** Previously, any unmatched path silently rendered the dashboard (`parseLocation()` fell back to `{ name: 'dashboard' }` for literally anything it couldn't parse) — which meant broken links, typos, or stale bookmarks quietly looked like they worked instead of telling the visitor (or a crawler) the page doesn't exist. `RouterContext.jsx` now returns `{ name: 'not-found', params: { path: pathname } }` for anything unmatched. Root `/` is unaffected — that's still `dashboard`, intentionally. One nice side effect: `/book/` with an empty/missing key now correctly 404s instead of silently opening the dashboard.
+
+**`NotFound.jsx`** — new view, reuses the `onboarding-card` shell (same centered card, gold corner brackets) rather than introducing a new layout. Oracle-themed copy (\"The Oracle can't see where you're going\") with a small inline closed-eye SVG in the same line-art style as the app's other icons (`IconSparkle`, etc. in `Dashboard.jsx`). Sets `noindex` via `useDocumentMeta()` so search engines don't index it.
+
+**`useDocumentMeta.js`** — gained a `noindex` option: adds `<meta name="robots" content="noindex, nofollow">` when true, and explicitly *removes* that tag when false/omitted, so it can't linger on a real page after visiting the 404 and navigating away.
+
+**`App.jsx`** — `not-found` and `sitemap` added to `PUBLIC_ROUTES` and the `legalViews` render map (same pattern as `privacy`/`terms`/`refund` — rendered with `Nav`/`Footer` in guest mode for signed-out visitors). `not-found` gets an explicit `ROUTE_META` entry with `noindex: true`; this has to be set at the App.jsx level (not just inside `NotFound.jsx`) because parent effects commit *after* child effects in React, so without it the generic default would silently clear the noindex flag `NotFound.jsx` just set.
+
+**`SitemapPage.jsx`** — new human-readable sitemap at `/sitemap` (distinct from the machine-readable `/sitemap.xml` function from v0.39.2), grouped into Explore (Home, About, Oracle, genre/similar-books finders, reading plans, book clubs) and Legal. Deliberately excludes wishlist/library/currently-reading/profile — those are personal, auth-gated, per-user views with nothing stable to link to for a signed-out visitor or a crawler; the intro text says so explicitly. Linked from `Footer.jsx`'s legal-links column. Also added as a low-priority static entry in `sitemap.xml`.
+
+New i18n keys: `footer.sitemap`, `notFound.*` (eyebrow/title/desc/cta), `sitemapPage.*` (title/desc/heading/intro/section.explore/section.legal), EN + ES CR vos.
+
+### v0.39.2 — Sitemap, per-route titles, sitemap.xml
+
+**No DB migration.** `netlify/functions/sitemap.js` reads the existing `books`/`series` tables read-only with the service role key already configured for `send-notification-email.js` (`SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`). If those env vars are ever unset, the function degrades to serving just the static entries rather than erroring.
+
+**`src/lib/useDocumentMeta.js`** — new shared hook. Sets `document.title`, `<meta name="description">`, and basic `og:title`/`og:description`/`og:image`/`og:url` tags client-side on route/data change. This helps Google (which renders JS before indexing) and gives every page a correct browser-tab title; it does **not** help non-JS social preview bots (Slack/Twitter/Facebook unfurls), which need server-side injection — that's a separate, not-yet-built piece (see below).
+
+**`App.jsx`** — added a `ROUTE_META` map giving every static route (dashboard, wishlist, library, profile, oracle, legal pages, etc.) a real title/description via `useDocumentMeta()`. Deliberately excludes `book-page` and `series-page`: React commits child effects before parent effects, so a generic default set here would run *after* and clobber the specific title those two views set once their data resolves.
+
+**`BookPage.jsx` / `SeriesPage.jsx`** — each now calls `useDocumentMeta()` directly once its data resolves: book pages get `"{title} by {author} — The Books Oracle"` plus the book's own description (truncated to 200 chars) and cover as `og:image`; series pages get `"{name} series — The Books Oracle"` plus the Wikipedia-sourced description once it loads.
+
+**`netlify/functions/sitemap.js`** — new function, generates `sitemap.xml` at request time (not build time, so it's always current without a redeploy) from every `books` row with `status = 'verified'`, using the exact same `bookKey()` normalization as the client (duplicated here since this runs server-side) so every catalog book's sitemap URL matches its real `/book/:bookKey` route. Also walks each book's linked `series` row for `/series/:name` entries. Static public routes (home, about, legal pages) are always included, even if the DB query fails, so a transient Supabase hiccup degrades to a partial sitemap instead of a 500. **Scope note:** this only covers the curated/verified catalog and its series — user-generated public pages (shared lists, plans, friend profiles) are intentionally excluded since they're ephemeral/private-by-default and not meaningful to index.
+
+**`netlify.toml`** — added a `/sitemap.xml → /.netlify/functions/sitemap` rewrite (status 200, not a redirect, so the URL bar stays `/sitemap.xml`), placed before the SPA catch-all so it takes precedence.
+
+**Still pending for v0.39 (deliberately deferred, not attempted this pass):** server-side meta-tag injection for non-JS crawlers (Slack/Twitter/Facebook link previews, older/simpler bots). The client-side `useDocumentMeta()` hook above covers Google and any modern JS-executing crawler, but real coverage for unfurl bots needs either a Netlify Edge Function that detects bot user-agents and injects OG tags into the HTML server-side, or a prerendering service. This needs a live preview deploy to test properly (can't be verified in this sandbox), so it's being held for a follow-up pass rather than shipped unverified.
+
+No i18n changes this release (titles/descriptions are currently English-only static strings in `App.jsx`/`BookPage.jsx`/`SeriesPage.jsx` — worth moving into `en.json`/`es.json` in a later pass if Spanish-language search visibility matters).
+
+### v0.39.1 — Path-based routing (SEO groundwork)
+
+**No migration required.** Purely client-side routing change; no schema, RPC, or Netlify config changes.
+
+**What it does.** Replaces hash-based routing (`#/book-page?bookKey=...`) with real paths (`/book/houseofleaves%7Cmark`) across the whole app. This is step one of the v0.39 SEO release — real paths are crawlable and shareable in a way hash fragments never reliably were (most non-JS crawlers/scrapers, including OG preview bots for Slack/social, don't execute JS and can't see anything after a `#`). Per-route meta tags, canonical tags, and prerendering (the rest of v0.39) all depend on this landing first.
+
+**Domain note.** Primary domain is now `thebooksoracle.com`; `.net`/`.org` are set up as redirects at the Netlify level (confirmed, no code change needed there). `readingoracle.com` was indexed previously and is **not yet redirected** to the new domain — that's an action item outside this codebase (needs `readingoracle.com` pointed at Netlify with its own redirect rule, or a 301 configured wherever it's currently hosted) to avoid losing its crawl history/backlinks.
+
+**`RouterContext.jsx` — rewritten.** `parseHash`/`writeHash` replaced with `parseLocation`/`buildPath`. Routes are declared once in `ROUTE_DEFS` as either static (`/wishlist`) or dynamic with a `:param` segment (`/book/:bookKey`). Static paths are matched via an exact-match table *before* dynamic patterns are tried, so `/clubs/new` can never be misparsed as `/clubs/:clubId` with `clubId === 'new'`. The public/shareable routes got real dynamic segments: `/book/:bookKey`, `/series/:seriesName`, `/plans/:planId`, `/l/:listId` (public share view), `/lists/:listId` (owner management view — deliberately a different prefix than `/l/` to avoid colliding with the public one), `/clubs/:clubId`, `/clubs/:clubId/sessions/new`, `/sessions/:sessionId`, `/join/:token`, and the existing `/u/:username`. Everything else (dashboard, wishlist, library, profile, oracle, etc.) got a static clean path. Non-path params (`from`, `fromLabel`, `anchor`, `snap`, `preview`, `prefillTitle`/`prefillAuthor`) still ride along as a query string exactly as before — the `go(name, params)` call signature used by ~15 view files didn't change, only how the router turns it into a URL.
+
+**Legacy hash migration.** On load, if the URL still has an old-style hash (`#/book-page?bookKey=...`), `migrateLegacyHash()` parses it and rewrites the address bar to the new path via `history.replaceState`, so old bookmarks/shared links/anything Google indexed under the hash scheme keeps working and gets carried forward to the new URL shape rather than silently breaking.
+
+**Edge case handled.** `go('plan-view')` is called in one place before a plan's id is known yet (right after creation). Rather than writing a broken `/plans/undefined` into the address bar (which would also misparse as a real `planId` of `"undefined"` on refresh), `buildPath()` now returns `null` and skips the URL update when a required dynamic param is missing — the view still renders correctly from React state either way; only the address bar update is skipped.
+
+**Preserved `?lang=` query param.** `I18nContext.jsx`'s language sync previously worked because the pathname/search never changed under hash routing — only the hash did. Since `go()` now rebuilds the full path *and* query string on every navigation, it explicitly re-reads and re-appends the current `?lang=` value so it doesn't get silently dropped on the first click after a language switch.
+
+**Manual hash-URL construction fixed in 3 places that bypassed the router directly:** `BookPage.jsx` was patching `window.location.hash` in place on load (now patches the real `/book/:bookKey` path instead); `Lists.jsx` and `ListDetail.jsx`'s "copy link" button and `BookClubDetail.jsx`'s `joinUrl()` were hand-building `#list-view?listId=...` / `#join-club?token=...` strings — all three now build real `/l/:listId` and `/join/:token` URLs.
+
+**`App.jsx`.** Added a `<link rel="canonical">` sync effect, always pointed at `thebooksoracle.com` regardless of which domain/alias served the request. This is a partial, client-side-only step; full per-route `<title>`/OG/meta tags and prerendering for crawlers that don't execute JS are still pending (tracked as the next piece of v0.39).
+
+**`public/robots.txt`** added, referencing `https://thebooksoracle.com/sitemap.xml` (the sitemap itself is generated in a later v0.39 step, once the public route list is finalized).
+
+No i18n changes this release.
+
+### v0.38 — Onboarding overhaul: favorite genres, current mood
+
+**No migration required.** New fields live under the existing `profiles.preferences` JSONB, same as `readingLevel`/`goal`/`goodreadsImported`. No new columns or tables.
+
+**What it does.** Onboarding is now 5 steps instead of 3: reading level → **favorite genres (new)** → **current mood (new)** → Goodreads import → goal. Favorite genres are picked from the existing seeded `genres` table (multi-select, up to 5). Current mood is a fixed set of 8 chips (comfort, challenge, escapism, mind-bending, character-driven, atmospheric, fast-paced, short-read), multi-select up to 3. Both are optional — no validation blocks `Continue`.
+
+**Existing users are not prompted.** Per product decision, only new signups go through the updated flow. Existing users see and set these fields from Profile whenever they like; there's no forced re-onboarding banner or modal.
+
+**`Onboarding.jsx`.** Reworked from 3 to 5 steps (`TOTAL_STEPS = 5`, step dots now render via a loop instead of 3 hardcoded divs). Added `favoriteGenres`/`currentMood` local state, `toggleGenre`/`toggleMood` handlers with `GENRE_MAX = 5` / `MOOD_MAX = 3` caps, and a `genreOptions` list sourced from `state.genres` (already loaded globally by `DataContext`). Both are written to the profile in `finish()` alongside the existing fields.
+
+**`Profile.jsx`.** New `ReaderPrefsSection` component, mounted below `PrivacySection`, mirrors the existing collapsed-summary-with-Edit pattern used elsewhere on the page. Shows the current selections as a comma-separated summary with an Edit button that expands into the same chip grid used in onboarding. Writes go through the existing generic `setProfile()` patch function — no new DataContext mutator was needed since `preferences` already persists arbitrary profile keys on every state change.
+
+**`DataContext.jsx`.** `favoriteGenres: []` and `currentMood: []` added to `defaultState.profile`, and both are now explicitly whitelisted in `savePreferences()`'s persisted JSONB (the profile object itself already spreads `preferences` generically on load, so no change was needed there).
+
+**Oracle Spark (`Dashboard.jsx`).** `OracleSparkWidget` now receives `profile` and folds `favoriteGenres`/`currentMood` into the prompt sent to `callClaude` as a short personalization preamble, when either is set. Reading level and goal were already available to other Oracle flows (`PlanCreate.jsx`); this is the first widget to consume the two new fields. Other Oracle surfaces (`OracleSimilar.jsx`, `OracleCategories.jsx`, `PlanCreate.jsx`'s "explore" mode) are good candidates for the same treatment but were left untouched this release to keep the diff focused — flag if you want those wired in too before 1.0.
+
+**`_onboarding.scss`.** Added `.chip-grid` / `.chip(.selected)(:disabled)` for the genre picker (pill-shaped, reuses `--ro-gold` tokens), `.onb-hint` for the small "X of 5 selected" caption, and a `:disabled` state on `.choice` for the mood grid once the 3-item cap is hit.
+
+New i18n keys: `onboarding.step2*`–`step5*` (renumbered/rewritten step copy), `onboarding.genreCount`, `onboarding.moods.*` (8 mood entries × title/sub, EN + ES CR vos), `profile.labelFavoriteGenres`, `profile.labelCurrentMood`, `profile.genresNotSet`, `profile.moodNotSet`, `profile.genreMaxHint`, `profile.moodMaxHint`.
+
+### v0.37.3 — Custom page counts per edition
+
+**Migration required:** `schema_v37_3_migration.sql` — adds `currently_reading.user_page_count` (nullable integer). No backfill; `NULL` falls back to the catalog's `books.pages`.
+
+**What it does.** Readers whose physical/digital edition has a different page count than the catalog row can now set a personal override. It's stored per-`currently_reading` row and never mutates the shared `books` table. Per-user analytics (Reading Stats widget, library totals) intentionally continue to use the canonical catalog page count — the override only affects a reader's own progress bar and percentage, in `CurrentlyReading.jsx` and in Book Club session progress (`SessionDetail.jsx`).
+
+**`get_session_detail` RPC.** The `progress` lateral join now also selects `cr2.user_page_count`, returned per member as `user_page_count` alongside `pages_read`. Client-side, each member's effective total is `member.user_page_count ?? book.pages` rather than one club-wide total.
+
+**`DataContext.jsx`.** `updateReadingProgress(book, pagesRead, userPageCount)` gained a third, optional parameter: pass a positive integer to set the override, `null` to clear it back to the catalog value, or omit it entirely to leave whatever's stored untouched. The initial `currently_reading` load query and `bookRowToClient` mapping now also select and map `user_page_count` → `userPageCount`, so it's available on first load, not just after an in-session update.
+
+**`ProgressUpdateModal.jsx`.** Added a collapsed-by-default "My edition has a different page count" toggle. Expanding it reveals a number input seeded from the existing override (or blank); saving computes the effective total from whichever is active and passes `(pagesRead, userPageCount)` to `onSave`. Clearing the override field and saving writes `null`, not `0` or the catalog number.
+
+**`CurrentlyReading.jsx` and `SessionDetail.jsx`.** Both now compute `totalPages = member.user_page_count ?? book.pages` (or `b.userPageCount ?? b.pp` on the Currently Reading grid) wherever a progress bar, percentage, or "X / Y pages" label is rendered, instead of using the catalog total directly.
+
+**Dashboard — checked, no changes needed.** The `CurrentlyReadingWidget` doesn't render a page count or progress bar at all. The Reading Stats widget sums `b.pp` (catalog pages) across the finished library, which is correct as-is per the Option A decision above.
+
+New i18n keys (`progress.*` in `en.json`/`es.json`): `editionDifferLink`, `editionPagesLabel`, `editionOverrideNote`, `editionUseDefault`. Removed the now-unused `progress.editionNote` static string, superseded by the toggle UI.
+
+### v0.37.2 — List pages, cover hover, email sign-in & fixes
+
+**No DB migrations required** (but see *Supabase configuration* at the end for the new email sign-in and sender-domain setup).
+
+**Lists redesign (DS Patterns / Lists).** `Lists.jsx` (List Dashboard) and `ListDetail.jsx` (List Page) rebuilt to the design system: DS headers (eyebrow, big italic serif title, ornament divider), `.plan-badge` count pills, and DS action rows. The dashboard now shows each list as a stacked section with a capped cover preview — `COVER_PREVIEW` (6) real covers, then a `.cover-grid-more` "+N more" box that mirrors the dashboard feed's overflow tile. Make Public / Copy link / Delete stay inline on each dashboard row per request. New CSS: `.ls-dash-*` and `.ls-page-*` families in `_social.scss`.
+
+**Cover hover — fixed globally + restyled to DS v5.** The `.cover-grid-hover` overlay had `opacity: 0` with no `:hover` rule anywhere to reveal it, so hovering any cover did nothing app-wide (Library, Wishlist, Lists, ListDetail — all use `.cover-shelf-grid`). Added the `&:hover`/`&:focus-visible` trigger and restyled to the DS v5 List hover: the card lifts (`translateY(-3px)`), a fixed top-to-bottom scrim keeps text legible over any cover color, a gold accent bar sits above a bold-serif title, italic-gold author, and stacked mono-uppercase genre tags. Also fixed invalid `--var(...)` typos and a duplicated `aspect-ratio`/`border-radius` in that block. Genre tags were wired into the `Lists`/`ListDetail` overlays (they were only in `LibraryCoverGrid` before), and `ListDetail`'s in-overlay Remove button — previously unclickable because the overlay is `pointer-events: none` — now opts back into pointer events.
+
+**New "My Plans" page + PlanView fix.** New `plan-list` route and `PlanList.jsx` view listing every saved plan with title, description, badges, book-count progress bar and created date; clicking opens `plan-view` with a `from: 'plan-list'` breadcrumb. The nav "My Plans" item now points here instead of the creator. Separately, `plan-view` was being rendered by `ListView` (both routes shared one early-return branch in `App.jsx`), so the real `PlanView` was dead code and plans rendered with old `plan-step`/`plan-month` classes — split them so `plan-view` renders the dedicated, DS-styled `PlanView`.
+
+**Email sign-in; guest removed.** `AuthContext.jsx` gained `signInWithEmail` (Supabase `signInWithOtp` magic link) alongside Google. `SignInGate` in `App.jsx` was rewritten: guest/offline bypass removed (`allowGuest` state gone, gate condition simplified to `if (!user)`), email magic-link form + "check your inbox" state added. **Apple/Facebook OAuth were removed at the user's request** — only Google + email remain.
+
+**Withdraw a pending friend request.** `FriendProfile.jsx` showed a static "Request sent" pill for outgoing pending requests; it's now a `.friend-withdraw-btn` that swaps to "Withdraw request" on hover and calls `declineRequest(pendingEntry.id)` (the existing decline/cancel path). New `friends.withdrawRequest` i18n key.
+
+**Routing fixes.** `privacy`/`terms`/`refund` had render cases in `App.jsx` but were missing from `KNOWN_ROUTES`, so direct hash links like `#privacy` failed the known-route check and fell back to dashboard (the footer buttons worked only because they call `go()` directly). Registered them. Also added `&anchor` parsing to `parseHash` so `#about&pricing` resolves to About with `params.anchor = 'pricing'`, and `About.jsx` now scrolls that section into view — this is the URL LemonSqueezy links to.
+
+**About / Profile.** `About.jsx` moved off shared `.session-prompt`/`.plan-step-eyebrow` classes (whose base styles were fighting inline overrides and hurting readability) onto a dedicated `.about-feature`/`.about-roadmap-*` family. Profile sections moved off the shared `.bp-section` onto a dedicated `.pf-section` family with DS spacing, so Profile spacing can change without affecting BookPage/BookModal.
+
+---
+
+*The remainder of v0.37.2 covers earlier fixes from the same cycle:*
+
+**Crash — club session discussion.** `SessionDiscussion.jsx` called `t()` in its render body but never called `useT()` at the component's top level; a previous edit had instead scattered `const t = useT()` inside several nested `async` event handlers — itself a Rules-of-Hooks violation, since hooks can only be called during a component's render, not from a detached callback. A separate free-standing helper, `fetchOracleQuestions`, called `useT()` and `useOracleQuota()` directly, which would throw "Invalid hook call" the moment an admin clicked "Oracle suggests". Fixed by declaring `t` and the quota handlers once at the top of `SessionDiscussion`, removing every erroneous nested hook call, and passing `t`/`handleQuotaError`/`onCallSucceeded` into `fetchOracleQuestions` as plain parameters.
+
+**Corner brackets, take two.** The `ro-corner-brackets()` mixin introduced in v0.37.1 drew all four corners as a single layered `background-image` on `::before`. That couldn't be visually verified in the environment it was built in and shipped looking wrong. Replaced with the exact technique the design system's own reference mockup uses: four plain bordered `<span>`s via a new shared `<CornerBrackets />` component (`src/components/CornerBrackets.jsx`) and `.corner-bracket` CSS (`components/_corner-brackets.scss`). Wired into every bracketed card: `BookModal`, `AddToListModal`, `Lists`' new-list modal, `ListDetail`'s add-book modal, `RatingModal`, `AnnouncementModal`, `ReleaseNotesModal`, `ProgressUpdateModal`, `SessionDetail`'s edit-session modal, the sign-in card, the onboarding flow, and the profile account card (which was upgraded from a plain `.panel` to the real bracketed `.pf-account-card`, matching the design system reference exactly).
+
+**Modal consistency.** `.modal` (the `overlay`/`modal__head`/`__body`/`__actions` family) was missing `position: relative`, which meant `.modal__close` — an absolutely-positioned × button — was anchoring to the nearest positioned ancestor (`.overlay`, fixed to the full viewport) instead of the modal card itself. Also added a default `padding: 26px` to `.modal` for the several consumers (`AddToListModal`, the new-list modal, `ListDetail`'s add-book modal) that drop content directly into `.modal` without the `__head`/`__body`/`__actions` structure — those three each set a complete padding shorthand of their own, so this has no effect where they're used.
+
+**Oracle recommendation cards — broken covers.** `BookCard.jsx` passed its cover-sizing class directly to the shared `<BookCover />` component: `<BookCover className="book-card__cover" />`. `BookCover` renders an `<img>` with a hardcoded inline `style={{ width: '100%', height: '100%' }}`, which always wins over a class by CSS specificity — with no sized container, the image rendered at its full intrinsic size, breaking the whole card layout. Every other usage in the codebase correctly wraps `<BookCover />` in a sized container div instead; fixed to match. Also moved the primary action button (add to Read Next, etc.) to appear right under the title/author instead of after the genre tags, description, and the Oracle's "why this book" line.
+
+**Duplicate `className` sweep, round 2.** Found and fixed 8 more instances of the v0.37.1 duplicate-attribute bug: `BookClubs.jsx`, `ListDetail.jsx`, `FriendProfile.jsx` (plus 3 more `.level-pill`/`.page-eyebrow` instances and a regressed `.wishlist-toolbar`/`.search-input` pair in the same file — restored to the current `.lv-toolbar`/`.lv-search` classes), `PlanCreate.jsx`, `AnnouncementModal.jsx`, `RatingModal.jsx`, `CategoryAutocomplete.jsx`, and `CommentThread.jsx`. Zero duplicate-`className` elements remain anywhere in `src/`.
+
+**Remaining forms cleanup.** `ProgressUpdateModal.jsx` and `SessionDiscussion.jsx` had inline `fieldStyle`/`labelStyle`/`inputStyle` objects referencing dead `--gilt`/`--paper` tokens — replaced with `.field-label`/`.input`/`.pf-input--narrow`. Added a `.corner-bracket--sm` size variant, a `.plan-step-title--tight` spacing modifier, and `.session-prompt--question`/`--answers` modifiers to close out the remaining inline-style overrides in the discussion thread.
+
+---
+
+**Supabase configuration for v0.37.2:**
+- **Email (magic link) sign-in:** In the Supabase dashboard → Authentication → Providers, ensure **Email** is enabled. For passwordless links specifically, no password is required from the user — Supabase emails a one-time link. (See *"Password vs. magic link"* note below if you want to also offer email+password.)
+- **Sender identity / domain:** By default auth emails come from Supabase's own address. To send as **The Books Oracle / support@thebooksoracle.com**, configure Custom SMTP in Authentication → Emails → SMTP Settings (point it at Resend's SMTP, or your provider), and set the sender name to "The Books Oracle" and sender email to support@thebooksoracle.com. You must verify the `thebooksoracle.com` domain with the sending provider (Resend) first.
+
+**Known issues (flagged, not fixed this round):**
+- `BulkImport.jsx`, `SessionCreate.jsx`, `BookClubCreate.jsx` still build inline styles from the dead `--gilt`/`--paper`/`--paper-aged` tokens.
+- `src/views/BookModal.jsx` and `src/views/Nav.jsx` are dead code (unused duplicates) — recommend deleting them.
+- Transactional emails (friend requests, etc.) send via Resend from a Supabase Database Webhook / Edge Function, which is separate from the Supabase Auth sender config above — see *"Why the friend-request email didn't arrive"* in the deployment notes.
+
+### v0.37 — Extended notifications, preferences & footer
+
+**Extended notifications.** The bell panel now handles eight event types: `friend_request`, `friend_accepted` (existing), plus `club_invite`, `poll_started`, `poll_finalized`, `discussion_question`, `discussion_reply`, and `announcement`. All new types are driven by DB triggers (schema_v23) — no app-layer code needed to fire them. Each notification in the bell panel is clickable and navigates directly to the relevant club, session, or profile. The `notificationLabel()` and `notificationRoute()` helpers in `useNotifications.js` keep the Nav component clean.
+
+**Announcements.** New `announcements` table with a `broadcast_announcement(title, body, admin_id)` RPC that fans out one `announcement` notification per user. When clicked in the bell panel, the notification opens an `AnnouncementModal` inline rather than navigating away. The body supports `\n` line breaks — each paragraph renders separately in the modal.
+
+**Sending an announcement** (run in Supabase SQL editor):
+```sql
+SELECT broadcast_announcement(
+  'Your title here',
+  E'First paragraph.\n\nSecond paragraph.',
+  '<your-admin-profile-uuid>'  -- find in Supabase → Authentication → Users
+);
+```
+
+**Finding your announcement UUID** (to retry or delete):
+```sql
+SELECT id, title, created_at FROM public.announcements ORDER BY created_at DESC LIMIT 5;
+```
+
+**Resetting notifications as unread** (re-show without re-broadcasting):
+```sql
+UPDATE public.notifications
+SET read = false
+WHERE type = 'announcement'
+AND data->>'announcement_id' = '<announcement-uuid>';
+```
+
+**Deleting and re-broadcasting** (full retry):
+```sql
+-- Delete notifications for this announcement
+DELETE FROM public.notifications
+WHERE type = 'announcement'
+AND data->>'announcement_id' = '<announcement-uuid>';
+
+-- Delete the announcement itself
+DELETE FROM public.announcements WHERE id = '<announcement-uuid>';
+
+-- Re-broadcast
+SELECT broadcast_announcement('Title', E'Body', '<admin-uuid>');
+```
+
+**Nuclear reset** (wipe all announcements and notifications):
+```sql
+DELETE FROM public.notifications WHERE type = 'announcement';
+DELETE FROM public.announcements;
+```
+
+**Notification preferences.** `notification_preferences` JSONB column on `profiles` replaces the old `email_notifications` boolean. Four toggles: Book Club activity, Friends, Announcements (locked on), Email master toggle. Preferences are saved live on toggle — no save button needed. The email function respects both the category toggle and the master email switch.
+
+**Email function expanded.** `send-notification-email.js` now handles all eight types with distinct subject lines, body copy, and CTA links per type. Respects the new `notification_preferences` JSONB, falling back to the legacy `email_notifications` boolean for users who haven't been migrated.
+
+**Footer.** `src/components/Footer.jsx` wired into `App.jsx` — appears on every page below page content. Shows © year, and links to Privacy, Terms, Refund, and About. Legal links removed from the About page section (now in Footer only).
+
+**Session reminders deferred.** Requires a scheduled Netlify function (cron) — tracked in backlog for v0.38+.
+
+**DB migration:** `schema_v23_migration.sql` — expands notification type constraint, adds `announcements` table, adds `notification_preferences` JSONB with migration of existing `email_notifications` values, adds DB triggers for all new notification types, adds `broadcast_announcement` RPC.
+
+### v0.36.4 — Bug fix: friend library toolbar styling
+
+**No DB migrations required.**
+
+The `FriendLibrary` toolbar in `FriendProfile.jsx` was using inline `style` objects with `var(--input-bg)`, `var(--ro-text-primary)`, Special Elite monospace font, and no custom caret — matching neither dark nor light mode appearance of the rest of the app's filter controls.
+
+Fixed by switching to the established CSS classes: `.wishlist-toolbar` (flex row with space-between, wraps on mobile), `.wishlist-filters` (left group with gap), `.search-input` (dark background, gilt border, EB Garamond italic). The `select` elements now use inline styles that replicate the global `select` rule from `_oracle.scss` — `var(--ro-shadow)` background, gilt SVG caret via `background-image`, `appearance: none`, EB Garamond italic. This matches the Library and Wishlist toolbar appearance exactly.
+
+### v0.36.3 — Bug fix: friend library was empty
+
+**No DB migrations required.**
+
+Two bugs combined to produce the empty library:
+
+1. **Wrong i18n key.** The empty-library fallback rendered the raw key string `friends.friendsEmpty` because that key did not exist in the `friends` namespace — it was in `profile.friendsEmpty` ("No friends yet. Share your profile link..."), which is the wrong message for an empty book library anyway. Added `friends.friendsEmpty` and `friends.libraryEmpty` with the correct copy in both locales.
+
+2. **Broken Supabase join.** `getFriendLibrary` used a deeply nested PostgREST join: `book:books(..., book_genres(genre:genres(...)))`. Supabase silently drops nested joins it can't resolve in one pass, returning `null` for `book` on every row — making the library appear empty even when books exist. Fixed by matching DataContext's proven join shape: `book:books(*, position_in_series, series:series(*))`, then fetching genre data in a separate `book_genres` query keyed on the book IDs. Genre data is attached as `_genres` on each row before `normalizeBook` processes it.
+
+`normalizeBook` in `FriendProfile.jsx` updated to read `row._genres` and use the correct `books` table column names (`title`, `author`, `cover_url`, `page_count`) rather than the client-side aliases (`t`, `a`, `coverUrl`, `pp`) that DataContext applies after fetching.
+
+### v0.36.2 — Friend profile: full library with filters
+
+**No DB migrations required.**
+
+`FriendProfile.jsx` is rewritten around a `FriendLibrary` sub-component that handles all filtering and display. `getFriendLibrary` in `useFriends.js` now selects `book_genres(genre:genres(id,name,normalized_name))` alongside the book fields so Oracle genre tags are available without a second query.
+
+Each library row is normalized by a `normalizeBook()` helper that flattens the `read_books + books + book_genres` join into a consistent shape (`{ t, a, coverUrl, rating, dateRead, genres[], ... }`).
+
+`FriendLibrary` computes filter options client-side from the normalized data using `useMemo`: genre options from `book_genres` (falling back to `books.genre` for books without Oracle tags), year options from `read_at`. Filtering applies search (title + author substring), genre (`normalized_name` match), and year in sequence. Sort options: recently read (default, `read_at` desc), highest rated, title A–Z, author A–Z. All filters reset `page` to 1 via a `useEffect` dependency on the filter values.
+
+Pagination is client-side load-more: `visible = filtered.slice(0, page * 48)`. The "Load more" button shows the remaining count. This keeps the DOM small on first render for large libraries while avoiding a network round-trip per page.
+
+Each book card shows cover (90px wide, 2:3 aspect), star rating below, title and author in truncated single-line text. Hovering the card shows the full title + author + year via the `title` attribute (native browser tooltip — no custom tooltip component needed).
+
+### v0.36.1 — Friends feed + profile URL fix
+
+**No DB migrations required.**
+
+**Profile URL routing fix.** `RouterContext.jsx`'s `parseHash()` only read `window.location.hash`, so pathname-based URLs like `/u/mandalaxiii` were invisible to the router — it saw no hash and fell back to dashboard. `parseHash()` now first checks if `window.location.pathname` matches `/u/:username` (the regex `^\/u\/([a-z0-9_-]{3,24})$`), and if so synthesises a `friend-profile` route with the username as a param. `go('friend-profile', ...)` now also writes the clean pathname (`/u/:username`) via `history.pushState` instead of a hash, so the URL stays shareable after any in-app navigation to a friend profile.
+
+**Self-view on own profile link.** Visiting your own `/u/username` URL now renders `FriendProfile` correctly. The `isSelf` check (`state.profile?.username === username`) suppresses the "Add friend" button and surfaces the "Copy link" affordance instead, so you see exactly what friends see.
+
+**Friends feed widget.** New `friends-feed` widget in `Dashboard.jsx`. On mount it calls `getFriendsFeedEvents(userId)` (new export in `useFriends.js`) which queries `friend_pairs` for accepted friend IDs, fetches their `read_books` (respecting `preferences.friendsCanSeeLibrary`) and `currently_reading` rows with a 90-day window, joins profile data, merges and sorts chronologically, and returns up to 40 events. The widget renders each event as a friend avatar + book cover + prose sentence ("Simon finished The Haunting of Hill House") with a star rating if present and a relative date label. A manual Refresh button re-fetches; a "last updated HH:MM" label shows freshness. If the user has no friends yet, a prompt with a link to the profile friends section is shown instead of an empty state.
+
+**My activity rename.** The existing `feed` widget now passes `eyebrow={t('dashboard.widgetMyFeed')}` ("My activity" / "Mi actividad") to `WidgetShell` so the two feed widgets are clearly differentiated in the settings panel and on the dashboard.
+
+**`DEFAULT_DASHBOARD_LAYOUT`** updated to include `friends-feed` between `clubs` and `feed`.
+
+### v0.36 — Friends, usernames & notifications
+
+**DB migration required: run `supabase/schema_v20_migration.sql` before deploying.**
+
+**New env vars required in Netlify:**
+- `RESEND_API_KEY` — from resend.com, for transactional email
+- `WEBHOOK_SECRET` — any strong random string, must match the value set in the Supabase Database Webhook config
+
+**Supabase setup required (one-time):** In Supabase → Database → Webhooks, create a webhook on the `notifications` table for `INSERT` events pointing to `/.netlify/functions/send-notification-email`, with header `x-webhook-secret: <WEBHOOK_SECRET>`.
+
+**Usernames.** `profiles.username` is a new unique, lowercase, 3–24 character column (`[a-z0-9_-]`). The Profile page now has a dedicated Username section with real-time availability checking (debounced 400ms Supabase query), a live profile URL preview, and inline save/cancel. A separate Display Name section lets users set how they're greeted — fully independent from their username. Both write directly to `profiles.username` / `profiles.display_name` via new `updateUsername` and `updateDisplayName` DataContext actions rather than going through the preferences jsonb.
+
+**Friendships.** New `friendships` table with `requester`, `addressee`, `status` (pending/accepted/blocked). A `friend_pairs` bidirectional view makes "who are my friends" queries clean without union logic in the app. New `useFriends` hook exposes `friends`, `pending`, `incoming`, `sendRequest`, `acceptRequest`, `declineRequest`, `removeFriend`. Duplicate request prevention checks both directions before inserting. RLS restricts each user to only their own rows.
+
+**Friend profiles.** New `FriendProfile.jsx` view, reached at `/u/:username` via the new `friend-profile` route in RouterContext and App.jsx. Shows avatar, display name, `@username`, stats pills (books this year, total, currently reading count), currently reading strip, and the full library cover grid. Privacy: `preferences.friendsCanSeeLibrary` (default true) gates library visibility; DB-level RLS on `read_books` enforces it server-side for accepted friends.
+
+**Notification bell.** `useNotifications` hook fetches the last 30 notifications with actor profile joins and subscribes to `postgres_changes` on the `notifications` table filtered to the current user — new requests appear in real time. The bell in `Nav.jsx` shows a red unread count badge and opens a dropdown panel. All notifications are marked read on panel open. Each `friend_request` notification renders inline Accept/Decline buttons; `friend_accepted` renders a "View profile →" link. On mobile the panel becomes a bottom sheet.
+
+**Email notifications.** `netlify/functions/send-notification-email.js` is triggered by a Supabase Database Webhook on `notifications` INSERT. It verifies a shared secret header, looks up the recipient email via `supabase.auth.admin.getUserById` (service role), checks `profiles.email_notifications`, looks up the actor's display name and username, and sends a styled HTML email via the Resend API. Email opt-out is a toggle in the new Privacy section of the Profile page. Falls back gracefully to a console log in local dev when `RESEND_API_KEY` is absent.
+
+**DB trigger.** `handle_friendship_notification()` PL/pgSQL function fires after INSERT or UPDATE on `friendships`. On INSERT with `status = 'pending'` it inserts a `friend_request` notification for the addressee. On UPDATE from `pending` → `accepted` it inserts a `friend_accepted` notification for the requester.
+
+**Privacy toggles.** Two new boolean columns on `profiles`: `is_discoverable` (default true, reserved for future friend search) and `email_notifications` (default true, read by the email function). Both are surfaced as toggle switches in the Profile privacy section and written by the new `updatePrivacyPrefs` DataContext action.
+
+**New files:** `schema_v20_migration.sql`, `netlify/functions/send-notification-email.js`, `src/lib/useFriends.js`, `src/lib/useNotifications.js`, `src/views/FriendProfile.jsx`, `src/styles/pages/_friends.scss`.
+
+**Modified files:** `DataContext.jsx`, `Nav.jsx`, `Profile.jsx`, `App.jsx`, `RouterContext.jsx`, `main.scss`, `en.json`, `es.json`, `releases.js`, `README.md`.
+
+### v0.35.1 — Bug fix: book not removed from Reading Next when started
+
+**No DB migrations required.**
+
+`startReading` in `DataContext.jsx` had an asymmetry between its guest and authenticated paths. The guest path correctly filtered `readNext` when adding a book to `currentlyReading`. The authenticated path (the one used by all logged-in users) was missing that filter — it upserted the `currently_reading` row in Supabase and updated local `currentlyReading` state, but never touched `readNext`. The book stayed in the queue indefinitely.
+
+Fix: the authenticated path now includes `readNext: s.readNext.filter((b) => bookKey(b) !== k)` in its `setState` call, matching the guest path.
+
+For users already affected (book stuck in `readNext` in saved preferences), a second fix was added to the state hydration block that runs on login: `readNext` loaded from preferences is now filtered against both `currentlyReading` and `library` before being written to state. Any stale entry is silently removed, and the cleaned list is persisted the next time preferences save. No user action required.
+
+### v0.35 — Customizable dashboard & reading challenge
+
+**No DB migrations required.** All new state is stored in the existing `preferences jsonb` column on profiles.
+
+**Customizable dashboard.** The dashboard now renders widgets from a user-controlled ordered list (`preferences.dashboardLayout`) rather than a hardcoded sequence. A gear button in the dashboard header opens a bottom-sheet settings panel. Each widget has a visibility toggle and up/down arrow buttons for reordering. The resolved layout merges the saved order with any new widgets introduced in future releases so existing users automatically get new widgets appended at the bottom without losing their custom order. `DEFAULT_DASHBOARD_LAYOUT` in `Dashboard.jsx` is the canonical widget registry — adding a new widget means adding it there.
+
+**Oracle Spark.** A new `oracle-spark` widget shows a "Surprise me" prompt that calls Claude with a random slice of the user's wishlist and asks it to pick one title with a one-sentence reason. The result renders inline with cover, title, author, and the Oracle's reasoning. Costs one quota slot via the existing `callClaude` / `/.netlify/functions/claude` path. Handles quota-empty and no-wishlist states with appropriate fallback UI. A "Try another" button resets to idle without consuming another quota slot until the user taps the draw button again.
+
+**Reading challenge.** `readingGoalCount` (a plain integer, books per year) is a new `preferences` field. The Profile page replaces the old motivational-goal dropdown with a full reading challenge section: set a target, see a progress bar with a semi-transparent pace marker (a thin vertical bar at the current day-of-year position), a live count of books finished vs target, and a colour-coded pace status (ahead in green, behind in red, on-track in muted). The Dashboard `reading-goal` widget shows the same data in compact form. Both use identical pace logic: `expected = target × (dayOfYear / daysInYear)`, `delta = done − expected`.
+
+**Reading Stats widget.** Compact three-cell grid showing total books read, average monthly pace over the last 12 months, and total pages. Links to the full Profile stats.
+
+**Series in Progress widget.** Reads from the same series computation used by Profile stats. Shows up to 4 in-progress series, each with a mini progress bar and read/total count. Clicking navigates to the series page.
+
+**Reading Streak widget.** Counts consecutive months (working backwards from now) in which at least one book was finished. Colour-scales from muted (1–2 months) to gilt (3–5) to gilt-bright (6+).
+
+**New SCSS.** `_dashboard-widgets.scss` covers the settings sheet, all new widget shells, and the profile challenge bar. Imported in `main.scss`.
+
+**i18n.** 40+ new keys added to both `en.json` and `es.json` covering all new widget labels, challenge states (ahead/behind/complete/on-pace), and settings panel copy.
+
+### v0.34 — Design system overhaul
+
+**No DB migrations required.**
+
+**Token system extended.** `_tokens.scss` now defines three new groups: a semantic status palette (`--status-read-*`, `--status-reading-*`, `--status-queued-*`, `--status-wishlist-*`), a spacing scale (`--space-1` through `--space-5` at 8/16/24/40/64px), and a font-size floor (`--ro-text-xs: 0.75rem`, `--ro-text-sm`, `--ro-text-base`). All hard-coded `rgba()` values throughout the codebase that express status or spacing now reference these tokens.
+
+**Light mode rethought as parchment.** The previous light mode was a mechanical inversion of the dark palette — warm ink, beige text, gold that desaturated to ochre. It now uses a layered parchment approach: `--ink: #f5edd8` (warm cream base), `--paper: #2a1d0e` (rich sepia), `--gilt: #9a7a2e` (4.7:1 contrast on cream, up from 3.1:1), and explicit hex text tokens (`--ro-text-muted: #6b5340` etc.) that replace the opacity-chain pattern that compounded contrast failures. `--ro-border-subtle` and `--ro-border-mid` are now ink-based in light mode rather than gilt-based, which gives borders more presence on warm surfaces.
+
+**Opacity dimming eliminated from text.** The pattern `color: var(--paper-aged); opacity: 0.5–0.6` has been replaced throughout with explicit `--ro-text-muted`, `--ro-text-dim`, and `--ro-text-faint` token references. Opacity chains on text are unsafe because each step compounds the contrast reduction — a 0.6 opacity on an already-reduced-contrast colour fails WCAG AA in light mode.
+
+**Semantic status palette.** Reading status (read, currently reading, queued, wishlisted) previously borrowed brand colours — moss green for read, gilt for queued. Status now has its own token set with distinct hues: moss green (read), gilt (actively reading), slate blue (queued), plum (wishlisted). This frees the gold accent to remain purely decorative/premium. A `.status-pill--*` CSS class set in `_badges.scss` replaces the scattered inline `rgba()` badge definitions.
+
+**Dashboard feed — accent bars and coloured icons.** Each event type in the activity feed now has a 3px left-accent bar and a 32px coloured icon dot keyed to the status palette: green for finished, gold for started, plum for wishlisted, blue for plans. The feed verb changed from `Special Elite uppercase` (Tier 1 eyebrow) to `EB Garamond italic` (Tier 3 metadata) — it was competing visually with book titles. Finished events now surface the star rating inline when present.
+
+**Series dots → progress track for long series.** Series with more than 6 books now render a 4px horizontal progress track with a filled read-count bar and a gilt position marker instead of crowded numbered dots. Series with ≤ 6 books keep the improved dots, which now use status tokens (`--status-read-*`, `--status-queued-*`) and have a subtle `box-shadow` ring on the current book. Dots also wrap gracefully on narrow screens via `flex-wrap: wrap`.
+
+**Eyebrow hierarchy.** Three tiers are now enforced: Tier 1 (page section labels — `Special Elite`, `0.35em` tracking, gilt) stays as-is. Tier 2 (component headers like modal section titles, series label, breadcrumbs) reduces tracking to `0.18em` and uses `--ro-text-muted` instead of gilt. Tier 3 (inline metadata — author, date, feed verb) switches to `EB Garamond italic` at `0.875rem` with no uppercase. `.book-modal-section-title` was the main Tier 1 overuse; it now renders at Tier 2.
+
+**Font-size floor enforced.** All UI text now respects `--ro-text-xs: 0.75rem` (12px). Previous violations: pace chart month letters (8.8px), similar-card author (9.3px), feed verb/tag/date-label (9.3–9.9px). The similar-card author switched from `Special Elite uppercase 0.58rem` to `EB Garamond italic 0.75rem`. Pace chart month labels are tooltip-only (the letter labels remain, bumped to 0.75rem minimum).
+
+**Similar books grid mobile cap.** At ≤ 500px, the auto-fill grid was squeezing up to 5 columns at 50px each, making covers unreadable. Now capped at 3 columns with `grid-template-columns: repeat(3, 1fr)`.
+
+**Oracle toggle mobile improvements.** Toggle buttons have a `min-height: 44px` tap target and switch to `flex-direction: row` on narrow screens. The toggle group goes full-width at ≤ 600px.
+
+**Book page spacing.** Ad-hoc inline `marginTop` values replaced with `var(--space-*)` tokens throughout `_book-page.scss`. Series block, actions, purchase links, and body sections all use the scale. Mobile cover is now centred (`margin: 0 auto`) rather than left-aligned when stacking to single column.
+
+### v0.33.1 — Bug fixes: series navigation, feed & infinite loop
+
+Patch release addressing regressions and missing features reported after v0.33.
+
+**Feed now shows finished books.** `buildFeed` in `Dashboard.jsx` was reading `b.readAt || b.read_at` to determine the completion date, but `markAsRead` stores the date under `b.dateRead`. Completed books were silently excluded from the activity feed; only "started reading" events appeared. Fixed to check `b.dateRead || b.readAt || b.read_at`.
+
+**Series dots on Book Page no longer show "Not Found".** Clicking a series dot called `go('book-page', { bookKey })` without a snapshot payload. Books not in the user's collection have no entry in `state.wishlist / library / readNext`, so BookPage showed "Not Found". A new `buildBookPageParams(book, from, fromLabel)` helper in `bookHelpers.js` mirrors the existing `openBookTab` logic (base64 book snapshot in the URL) but returns params for `go()` instead of calling `window.open()`. All in-app series navigation now uses this helper.
+
+**Back button no longer stays broken after a series click.** After clicking a series dot (which now includes a snap) and pressing back, the previous book page URL also needed a snap to survive the DataContext race on popstate. BookPage now silently calls `history.replaceState()` to patch a snapshot into the current URL as soon as it resolves the book from the collection, so any history entry going forward is self-contained.
+
+**Infinite Wikipedia loop fixed.** Both `BookPage` and `BookModal` had `useEffect` hooks that depended on the whole `book`, `enrichment`, and `enrichedOverlay` objects. `cacheBookFields` writes enriched data back into DataContext state, which produces a new object reference for the book on the next render. React sees the changed reference, re-fires the effect, calls `fetchSeriesDescriptionFromWikipedia` again — endlessly. Both effects now depend on stable primitive values (`book?.t`, `book?.a`, `book?.s?.name`, etc.) so they fire once per actual book change, not on every render cycle.
+
+**Rating, notes, and categories visible on Book Page.** `BookPage.jsx` previously rendered genres but omitted the user's star rating, reading notes, and personal categories — features that existed only in `BookModal`. Added `getCategoriesForBook`, `removeCategoryFromBook`, `updateReadBook` from DataContext; imported `RatingModal` and `CategoryAutocomplete`; added inline `CategoryPill` component. The Book Page now has a rating section (with Edit/Add button opening the full rating modal) and a categories section with add/remove, identical in behaviour to the modal.
+
+**Profile pace chart is now interactive.** Bars show a floating tooltip on hover (book count + full month name). Clicking a bar with books toggles a drill-down panel beneath the chart listing every book read that month with cover thumbnail, title, author, and star rating. `openBookTab` is passed as `onOpenBook` so covers are tappable.
+
+**Oracle toggle group visible in light mode.** `.toggle-group` had a hardcoded `rgba(13,9,7,0.6)` background — near-black in both modes. In light mode this made the button text invisible. Changed to `var(--ro-surface-raised)` which correctly tracks the theme.
+
+**Series name validation prevents mismatched Hardcover results.** When Hardcover's series search returns a series with a different name than expected (e.g. searching "Bride" returns "Scared Sexy"), the fetched books are now discarded rather than merged. Both `BookPage` and `SeriesPage` normalize and compare the fetched series name against `display.s.name` before merging.
+
+**Hardcover null-position entries included when series count is short.** If `primary_books_count` is 6 but only 5 books have non-null positions in Hardcover, the 6th slot was silently dropped. `hardcoverFetchSeriesBooks` now appends null-position entries to fill the gap up to `primaryTotal`.
+
+**No DB migrations required.**
+
+### v0.33 — Subscription polish
+
+Post-launch fixes to the subscription and quota system.
+
+**Usage tracking for all tiers.** `oracle_calls_this_month` now increments for Pro users as well as free users. Previously the RPC returned early for `active` accounts without touching the counter, making it impossible to monitor AI costs per user. The column is now a reliable usage log regardless of tier.
+
+**Quota counter no longer resets on page refresh.** The `consume_oracle_call` RPC was being called fire-and-forget after the Anthropic response — on AWS Lambda (which Netlify Functions run on), any async work after the function returns is killed. The call was never completing, so the DB was never updated. It is now `await`ed before returning the response.
+
+**Stripe webhook compatibility with API version `2026-05-27.dahlia`.** The `invoice.payment_succeeded` and `checkout.session.completed` handlers were looking for `obj.subscription` and `user_id` at the top level of the invoice object. In the newer API shape these are nested under `obj.parent.subscription_details.*`. Both handlers now check both locations.
+
+**Subscription badge refreshes on tab focus.** A `visibilitychange` listener was added to `OracleQuotaContext` so the quota re-fetches from Supabase whenever the user switches back to the tab. This catches webhook-driven changes and manual DB edits without requiring a page reload.
+
+**React rendering error fixed.** `refreshQuota()` was being called directly in the component body on return from Stripe Checkout, triggering a "Cannot update a component while rendering a different component" warning. Moved into a `useEffect` with three polling attempts (immediate, 2s, 5s) to handle the webhook delivery window.
+
+**DB migrations:** `schema_v19` replaces both `consume_oracle_call` and `get_oracle_quota` RPCs with the corrected logic.
+
+### v0.32 — Subscription model
+
+**Oracle quota system and Stripe integration**
+
+The app is now ready for public launch with a monetization layer that gates AI features behind a quota without breaking the core reading experience.
+
+**Free tier: 5 AI calls/month.** The quota is shared across all AI-powered features — Oracle draws (by genre and by similarity), reading plan generation, batch book categorization, discussion question generation, poll suggestions, and the search fallback. The counter resets on the first of each month (UTC). Free users can still use the full app: library, wishlist, read next queue, book clubs, lists, series pages, and the shelf view are entirely unaffected.
+
+**Pro tier: unlimited AI ($5/month via Stripe).** Stripe Checkout handles payment — we never store or touch card data. The Stripe Customer Portal handles cancellation, card updates, and invoice history. Webhook events (`checkout.session.completed`, `customer.subscription.updated/deleted`, `invoice.payment_succeeded/failed`) update `subscription_status` on the profile row in real time.
+
+**Quota enforcement is server-side only.** The check happens in the `claude.js` Netlify function via a `get_oracle_quota` RPC call before any Anthropic request is made. `consume_oracle_call` runs atomically after a successful Anthropic response — a failed API call never costs a quota slot. The client can't manipulate quota state.
+
+**UI surfaces.** A usage widget on the Dashboard shows calls used/remaining with a progress bar and reset date. Profile has a subscription section with a tier badge (Free / ✦ Pro / ⚠ Past due), quota meter, and direct links to upgrade or manage. The Oracle draw buttons are disabled (not hidden) when quota is exhausted — wishlist and vault draws still work since they don't call Claude.
+
+**DB changes:** `schema_v15` adds `subscription_status`, `oracle_calls_this_month`, `oracle_calls_reset_at` to `profiles` with RLS locking them client-read-only. `schema_v16` adds a SELECT policy on `genres` (fixing empty genre dropdowns in PlanCreate). `schema_v17` adds `stripe_customer_id` and `stripe_subscription_id`. `schema_v18` grants all pre-launch users `active` status so existing testers aren't immediately paywalled.
+
+**New Netlify functions:** `claude.js` (updated with quota enforcement), `create-checkout-session.js`, `stripe-webhook.js`, `manage-subscription.js`.
+
+**Required new env vars:** `STRIPE_SECRET_KEY`, `STRIPE_PRICE_ID`, `STRIPE_WEBHOOK_SECRET`, `SUPABASE_SERVICE_ROLE_KEY`.
+
+### v0.31 — Full localization
+
+**Complete EN/ES wiring across all 47 screens**
+
+Every user-visible string in the app — buttons, labels, breadcrumbs, empty states, confirmation dialogs, toast messages, status badges, progress labels, form placeholders — is now driven by the translation system. Nothing is hardcoded in English anymore.
+
+The previous approach used inline `isSpanish ? 'es' : 'en'` ternaries scattered across files. These have all been replaced with `t('key')` calls against the central `src/i18n/en.json` / `src/i18n/es.json` key pairs.
+
+**Translation key growth: 697 → 930 pairs.** 233 new keys were added for strings that previously existed only as hardcoded literals in component code — modals, club flows, session management, bulk import, shelf controls, and more.
+
+**Spanish uses Costa Rican vos conventions throughout** — not generic Latin American Spanish.
+
+**Pattern upgrade:** files using `useI18n()` + `isSpanish` boolean were upgraded to `useT()` uniformly. Sub-components that received `isSpanish` as a prop now call `useT()` directly or receive `t` explicitly. `ReleaseNotesModal` and `CurrentReleaseFooter` retain `isSpanish` legitimately to select between `titleEs`/`bodyEs` data fields on release objects, not for hardcoded strings.
+
+**Files touched:** 47 JSX files (Toast and BookCover have no user-visible strings and need no wiring).
+
+### v0.30 — Refactor: styles & routing
+
+**Light mode**
+- Theme toggle in the navigation switches between dark (default) and light mode. Preference persisted in `localStorage`; OS `prefers-color-scheme` respected on first visit.
+- All token overrides for light mode live in `_tokens.scss` under `[data-theme="light"]` — no inline styles anywhere. `ThemeContext.jsx` sets the attribute on `<html>`.
+
+**SCSS architecture rewrite**
+- Flat pile of 25 root-level partials reorganised into a proper four-layer hierarchy: root globals (`_tokens`, `_reset`, `_typography`, `_global`), then `layout/`, `components/`, and `pages/` subdirectories — 28 files in total.
+- Misplaced rules corrected: `.toast` extracted from `loading.scss`, `.empty-state`/`.breadcrumb` extracted from `toast.scss`, `.page-header` extracted from `dashboard.scss`, genre pills moved from `oracle-btn.scss` to `components/_badges.scss`, duplicate `.cover-grid-item` definition removed.
+- All files de-indented (phantom 2-space indent from the original monolith cut removed throughout).
+- Switched from `@use` to `@import` in `main.scss` — fixes Vite HMR not hot-reloading partial changes and ensures `[data-theme]` attribute selectors cascade correctly across all files.
+- Max 3-level nesting rule enforced. No layout rules inside component files.
+- `vite.config.js` updated with `server.watch` and `css.preprocessorOptions.scss.loadPaths` to ensure all subdirectory partials are watched.
+
+**Routing fix**
+- `syncLangParam()` in `I18nContext.jsx` was writing `?lang=es` into the URL via `new URL(window.location.href)`, which captured the hash and then re-serialised it incorrectly on Netlify Dev — causing book page URLs to break when the language was set to Spanish.
+- Fix: hash is now preserved separately and re-appended after the query param update, so the dev server never sees a URL change that could trigger a reload.
+
+### v0.29 — Discussion & Decisions
+
+**Discussion on sessions**
+- Admins can pin discussion questions on any session — members answer each one in its own thread. Questions are ordered and collapsible.
+- A free comments section below each session lets the conversation range beyond the pinned questions.
+- Replies nest one level deep (enforced by DB constraint — no infinite threads).
+- Authors can edit or delete their own comments; admins can delete any comment.
+
+**Oracle discussion question suggestions**
+- Admins tap "☩ Oracle suggests" in the questions panel — Claude generates five discussion questions tailored to the session's book (themes, characters, emotional resonance, reader reactions).
+- Existing questions are passed as context so Claude never duplicates what's already there.
+- Suggestions appear as a tappable pick-list. Each tap adds the question immediately and marks it ✦ — the list stays open so admins can pick multiple in one go. Dismiss when done.
+
+**Polls**
+- Admins create polls on a club with 2–5 options (book titles or free text).
+- Members vote and can change their vote while the poll is open. Results show as a live percentage bar visible to all members immediately after voting.
+- Admins can close a poll (locks voting, shows final results), delete a poll entirely, or use the winning option to pre-fill a new session form.
+
+**Oracle suggestion polls**
+- Admins tap "☩ Oracle suggests" on the polls panel — Claude generates three book recommendations based on the club's genre tags and recent session history.
+- Suggestions become a poll automatically with `is_oracle_pick` flagged. No separate confirmation step.
+- The full Oracle → poll → session pipeline completes in one flow.
+
+**DB changes** (`schema_v14_migration.sql`)
+- New tables: `session_questions`, `session_comments`, `club_polls`, `poll_options`, `poll_votes`
+- New RPCs: `get_session_discussion`, `get_club_polls`, `cast_vote`
+
+### v0.28 — Book Clubs
+
+**Book Clubs**
+- Create a named reading group, write a description, and tag it with genres from the Oracle taxonomy.
+- Invite members via a shareable join link (`#join-club?token=...`). The landing page shows a club preview for anyone — sign-in required to actually join. Admins can regenerate the token at any time, invalidating old links.
+- Club detail page shows all sessions, the full member roster with roles, and admin controls (remove member, promote to admin, delete club).
+- Members can leave a club from the detail page. The creator cannot leave — they must delete.
+
+**Sessions**
+- Admins create Sessions: one book, a start date, an end date, and optional notes for the group.
+- Sessions with a current date range appear as "Active" on the club detail page and in a quick-access widget on the Dashboard.
+- The Session detail page shows the book cover, description, admin notes, and a live member progress grid sorted by pages read.
+
+**Reading progress**
+- `currently_reading` now stores `pages_read` (integer, default 0).
+- The "↑ Progress" button on Currently Reading opens a modal to enter your page count. A live progress bar shows your percentage against the book's total pages (with a note that your edition may differ).
+- Session pages pull each member's `pages_read` automatically — no separate session-specific progress table needed.
+- Progress is optimistically updated in local state before the Supabase write resolves.
+
+**DB changes** (`schema_v13_migration.sql`)
+- New tables: `book_clubs`, `book_club_genres`, `book_club_members`, `book_club_sessions`
+- `ALTER TABLE currently_reading ADD COLUMN pages_read integer NOT NULL DEFAULT 0`
+- New RPCs: `preview_club_by_token`, `join_club_by_token`, `get_club_detail`, `get_session_detail`, `regenerate_join_token`
+
+### v0.27 — Lists, sharing, and smarter browsing
+
+**Custom Lists**
+- Create named curated reading lists, add any book from your collection, reorder, and toggle public/private.
+- Public lists get a shareable URL (`#list-view?listId=...`) that renders read-only for anyone — no account required.
+- `lists` and `list_items` tables with full RLS (`schema_v12_migration.sql`). `get_public_list()` RPC returns list + owner info for the public view.
+
+**Shareable Plans**
+- Any plan URL (`#plan-view?planId=...`) now resolves publicly via `get_public_plan()` RPC.
+- Guests and other users see the plan read-only with a "Copy this plan" button that saves it to their own account.
+
+**Nav restructure**
+- Primary nav trimmed to 6 items: Wishlist · Library · Reading (dropdown) · Lists · Oracle · ···
+- Reading dropdown contains Currently Reading and Read Next.
+- ··· overflow menu contains Profile, About, Language toggle, Sign out.
+
+**Book pages open in new tabs**
+- All book opens now use `openBookTab()` which encodes a snapshot in the URL so the page renders instantly without waiting for the library to load.
+- Book pages are public routes — render before auth/data loads, with auth-dependent actions appearing progressively.
+- `BookModal` removed entirely; `BookPage` is the canonical book surface.
+
+**Multi-select bulk actions**
+- "Select" toggle in Wishlist, Library, and ListDetail toolbars activates selection mode.
+- Works in both list view and cover grid: checkbox overlay on covers, gold highlight on list rows.
+- Floating `SelectionBar` offers context-aware actions: Add to list, Mark as read (Wishlist), Remove.
+- `useSelection` hook + `SelectionBar` component shared across all three views.
+
+**Session cache**
+- `DataContext` caches Supabase state in `sessionStorage` so new tabs render instantly from cache, then validate in background.
+- Cache keyed by userId with 30-minute expiry.
+
+### v0.26 — Your dashboard, alive
+
+**Activity feed** — chronological feed of finished books, books started, wishlist adds, and plans created. Paginated at 5 events per page.
+
+**Currently Reading strip** — prominent strip at the top of the dashboard showing active books with cover art and day counter.
+
+**Multiple reading plans** — plans no longer overwrite each other. Dashboard shows all plans stacked as banners.
+
+**Live curated catalog (The Vault)** — `booksData.js` retired. The Vault is now the curator's live Supabase wishlist via `get_curated_catalog()` RPC.
+
+**SCSS split** — `main.scss` split into 25 focused partials.
+
+### v0.25 — Currently Reading & cover shelves
+
+- New `currently-reading` route with cards showing cover, start date, and day counter.
+- `currently_reading` Supabase table (`schema_v10_migration.sql`) with RLS.
+- Cover grid (Wishlist + Library) with genre-grouped shelves and list/grid toggle.
+
+### v0.24 — Series pages
+
+- New `#series-page` route: progress bar, all books in order, Wikipedia description, inline actions.
+
+### v0.23 — Reading stats
+
+- Reading stats on Profile: total books/pages, 12-month pace chart, top genres, most-read author, series completion.
+
+### v0.22 — Read dates, smarter search, Oracle expansion
+
+- Read dates captured on every book. Bulk import Claude fallback. Oracle enriches genres + series + descriptions in one pass.
+
+### v0.21 — Oracle architecture overhaul
+
+- Oracle enriches genres, series, and descriptions in one batch. `scripts/oracleBatch.mjs` standalone script.
+
+### v0.20 — Report book issues
+
+- Report button on BookModal and BookPage. `book_reports` table (`schema_v9_migration.sql`).
+
+### v0.19 — Global search
+
+- Search bar in top nav with instant local hits + live Hardcover search + Oracle fallback.
+
+### v0.18 — Book pages
+
+- New `#book-page` route with full description, genre pills, series navigation, purchase links.
+
+### v0.17 — Mobile-first experience
+
+- Hamburger nav at ≤700px. Book modal becomes a bottom sheet on mobile.
+
+### v0.15 — Oracle genre categorization
+
+- "☩ Let the Oracle categorize my books" button. Genre-based grouping in Wishlist and Library.
+
+### v0.13 — Release notes, in your language
+
+- "What's new" popup on About page, fully bilingual, powered by `src/lib/releases.js`.
+
+### v0.12 — User categories
+
+- Add categories to any book via autocomplete. `schema_v5_migration.sql`.
+
+### v0.9 — Ratings, notes, and bulk-add to library
+
+- Rate read books with 1–5 stars + notes.
+
+### v0.3 — Hardcover + shared catalog
+
+- Netlify Functions as API proxy layer. Hardcover as primary metadata source. Shared `books` table. The Vault.
+
+### v0.1 — Initial React port
+
+- Migrated from single-file HTML/JS to Vite + React + SCSS. Supabase auth. All views ported.
+
+---
+
+## Local development tips
+
+**Without Netlify CLI** (`npm run dev`):
+- Supabase auth + DB sync work
+- Hardcover lookups fail silently → fall back to OpenLibrary
+- AI Oracle fails → falls back to wishlist/Vault matching
+
+**With Netlify CLI** (`netlify dev`):
+- Everything works including AI Oracle and Hardcover
+- Single port (default :8888) proxies both Vite + functions
+- Requires `HARDCOVER_API_TOKEN` and `ANTHROPIC_API_KEY` in `.env.local`
+
+**Resetting local state**: DevTools → Application → Local Storage → remove `wishlist_oracle_state_v2`.
+
+---
+
+## Engineering notes
+
+- `bookKey(book)` is the canonical book-equality function — use it for all dedup and `key=`
+- New mutations: dedupe input + mirror local state + persist via RPC + show toast
+- New view styles go in their own SCSS partial under `pages/`, `@import`ed in `main.scss`; shared UI patterns go in `components/`
+- `state.plans[]` holds all plans; `state.currentPlan` is the most recent (backwards compat)
+- `state.clubs[]` holds lightweight club entries (no sessions/members); full detail fetched on demand via `get_club_detail` RPC
+- The Vault (`vault` in DataContext) is a live Supabase query, not a bundled array
+- Club membership is checked server-side in every RPC — non-members get null back, not an error
+- `pages_read` lives on `currently_reading`, not on a session-specific table — one update syncs across all sessions that reference the same book
+- `session_comments` serves all comment surfaces via `question_id` / `parent_id` nullability — one table, one RLS policy set, one RPC
+- `cast_vote` uses `ON CONFLICT DO UPDATE` — changing your vote is always a safe upsert, never a delete+insert race
+- `CommentThread` is a pure rendering component — pass it comments + callbacks, it knows nothing about sessions or clubs
+- Deleting a poll cascade-deletes its `poll_options` and `poll_votes` via FK constraints — no manual cleanup needed
