@@ -15,14 +15,14 @@ signal wins, not just by how much.
 
 | # | Topic | Code | Tested |
 |---|---|---|---|
-| 1 | [Book address key](#1-book-address-key) | `src/lib/bookHelpers.js` · SQL `compute_book_key` | partly |
+| 1 | [Book address key](#1-book-address-key) | `src/lib/bookHelpers.js` · SQL `client_title_key` | **yes** |
 | 2 | [Taste profile](#2-taste-profile) | `src/lib/matchHelpers.js` | no |
-| 3 | [Local Match %](#3-local-match-) | `src/lib/matchHelpers.js` | no |
+| 3 | [Local Match %](#3-local-match-) | `src/lib/matchHelpers.js` | floor only |
 | 4 | [Oracle (LLM) Match %](#4-oracle-llm-match-) | `src/lib/matchHelpers.js` | n/a |
 | 5 | [Reading-level nudge](#5-reading-level-nudge) | `src/lib/matchHelpers.js` | no |
 | 6 | [Similar books (Book page)](#6-similar-books-book-page) | `src/views/BookPage.jsx` | no |
 | 7 | [Similar to your picks (fallback)](#7-similar-to-your-picks-fallback) | `src/views/OracleSimilar.jsx` | no |
-| 8 | [Oracle draw from wishlist / Vault](#8-oracle-draw-from-wishlist--vault) | `src/views/OracleCategories.jsx` | shuffle only |
+| 8 | [Oracle draw from wishlist / Vault](#8-oracle-draw-from-wishlist--vault) | `src/views/OracleCategories.jsx` · `src/lib/random.js` | **yes** |
 | 9 | [Level Passage (fallback plan)](#9-level-passage-fallback-plan) | `src/views/PlanCreate.jsx` | no |
 | 10 | [Best edition for purchase links](#10-best-edition-for-purchase-links) | `src/lib/editionPicker.js` | no |
 | 11 | [Which row represents a work](#11-which-row-represents-a-work) | `src/lib/workGroups.js` | no |
@@ -64,24 +64,32 @@ reader wants harder ones.
 
 ## 1. Book address key
 
-`bookKey(book)` in `src/lib/bookHelpers.js`, mirrored by `compute_book_key` in SQL.
+`bookKey(book)` / `addressKey(text)` in `src/lib/bookHelpers.js`, mirrored by
+`client_title_key` / `client_author_key` in SQL.
 
 ```
-key = lower(title) with everything except [a-z0-9] removed
-    + "|"
-    + first 10 chars of lower(author) with everything except [a-z0-9] removed
+addressKey(s) = s → NFD → remove combining marks U+0300–U+036F → lowercase → keep [a-z0-9]
+key           = addressKey(title) + "|" + first 10 chars of addressKey(author)
 ```
 
-- It is an **address** (used for shelves, de-duplication on the client and
-  shared links), not the identity. `books.normalized_key` is the identity and is
-  built differently on purpose.
+- It is an **address** (shelves, client-side de-duplication, shared links), not
+  the identity. `books.normalized_key` (`compute_book_key`) is the identity and
+  is built differently on purpose.
+- **Accents are folded, not dropped** (decided 2026-10-12): *Cien años de
+  soledad* → `cienanosdesoledad`. This is the rule `workGroups.titleVariantKey`
+  already used. Letters with no decomposition (ø, ß, æ, ł) and non-Latin scripts
+  are still removed — identically in JS and SQL, which is why the SQL side uses
+  `normalize(…, NFD)` and not `unaccent()` (which would map ø→o, ß→ss and
+  disagree with the browser).
 - The JS and SQL versions **must stay identical**, or shared links 404 for
-  everyone except the sharer.
-- **Watch out:** accented and non-Latin characters are dropped, not folded —
-  "Cien años de soledad" becomes `cienaosdesoledad`, and an all-non-Latin title
-  contributes an empty string. Different works can collide (see the comment in
-  `markAsRead` about *Like Water for Chocolate*). Changing this needs a migration
-  plan for existing shared links. *Open decision.*
+  everyone except the sharer. `tests/match-decisions.test.js` pins examples and
+  checks the migration uses the same character range.
+- **Links shared before the change keep working:** the old functions live on as
+  `client_*_key_legacy`, and `find_book_by_client_key` tries the new key first,
+  then the legacy one. The prerender takes its canonical URL from
+  `books_share_key`, so an old URL resolves and points crawlers at the new one.
+- Migration: `supabase/migrations/20261012120000_accent_folded_share_key.sql`
+  (rebuilds the expression indexes — replacing an `immutable` function does not).
 
 ## 2. Taste profile
 
@@ -127,9 +135,9 @@ match = round(100 × (0.7 × genreScore + 0.3 × fitScore))   both present
 | favourite-genre credit | 0.75 | stated favourites score closer to a 5★ history |
 | distance divisor | 4 | the full 1–5 range; lower = harsher on mismatch |
 
-**Watch out:** `/5` maps 1★ to 0.2, not 0, so a genre the reader dislikes still
-contributes 20 % of the genre weight. The code comment says "scaled from 1–5★ to
-0–1", which suggests 0–1 was intended (`(r − 1) / 4`). *Open decision.*
+**The 20 % floor is intended** (decided 2026-10-12): `/5` maps 1★ to 0.2, not 0.
+A genre the reader rated low is weak evidence against it, not proof of dislike,
+so it still contributes a little. Pinned in `tests/match-decisions.test.js`.
 
 ## 4. Oracle (LLM) Match %
 
@@ -192,16 +200,28 @@ AI call fails or in wishlist mode. Scores each candidate against each of the
 
 ## 8. Oracle draw from wishlist / Vault
 
-`handleDraw()` in `OracleCategories.jsx`, non-AI modes:
+`handleDraw()` → `drawByMatch()` in `OracleCategories.jsx`, non-AI modes and the
+AI-failure fallback:
 
 1. pool = wishlist or Vault, filtered to the chosen genre;
 2. remove anything already in Read Next or the library;
-3. pick **3 uniformly at random** (`sample()` from `src/lib/random.js`);
-4. compute §3 Match % for display.
+3. compute §3 Match % for every candidate;
+4. pick **3 without replacement, weighted toward higher Match %**
+   (`weightedSample()` in `src/lib/random.js`, Efraimidis–Spirakis).
 
-The draw is a fair lottery: Match % is shown *after* the pick and does not
-influence it. If the intent is "the Oracle picks what fits you", step 3 should
-weight by Match %. *Open decision.*
+```
+weight = (match / 100) ^ DRAW_WEIGHT_POWER        DRAW_WEIGHT_POWER = 2
+match  = UNSCORED_DRAW_MATCH (50) when §3 returns null
+```
+
+| Lever (`matchHelpers.js`) | Value | Effect |
+|---|---|---|
+| `DRAW_WEIGHT_POWER` | 2 | a 90 % book is 4× as likely as a 45 % one; higher = closer to "always the top 3", 1 = proportional, 0 = uniform |
+| `UNSCORED_DRAW_MATCH` | 50 | books with no signal are neither favoured nor buried |
+
+Decided 2026-10-12: the Oracle should draw books that fit the reader, but a
+weighted draw (not a plain top-3) keeps repeat draws from showing the same
+books every time.
 
 ## 9. Level Passage (fallback plan)
 
@@ -388,6 +408,7 @@ budget does not improve recommendations — the list is a hint.
 | Need | Use |
 |---|---|
 | a fair random order or pick | `shuffle()` / `sample()` in `src/lib/random.js` — Fisher–Yates, never mutates the input |
+| a random pick that favours some items | `weightedSample()` in `src/lib/random.js` (§8) |
 | the same order for everyone today | `dailyShuffle()` (§16) |
 | a stable value per string (placeholder cover palette, ornament) | `hashStr()` in `bookHelpers.js` |
 | deterministic visuals in 3D scenes | local seeded generators in `components/*/scene.js` |
@@ -398,13 +419,10 @@ how the Oracle Spark reshuffled wishlists until 2026-10-12).
 
 ---
 
-## Open decisions
+## Decisions
 
-Recorded here so they get decided rather than rediscovered:
-
-1. **§1** — should `bookKey` fold accents (`años` → `anos`) instead of dropping
-   them? Needs a plan for existing shared links.
-2. **§3** — is the 0.2 floor for a 1★ genre intended, or should ratings map to
-   0–1 with `(r − 1) / 4`?
-3. **§8** — should wishlist/Vault draws stay a fair lottery or be weighted by
-   Match %?
+| Date | § | Decision |
+|---|---|---|
+| 2026-10-12 | 1 | Address keys fold accents (NFD) like the rest of the app; old links resolve through a legacy fallback |
+| 2026-10-12 | 3 | A 1★ genre keeps counting 20 % — low rating is weak evidence, not a veto |
+| 2026-10-12 | 8 | Local Oracle draws are weighted toward higher Match % (power 2), not uniform and not a fixed top 3 |

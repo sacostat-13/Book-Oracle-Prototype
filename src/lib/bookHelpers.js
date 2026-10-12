@@ -82,14 +82,41 @@ export function isPlaceholderBook(b) {
 // because their own copy always resolves from their shelf.
 //
 // Note this is an ADDRESS, not an identity. books.normalized_key is the
-// identity, and it is built differently on purpose (spaces kept, accents
-// folded, author not truncated).
+// identity, and it is built differently on purpose (spaces kept, author not
+// truncated).
+//
+// 2026-10-12: accents are FOLDED, not dropped — "Cien años" → "cienanos", where
+// it used to be "cienaos". Same rule as workGroups.titleVariantKey and as SQL
+// client_title_key / client_author_key (migration 20261012120000). Links shared
+// before the change still resolve: find_book_by_client_key falls back to the
+// legacy (accent-dropping) key. Letters with no decomposition (ø, ß, æ, ł) and
+// non-Latin scripts are still removed, identically on both sides.
+/**
+ * One half of a share key: NFD, strip combining marks (U+0300–U+036F),
+ * lowercase, keep only [a-z0-9]. Must match public.client_title_key in SQL.
+ *
+ * @param {string | null | undefined} s
+ * @returns {string}
+ */
+export function addressKey(s) {
+  return (s || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, '');
+}
+
+/** Number of author characters in a share key. find_book_by_client_key accepts any prefix. */
+export const SHARE_KEY_AUTHOR_LENGTH = 10;
+
+/**
+ * The shareable address of a book: "<title key>|<first 10 of author key>".
+ *
+ * @param {{ t?: string, a?: string }} b
+ * @returns {string}
+ */
 export function bookKey(b) {
-  return (
-    (b.t || '').toLowerCase().replace(/[^a-z0-9]/g, '') +
-    '|' +
-    (b.a || '').toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 10)
-  );
+  return addressKey(b.t) + '|' + addressKey(b.a).slice(0, SHARE_KEY_AUTHOR_LENGTH);
 }
 
 // Pick the genre a book should be filed under when browsing (grouped view).

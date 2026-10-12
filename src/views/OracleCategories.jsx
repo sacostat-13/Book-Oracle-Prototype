@@ -3,7 +3,7 @@ import BookLoader from '../components/BookLoader';
 import { useData } from '../lib/DataContext';
 import { useRouter } from '../lib/RouterContext';
 import { ALL_BOOKS, bookKey } from '../lib/bookHelpers';
-import { sample } from '../lib/random';
+import { weightedSample } from '../lib/random';
 import { callClaude, parseJSONResponse, QuotaExceededError } from '../lib/claudeApi';
 import { logRecommendations, attachRecommendationIds } from '../lib/oracleProvenance';
 import OracleMissButton from '../components/OracleMissButton';
@@ -13,7 +13,7 @@ import { OracleQuotaBadge, OracleQuotaWall } from '../components/OracleQuotaBadg
 import { useT, useI18n, langDirective } from '../lib/I18nContext';
 import BookCard from '../components/BookCard';
 import GenreSelect from '../components/GenreSelect';
-import { buildTasteProfile, describeTasteProfile, computeLocalMatch, MATCH_SCORING_INSTRUCTIONS } from '../lib/matchHelpers';
+import { buildTasteProfile, describeTasteProfile, computeLocalMatch, drawWeight, MATCH_SCORING_INSTRUCTIONS } from '../lib/matchHelpers';
 import { buildExcludeHint, buildShelfSignature, filterAlreadyKnown, REASON_INSTRUCTIONS, REPRESENTATION_INSTRUCTIONS } from '../lib/oraclePrompt';
 import { saveDraw, loadDraw } from '../lib/oracleDrawCache';
 import BookMark from '../components/BookMark';
@@ -71,6 +71,13 @@ export default function OracleCategories({ onOpenBook }) {
       const match = computeLocalMatch(b, tasteProfile, genresByBookId);
       return match != null ? { ...b, match } : b;
     });
+  }
+
+  // Local draw: score every candidate, then pick `count` with probability
+  // weighted toward higher Match % (docs/MATH.md §8). Unscored books stay in
+  // the running at a neutral weight.
+  function drawByMatch(pool, count) {
+    return weightedSample(withLocalMatch(pool), count, (b) => drawWeight(b.match));
   }
 
   // Lazily load the Vault when user picks vault mode
@@ -178,7 +185,7 @@ export default function OracleCategories({ onOpenBook }) {
         showToast(`Nothing left to draw in that genre from ${mode === 'wishlist' ? 'your wishlist' : 'the Vault'}.`, true);
         return;
       }
-      showDraw(withLocalMatch(sample(available, 3)));
+      showDraw(drawByMatch(available, 3));
       return;
     }
 
@@ -320,7 +327,7 @@ Return ONLY valid JSON in this format:
         // toast promising a fallback.
         const v = vault || (await loadVault());
         const drawFrom = (rows) => {
-          showDraw(withLocalMatch(sample(rows, 3)));
+          showDraw(drawByMatch(rows, 3));
         };
         const usable = (rows) => rows.filter((b) => !inUse.has(bookKey(b)));
 

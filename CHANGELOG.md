@@ -9,6 +9,35 @@ Moved here from README.md on 2026-10-12 (code-health spike, item O1). Entries ar
 
 ---
 
+# Unreleased — code health (branch `sprint1-code-health`)
+
+Internal work from the 2026-10-12 code-health spike, plus three scoring decisions.
+Reader-visible changes are marked ★ — add them to `releases.js` when this ships.
+
+### Fixed
+- ★ Oracle Spark reshuffled the reader's real wishlist on every draw (`.sort` on state). Now samples from a copy.
+- ★ Reading streak said "days" while counting months, and showed 0 on the 1st of every month. Now months, with the current month as a grace period (`src/lib/readingStreak.js`).
+- ★ "Last finished" showed the previous day west of UTC (bare `YYYY-MM-DD` parsed as UTC). `src/lib/dates.js`.
+- `OracleSimilar` fallback ignored `SIMILAR_COUNT`; biased `sort(() => Math.random() - 0.5)` shuffles replaced with Fisher–Yates.
+
+### Changed
+- ★ Wishlist / Vault Oracle draws favour books with a higher Match % (weighted, power 2) instead of a uniform draw. `docs/MATH.md` §8.
+- ★ Share links fold accents: `/book/cienanosdesoledad|…` instead of `/book/cienaosdesoledad|…`. Old links still resolve via `client_*_key_legacy`. **Requires migration `20261012120000_accent_folded_share_key.sql`** — deploy it before (or with) the frontend, or links built by the new client won't resolve.
+- "More by this author" now groups `Garcia` with `García` (same key change, SQL `client_author_key`).
+- A 1★ genre keeps counting 20% in Match % — documented as intended.
+
+### Removed
+- Unimported modules (~1,500 lines): `BookModal`, `FeatureCarousel`, `lib/BookLoader`, `hardcoverService (1).js`, `prhService`, `reportService`, `useShelfBooks`; plus `src/styles.zip`, `_b.mjs`, `Claude outputs/`.
+
+### Docs & tooling
+- README split into README / `CHANGELOG.md` / `docs/ARCHITECTURE.md`; new `docs/MATH.md`, `src/styles/README.md`.
+- New tests: orphan modules, reading streak + shuffle + dates, scoring decisions.
+
+### Verify after deploy
+1. Open an old link to an accented title (e.g. one containing "años") — it should load the book; view source shows the new key as canonical.
+2. Share a book with an accented title from the app and open the link signed out.
+3. Dashboard on the 1st of a month with no finish yet: streak keeps last month's count with "Finish one this month to keep it going".
+
 # v0.72.2 — New logo (2026-10-01)
 
 The blackletter TBO monogram and the eye-with-laurels social image are retired.

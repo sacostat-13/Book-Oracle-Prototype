@@ -38,3 +38,29 @@ export function shuffle(items, random = Math.random) {
 export function sample(items, count, random = Math.random) {
   return shuffle(items, random).slice(0, Math.max(0, count));
 }
+
+/**
+ * Pick up to `count` distinct elements at random, each with probability
+ * proportional to its weight (Efraimidis–Spirakis "A-Res": key = u^(1/w), keep
+ * the largest keys). Never mutates the input. Items with weight ≤ 0 are only
+ * picked once every positive-weight item has been taken.
+ *
+ * @template T
+ * @param {readonly T[] | null | undefined} items
+ * @param {number} count
+ * @param {(item: T) => number} weightOf  relative weight; larger = likelier
+ * @param {() => number} [random=Math.random]
+ * @returns {T[]} chosen items, most-favoured key first
+ */
+export function weightedSample(items, count, weightOf, random = Math.random) {
+  if (!Array.isArray(items) || count <= 0) return [];
+  const keyed = items.map((item) => {
+    const w = Number(weightOf(item));
+    // u in (0, 1]: avoids log(0); weight ≤ 0 sorts after every positive weight.
+    const u = 1 - random();
+    const key = w > 0 ? Math.log(u) / w : -Infinity;
+    return { item, key, fallback: random() };
+  });
+  keyed.sort((x, y) => (y.key - x.key) || (y.fallback - x.fallback));
+  return keyed.slice(0, count).map((k) => k.item);
+}

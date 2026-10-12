@@ -44,7 +44,7 @@ import { supabase } from './supabase';
 import { googleBooksByAuthor } from './googleBooksService';
 import { collapseWorks } from './workGroups';
 import { isForeignTo } from './titleLanguage';
-import { bookKey, cleanAuthor, AUTHOR_PLACEHOLDERS, UNKNOWN_AUTHOR } from './bookHelpers';
+import { addressKey, bookKey, cleanAuthor, AUTHOR_PLACEHOLDERS, UNKNOWN_AUTHOR } from './bookHelpers';
 
 // Below this, ask Google Books for more. Four is roughly where a cover strip
 // stops looking like an accident of what we happen to hold.
@@ -119,10 +119,10 @@ export const AUTHOR_WORKS_LIMIT = 12;
 // Same collapse as public.client_author_key in SQL, so the client can decide
 // whether two author strings are the same person WITHOUT a round trip — used
 // below to drop Google Books hits for a different writer with a similar name.
-// Kept in sync with that function by construction: both strip everything that
-// is not [a-z0-9] and neither unaccents.
+// Kept in sync with that function by construction: both are the accent-folding
+// address key (bookHelpers.addressKey, migration 20261012120000).
 export function authorKey(a) {
-  return (a || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+  return addressKey(a);
 }
 
 // Map a `books` row to the shape the rest of the app uses.

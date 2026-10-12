@@ -51,7 +51,7 @@
 // reason editionPicker.js imports './isbn.js'. batch-scripts/probes/
 // workGroups.probe.mjs runs this file directly, and node ESM does not guess
 // extensions. Vite resolves both forms, so nothing changes in the browser.
-import { bookKey } from './bookHelpers.js';
+import { addressKey, bookKey, SHARE_KEY_AUTHOR_LENGTH } from './bookHelpers.js';
 
 // ---------- title variants ----------
 
@@ -159,7 +159,7 @@ const SIGNALS = [
   (b) => {
     const t = titleVariantKey(b.t);
     if (!t) return null;
-    const a = (b.a || '').toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 10);
+    const a = addressKey(b.a).slice(0, SHARE_KEY_AUTHOR_LENGTH);
     return `tv:${t}|${a}`;
   },
 ];
