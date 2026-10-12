@@ -16,6 +16,7 @@ import Modal from '../components/primitives/Modal';
 import { useT } from '../lib/I18nContext';
 import Avatar from '../components/Avatar';
 import BookMark from '../components/BookMark';
+import BookThumb from '../components/BookThumb';
 
 // ── Shared sub-components ─────────────────────────────────────────────────────
 
@@ -69,14 +70,6 @@ function MemberProgressRow({ member }) {
 // inputStyle/labelStyle previously built inline styles from --paper/--gilt,
 // tokens that don't exist post theme-rename (should be --ro-text/--ro-gold).
 // Replaced with the real .field-label / .input classes used everywhere else.
-
-function BookThumb({ book, size = 28 }) {
-  return (
-    <div className="session-form__cover" style={{ '--sc-w': `${size}px`, '--sc-h': `${size * 1.5}px` }}>
-      <BookCover title={book.t || book.title} author={book.a || book.author} coverUrl={book.coverUrl || book.cover_url} />
-    </div>
-  );
-}
 
 function EditSessionModal({ session, book, onSave, onClose }) {
   const { state, upsertBookOnServer } = useData();

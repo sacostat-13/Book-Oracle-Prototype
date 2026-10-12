@@ -63,34 +63,7 @@
 }
 
 // ── Book cover (dynamic size via CSS vars) ────────────────────────────────────
-.db-cover {
-  width: var(--db-cw, 60px);
-  height: var(--db-ch, 90px);
-  border-radius: 5px;
-  object-fit: cover;
-  flex-shrink: 0;
-  border: 1px solid var(--ro-border-strong);
-  box-shadow: var(--ro-shadow);
-  display: block;
-}
-
-.db-cover--placeholder {
-  @extend .db-cover;
-  background: linear-gradient(155deg, var(--ro-surface-2), var(--ro-bg-deep));
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
-}
-
-.db-cover__label {
-  font-family: var(--ro-font-display);
-  font-style: italic;
-  color: var(--ro-muted);
-  text-align: center;
-  padding: 4px;
-  line-height: 1.2;
-}
+// .db-cover moved to components/_cover-thumb.scss (<CoverThumb>).
 
 // ── Hero ──────────────────────────────────────────────────────────────────────
 .db-hero {
@@ -1556,9 +1529,7 @@
         flex-wrap: wrap;
 
         img,
-        div.db-cover--placeholder {
-          --db-cw: 40px;
-          --db-ch: 60px;
+        div.cover-thumb--placeholder {
           cursor: pointer;
           width: 60px;
           height: 90px;
@@ -1585,9 +1556,7 @@
       }
     }
 
-    >.db-cover {
-      --db-cw: 40px;
-      --db-ch: 60px;
+    >.cover-thumb {
       cursor: pointer;
       width: 64px;
       height: 96px;

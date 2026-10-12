@@ -24,6 +24,7 @@ import { FamilyRowsSkeleton } from '../components/Skeleton';
 import BookMark from '../components/BookMark';
 import InstallAppSection from '../components/InstallAppSection';
 import { useConfirm } from '../components/primitives/ConfirmDialog';
+import StarRating from '../components/primitives/StarRating';
 
 // v0.75: display price of the annual Pro variant, e.g. "$49.99". Unset = monthly only.
 const ANNUAL_PRICE = import.meta.env.VITE_ANNUAL_PRICE || null;
@@ -377,11 +378,7 @@ function PaceChart({ books, onOpenBook }) {
                 <div style={{ minWidth: 0 }}>
                   <div className="pf-pace-drill__title">{b.t}</div>
                   <div className="pf-pace-drill__author">{b.a}</div>
-                  {b.rating > 0 && (
-                    <div className="pf-pace-drill__stars">
-                      {'★'.repeat(b.rating)}<span className="dim">{'★'.repeat(5 - b.rating)}</span>
-                    </div>
-                  )}
+                  <StarRating as="div" className="pf-pace-drill__stars" value={b.rating} showEmpty emptyClassName="dim" />
                 </div>
               </div>
             ))}

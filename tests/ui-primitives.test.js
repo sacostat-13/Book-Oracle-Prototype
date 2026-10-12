@@ -54,3 +54,28 @@ describe('modals use the shared Modal', () => {
     expect(offenders).toEqual([]);
   });
 });
+
+describe('StarRating helpers', async () => {
+  const { clampStars, starString } = await import('../src/components/primitives/StarRating.jsx');
+
+  it('clamps to whole stars in 0–5', () => {
+    expect([-1, 0, 2.4, 2.6, 5, 9, 'x', null].map(clampStars)).toEqual([0, 0, 2, 3, 5, 5, 0, 0]);
+  });
+
+  it('formats a rating as text for tooltips', () => {
+    expect(starString(4)).toBe('★★★★');
+    expect(starString(0)).toBe('');
+  });
+
+  it('no component repeats ★ by hand any more', () => {
+    const offenders = [];
+    (function walk(dir) {
+      for (const name of readdirSync(dir)) {
+        const p = join(dir, name);
+        if (statSync(p).isDirectory()) walk(p);
+        else if (p.endsWith('.jsx') && !p.includes('primitives') && /'★'\.repeat/.test(readFileSync(p, 'utf8'))) offenders.push(p);
+      }
+    })(new URL('../src', import.meta.url).pathname);
+    expect(offenders).toEqual([]);
+  });
+});

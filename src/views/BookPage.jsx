@@ -38,6 +38,7 @@ import { fetchRecommendationReason } from '../lib/oracleProvenance';
 import OracleLongReading from '../components/OracleLongReading';
 import BookMark from '../components/BookMark';
 import { useConfirm } from '../components/primitives/ConfirmDialog';
+import StarRating from '../components/primitives/StarRating';
 
 
 // ─── Similar books ────────────────────────────────────────────────────────────
@@ -1315,10 +1316,7 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
                     <span className="bp-panel__label">{t('rating.eyebrowEdit')}</span>
                   </div>
                   {liveRating > 0 ? (
-                    <div className="bp-stars bp-panel__stars">
-                      {'★'.repeat(liveRating)}
-                      <span className="bp-stars__empty">{'★'.repeat(5 - liveRating)}</span>
-                    </div>
+                    <StarRating as="div" className="bp-stars bp-panel__stars" value={liveRating} showEmpty emptyClassName="bp-stars__empty" />
                   ) : (
                     <div className="bp-no-rating bp-panel__stars">
                       {t('bookModal.notRatedYet')}

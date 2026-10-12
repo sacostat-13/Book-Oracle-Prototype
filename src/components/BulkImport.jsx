@@ -7,6 +7,7 @@ import { findBookByTitle, bookKey, cleanTitle } from '../lib/bookHelpers';
 import { lookupByTitle, parseTitleList } from '../lib/bookLookup';
 import { callClaude, QuotaExceededError, parseJSONResponse } from '../lib/claudeApi';
 import ScanModal from './ScanModal';
+import StarRating from './primitives/StarRating';
 
 // v0.58 — this was the quota leak.
 //
@@ -290,7 +291,7 @@ function ResultRow({ row, onRemove, t }) {
             <div className="bulk-result-meta">
               {row.book.a}
               {row.book.g && <> · {row.book.g}</>}
-              {row.book.rating > 0 && <> · <span className="bulk-hl">{'★'.repeat(row.book.rating)}</span></>}
+              {row.book.rating > 0 && <> · <StarRating className="bulk-hl" value={row.book.rating} /></>}
             </div>
           </>
         ) : (

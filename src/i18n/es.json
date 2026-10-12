@@ -1020,7 +1020,8 @@
     "saveCreate": "Guardar y agregar",
     "saveNoRating": "Agregar a biblioteca",
     "saveEdit": "Guardar cambios",
-    "saving": "Guardando…"
+    "saving": "Guardando…",
+    "starsAria": "{count} de 5 estrellas"
   },
   "progress": {
     "eyebrow": "Progreso",
