@@ -77,7 +77,12 @@
 
   &:hover { border-color: var(--ro-gold); color: var(--ro-gold-text); }
 
-  &--active {
+  // `.chip.chip--active`, not `.chip--active`: components/_onboarding.scss
+  // defines `.chip` again, later in the cascade, and at equal specificity its
+  // `background: transparent` wiped this out — selected genres and moods in the
+  // list editor, club form and directory filters looked unselected. The three
+  // overlapping `.chip` definitions should become one (CSS Modules migration).
+  &.chip--active {
     background: var(--ro-gold);
     color: var(--ro-gold-on);
     border-color: var(--ro-gold);

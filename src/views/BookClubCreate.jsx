@@ -11,6 +11,7 @@ import { useT, useTNode } from '../lib/I18nContext';
 import { MOODS, moodTitleKey } from '../lib/moods';
 import { useProLimits } from '../lib/proGates';
 import ProGate from '../components/ProGate';
+import ChipToggleGroup from '../components/primitives/ChipToggleGroup';
 
 export default function BookClubCreate() {
   const { createClub, state } = useData();
@@ -33,14 +34,6 @@ export default function BookClubCreate() {
 
   const genres = state.genres || [];
   const isPublic = visibility === 'public';
-
-  function toggleGenre(id) {
-    setSelectedGenreIds((ids) => ids.includes(id) ? ids.filter((x) => x !== id) : [...ids, id]);
-  }
-
-  function toggleMood(id) {
-    setSelectedMoods((ids) => ids.includes(id) ? ids.filter((x) => x !== id) : [...ids, id]);
-  }
 
   async function handleSubmit() {
     if (!name.trim()) return;
@@ -106,19 +99,13 @@ export default function BookClubCreate() {
               {t('clubs.fieldGenres')}{' '}
               <span className="club-form__optional">({t('clubs.fieldOptional')})</span>
             </label>
-            <div className="club-form__genre-row">
-              {genres.map((g) => {
-                const selected = selectedGenreIds.includes(g.id);
-                return (
-                  <button
-                    key={g.id} type="button" onClick={() => toggleGenre(g.id)}
-                    className={`chip${selected ? ' chip--active' : ''}`}
-                  >
-                    {g.name}
-                  </button>
-                );
-              })}
-            </div>
+            <ChipToggleGroup
+              className="club-form__genre-row"
+              label={t('clubs.fieldGenres')}
+              options={genres.map((g) => ({ value: g.id, label: g.name }))}
+              value={selectedGenreIds}
+              onChange={setSelectedGenreIds}
+            />
           </div>
         )}
 
@@ -187,19 +174,13 @@ export default function BookClubCreate() {
                 {t('clubs.fieldMoods')}{' '}
                 <span className="club-form__optional">({t('clubs.fieldOptional')})</span>
               </label>
-              <div className="club-form__genre-row">
-                {MOODS.map((id) => {
-                  const selected = selectedMoods.includes(id);
-                  return (
-                    <button
-                      key={id} type="button" onClick={() => toggleMood(id)}
-                      className={`chip${selected ? ' chip--active' : ''}`}
-                    >
-                      {t(moodTitleKey(id))}
-                    </button>
-                  );
-                })}
-              </div>
+              <ChipToggleGroup
+                className="club-form__genre-row"
+                label={t('clubs.fieldMoods')}
+                options={MOODS.map((id) => ({ value: id, label: t(moodTitleKey(id)) }))}
+                value={selectedMoods}
+                onChange={setSelectedMoods}
+              />
             </div>
           </>
         )}

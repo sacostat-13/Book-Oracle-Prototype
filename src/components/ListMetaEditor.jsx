@@ -18,6 +18,7 @@
 import { useMemo, useState } from 'react';
 import { useT } from '../lib/I18nContext';
 import { MOODS, moodTitleKey } from '../lib/moods';
+import ChipToggleGroup from './primitives/ChipToggleGroup';
 
 // Below this many genres the "show all" toggle is pointless — everything fits.
 const GENRE_COLLAPSE_AT = 14;
@@ -52,20 +53,6 @@ export default function ListMetaEditor({
   const collapsible = ordered.length > GENRE_COLLAPSE_AT;
   const shown = (collapsible && !expanded) ? ordered.slice(0, GENRE_COLLAPSE_AT) : ordered;
 
-  function toggleGenre(id) {
-    if (disabled) return;
-    const next = selectedGenres.has(id)
-      ? (genreIds || []).filter((g) => g !== id)
-      : [...(genreIds || []), id];
-    onGenresChange(next);
-  }
-
-  function toggleMood(id) {
-    if (disabled) return;
-    const cur = moods || [];
-    onMoodsChange(cur.includes(id) ? cur.filter((m) => m !== id) : [...cur, id]);
-  }
-
   return (
     <div className="list-meta">
       {hint && <p className="list-meta__hint">{hint}</p>}
@@ -75,18 +62,14 @@ export default function ListMetaEditor({
           {t('lists.fieldGenres')}{' '}
           <span className="lists-optional-label">({t('lists.optional')})</span>
         </label>
-        <div className="club-form__genre-row">
-          {shown.map((g) => (
-            <button
-              key={g.id}
-              type="button"
-              disabled={disabled}
-              onClick={() => toggleGenre(g.id)}
-              className={`chip${selectedGenres.has(g.id) ? ' chip--active' : ''}`}
-            >
-              {g.name}
-            </button>
-          ))}
+        <ChipToggleGroup
+          className="club-form__genre-row"
+          label={t('lists.fieldGenres')}
+          options={shown.map((g) => ({ value: g.id, label: g.name }))}
+          value={genreIds}
+          onChange={onGenresChange}
+          disabled={disabled}
+        >
           {collapsible && (
             <button
               type="button"
@@ -98,7 +81,7 @@ export default function ListMetaEditor({
                 : t('lists.showAllGenres', { count: ordered.length - GENRE_COLLAPSE_AT })}
             </button>
           )}
-        </div>
+        </ChipToggleGroup>
       </div>
 
       <div className="list-meta__field">
@@ -106,19 +89,14 @@ export default function ListMetaEditor({
           {t('lists.fieldMoods')}{' '}
           <span className="lists-optional-label">({t('lists.optional')})</span>
         </label>
-        <div className="club-form__genre-row">
-          {MOODS.map((id) => (
-            <button
-              key={id}
-              type="button"
-              disabled={disabled}
-              onClick={() => toggleMood(id)}
-              className={`chip${(moods || []).includes(id) ? ' chip--active' : ''}`}
-            >
-              {t(moodTitleKey(id))}
-            </button>
-          ))}
-        </div>
+        <ChipToggleGroup
+          className="club-form__genre-row"
+          label={t('lists.fieldMoods')}
+          options={MOODS.map((id) => ({ value: id, label: t(moodTitleKey(id)) }))}
+          value={moods}
+          onChange={onMoodsChange}
+          disabled={disabled}
+        />
       </div>
     </div>
   );

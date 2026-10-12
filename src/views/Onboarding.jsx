@@ -12,6 +12,7 @@ import { supabase } from '../lib/supabase';
 import { findBookByTitle } from '../lib/bookHelpers';
 import { validateUsername, checkUsernameAvailability } from '../lib/useFollows';
 import { claimAnthologyReferral } from '../lib/anthologyInsights';
+import ChipToggleGroup from '../components/primitives/ChipToggleGroup';
 
 // v0.38: fixed set of mood/intent chips for the "what are you looking for right now" step.
 // Multi-select, up to MOOD_MAX. IDs are stable — used as keys in profile.currentMood and in i18n lookups.
@@ -107,22 +108,6 @@ export default function Onboarding() {
   }));
 
   const genreOptions = (state.genres || []).slice().sort((a, b) => a.name.localeCompare(b.name));
-
-  function toggleGenre(name) {
-    setFavoriteGenres((cur) => {
-      if (cur.includes(name)) return cur.filter((g) => g !== name);
-      if (cur.length >= GENRE_MAX) return cur;
-      return [...cur, name];
-    });
-  }
-
-  function toggleMood(id) {
-    setCurrentMood((cur) => {
-      if (cur.includes(id)) return cur.filter((m) => m !== id);
-      if (cur.length >= MOOD_MAX) return cur;
-      return [...cur, id];
-    });
-  }
 
   async function handleFile(file) {
     try {
@@ -296,18 +281,15 @@ export default function Onboarding() {
             <div className="onb-eyebrow">{t('onboarding.step2Eyebrow')}</div>
             <h1 className="onb-title">{t('onboarding.step2Title')}</h1>
             <p className="onb-desc">{t('onboarding.step2Desc')}</p>
-            <div className="chip-grid">
-              {genreOptions.map((g) => (
-                <button
-                  key={g.id}
-                  className={`chip ${favoriteGenres.includes(g.name) ? 'selected' : ''}`}
-                  disabled={!favoriteGenres.includes(g.name) && favoriteGenres.length >= GENRE_MAX}
-                  onClick={() => toggleGenre(g.name)}
-                >
-                  {g.name}
-                </button>
-              ))}
-            </div>
+            <ChipToggleGroup
+              className="chip-grid"
+              selectedClassName="selected"
+              label={t('onboarding.step2Title')}
+              options={genreOptions.map((g) => ({ value: g.name, label: g.name }))}
+              value={favoriteGenres}
+              onChange={setFavoriteGenres}
+              max={GENRE_MAX}
+            />
             <p className="onb-hint">{t('onboarding.genreCount', { count: favoriteGenres.length, max: GENRE_MAX })}</p>
             <div className="onb-actions">
               <button className="btn-secondary" onClick={() => setStep(2)}>{t('onboarding.back')}</button>
@@ -321,19 +303,19 @@ export default function Onboarding() {
             <div className="onb-eyebrow">{t('onboarding.step3Eyebrow')}</div>
             <h1 className="onb-title">{t('onboarding.step3Title')}</h1>
             <p className="onb-desc">{t('onboarding.step3Desc')}</p>
-            <div className="choice-grid">
-              {MOOD_CHOICES.map((m) => (
-                <button
-                  key={m.id}
-                  className={`choice ${currentMood.includes(m.id) ? 'selected' : ''}`}
-                  disabled={!currentMood.includes(m.id) && currentMood.length >= MOOD_MAX}
-                  onClick={() => toggleMood(m.id)}
-                >
-                  <div className="choice-title">{m.title}</div>
-                  <div className="choice-sub">{m.sub}</div>
-                </button>
-              ))}
-            </div>
+            <ChipToggleGroup
+              className="choice-grid"
+              optionClassName="choice"
+              selectedClassName="selected"
+              label={t('onboarding.step3Title')}
+              options={MOOD_CHOICES.map((m) => ({
+                value: m.id,
+                label: <><div className="choice-title">{m.title}</div><div className="choice-sub">{m.sub}</div></>,
+              }))}
+              value={currentMood}
+              onChange={setCurrentMood}
+              max={MOOD_MAX}
+            />
 
             {/* v0.59: goal moved here from its own step and sits directly under
                 mood. They were reading as the same question on two screens;

@@ -79,3 +79,26 @@ describe('StarRating helpers', async () => {
     expect(offenders).toEqual([]);
   });
 });
+
+describe('pickers and tabs use the shared primitives', () => {
+  const sources = [];
+  (function walk(dir) {
+    for (const name of readdirSync(dir)) {
+      const p = join(dir, name);
+      if (statSync(p).isDirectory()) walk(p);
+      else if (p.endsWith('.jsx') && !p.includes('primitives')) sources.push([p, readFileSync(p, 'utf8')]);
+    }
+  })(new URL('../src', import.meta.url).pathname);
+
+  it('no hand-rolled tablists (use <Tabs>)', () => {
+    expect(sources.filter(([, s]) => /role="tablist"/.test(s)).map(([p]) => p)).toEqual([]);
+  });
+
+  it('no local toggleGenre/toggleMood (use <ChipToggleGroup> or toggleInList)', () => {
+    expect(sources.filter(([, s]) => /function toggle(Genre|Mood)\b/.test(s)).map(([p]) => p)).toEqual([]);
+  });
+
+  it('no local useClickOutside copies (use src/hooks)', () => {
+    expect(sources.filter(([, s]) => /function useClickOutside\b/.test(s)).map(([p]) => p)).toEqual([]);
+  });
+});

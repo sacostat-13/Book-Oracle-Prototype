@@ -18,6 +18,7 @@ import { useState } from 'react';
 import { useAuth } from '../lib/AuthContext';
 import { useT, useTNode } from '../lib/I18nContext';
 import CornerBrackets from './CornerBrackets';
+import Tabs from './primitives/Tabs';
 
 // signin  — email + password (default)
 // signup  — create an account with a password
@@ -249,26 +250,17 @@ export default function SignInGate({ onClose }) {
                 reader arriving from Landing should not have to work out which
                 of the two things the one button does. */}
             {(mode === 'signin' || mode === 'signup') && (
-              <div className="sign-in-tabs" role="tablist">
-                <button
-                  type="button"
-                  role="tab"
-                  aria-selected={mode === 'signin'}
-                  className={`sign-in-tab${mode === 'signin' ? ' active' : ''}`}
-                  onClick={() => switchMode('signin')}
-                >
-                  {t('signIn.tabSignIn')}
-                </button>
-                <button
-                  type="button"
-                  role="tab"
-                  aria-selected={mode === 'signup'}
-                  className={`sign-in-tab${mode === 'signup' ? ' active' : ''}`}
-                  onClick={() => switchMode('signup')}
-                >
-                  {t('signIn.tabCreate')}
-                </button>
-              </div>
+              <Tabs
+                className="sign-in-tabs"
+                tabClassName="sign-in-tab"
+                activeClassName="active"
+                tabs={[
+                  { id: 'signin', label: t('signIn.tabSignIn') },
+                  { id: 'signup', label: t('signIn.tabCreate') },
+                ]}
+                value={mode}
+                onChange={switchMode}
+              />
             )}
 
             {(mode === 'magic' || mode === 'forgot') && (
