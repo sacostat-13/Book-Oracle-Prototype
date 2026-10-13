@@ -37,10 +37,13 @@
     "ws": "^8.21.0"
   },
   "devDependencies": {
+    "@testing-library/dom": "^10.4.0",
+    "@testing-library/react": "^16.1.0",
     "@vitejs/plugin-react": "^4.3.1",
     "eslint": "^9.13.0",
     "eslint-plugin-react-hooks": "^5.0.0",
     "jpeg-js": "^0.4.4",
+    "jsdom": "^25.0.1",
     "pngjs": "^7.0.0",
     "sass": "^1.77.0",
     "supabase": "^2.22.6",
