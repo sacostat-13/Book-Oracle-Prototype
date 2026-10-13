@@ -17,13 +17,13 @@
 // Viewing alone silently upserts the book with status='discovered'.
 
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { useData } from '../lib/DataContext';
-import { useRouter } from '../lib/RouterContext';
-import { useT } from '../lib/I18nContext';
-import { bookKey, buildBookPageParams } from '../lib/bookHelpers';
-import { hardcoverSearchMulti } from '../lib/hardcoverService';
-import { googleBooksSearchMulti, titleMatchScore } from '../lib/googleBooksService';
-import { callClaude, parseJSONResponse, QuotaExceededError } from '../lib/claudeApi';
+import { useData } from '../contexts/DataContext';
+import { useRouter } from '../contexts/RouterContext';
+import { useT } from '../contexts/I18nContext';
+import { bookKey, buildBookPageParams } from '../lib/book/bookHelpers';
+import { hardcoverSearchMulti } from '../lib/sources/hardcoverService';
+import { googleBooksSearchMulti, titleMatchScore } from '../lib/sources/googleBooksService';
+import { callClaude, parseJSONResponse, QuotaExceededError } from '../lib/oracle/claudeApi';
 import BookCover from './BookCover';
 
 const DEBOUNCE_MS = 300;

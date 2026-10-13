@@ -8,7 +8,7 @@
 -- actually sees it, not as the catalogue reports it.
 --
 -- == Eligibility =============================================================
--- Mirrors baseQuery() in src/lib/useStacks.js exactly:
+-- Mirrors baseQuery() in src/hooks/useStacks.js exactly:
 --
 --     .neq('status', 'flagged')
 --     .not('cover_url', 'is', null)

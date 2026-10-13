@@ -2,7 +2,7 @@
 //
 //   node batch-scripts/probes/workGroups.probe.mjs
 //
-// No database, no network, no test framework: this imports src/lib/workGroups.js
+// No database, no network, no test framework: this imports src/lib/book/workGroups.js
 // directly and runs it over hand-built rows. Written after the first release of
 // "More by this author" shipped and the section showed *The River Has Roots*
 // alongside *El río tiene raíces*, two entries for *This Is How You Lose the
@@ -15,7 +15,7 @@
 // one merely shows a book twice. If you loosen a signal in workGroups.js, this
 // file is what tells you what you broke.
 
-import { collapseWorks } from '../../src/lib/workGroups.js';
+import { collapseWorks } from '../../src/lib/book/workGroups.js';
 let pass=0, fail=0;
 const check=(n,c,e='')=>{ if(c){pass++;console.log('  ok  '+n);} else {fail++;console.log('  FAIL '+n+'  '+e);} };
 

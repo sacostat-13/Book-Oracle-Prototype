@@ -11,10 +11,10 @@
 // follow relationship would have read as an afterthought.
 
 import { useEffect, useState, useCallback } from 'react';
-import { useData } from '../lib/DataContext';
+import { useData } from '../contexts/DataContext';
 import { CardGridSkeleton } from '../components/Skeleton';
-import { useRouter } from '../lib/RouterContext';
-import { useT, useTNode } from '../lib/I18nContext';
+import { useRouter } from '../contexts/RouterContext';
+import { useT, useTNode } from '../contexts/I18nContext';
 import EmptyState from '../components/EmptyState';
 import CoverStrip from '../components/CoverStrip';
 

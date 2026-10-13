@@ -36,9 +36,9 @@
 // Public and prerendered — see the note in GenresIndex.jsx.
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { useRouter, RouteLink } from '../lib/RouterContext';
-import { useDocumentMeta } from '../lib/useDocumentMeta';
-import { fetchFamily, fetchFamilyShelf, fetchBooksByIds, GENRE_PAGE_SIZE } from '../lib/genreService';
+import { useRouter, RouteLink } from '../contexts/RouterContext';
+import { useDocumentMeta } from '../hooks/useDocumentMeta';
+import { fetchFamily, fetchFamilyShelf, fetchBooksByIds, GENRE_PAGE_SIZE } from '../lib/api/genreService';
 import BookShelfGrid, { ShelfMore, ShelfOracle } from '../components/BookShelfGrid';
 
 export default function FamilyPage() {

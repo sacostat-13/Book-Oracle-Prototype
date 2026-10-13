@@ -18,8 +18,8 @@
 // v0.59
 
 import { useState } from 'react';
-import { useT } from '../lib/I18nContext';
-import { openBookTab, displayAuthor } from '../lib/bookHelpers';
+import { useT } from '../contexts/I18nContext';
+import { openBookTab, displayAuthor } from '../lib/book/bookHelpers';
 
 export default function StackCard({ book, onAdd, onHide, state, busy }) {
   const t = useT();

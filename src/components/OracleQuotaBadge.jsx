@@ -3,9 +3,9 @@
 //   <OracleQuotaBadge />   — inline badge: "3 of 5 left today"
 //   <OracleQuotaWall />    — full empty-state when all calls are exhausted
 
-import { useT } from '../lib/I18nContext';
-import { useOracleQuota } from '../lib/OracleQuotaContext';
-import { useRouter } from '../lib/RouterContext';
+import { useT } from '../contexts/I18nContext';
+import { useOracleQuota } from '../contexts/OracleQuotaContext';
+import { useRouter } from '../contexts/RouterContext';
 import BookMark from './BookMark';
 
 export function OracleQuotaBadge({ style = {} }) {

@@ -7,9 +7,9 @@
 // v0.59
 
 import { useState, useMemo, useCallback } from 'react';
-import { useData } from '../lib/DataContext';
-import { useT } from '../lib/I18nContext';
-import { useStacks, searchStacks } from '../lib/useStacks';
+import { useData } from '../contexts/DataContext';
+import { useT } from '../contexts/I18nContext';
+import { useStacks, searchStacks } from '../hooks/useStacks';
 import StackCard from '../components/StackCard';
 import { CoverGridSkeleton } from '../components/Skeleton';
 

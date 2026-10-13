@@ -2,14 +2,14 @@
 // v0.40: visibility (private/public), join_mode, max_members, mood tags.
 
 import { useState } from 'react';
-import { useData } from '../lib/DataContext';
-import { useRouter } from '../lib/RouterContext';
-import { useT, useTNode } from '../lib/I18nContext';
-// Was a local copy of the v0.38 onboarding taxonomy. Lifted to lib/moods.js
+import { useData } from '../contexts/DataContext';
+import { useRouter } from '../contexts/RouterContext';
+import { useT, useTNode } from '../contexts/I18nContext';
+// Was a local copy of the v0.38 onboarding taxonomy. Lifted to data/moods.js
 // when Curated Lists became the third surface to need it — three hand-kept
 // copies of the same list is how they stop matching.
-import { MOODS, moodTitleKey } from '../lib/moods';
-import { useProLimits } from '../lib/proGates';
+import { MOODS, moodTitleKey } from '../data/moods';
+import { useProLimits } from '../hooks/useProLimits';
 import ProGate from '../components/ProGate';
 import ChipToggleGroup from '../components/primitives/ChipToggleGroup';
 

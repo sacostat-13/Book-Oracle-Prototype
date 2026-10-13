@@ -13,28 +13,28 @@
 // netlify/functions/share-card.js for the shared/OG PNG — keep the two in
 // sync when touching either.)
 //
-// `moment` shapes come from src/lib/shareMoments.js, plus the non-completion
+// `moment` shapes come from src/lib/achievements/shareMoments.js, plus the non-completion
 // variants fired directly by views:
 //   { type: 'session_created', clubName, bookTitle, bookAuthor, coverUrl, startsAt, endsAt }
 //   { type: 'session_done',    clubName, bookTitle, bookAuthor, coverUrl }
 
-import { useI18n } from '../lib/I18nContext';
+import { useI18n } from '../contexts/I18nContext';
 import { GENRE_CARD_META } from '../lib/genreCards';
 import { CARD_GENRES } from '../lib/cardGenres';
 // 83 hand-written genre sub-lines that were imported nowhere. The file's own
 // header says momentCopy falls back to them; it never did. Wiring them in is
 // free coverage for genres that have a line but no card art.
 import { GENRE_DESCRIPTIONS } from '../lib/genreDescriptions';
-import { frameSlugFor } from '../lib/cardResolve';
+import { frameSlugFor } from '../lib/share/cardResolve';
 import { CARD_BOXES, DEFAULT_BOX } from '../lib/cardBoxes';
-import { useData } from '../lib/DataContext';
-import { sanitizeTitleKey } from '../lib/titles';
+import { useData } from '../contexts/DataContext';
+import { sanitizeTitleKey } from '../lib/achievements/readerRanks';
 import BookMark from './BookMark';
 
 export const SHARE_CARD_WIDTH = 540;
 export const SHARE_CARD_HEIGHT = 675;
 
-// Exported so the server-render URL builder (src/lib/shareCardImage.js) can
+// Exported so the server-render URL builder (src/lib/share/shareCardImage.js) can
 // resolve the exact same copy with the client's t() and pass finished strings
 // to the share-card function — keeping i18n on the client and the two renders
 // in sync.

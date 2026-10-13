@@ -1,6 +1,6 @@
 import { useId } from 'react';
-import { useI18n, useT } from '../lib/I18nContext';
-import { publishedReleases, currentRelease, CURRENT_VERSION } from '../lib/releases';
+import { useI18n, useT } from '../contexts/I18nContext';
+import { publishedReleases, currentRelease, CURRENT_VERSION } from '../data/releases';
 import Modal from './primitives/Modal';
 
 // Two modes, one component.

@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { useI18n } from '../lib/I18nContext';
-import { publishedReleases, CURRENT_VERSION } from '../lib/releases';
-import { useT } from '../lib/I18nContext';
+import { useI18n } from '../contexts/I18nContext';
+import { publishedReleases, CURRENT_VERSION } from '../data/releases';
+import { useT } from '../contexts/I18nContext';
 
 import ReleaseNotesModal from './ReleaseNotesModal';
 

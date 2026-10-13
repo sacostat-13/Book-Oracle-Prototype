@@ -30,7 +30,7 @@ const state = vi.hoisted(() => ({ mode: 'empty' }));
 // A minimal Supabase query-builder double. Every method returns `this` so any
 // chain works, and awaiting it resolves to the shape postgrest-js gives:
 // { data, error }. `mode` decides which.
-vi.mock('../src/lib/supabase.js', () => {
+vi.mock('../src/lib/api/supabase.js', () => {
   const result = () =>
     state.mode === 'error'
       ? { data: null, error: { message: 'column x does not exist', code: '42703' } }
@@ -50,7 +50,7 @@ vi.mock('../src/lib/supabase.js', () => {
   return { supabase: { from: () => builder() } };
 });
 
-const svc = await import('../src/lib/genreService.js');
+const svc = await import('../src/lib/api/genreService.js');
 
 let warn;
 beforeEach(() => { warn = vi.spyOn(console, 'warn').mockImplementation(() => {}); });

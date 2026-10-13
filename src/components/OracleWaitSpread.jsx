@@ -11,8 +11,8 @@
 // by the time the spread appears, and never fetched at all for a quick
 // answer. No WebGL (or reduced motion, Save-Data…) → the quote loader only.
 import { useEffect, useRef, useState } from 'react';
-import { useT } from '../lib/I18nContext';
-import { canUseWebGL, readColorVar, isParchment } from '../lib/webgl';
+import { useT } from '../contexts/I18nContext';
+import { canUseWebGL, readColorVar, isParchment } from '../lib/device/webgl';
 
 const SHOW_AFTER_MS = 8000;
 const SIGILS = ['✧', '☾', '⚜', '❦', '✦', '☼', '❧'];

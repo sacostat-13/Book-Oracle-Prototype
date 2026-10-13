@@ -1,22 +1,22 @@
 import { useState, useRef, useEffect } from 'react';
-import { useData } from '../lib/DataContext';
-import { useAuth } from '../lib/AuthContext';
-import { useRouter } from '../lib/RouterContext';
-import { useT, useTNode } from '../lib/I18nContext';
-import { parseGoodreadsCSV } from '../lib/goodreadsImport';
-import { MOODS, moodTitleKey, moodSubKey } from '../lib/moods';
+import { useData } from '../contexts/DataContext';
+import { useAuth } from '../contexts/AuthContext';
+import { useRouter } from '../contexts/RouterContext';
+import { useT, useTNode } from '../contexts/I18nContext';
+import { parseGoodreadsCSV } from '../lib/sources/goodreadsImport';
+import { MOODS, moodTitleKey, moodSubKey } from '../data/moods';
 import GoodreadsImportPanel from '../components/GoodreadsImportPanel';
 import OnboardingStacks from '../components/OnboardingStacks';
 import CornerBrackets from '../components/CornerBrackets';
-import { supabase } from '../lib/supabase';
-import { findBookByTitle } from '../lib/bookHelpers';
-import { validateUsername, checkUsernameAvailability } from '../lib/useFollows';
-import { claimAnthologyReferral } from '../lib/anthologyInsights';
+import { supabase } from '../lib/api/supabase';
+import { findBookByTitle } from '../lib/book/bookHelpers';
+import { validateUsername, checkUsernameAvailability } from '../hooks/useFollows';
+import { claimAnthologyReferral } from '../lib/api/anthologyInsights';
 import ChipToggleGroup from '../components/primitives/ChipToggleGroup';
 
 // v0.38: fixed set of mood/intent chips for the "what are you looking for right now" step.
 // Multi-select, up to MOOD_MAX. IDs are stable — used as keys in profile.currentMood and in i18n lookups.
-// The list itself now lives in lib/moods.js; this was one of four copies.
+// The list itself now lives in data/moods.js; this was one of four copies.
 
 const MOOD_MAX = 3;
 const GENRE_MAX = 5;

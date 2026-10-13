@@ -1,6 +1,6 @@
-import { useRouter } from '../lib/RouterContext';
-import { useT } from '../lib/I18nContext';
-import { useDocumentMeta } from '../lib/useDocumentMeta';
+import { useRouter } from '../contexts/RouterContext';
+import { useT } from '../contexts/I18nContext';
+import { useDocumentMeta } from '../hooks/useDocumentMeta';
 import CornerBrackets from '../components/CornerBrackets';
 
 // A closed, weeping eye — the Oracle, unable to see this particular path.

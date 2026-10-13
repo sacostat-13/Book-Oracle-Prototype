@@ -13,9 +13,9 @@
 // social post should be able to see that following is possible; hiding the
 // button entirely hides the feature.
 import { useState } from 'react';
-import { useData } from '../lib/DataContext';
-import { useAuth } from '../lib/AuthContext';
-import { useT } from '../lib/I18nContext';
+import { useData } from '../contexts/DataContext';
+import { useAuth } from '../contexts/AuthContext';
+import { useT } from '../contexts/I18nContext';
 
 export default function FollowListButton({ listId, following, onChange, onRequireSignIn }) {
   const { followList, unfollowList, showToast } = useData();

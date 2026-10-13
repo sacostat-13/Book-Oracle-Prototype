@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { fetchCoverURL } from '../lib/coverService';
-import { PALETTES, ORNAMENTS, hashStr } from '../lib/bookHelpers';
+import { fetchCoverURL } from '../lib/sources/coverService';
+import { PALETTES, ORNAMENTS, hashStr } from '../lib/book/bookHelpers';
 
 export default function BookCover({ title, author, coverUrl, className = '', eager = false }) {
   // If a cached coverUrl is provided, use it immediately and skip the network fetch.

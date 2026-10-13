@@ -18,9 +18,9 @@
 // both mean cancel, because the safe default when someone is unsure is to not
 // spend their call.
 
-import { useT } from '../lib/I18nContext';
-import { useOracleQuota } from '../lib/OracleQuotaContext';
-import { useRouter } from '../lib/RouterContext';
+import { useT } from '../contexts/I18nContext';
+import { useOracleQuota } from '../contexts/OracleQuotaContext';
+import { useRouter } from '../contexts/RouterContext';
 import Modal from './primitives/Modal';
 
 export default function OracleGateDialog() {

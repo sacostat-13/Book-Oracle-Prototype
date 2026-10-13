@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { useT } from '../lib/I18nContext';
-import { useInstallPrompt } from '../lib/installPrompt';
+import { useT } from '../contexts/I18nContext';
+import { useInstallPrompt } from '../lib/device/installPrompt';
 
 // "Keep the Oracle within reach" — Profile → Account.
 // Renders one of four states; see useInstallPrompt for what each means.

@@ -11,9 +11,9 @@
 //   compact       — smaller visual footprint (used inside question threads)
 
 import { useState } from 'react';
-import { useAuth } from '../lib/AuthContext';
-import { useT } from '../lib/I18nContext';
-import { titleLabel } from '../lib/titles';
+import { useAuth } from '../contexts/AuthContext';
+import { useT } from '../contexts/I18nContext';
+import { titleLabel } from '../lib/achievements/readerRanks';
 import Avatar from './Avatar';
 
 function relativeTime(dateStr, t) {

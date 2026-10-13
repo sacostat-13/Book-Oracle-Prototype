@@ -326,7 +326,7 @@ async function throttle() {
 // nothing. tests/failure-is-not-empty.test.js exists for this shape.
 //
 // It is also why the GraphQL selection below is limited to the fields
-// src/lib/hardcoverService.js already proves exist. Asking for a `language` to
+// src/lib/sources/hardcoverService.js already proves exist. Asking for a `language` to
 // filter translations would be useful and would 400 the entire query if the
 // field is named something else — and there is no way to check from here.
 async function hcGql(query, variables = {}, attempt = 1) {

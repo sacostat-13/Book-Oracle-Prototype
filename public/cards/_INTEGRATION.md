@@ -45,7 +45,7 @@ It scans `public/cards/<slug>/` and regenerates three things:
 Re-run it any time you add or replace a frame/art. Commit the regenerated
 `art-trim.png`, `cardGenres.js`, and `cardBoxes.js`.
 
-## How a moment resolves (src/lib/cardResolve.js)
+## How a moment resolves (src/lib/share/cardResolve.js)
 - `genre_count` / `new_genre` → `GENRE_CARD_META[genre].slug`
 - `series_completed → moment-series`, `nth_book → moment-milestone`,
   `goal_completed → moment-goal`, `plan_completed → moment-plan`,
@@ -59,11 +59,11 @@ Re-run it any time you add or replace a frame/art. Commit the regenerated
   description.
 - `src/lib/cardGenres.js` — ready slugs (generated)
 - `src/lib/cardBoxes.js` — per-frame opening boxes (generated)
-- `src/lib/cardResolve.js` — frameSlugFor() + isFramedMoment() + MOMENT_SLUGS
+- `src/lib/share/cardResolve.js` — frameSlugFor() + isFramedMoment() + MOMENT_SLUGS
 - `src/components/ShareCard.jsx` — momentCopy() wraps baseCopy() with withFramed();
   framed moments drop the cover for the frame+art (book keeps the cover in the slot).
   DOM renders the framed card using the per-frame box.
-- `src/lib/shareCardImage.js` — momentCardUrl() passes `frame`, `box`, and (book) `cover`.
+- `src/lib/share/shareCardImage.js` — momentCardUrl() passes `frame`, `box`, and (book) `cover`.
 - `netlify/functions/share-card.mjs` — framed path: loads `/cards/<frame>/frame.png`
   + art-trim (or the cover for book), renders at the passed box.
 - `src/lib/genreDescriptions.js` — a stale doc line claimed this was orphaned

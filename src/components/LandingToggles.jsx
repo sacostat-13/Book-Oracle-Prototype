@@ -10,8 +10,8 @@
 //
 // Rendered in two places (see LandingNav): the desktop nav bar and the mobile
 // slide-down sheet. `variant="sheet"` lays them out full-width, stacked.
-import { useI18n } from '../lib/I18nContext';
-import { useTheme } from '../lib/ThemeContext';
+import { useI18n } from '../contexts/I18nContext';
+import { useTheme } from '../contexts/ThemeContext';
 
 function SunIcon() {
   return (

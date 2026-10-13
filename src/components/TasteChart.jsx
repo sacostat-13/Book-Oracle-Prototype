@@ -12,14 +12,14 @@
 // person, so the card says so instead of offering the call.
 
 import { useEffect, useState } from 'react';
-import { useData } from '../lib/DataContext';
-import { useT, useI18n, langDirective } from '../lib/I18nContext';
-import { useOracleQuota } from '../lib/OracleQuotaContext';
-import { useProLimits } from '../lib/proGates';
-import { callClaude, parseJSONResponse, QuotaExceededError } from '../lib/claudeApi';
-import { buildShelfSignature, buildExcludeHint, filterAlreadyKnown } from '../lib/oraclePrompt';
-import { buildTasteProfile, describeTasteProfile } from '../lib/matchHelpers';
-import { loadReading, saveReading } from '../lib/oracleReadings';
+import { useData } from '../contexts/DataContext';
+import { useT, useI18n, langDirective } from '../contexts/I18nContext';
+import { useOracleQuota } from '../contexts/OracleQuotaContext';
+import { useProLimits } from '../hooks/useProLimits';
+import { callClaude, parseJSONResponse, QuotaExceededError } from '../lib/oracle/claudeApi';
+import { buildShelfSignature, buildExcludeHint, filterAlreadyKnown } from '../lib/oracle/oraclePrompt';
+import { buildTasteProfile, describeTasteProfile } from '../lib/scoring/matchHelpers';
+import { loadReading, saveReading } from '../lib/oracle/oracleReadings';
 
 const MIN_BOOKS = 5;
 const REDRAW_AFTER_DAYS = 30;

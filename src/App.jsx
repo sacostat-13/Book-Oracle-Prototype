@@ -1,11 +1,11 @@
 import { lazy, Suspense, useState, useRef, useEffect } from 'react';
-import { bookKey, openBookTab } from './lib/bookHelpers';
-import { canonicalUrl } from './lib/siteUrl';
-import { useAuth } from './lib/AuthContext';
-import { useData } from './lib/DataContext';
-import { useRouter } from './lib/RouterContext';
-import { useT, useTNode } from './lib/I18nContext';
-import { useDocumentMeta } from './lib/useDocumentMeta';
+import { bookKey, openBookTab } from './lib/book/bookHelpers';
+import { canonicalUrl } from './lib/util/siteUrl';
+import { useAuth } from './contexts/AuthContext';
+import { useData } from './contexts/DataContext';
+import { useRouter } from './contexts/RouterContext';
+import { useT, useTNode } from './contexts/I18nContext';
+import { useDocumentMeta } from './hooks/useDocumentMeta';
 
 import Nav from './components/Nav';
 import LandingNav from './components/LandingNav';
@@ -185,7 +185,7 @@ function AppRoutes() {
   // v0.61.2 also drops window.location.search from the canonical. `?lang=en`
   // is a UI preference, not a different document — including it told Google
   // that `/` and `/?lang=en` were two pages competing for the same content.
-  // See src/lib/siteUrl.js.
+  // See src/lib/util/siteUrl.js.
   useEffect(() => {
     // 2026-09-08: series-page owns its canonical and this effect must not fight
     // it. Two spellings of one series ("Chronicles of Narnia" / "The Chronicles

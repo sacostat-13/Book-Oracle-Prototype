@@ -104,7 +104,7 @@ Five things worth knowing before touching genre code:
 
 ### Accomplishment kinds live in two places
 
-`EARNABLE_TYPES` in `src/lib/accomplishments.js` and the
+`EARNABLE_TYPES` in `src/lib/achievements/accomplishments.js` and the
 `reading_accomplishments_kind_check` constraint in Postgres are the same list,
 and they cannot see each other. **Add a moment type to one and you must add it
 to the other in the same change.**
@@ -225,7 +225,7 @@ Three things worth knowing before touching either:
    NULL and stays eligible — for the next run, and for `oracleBatch`, which knows
    things a bibliographic database does not.
 
-`src/lib/originalLanguage.js` holds every rule that can be got wrong without a
+`src/lib/book/originalLanguage.js` holds every rule that can be got wrong without a
 network call — author matching, placeholder rejection, code normalisation,
 work-group propagation, write precedence — so
 `probes/originalLanguage.probe.mjs` can exercise it offline. Run the probe
@@ -308,7 +308,7 @@ answer is nothing**, so an honest shrug is recorded as asked-and-answered.
 mean the row was *attempted*, not asked; writing a timestamp for them turns an
 outage into a permanent "we checked, there is nothing" — the 2026-08-17
 postmortem's root cause with a date on it. `shouldStampChecked()` in
-`src/lib/originalLanguage.js` owns that call and the probe asserts on it.
+`src/lib/book/originalLanguage.js` owns that call and the probe asserts on it.
 
 Four states, all meaningful:
 
@@ -423,7 +423,7 @@ means.
 |---|---|
 | `probes/probeHardcoverTags.mjs` | What Hardcover actually calls a genre. `--vocab`, `--variants`, `--neighbours "Gothic"`. Run this before editing `GENRE_MAP` in `netlify/functions/catalog-crawl.mjs`. |
 | `probes/debugCover.mjs` | Trace the cover lookup chain for one book and print what each source returned. |
-| `probes/originalLanguage.probe.mjs` | 55 offline assertions over `src/lib/originalLanguage.js` — author matching, placeholder rejection, ISO-code normalisation, work-group propagation, write precedence. No network, no database. Exit 1 on regression, so it is safe in CI. |
+| `probes/originalLanguage.probe.mjs` | 55 offline assertions over `src/lib/book/originalLanguage.js` — author matching, placeholder rejection, ISO-code normalisation, work-group propagation, write precedence. No network, no database. Exit 1 on regression, so it is safe in CI. |
 | `probes/isbndb.probe.mjs` | What ISBNdb actually returns for a given ISBN, and whether a bulk call costs one search or a hundred. |
 | `probes/titleLanguage.probe.mjs` | The title-language heuristic against known-awkward titles. |
 | `probes/workGroups.probe.mjs` | `collapseWorks()` against hand-built rows: originals, translations, series, and pairs that must *not* collapse. |

@@ -16,7 +16,7 @@
 // rest of the page.
 import { useEffect, useRef } from 'react';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
-import { canUseWebGL, whenIdle } from '../../lib/webgl';
+import { canUseWebGL, whenIdle } from '../../lib/device/webgl';
 
 export default function StarField({ fadeRef }) {
   const canvasRef = useRef(null);

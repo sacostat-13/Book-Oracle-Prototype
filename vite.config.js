@@ -11,7 +11,7 @@ import { fileURLToPath } from 'node:url';
 
 // v0.52: virtual module listing public/avatars/*.svg, so the preset avatar
 // gallery is driven by the folder's contents — drop a new SVG in, it shows up
-// in the Profile picker; no manifest array to maintain (see src/lib/avatars.js
+// in the Profile picker; no manifest array to maintain (see src/data/avatars.js
 // for the filename convention). Dev server invalidates on add/remove, so new
 // files appear without a restart; production bakes the list at build time
 // (adding files means a deploy anyway — they live in the repo).
@@ -48,9 +48,9 @@ const AVATARS_DIR = path.resolve(ROOT, 'public/avatars');
 // derives from it and treats disagreement as a build failure rather than
 // something to notice later in a README footnote.
 function readCurrentVersionFromReleases() {
-  const src = fs.readFileSync(path.resolve(ROOT, 'src/lib/releases.js'), 'utf8');
+  const src = fs.readFileSync(path.resolve(ROOT, 'src/data/releases.js'), 'utf8');
   const m = src.match(/export const CURRENT_VERSION\s*=\s*['"]v?([^'"]+)['"]/);
-  if (!m) throw new Error('vite.config: could not read CURRENT_VERSION from src/lib/releases.js');
+  if (!m) throw new Error('vite.config: could not read CURRENT_VERSION from src/data/releases.js');
   return m[1];
 }
 

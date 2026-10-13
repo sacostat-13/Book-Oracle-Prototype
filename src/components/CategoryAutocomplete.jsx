@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { useData } from '../lib/DataContext';
-import { useT } from '../lib/I18nContext';
+import { useData } from '../contexts/DataContext';
+import { useT } from '../contexts/I18nContext';
 
 const DEBOUNCE_MS = 180;
 

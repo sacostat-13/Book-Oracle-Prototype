@@ -3,8 +3,8 @@
 // Context-aware: different actions for Wishlist, Library, ListDetail.
 
 import { useState } from 'react';
-import { useData } from '../lib/DataContext';
-import { useT } from '../lib/I18nContext';
+import { useData } from '../contexts/DataContext';
+import { useT } from '../contexts/I18nContext';
 import AddToListModal from './AddToListModal';
 import { useConfirm } from './primitives/ConfirmDialog';
 

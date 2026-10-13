@@ -77,7 +77,7 @@ ORDER BY cause;
 -- Backfills books.genre from the book_genres links that already exist, using
 -- the same rule the app uses when it has to choose one genre from several:
 -- the MOST SPECIFIC one, i.e. lowest global usage_count. See pickGenre() in
--- src/lib/bookHelpers.js -- if you change one, change the other, or a book is
+-- src/lib/book/bookHelpers.js -- if you change one, change the other, or a book is
 -- filed under one genre in the browser and another on the wall.
 --
 -- Ties break alphabetically, matching the client, so the result is stable.

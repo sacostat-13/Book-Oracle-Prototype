@@ -11,7 +11,7 @@
 
 import { createContext, useCallback, useContext, useId, useRef, useState } from 'react';
 import Modal from './Modal';
-import { useT } from '../../lib/I18nContext';
+import { useT } from '../../contexts/I18nContext';
 
 const ConfirmContext = createContext(null);
 

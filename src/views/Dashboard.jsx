@@ -3,24 +3,24 @@
 // DS spec: gradient surfaces, gold section eyebrows, consistent cover sizes.
 
 import { useMemo, useState, useCallback, useEffect } from 'react';
-import { useData } from '../lib/DataContext';
-import { effectivePages, effectiveMinutes, isAudioEdition, formatMinutes } from '../lib/editions';
+import { useData } from '../contexts/DataContext';
+import { effectivePages, effectiveMinutes, isAudioEdition, formatMinutes } from '../lib/book/editions';
 import { RowListSkeleton } from '../components/Skeleton';
-import { useRouter } from '../lib/RouterContext';
-import { useT, useTNode } from '../lib/I18nContext';
-import { useAuth } from '../lib/AuthContext';
-import { useOracleQuota } from '../lib/OracleQuotaContext';
-import { callClaude, QuotaExceededError } from '../lib/claudeApi';
-import { bookKey, openBookTab } from '../lib/bookHelpers';
-import { sample } from '../lib/random';
-import { monthlyReadingStreak, streakTemperature } from '../lib/readingStreak';
-import { parseIsoDate } from '../lib/dates';
-import { buildTasteProfile, suggestLevelFromTaste, goalDirective, describeTasteProfile } from '../lib/matchHelpers';
-import { getFollowingFeedEvents } from '../lib/useFollows';
-import { supabase } from '../lib/supabase';
+import { useRouter } from '../contexts/RouterContext';
+import { useT, useTNode } from '../contexts/I18nContext';
+import { useAuth } from '../contexts/AuthContext';
+import { useOracleQuota } from '../contexts/OracleQuotaContext';
+import { callClaude, QuotaExceededError } from '../lib/oracle/claudeApi';
+import { bookKey, openBookTab } from '../lib/book/bookHelpers';
+import { sample } from '../lib/util/random';
+import { monthlyReadingStreak, streakTemperature } from '../lib/scoring/readingStreak';
+import { parseIsoDate } from '../lib/util/dates';
+import { buildTasteProfile, suggestLevelFromTaste, goalDirective, describeTasteProfile } from '../lib/scoring/matchHelpers';
+import { getFollowingFeedEvents } from '../hooks/useFollows';
+import { supabase } from '../lib/api/supabase';
 import CoachMark from '../components/CoachMark';
 import { OracleQuotaBadge } from '../components/OracleQuotaBadge';
-import { logRecommendations } from '../lib/oracleProvenance';
+import { logRecommendations } from '../lib/oracle/oracleProvenance';
 import Avatar from '../components/Avatar';
 import AddBooksChooser from '../components/AddBooksChooser';
 import BookMark from '../components/BookMark';
@@ -573,7 +573,7 @@ function SeriesProgressWidget({ library, wishlist, readNext, go, t }) {
 
 // ─── Reading Streak ────────────────────────────────────────────────────────────
 // Consecutive months with a finished book. The counting rule (including the
-// current-month grace period) lives in lib/readingStreak.js — see docs/reference/MATH.md.
+// current-month grace period) lives in lib/scoring/readingStreak.js — see docs/reference/MATH.md.
 function StreakWidget({ library, t }) {
   const { months, includesCurrentMonth, lastFinishedOn } = monthlyReadingStreak(library);
   if (!lastFinishedOn) return null;
@@ -1186,7 +1186,7 @@ export default function Dashboard({ onOpenBook }) {
   const [friendCount, setFriendCount] = useState(0);
   const [clubsSummary, setClubsSummary] = useState(null); // null = not loaded yet
 
-  // v0.43.1: static supabase import — the dynamic import('../lib/supabase')
+  // v0.43.1: static supabase import — the dynamic import('../lib/api/supabase')
   // pattern resolved to a namespace without `supabase` in the prod bundle
   // (chunk/SW interop), silently breaking the friend count and clubs summary.
   useEffect(() => {

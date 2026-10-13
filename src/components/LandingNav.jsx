@@ -8,8 +8,8 @@
 // already there; from any other public route they navigate home with an
 // `anchor` param that Landing.jsx picks up on mount to scroll into place.
 import { useState, useEffect } from 'react';
-import { useRouter } from '../lib/RouterContext';
-import { useT } from '../lib/I18nContext';
+import { useRouter } from '../contexts/RouterContext';
+import { useT } from '../contexts/I18nContext';
 import LandingToggles from './LandingToggles';
 
 export default function LandingNav({ onOpenAuth, dark = false }) {

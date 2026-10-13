@@ -15,9 +15,9 @@
 // Kindred is about people.
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { useFollows, searchReaders } from '../lib/useFollows';
-import { useRouter } from '../lib/RouterContext';
-import { useT } from '../lib/I18nContext';
+import { useFollows, searchReaders } from '../hooks/useFollows';
+import { useRouter } from '../contexts/RouterContext';
+import { useT } from '../contexts/I18nContext';
 import Avatar from '../components/Avatar';
 import { RowListSkeleton } from '../components/Skeleton';
 import Tabs from '../components/primitives/Tabs';

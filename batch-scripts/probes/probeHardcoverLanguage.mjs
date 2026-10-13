@@ -134,7 +134,7 @@ async function introspect(name) {
 // -- Phase 2: empirical -------------------------------------------------------
 //
 // Each candidate is a selection inserted into the `book { ... }` of a real
-// series query. `control` is known-good from src/lib/hardcoverService.js, so if
+// series query. `control` is known-good from src/lib/sources/hardcoverService.js, so if
 // IT fails the problem is the query shape or the token, not the field — without
 // it a total failure would read as "no language field anywhere".
 const CANDIDATES = [

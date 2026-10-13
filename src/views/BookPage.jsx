@@ -4,24 +4,24 @@
 // with more room for description, series, and genre detail.
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useData } from '../lib/DataContext';
-import { resolveGenres } from '../lib/genreDisplay';
-import { supabase } from '../lib/supabase';
-import { lookUpByShareKey, lookUpByShareKeyResult, bookFromSeed } from '../lib/shareKey';
-import { readEntitySeed } from '../lib/entitySeed';
-import { useRouter, RouteLink } from '../lib/RouterContext';
-import { useT, useI18n } from '../lib/I18nContext';
-import { useDocumentMeta } from '../lib/useDocumentMeta';
-import { bookKey, findBookByTitle, openBookTab, buildBookPageParams, displayAuthor, isPlaceholderBook } from '../lib/bookHelpers';
-import { enrichBookFromOpenLibrary, fetchSeriesBooks } from '../lib/enrichmentService';
-import { hardcoverGetBook } from '../lib/hardcoverService';
-import { fetchCoverURL } from '../lib/coverService';
-import { lookupByTitle } from '../lib/bookLookup';
-import { purchaseLinks } from '../lib/purchaseLinks';
-import { fetchSeriesDescriptionFromWikipedia } from '../lib/seriesService';
-import { fetchAuthorWorks, AUTHOR_WORKS_LIMIT } from '../lib/authorWorks';
-import { collapseWorks } from '../lib/workGroups';
-import { effectivePages, editionTitle, editionIsNotable } from '../lib/editions';
+import { useData } from '../contexts/DataContext';
+import { resolveGenres } from '../lib/genres/genreDisplay';
+import { supabase } from '../lib/api/supabase';
+import { lookUpByShareKey, lookUpByShareKeyResult, bookFromSeed } from '../lib/book/shareKey';
+import { readEntitySeed } from '../lib/book/entitySeed';
+import { useRouter, RouteLink } from '../contexts/RouterContext';
+import { useT, useI18n } from '../contexts/I18nContext';
+import { useDocumentMeta } from '../hooks/useDocumentMeta';
+import { bookKey, findBookByTitle, openBookTab, buildBookPageParams, displayAuthor, isPlaceholderBook } from '../lib/book/bookHelpers';
+import { enrichBookFromOpenLibrary, fetchSeriesBooks } from '../lib/sources/enrichmentService';
+import { hardcoverGetBook } from '../lib/sources/hardcoverService';
+import { fetchCoverURL } from '../lib/sources/coverService';
+import { lookupByTitle } from '../lib/sources/bookLookup';
+import { purchaseLinks } from '../lib/book/purchaseLinks';
+import { fetchSeriesDescriptionFromWikipedia } from '../lib/api/seriesService';
+import { fetchAuthorWorks, AUTHOR_WORKS_LIMIT } from '../lib/sources/authorWorks';
+import { collapseWorks } from '../lib/book/workGroups';
+import { effectivePages, editionTitle, editionIsNotable } from '../lib/book/editions';
 import BookCover from '../components/BookCover';
 import { BookPageSkeleton } from '../components/Skeleton';
 import ReportBookForm from '../components/ReportBookForm';
@@ -31,10 +31,10 @@ import ProgressUpdateModal from '../components/ProgressUpdateModal';
 import CategoryAutocomplete from '../components/CategoryAutocomplete';
 import CoachMark from '../components/CoachMark';
 import ShareModal from '../components/ShareModal';
-import { bookShareUrl } from '../lib/shareService';
-import { noteAnthologyAdd } from '../lib/anthologyInsights'; // v0.74
-import { useAuth } from '../lib/AuthContext';
-import { fetchRecommendationReason } from '../lib/oracleProvenance';
+import { bookShareUrl } from '../lib/share/shareService';
+import { noteAnthologyAdd } from '../lib/api/anthologyInsights'; // v0.74
+import { useAuth } from '../contexts/AuthContext';
+import { fetchRecommendationReason } from '../lib/oracle/oracleProvenance';
 import OracleLongReading from '../components/OracleLongReading';
 import BookMark from '../components/BookMark';
 import { useConfirm } from '../components/primitives/ConfirmDialog';
@@ -256,7 +256,7 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
   // for 866 pages Search Console filed as duplicates: Google's renderer used to
   // index whatever this page showed while lookUpByShareKey was still out --
   // a skeleton, or "Book not found" when it failed -- and every such page was
-  // identical. See src/lib/entitySeed.js. Keyed on the route param, so an
+  // identical. See src/lib/book/entitySeed.js. Keyed on the route param, so an
   // in-app navigation to another book never renders this one's data.
   const seed = useMemo(() => {
     const s = readEntitySeed('book', bookKey_);
@@ -926,7 +926,7 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
   const pagesRead = currentlyReadingRow?.pagesRead ?? 0;
   // v0.65: the reader's own edition decides what progress is measured against.
   // effectivePages checks reader_editions, then the legacy
-  // currently_reading.user_page_count, then the catalog — see src/lib/editions.js.
+  // currently_reading.user_page_count, then the catalog — see src/lib/book/editions.js.
   const readerEdition = state.editionsByBookId?.[display.bookId] || null;
   const totalPages = readerEdition?.format === 'audio'
     ? null

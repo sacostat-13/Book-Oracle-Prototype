@@ -229,7 +229,7 @@ export async function handler() {
     // ── The series index floor, 2026-09-08 ───────────────────────────────
     //
     // THIRD of the three places this number is written down; the others are
-    // SERIES_INDEX_FLOOR in src/lib/seriesService.js and a local const in
+    // SERIES_INDEX_FLOOR in src/lib/api/seriesService.js and a local const in
     // og-prerender.js, and all three must agree because a URL submitted here
     // that answers with noindex is a contradiction Google reports as an error.
     //

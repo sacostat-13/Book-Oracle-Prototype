@@ -11,14 +11,14 @@
 //   book       — { title, author, description } for Oracle context
 
 import { useState, useEffect, useCallback } from 'react';
-import { useData } from '../lib/DataContext';
-import { supabase } from '../lib/supabase';
-import { callClaude, QuotaExceededError } from '../lib/claudeApi';
+import { useData } from '../contexts/DataContext';
+import { supabase } from '../lib/api/supabase';
+import { callClaude, QuotaExceededError } from '../lib/oracle/claudeApi';
 import CommentThread from './CommentThread';
-import { useT } from '../lib/I18nContext';
-import { useOracleQuota } from '../lib/OracleQuotaContext';
-import { useProLimits } from '../lib/proGates';
-import { fetchTitlesByUserId } from '../lib/titles';
+import { useT } from '../contexts/I18nContext';
+import { useOracleQuota } from '../contexts/OracleQuotaContext';
+import { useProLimits } from '../hooks/useProLimits';
+import { fetchTitlesByUserId } from '../lib/achievements/readerRanks';
 import { useConfirm } from './primitives/ConfirmDialog';
 
 // ── Oracle question suggestion fetch ─────────────────────────────────────────

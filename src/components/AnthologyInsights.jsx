@@ -8,9 +8,9 @@
 // Adds and signups under 5 come back null and read as "fewer than 5".
 
 import { useEffect, useState } from 'react';
-import { useT } from '../lib/I18nContext';
-import { useProLimits } from '../lib/proGates';
-import { fetchAnthologyInsights } from '../lib/anthologyInsights';
+import { useT } from '../contexts/I18nContext';
+import { useProLimits } from '../hooks/useProLimits';
+import { fetchAnthologyInsights } from '../lib/api/anthologyInsights';
 
 function Small({ value, k, t }) {
   if (value == null) return <span className="anth-insights__few">{t('insights.fewer', { k })}</span>;

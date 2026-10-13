@@ -1,16 +1,16 @@
 // src/views/BookClubDetail.jsx — v0.31
 
 import { useState, useEffect, useCallback } from 'react';
-import { useData } from '../lib/DataContext';
-import { useRouter } from '../lib/RouterContext';
-import { useAuth } from '../lib/AuthContext';
-import { useT } from '../lib/I18nContext';
-import { supabase } from '../lib/supabase';
+import { useData } from '../contexts/DataContext';
+import { useRouter } from '../contexts/RouterContext';
+import { useAuth } from '../contexts/AuthContext';
+import { useT } from '../contexts/I18nContext';
+import { supabase } from '../lib/api/supabase';
 import BookCover from '../components/BookCover';
 import ClubPolls from '../components/ClubPolls';
 import ShareModal from '../components/ShareModal';
-import { clubShareUrl } from '../lib/shareService';
-import { fetchTitlesByUserId, titleLabel } from '../lib/titles';
+import { clubShareUrl } from '../lib/share/shareService';
+import { fetchTitlesByUserId, titleLabel } from '../lib/achievements/readerRanks';
 import Avatar from '../components/Avatar';
 import BookMark from '../components/BookMark';
 import { useConfirm } from '../components/primitives/ConfirmDialog';

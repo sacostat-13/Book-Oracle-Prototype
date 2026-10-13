@@ -215,7 +215,7 @@ Required before this ships:
 
 - [ ] `schema_v45_migration.sql` — table, indexes, RLS, `log_oracle_recommendations`
       RPC (batch insert, SECURITY DEFINER), `resolve_oracle_recommendation` RPC.
-- [ ] `src/lib/oracleProvenance.js` — thin client wrapper; no-ops for guests, never
+- [ ] `src/lib/oracle/oracleProvenance.js` — thin client wrapper; no-ops for guests, never
       throws into a caller.
 - [ ] `OracleAsk` / `OracleSimilar` / `OracleCategories` — log on `setResults`,
       attach `recommendationId` to each result object beside the existing

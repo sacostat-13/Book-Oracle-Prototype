@@ -18,7 +18,7 @@
 // batch-scripts/probes/probeHardcoverContributions.mjs, 2026-09-10.
 
 import { describe, it, expect } from 'vitest';
-import { pickAuthorName, allContributorNames, isNonAuthorRole } from '../src/lib/contributions';
+import { pickAuthorName, allContributorNames, isNonAuthorRole } from '../src/lib/book/contributions';
 
 const C = (contribution, name) => ({ contribution, author: { name } });
 

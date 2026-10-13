@@ -13,8 +13,8 @@
 // half-finished recovery behind — plus the recovery session is short-lived, so
 // "I'll do it later" quietly means "not at all".
 import { useState } from 'react';
-import { useAuth } from '../lib/AuthContext';
-import { useT } from '../lib/I18nContext';
+import { useAuth } from '../contexts/AuthContext';
+import { useT } from '../contexts/I18nContext';
 import CornerBrackets from './CornerBrackets';
 
 export default function PasswordResetGate() {

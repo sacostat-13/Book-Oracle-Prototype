@@ -26,11 +26,11 @@
 // points, because they answer different questions.
 
 import { useState, useEffect } from 'react';
-import { supabase } from '../lib/supabase';
-import { useAuth } from '../lib/AuthContext';
-import { useData } from '../lib/DataContext';
-import { useT } from '../lib/I18nContext';
-import { requestCurator, getMyCuratorRequest } from '../lib/useFollows';
+import { supabase } from '../lib/api/supabase';
+import { useAuth } from '../contexts/AuthContext';
+import { useData } from '../contexts/DataContext';
+import { useT } from '../contexts/I18nContext';
+import { requestCurator, getMyCuratorRequest } from '../hooks/useFollows';
 
 const BIO_MAX = 280;
 

@@ -16,7 +16,7 @@
 // at clearly different depths, and each family is a ball of stars rather than
 // a flat disc, so turning the sky shows real parallax instead of a card
 // tilting in space.
-import { bookKey, hashStr } from '../../lib/bookHelpers';
+import { bookKey, hashStr } from '../../lib/book/bookHelpers';
 
 export const THREAD_MAX = 24;
 export const GLIMPSE_LIT = 7;

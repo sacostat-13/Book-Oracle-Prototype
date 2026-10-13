@@ -18,9 +18,9 @@
 // the component resets itself when a new draw arrives.
 
 import { useMemo, useState } from 'react';
-import { supabase } from '../lib/supabase';
-import { useT } from '../lib/I18nContext';
-import { useOracleQuota } from '../lib/OracleQuotaContext';
+import { supabase } from '../lib/api/supabase';
+import { useT } from '../contexts/I18nContext';
+import { useOracleQuota } from '../contexts/OracleQuotaContext';
 
 const REASONS = ['not_my_taste', 'already_known', 'off_request', 'other'];
 

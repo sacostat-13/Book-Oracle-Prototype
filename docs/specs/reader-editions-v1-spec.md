@@ -53,7 +53,7 @@ two pieces of this spec were pulled forward:
   fact — the same distinction this whole document rests on. `language` is
   written by `upsert_book` from lookup metadata; `original_language` only by the
   nightly Oracle pass, never guessed, never backfilled.
-- **`src/lib/workGroups.js`** — collapses rows provably the same work (shared
+- **`src/lib/book/workGroups.js`** — collapses rows provably the same work (shared
   `hardcover_id`, ISBN, `goodreads_id`, or series+position) so a translated
   novel appears once. Used by "More by this author" and "You might also like".
 
@@ -61,7 +61,7 @@ That is the *display* half of the problem: the catalog still holds the duplicate
 rows, they are just no longer shown twice. Everything below — recording which
 edition a reader actually read, and tracking pages against it — is still open.
 
-- **`src/lib/titleLanguage.js`** — a last-resort guess at a title's language,
+- **`src/lib/book/titleLanguage.js`** — a last-resort guess at a title's language,
   used ONLY to drop a row from a discovery strip. It exists because
   `books.language` is NULL on the whole existing catalog, so the correct filter
   has nothing to read yet: *The Dragon Keeper* was listing *Aprendiz del
@@ -176,7 +176,7 @@ dropped.
 One helper, one rule, used everywhere a page number is shown or divided by:
 
 ```js
-// src/lib/editions.js
+// src/lib/book/editions.js
 export function effectivePages(book, edition) {
   return edition?.page_count || book?.pp || null;
 }

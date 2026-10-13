@@ -1,10 +1,10 @@
 // src/views/JoinClub.jsx — v0.31
 
 import { useState, useEffect } from 'react';
-import { useAuth } from '../lib/AuthContext';
-import { useRouter } from '../lib/RouterContext';
-import { useT, useTNode } from '../lib/I18nContext';
-import { supabase } from '../lib/supabase';
+import { useAuth } from '../contexts/AuthContext';
+import { useRouter } from '../contexts/RouterContext';
+import { useT, useTNode } from '../contexts/I18nContext';
+import { supabase } from '../lib/api/supabase';
 import SignInGate from '../components/SignInGate';
 
 export default function JoinClub() {

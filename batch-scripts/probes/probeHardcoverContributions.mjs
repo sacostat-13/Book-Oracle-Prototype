@@ -2,7 +2,7 @@
 //
 // WHY THIS EXISTS
 //
-// src/lib/hardcoverService.js line 59 takes the first contribution and calls it
+// src/lib/sources/hardcoverService.js line 59 takes the first contribution and calls it
 // the author:
 //
 //   const author = (node.contributions || [])

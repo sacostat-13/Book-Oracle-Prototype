@@ -1,7 +1,7 @@
 # Changelog
 
 Technical release notes, newest first: root causes, what changed, files, and how to verify.
-The reader-facing, bilingual version of each release lives in `src/lib/releases.js` and is shown in the app's What's New.
+The reader-facing, bilingual version of each release lives in `src/data/releases.js` and is shown in the app's What's New.
 
 Moved here from README.md on 2026-10-12 (code-health spike, item O1). Entries are unchanged.
 
@@ -16,7 +16,7 @@ Sprint 2 of the 2026-10-12 code-health spike (§2), plus two fixes found in revi
 the What's New dot (not announced on load — no `major`). Changes a reader could notice are marked ★.
 
 ### Added
-- `components/primitives/`: `Modal`, `ConfirmDialog` (`useConfirm`), `StarRating`, `ChipToggleGroup`, `Tabs`, with a README catalogue; `components/CoverThumb`, `components/BookThumb`; `hooks/useEscape`, `useClickOutside`, `useScrollLock`; `lib/selection.js`.
+- `components/primitives/`: `Modal`, `ConfirmDialog` (`useConfirm`), `StarRating`, `ChipToggleGroup`, `Tabs`, with a README catalogue; `components/CoverThumb`, `components/BookThumb`; `hooks/useEscape`, `useClickOutside`, `useScrollLock`; `lib/util/selection.js`.
 
 ### Changed
 - ★ All 15 dialogs share one `Modal`: Escape closes only the topmost, focus is trapped and returned, page scroll is locked (the share-moment dialog and the scanner gained Escape). A text selection dragged out of a field no longer closes a dialog.
@@ -48,8 +48,8 @@ no What's New popup and no update prompt. Changes a reader could notice are mark
 
 ### Fixed
 - ★ Oracle Spark reshuffled the reader's real wishlist on every draw (`.sort` on state). Now samples from a copy.
-- ★ Reading streak said "days" while counting months, and showed 0 on the 1st of every month. Now months, with the current month as a grace period (`src/lib/readingStreak.js`).
-- ★ "Last finished" showed the previous day west of UTC (bare `YYYY-MM-DD` parsed as UTC). `src/lib/dates.js`.
+- ★ Reading streak said "days" while counting months, and showed 0 on the 1st of every month. Now months, with the current month as a grace period (`src/lib/scoring/readingStreak.js`).
+- ★ "Last finished" showed the previous day west of UTC (bare `YYYY-MM-DD` parsed as UTC). `src/lib/util/dates.js`.
 - `OracleSimilar` fallback ignored `SIMILAR_COUNT`; biased `sort(() => Math.random() - 0.5)` shuffles replaced with Fisher–Yates.
 
 ### Changed
@@ -336,14 +336,14 @@ monthly only, as before. `public/app-version.json` goes to `0.71`.
 | File | |
 | --- | --- |
 | `supabase/migrations/2026092{3,4,5,6}120000_*.sql` | new (4) |
-| `src/lib/proGates.js`, `src/components/ProGate.jsx` | new: gates |
-| `src/lib/oracleReadings.js`, `src/components/OracleLongReading.jsx`, `src/components/TasteChart.jsx` | new: extras |
-| `src/lib/anthologyInsights.js`, `src/components/AnthologyInsights.jsx` | new: insights |
-| `src/views/{BookClubCreate,Lists,PlanCreate,ListView,BookPage,Onboarding,Profile,Kindred,ReaderProfile}.jsx`, `src/components/{AddToListModal,ClubPolls,SessionDiscussion,BookModal}.jsx`, `src/lib/useFollows.js` | wiring |
+| `src/hooks/useProLimits.js`, `src/components/ProGate.jsx` | new: gates |
+| `src/lib/oracle/oracleReadings.js`, `src/components/OracleLongReading.jsx`, `src/components/TasteChart.jsx` | new: extras |
+| `src/lib/api/anthologyInsights.js`, `src/components/AnthologyInsights.jsx` | new: insights |
+| `src/views/{BookClubCreate,Lists,PlanCreate,ListView,BookPage,Onboarding,Profile,Kindred,ReaderProfile}.jsx`, `src/components/{AddToListModal,ClubPolls,SessionDiscussion,BookModal}.jsx`, `src/hooks/useFollows.js` | wiring |
 | `netlify/functions/claude.js`, `netlify/functions/create-checkout-session.js` | Pro-only sources, annual plan |
 | `src/components/OracleMissButton.jsx` | new |
 | `src/views/OracleAsk.jsx`, `OracleSimilar.jsx`, `OracleCategories.jsx` | mount the button |
-| `src/lib/OracleQuotaContext.jsx` | `welcome`; shape comment |
+| `src/contexts/OracleQuotaContext.jsx` | `welcome`; shape comment |
 | `src/components/OracleCallHistory.jsx` | `refunded` label |
 | `src/views/Dashboard.jsx` | welcome-month note |
 | `src/styles/components/_oracle-quota.scss` | `.oracle-miss*` |
@@ -380,8 +380,8 @@ importer.
 
 | File | |
 | --- | --- |
-| `src/lib/barcodeScanner.js` | new — camera, engine selection, the four filters, torch, photo decode |
-| `src/lib/scanResolve.js` | new — ISBN → book, session-cached |
+| `src/lib/device/barcodeScanner.js` | new — camera, engine selection, the four filters, torch, photo decode |
+| `src/lib/sources/scanResolve.js` | new — ISBN → book, session-cached |
 | `src/components/ScanModal.jsx` | new — the scanning UI |
 | `src/styles/components/_scan.scss` | new |
 | `src/styles/main.scss` | `@use 'components/scan'` |
@@ -394,7 +394,7 @@ importer.
 Scanned books go through the existing `hardcoverLookupByIsbn` →
 `googleBooksLookupByIsbn` chain and the existing `bulkAddToWishlist` /
 `bulkAddToLibrary`. The scanner is another mouth on the import pipeline, not a
-second importer. `src/lib/isbn.js` already had `isValidIsbn`, `isbn10to13` and
+second importer. `src/lib/book/isbn.js` already had `isValidIsbn`, `isbn10to13` and
 `registrantLanguage`; the scanner uses those rather than its own copies.
 
 ### Three failures that each cost a day, and the code that prevents them
@@ -2067,7 +2067,7 @@ lookup already in the app and fills in the rest. Type thirteen digits, get the
 language, page count and translated title. An audiobook (`format = 'audio'`)
 shows no progress bar rather than a bar stuck at 0%.
 
-`effectivePages(book, edition)` in `src/lib/editions.js` is the one rule, used
+`effectivePages(book, edition)` in `src/lib/book/editions.js` is the one rule, used
 everywhere a page number is shown or divided by — with one deliberate exception:
 `computeSimilar` still uses `book.pp`. Similarity is a fact about the work, and
 using edition pages there would make one reader's recommendations differ from
@@ -2079,7 +2079,7 @@ cross-user use case in v1, so it gets none.
 
 ## 5. Where the language columns are actually read
 
-`src/lib/workGroups.js` collapses rows that are provably the same work — shared
+`src/lib/book/workGroups.js` collapses rows that are provably the same work — shared
 `hardcover_id`, ISBN, `goodreads_id`, or series position — so a novel and its
 translations appear once. It then has to choose which row to show, and that
 choice is what `original_language` is for.
@@ -2093,7 +2093,7 @@ validated cover; Google Books `inauthor:` tops it up only when the catalog
 answer is thin, so a mid-list or non-Anglophone author does not get "More by
 this author: (nothing)".
 
-`src/lib/titleLanguage.js` — the heuristic that guesses language from function
+`src/lib/book/titleLanguage.js` — the heuristic that guesses language from function
 words in the title — is the stopgap this release retires. It is deliberately
 weak (*Die Tochter des Wolfs* guesses French, because "des" is both), and every
 row the backfills fill is a row it never sees again. It survives in one place
@@ -2210,7 +2210,7 @@ plus exact client-side filtering. The fix was written *inside the component*, so
 ```
 
 and kept failing at `MAX_PROMPT_CHARS = 50_000` for exactly the readers with the
-richest shelves. New `src/lib/oraclePrompt.js` holds `buildExcludeHint`,
+richest shelves. New `src/lib/oracle/oraclePrompt.js` holds `buildExcludeHint`,
 `filterAlreadyKnown`, `normalizeTitle` and `buildShelfSignature`; all three
 views import them. A fix that lives in a component is a fix for one screen.
 
@@ -2262,7 +2262,7 @@ A version that must be hand-bumped in two places will drift again, so
 ## 6. Draws survive a reload
 
 Independent of the above, because tab discard and an accidental refresh look the
-same to the reader and neither is preventable. New `src/lib/oracleDrawCache.js`,
+same to the reader and neither is preventable. New `src/lib/oracle/oracleDrawCache.js`,
 wired into all three surfaces: `sessionStorage`, one-hour TTL, tab-scoped.
 
 Survives reload, discard and back-navigation; does not leak between tabs or hand
@@ -2361,7 +2361,7 @@ const genres = oracleGenres?.length ? oracleGenres : [{ name: book.g }];
 
 which reads as "use the real genres, fall back to the legacy scalar" and behaves
 as "use the legacy scalar until the network catches up" — because on first paint
-every book misses the lookup. New `src/lib/genreDisplay.js` exposes
+every book misses the lookup. New `src/lib/genres/genreDisplay.js` exposes
 `resolveGenres(state, loading, book)` returning a `pending` flag, so an empty
 map while loading is distinguishable from a book that genuinely has no links.
 
@@ -2649,7 +2649,7 @@ No `public/app-version.json` bump: nothing here invalidates a cached client.
 
 **Supabase config:** email/password sign-in must be enabled under
 **Authentication → Providers → Email**. The client's `MIN_PASSWORD_LENGTH`
-(`src/lib/AuthContext.jsx`) is a mirror of the server minimum, not a
+(`src/contexts/AuthContext.jsx`) is a mirror of the server minimum, not a
 replacement — change both together.
 
 ---
@@ -2973,7 +2973,7 @@ columns. Written as a rule rather than a one-off so it self-corrects at 8, 9, 10
 - `src/components/NavSearch.jsx` — preview branch uses `buildBookPageParams`
 - `src/views/BookPage.jsx` — preview ref checked against the URL's bookKey
 - `src/App.jsx` — comment recording that `previewBookRef` is a single, uncleared slot
-- `src/lib/RouterContext.jsx` — dev warning on a skipped URL write
+- `src/contexts/RouterContext.jsx` — dev warning on a skipped URL write
 - `src/views/Dashboard.jsx` — `PlanEvent` planId; three new quick actions
 - `src/views/PlanCreate.jsx` — series path passes the saved plan id
 - `src/styles/pages/_dashboard.scss` — orphan-card rule
@@ -3053,7 +3053,7 @@ hide it in CI while leaving local Node 20 runs broken.
 ## The refactor underneath
 
 `Wishlist.jsx` and `Library.jsx` held byte-identical filter logic. Extracted to
-`src/lib/useShelfFilters.js` + `src/components/ShelfFilters.jsx` as a separate,
+`src/hooks/useShelfFilters.js` + `src/components/ShelfFilters.jsx` as a separate,
 behaviour-neutral commit first (16 insertions, 182 deletions across the two
 views; every added line an import, a comment or a call site), then the new
 filters were added on top. Verifying a refactor and reviewing a feature at the
@@ -3107,7 +3107,7 @@ killed bot prerendering.
 
 ## Files
 
-- `src/lib/useShelfFilters.js`, `src/components/ShelfFilters.jsx` — new
+- `src/hooks/useShelfFilters.js`, `src/components/ShelfFilters.jsx` — new
 - `src/styles/components/_shelf-filters.scss` — new, `@use`d from `main.scss`
 - `src/views/Wishlist.jsx`, `src/views/Library.jsx` — migrated; empty state now
   names the active filters instead of "Try clearing your filters"
@@ -3290,7 +3290,7 @@ Three further reporting fixes:
 
 The in-app "Let the Oracle categorize my books" button is gone from Wishlist and
 Library, along with `runOracleCategorization()` in
-`src/lib/oracleCategorizationService.js`. Nothing in `src/` calls Anthropic for
+`src/lib/oracle/oracleCategorizationService.js`. Nothing in `src/` calls Anthropic for
 categorisation any more — the `claudeApi` import was removed from that module
 specifically so an unused `callClaude` cannot quietly reintroduce the path.
 
@@ -3588,7 +3588,7 @@ idempotent server-side so the two paths cannot double-count.
 `read_books.source` becomes `'oracle'`, which is the join key behind the
 Oracle-vs-self-chosen rating comparison.
 
-Everything in `src/lib/oracleProvenance.js` swallows its own errors. It is
+Everything in `src/lib/oracle/oracleProvenance.js` swallows its own errors. It is
 instrumentation hanging off a result the reader already paid for; if it fails
 they should never find out.
 
@@ -3721,7 +3721,7 @@ converts poorly and, on Bookshop, earned nothing at all.
 
 ## Affiliate links
 
-- `src/lib/purchaseLinks.js` rewritten. Amazon `/dp/{ISBN-10}` (the ISBN-10 *is* the ASIN
+- `src/lib/book/purchaseLinks.js` rewritten. Amazon `/dp/{ISBN-10}` (the ISBN-10 *is* the ASIN
   for print), Bookshop `/a/{affiliate_id}/{ISBN-13}` (Bookshop attributes via the URL
   **path**, not a query param — an `aid=` on a search URL earns nothing).
 - Foreign affiliate tags on imported `amazonUrl`s are stripped before ours is applied.
@@ -3730,7 +3730,7 @@ converts poorly and, on Bookshop, earned nothing at all.
 - Books with no ISBN still fall back to a *tagged* Amazon search. Bookshop search carries
   no attribution, so ISBN coverage is specifically a Bookshop revenue question.
 
-## Edition selection — `src/lib/editionPicker.js` (new, shared)
+## Edition selection — `src/lib/scoring/editionPicker.js` (new, shared)
 
 Hardcover's `editions(limit: 3)` returned whichever edition came first. Fourth Wing
 resolved to the Empyrean #1-2 boxed set; A Dowry of Blood to an Audible edition. Now
@@ -3740,7 +3740,7 @@ disqualified, popularity log-scaled as a tiebreak, ISBNs checksum-validated.
 `edition_format` overrides a contradicting `reading_format_id` — real rows claim
 `reading_format_id=1` while reading "Audible Audio" or "Kindle Edition".
 
-## Title matching — `src/lib/titleMatch.js` (new, shared)
+## Title matching — `src/lib/matching/titleMatch.js` (new, shared)
 
 Four distinct bugs, each found in production data:
 
@@ -3756,7 +3756,7 @@ the candidate is. Reducing the stored side turns a specific collection into its 
 container, which is how *Hellblazer: Tainted Love* and *: Dangerous Habits* both matched a
 bare "Hellblazer" record.
 
-## Lookup chain — `src/lib/bookLookup.js`
+## Lookup chain — `src/lib/sources/bookLookup.js`
 
 New stage 3: when every source misses, Claude repairs the **query**, then stages 1–2 run
 again. Claude never supplies book data — only a corrected title/author — so a
@@ -3869,12 +3869,12 @@ Lambda); a durable fleet-wide limit would need a Supabase table — deferred.
 - `netlify/functions/claude.js` — added `claude-haiku-4-5` to the allowlist;
   new free `search` feature (Haiku, `SEARCH_MAX_TOKENS = 400`, per-user rate
   limit `allowFreeSearch`), skips the quota read/consume for that feature
-- `src/lib/googleBooksService.js` — **new**: `googleBooksLookup`,
+- `src/lib/sources/googleBooksService.js` — **new**: `googleBooksLookup`,
   `googleBooksSearchMulti`, `googleBooksLookupByIsbn`, exported `titleMatchScore`
   / `bestTitleMatch`; segment-aware validated matching, canonical-work dedupe
-- `src/lib/bookLookup.js` — validates the merged result via `bestTitleMatch`
+- `src/lib/sources/bookLookup.js` — validates the merged result via `bestTitleMatch`
   before trusting it; Google Books fallback when the primary chain misses
-- `src/lib/coverService.js` — `tryGoogleBooks` now calls the proxy
+- `src/lib/sources/coverService.js` — `tryGoogleBooks` now calls the proxy
 - `src/components/NavSearch.jsx` — segment-aware strong-match gate; Google Books
   tier between Hardcover and Claude; `feature: 'search'`; per-query cache +
   `CLAUDE_TIER_DELAY_MS` pause guard
@@ -3949,7 +3949,7 @@ None. No migration required.
 
 ## Code changes
 
-- `src/lib/bookHelpers.js` — new `getPrimaryGenre(book, genres, fallback)`
+- `src/lib/book/bookHelpers.js` — new `getPrimaryGenre(book, genres, fallback)`
   helper implementing the least-common-genre rule
 - `src/views/Library.jsx`, `src/views/Wishlist.jsx` — group the full `filtered`
   set, paginate `allGenreKeys` via `usePagedList` at `GENRE_PAGE_SIZE`, derive
@@ -4041,11 +4041,11 @@ uncallable. Run it in a transaction on a branch first.
   spacing pass
 - `netlify/functions/claude.js` — validates `runId` as a uuid, allowlists
   `feature`, threads both into the RPCs
-- `src/lib/oracleCategorizationService.js` — mints one run id per run; the
+- `src/lib/oracle/oracleCategorizationService.js` — mints one run id per run; the
   outer `catch` no longer swallows `QuotaExceededError` (it was rethrown by
   the inner catch with a `// propagate to button` comment and then eaten,
   so a run past the wall ground through every remaining batch)
-- `src/lib/OracleQuotaContext.jsx` — carries `is_curator`
+- `src/contexts/OracleQuotaContext.jsx` — carries `is_curator`
 - `src/views/Dashboard.jsx`, `Profile.jsx` — branch on `unlimited` *before*
   clamping. `calls_limit ?? 5` turned a null limit into 5 and
   `Math.min(calls_used, limit)` turned 32 used into 5, so an unmetered account
@@ -4100,7 +4100,7 @@ land on the Dashboard exactly as before.
 - `src/i18n/en.json`, `es.json` — new `landing` key, both languages
 - `src/styles/pages/_landing.scss` (new) — all landing styling, scoped under
   `.lp-root`
-- `src/lib/releases.js` — new `v0.41.0` entry (bilingual, user-facing)
+- `src/data/releases.js` — new `v0.41.0` entry (bilingual, user-facing)
 
 ## Image assets needed before this goes live
 
@@ -4167,7 +4167,7 @@ intentionally, per the design guideline.
 
 If you pull these files into a repo with `npm run dev` / `netlify dev`
 already running, Vite's hot-reload may throw `Failed to reload
-/src/lib/I18nContext.jsx` once, since a lot of interdependent files (several
+/src/contexts/I18nContext.jsx` once, since a lot of interdependent files (several
 of which import `I18nContext`) changed at the same time rather than through
 its normal one-file-at-a-time watch flow. It's a dev-server cache hiccup, not
 a real bug — a production build (`npm run build`) compiles clean, and a
@@ -4214,7 +4214,7 @@ Full rebuild of the public landing page per `LANDING_STORY_SPEC.md`: one continu
 
 **Consolidation.** Five copy-pasted local Avatar implementations (CommentThread, BookClubDetail, SessionDetail, Dashboard `ClubAvatar`, Friends — the last with off-brand colored fallback discs) collapse into one shared `src/components/Avatar.jsx` with both fixes baked in; existing `.friend-avatar` styling unchanged. Dashboard's `FriendAvatar` keeps its own `db-ff-avatar` styling but gains the same fixes; Nav's two raw imgs gain `no-referrer`.
 
-**Preset gallery (Design System V9, "Genre Avatars" pattern).** 108 static SVGs in `public/avatars/`, generated from the Claude Design package's own data (icon paths from `Avatar.dc.html`, genre→motif and palette assignments from the DS file): 49 genre motifs × solid + outline variants (`g-<key>.svg` / `g-<key>-o.svg`, ten-color rotating palette) + a 10-icon Standard Set (`s-<key>.svg`). One deliberate deviation: outline variants whose palette fg is dark (the gold entries) stroke the glyph in the palette color instead — dark-on-`--bg-deep` was illegible. Choosing one writes its site-relative path into `profiles.avatar_url` (no storage bucket, no migration). The gallery is folder-driven: a Vite virtual module (`virtual:avatar-manifest` in `vite.config.js`) lists `public/avatars/*.svg` at build/dev time and `src/lib/avatars.js` derives set, variant and label from the filename convention (`g-<label-slug>[-o].svg` = Genre solid/outline, anything else = Standard; slug title-cased for the label) — drop a new SVG in the folder and it appears in the picker, no manifest to maintain. The dev server hot-invalidates on add/remove. Profile's `AvatarSection`: current avatar, "use your Google photo" (recoverable any time from `user.user_metadata.avatar_url`), "use initials", then the Standard and Genre grids (lazy-loaded imgs; `.pf-avatar-*` in `_profile-extensions.scss`). i18n: `profile.sectionAvatar/avatar*` (EN + ES).
+**Preset gallery (Design System V9, "Genre Avatars" pattern).** 108 static SVGs in `public/avatars/`, generated from the Claude Design package's own data (icon paths from `Avatar.dc.html`, genre→motif and palette assignments from the DS file): 49 genre motifs × solid + outline variants (`g-<key>.svg` / `g-<key>-o.svg`, ten-color rotating palette) + a 10-icon Standard Set (`s-<key>.svg`). One deliberate deviation: outline variants whose palette fg is dark (the gold entries) stroke the glyph in the palette color instead — dark-on-`--bg-deep` was illegible. Choosing one writes its site-relative path into `profiles.avatar_url` (no storage bucket, no migration). The gallery is folder-driven: a Vite virtual module (`virtual:avatar-manifest` in `vite.config.js`) lists `public/avatars/*.svg` at build/dev time and `src/data/avatars.js` derives set, variant and label from the filename convention (`g-<label-slug>[-o].svg` = Genre solid/outline, anything else = Standard; slug title-cased for the label) — drop a new SVG in the folder and it appears in the picker, no manifest to maintain. The dev server hot-invalidates on add/remove. Profile's `AvatarSection`: current avatar, "use your Google photo" (recoverable any time from `user.user_metadata.avatar_url`), "use initials", then the Standard and Genre grids (lazy-loaded imgs; `.pf-avatar-*` in `_profile-extensions.scss`). i18n: `profile.sectionAvatar/avatar*` (EN + ES).
 
 **Fix.** Nav read `state.profile?.avatar_url` (snake_case) but the client profile object is camelCase (`avatarUrl`) — the nav avatar had never rendered. Now it does, and updates live when a preset is picked.
 
@@ -4266,7 +4266,7 @@ Genre milestones, series, reading goals, year milestones, and book-completed now
 
 **Assets & build.** `public/cards/<slug>/` holds `frame.png` + `art.png` for each genre (49) and each moment (`moment-series` | `moment-milestone` | `moment-goal` | `moment-plan` | `moment-book`; book is frame-only, the reader's cover fills the slot). `scripts/build-share-cards.mjs` (needs `pngjs` + `jpeg-js`) reads png/jpg/jpeg, normalizes frames to `frame.png`, centre-trims art → `art-trim.png` (luminance-weighted centroid crop, so off-centre art still centres and the corner watermark drops), measures each frame's inner opening, and regenerates `src/lib/cardGenres.js` (the ready-slug gate) + `src/lib/cardBoxes.js` (per-frame opening box — the generated frames vary too much for one constant). Re-run it whenever assets change; `BOX_OVERRIDES` in the script handles any frame whose opening can't be auto-detected.
 
-**Resolution & copy.** `src/lib/cardResolve.js` maps a moment → its asset slug + readiness (`frameSlugFor`, `isFramedMoment`, `MOMENT_SLUGS`). `momentCopy()` wraps `baseCopy()` with `withFramed()`: for a ready slug it drops the book cover and adds `frameUrl`/`artUrl` + the per-frame `box` (book keeps its cover in the slot). Genre sub-lines live in `src/lib/genreCards.js` (`GENRE_CARD_META`, English) and are locale-gated. `shareCardImage.js` passes `frame`, `box`, and (book) `cover`; `share-card.mjs` renders the framed layout at that box, reserving art height for a possible two-line headline so nothing overlaps. The on-screen `ShareCard.jsx` renders the same framed layout in the DOM, so the preview matches the shared PNG without calling the function.
+**Resolution & copy.** `src/lib/share/cardResolve.js` maps a moment → its asset slug + readiness (`frameSlugFor`, `isFramedMoment`, `MOMENT_SLUGS`). `momentCopy()` wraps `baseCopy()` with `withFramed()`: for a ready slug it drops the book cover and adds `frameUrl`/`artUrl` + the per-frame `box` (book keeps its cover in the slot). Genre sub-lines live in `src/lib/genreCards.js` (`GENRE_CARD_META`, English) and are locale-gated. `shareCardImage.js` passes `frame`, `box`, and (book) `cover`; `share-card.mjs` renders the framed layout at that box, reserving art height for a possible two-line headline so nothing overlaps. The on-screen `ShareCard.jsx` renders the same framed layout in the DOM, so the preview matches the shared PNG without calling the function.
 
 **Prompts.** `public/cards/_PROMPTS-all-genres.md` + `_MOMENT-PROMPTS.md` — self-contained image-gen prompts (one locked gold-engraving style block) for every frame + art.
 
@@ -4288,7 +4288,7 @@ Genre milestones, series, reading goals, year milestones, and book-completed now
 
 Delivers the v0.43.x follow-up flagged below: the share-card *image* is now rendered by a Netlify Function (`netlify/functions/share-card.mjs`) instead of client-side `html-to-image`. The old path drew third-party covers (OpenLibrary/Wikimedia/Hardcover) onto a `<canvas>`; those hosts don't send CORS headers, so the canvas tainted and the export threw (the `share card export failed` / `img.error` you'd see) — meaning the "share as image" action never actually produced a shareable PNG. The function fetches the cover **server-to-server** (no CORS), so it always works.
 
-**Rendering.** `satori` (flexbox/JSX → SVG) + `@resvg/resvg-wasm` (SVG → PNG), output 1080×1350 — a faithful reproduction of `ShareCard.jsx`'s 4:5 brand template (ornament, mono eyebrow, serif headline, italic sub, cover with gold frame + shadow, book caption, footer wordmark). The function is **i18n-agnostic**: the client resolves all copy with its own `t()` via the now-exported `momentCopy()` and passes finished strings as query params (`src/lib/shareCardImage.js` → `momentCardUrl`/`momentCardFile`), so the endpoint just renders strings + cover and can double as the OG link-preview image later. Ornaments render from a symbol font (DejaVu Sans covers `✦☩❦✺⚜✧❧`); fonts and the resvg wasm are fetched from CDN once per cold start and cached across warm invocations.
+**Rendering.** `satori` (flexbox/JSX → SVG) + `@resvg/resvg-wasm` (SVG → PNG), output 1080×1350 — a faithful reproduction of `ShareCard.jsx`'s 4:5 brand template (ornament, mono eyebrow, serif headline, italic sub, cover with gold frame + shadow, book caption, footer wordmark). The function is **i18n-agnostic**: the client resolves all copy with its own `t()` via the now-exported `momentCopy()` and passes finished strings as query params (`src/lib/share/shareCardImage.js` → `momentCardUrl`/`momentCardFile`), so the endpoint just renders strings + cover and can double as the OG link-preview image later. Ornaments render from a symbol font (DejaVu Sans covers `✦☩❦✺⚜✧❧`); fonts and the resvg wasm are fetched from CDN once per cold start and cached across warm invocations.
 
 **Client.** `ShareMomentModal.handleShareImage` now fetches the PNG from the function and shares it as a `File` via the Web Share API (unchanged download + clipboard fallback on desktop). The on-screen `<ShareCard>` is now a **preview only** — its cover `<img>` dropped `crossOrigin="anonymous"` (it no longer feeds a canvas), which also removes the console `img.error`.
 
@@ -4330,11 +4330,11 @@ Delivers the v0.43.x follow-up flagged below: the share-card *image* is now rend
 
 **No migration required.** New dependency: `html-to-image` (client-side card → PNG export).
 
-**Page shares.** `ShareModal.jsx` (copy link, native `navigator.share`, X/WhatsApp/Telegram intents) wired into five destinations: Book Page, List detail (public lists only — the button stays gated on `is_public`, replacing the old bare copy-link button), Book Club detail (public clubs only; the join-token link remains the path for private invites), Plan view (any plan with an `_id` — plans were already publicly reachable by UUID via `get_public_plan`), and Profile (both the `/profile` settings page and the `/u/:username` self view). URL builders centralized in `src/lib/shareService.js` so client URLs always match the routes og-prerender covers.
+**Page shares.** `ShareModal.jsx` (copy link, native `navigator.share`, X/WhatsApp/Telegram intents) wired into five destinations: Book Page, List detail (public lists only — the button stays gated on `is_public`, replacing the old bare copy-link button), Book Club detail (public clubs only; the join-token link remains the path for private invites), Plan view (any plan with an `_id` — plans were already publicly reachable by UUID via `get_public_plan`), and Profile (both the `/profile` settings page and the `/u/:username` self view). URL builders centralized in `src/lib/share/shareService.js` so client URLs always match the routes og-prerender covers.
 
 **og-prerender extended.** `netlify/edge-functions/og-prerender.js` now also serves OG/Twitter meta for `/l/:listId`, `/plans/:planId`, `/clubs/:clubId`, and `/u/:username` (config.path extended to match). Public gating is inherited rather than re-invented: lists/plans go through the same `get_public_list`/`get_public_plan` RPCs the share pages use (non-public → null → pass through untouched); clubs are only served when `visibility = 'public'` — enforced explicitly in the function since the service-role key bypasses RLS; profiles render for any username, matching the page's own behaviour. Static-route collisions (`/plans/new`, `/clubs/new`, `/clubs/discover`) are skipped before any fetch. New `callRpc()`/`respond()` helpers deduplicate the per-entity blocks; the book/series handlers are unchanged (series now uses `respond()` too).
 
-**Action shares (the "share moment" system).** New `src/lib/shareMoments.js` — pure, client-only milestone computation, deliberately table-free: milestones are recomputed from the library at the instant of completion and only fire on an *exact threshold crossing* (`count === milestone`), so nothing ever re-fires on reload and no persistence is needed. This is the cheap-accomplishments model; a real achievements system (persistent, retroactive, trophy shelf on Profile) stays post-1.0. `computeCompletionMoments()` returns every moment a completion produced, sorted by significance — goal completed → series completed → plan completed → Nth book of the year (5/10/25/50/75/100/150/200) → genre-count milestone (5/10/25/50 per canonical genre) → first book in a new genre (suppressed until the library has ≥5 books, so early reads aren't all "new territory") → plain book-completed fallback. Only the top moment is shown.
+**Action shares (the "share moment" system).** New `src/lib/achievements/shareMoments.js` — pure, client-only milestone computation, deliberately table-free: milestones are recomputed from the library at the instant of completion and only fire on an *exact threshold crossing* (`count === milestone`), so nothing ever re-fires on reload and no persistence is needed. This is the cheap-accomplishments model; a real achievements system (persistent, retroactive, trophy shelf on Profile) stays post-1.0. `computeCompletionMoments()` returns every moment a completion produced, sorted by significance — goal completed → series completed → plan completed → Nth book of the year (5/10/25/50/75/100/150/200) → genre-count milestone (5/10/25/50 per canonical genre) → first book in a new genre (suppressed until the library has ≥5 books, so early reads aren't all "new territory") → plain book-completed fallback. Only the top moment is shown.
 
 **Wiring:** `DataContext.markAsRead` calls `fireCompletionMoment()` after both the guest and authed library updates (and therefore covers `finishReading` too, which delegates to it). Goodreads imports are excluded — a 400-book import is not 400 celebrations. Plan completion is detected here as well (all plan books present in the post-completion library, and the just-finished book must be one of them, so an unrelated completion can't claim credit for a plan finished weeks ago). Club sessions fire their own moments directly: `SessionCreate` shows a "now reading" card after insert when the club is public; `SessionDetail` offers a deliberate share button on past sessions (no auto-modal — there's no single moment a session "finishes" for a viewer). New DataContext state `shareMoment` + `showShareMoment()`/`dismissShareMoment()`, rendered globally by `<ShareMomentModal/>` in App.jsx's authed shell.
 
@@ -4372,7 +4372,7 @@ i18n: full new `share.*` block (modal labels, card copy per moment type, share t
 
 **New: Ask the Oracle** (`OracleAsk.jsx`, route `/oracle/ask`) — a third recommendation mode alongside By Genres and Based on Other Books, added as a third card on `OracleFork.jsx` (grid widened from 2 to 3 columns). Free-text request box, injects the reader's `favoriteGenres`/`currentMood` (from onboarding) as context alongside the query, with a nudge banner + CTA to Profile when neither is set. Shares the exact same `callClaude()` proxy and `useOracleQuota()` bucket as the other two modes — this is a different prompt shape hitting the same quota, not a separate billing path. Added to the human-readable `/sitemap` page and per-route document title.
 
-**New: Match %.** New shared module `src/lib/matchHelpers.js`:
+**New: Match %.** New shared module `src/lib/scoring/matchHelpers.js`:
 - `buildTasteProfile(library, genresByBookId, profile)` — computes average rating per genre from the reader's library (books with both a rating and known genres), plus `favoriteGenres`/`currentMood`, plus average complexity/depth of books rated 4-5★. All from data already loaded client-side — no new query.
 - `computeLocalMatch(book, tasteProfile, genresByBookId)` — zero-LLM score: genre affinity (best-matching genre's average rating, or partial credit for a stated-favorite genre with no rating history yet) weighted 70%, complexity/depth closeness weighted 30%. Returns `null` (not a fabricated number) when there's no usable signal at all for that book.
 - `describeTasteProfile()` + `MATCH_SCORING_INSTRUCTIONS` — shared text injected into every AI-mode prompt, so all three AI modes score against the same rubric. This is a reasoned LLM estimate grounded in real signals we provide, not a reproducible statistical computation — an intentional tradeoff to avoid a separate scoring subsystem.
@@ -4531,7 +4531,7 @@ New i18n keys: `footer.sitemap`, `notFound.*` (eyebrow/title/desc/cta), `sitemap
 
 **No DB migration.** `netlify/functions/sitemap.js` reads the existing `books`/`series` tables read-only with the service role key already configured for `send-notification-email.js` (`SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`). If those env vars are ever unset, the function degrades to serving just the static entries rather than erroring.
 
-**`src/lib/useDocumentMeta.js`** — new shared hook. Sets `document.title`, `<meta name="description">`, and basic `og:title`/`og:description`/`og:image`/`og:url` tags client-side on route/data change. This helps Google (which renders JS before indexing) and gives every page a correct browser-tab title; it does **not** help non-JS social preview bots (Slack/Twitter/Facebook unfurls), which need server-side injection — that's a separate, not-yet-built piece (see below).
+**`src/hooks/useDocumentMeta.js`** — new shared hook. Sets `document.title`, `<meta name="description">`, and basic `og:title`/`og:description`/`og:image`/`og:url` tags client-side on route/data change. This helps Google (which renders JS before indexing) and gives every page a correct browser-tab title; it does **not** help non-JS social preview bots (Slack/Twitter/Facebook unfurls), which need server-side injection — that's a separate, not-yet-built piece (see below).
 
 **`App.jsx`** — added a `ROUTE_META` map giving every static route (dashboard, wishlist, library, profile, oracle, legal pages, etc.) a real title/description via `useDocumentMeta()`. Deliberately excludes `book-page` and `series-page`: React commits child effects before parent effects, so a generic default set here would run *after* and clobber the specific title those two views set once their data resolves.
 
@@ -4782,7 +4782,7 @@ Each book card shows cover (90px wide, 2:3 aspect), star rating below, title and
 
 **Privacy toggles.** Two new boolean columns on `profiles`: `is_discoverable` (default true, reserved for future friend search) and `email_notifications` (default true, read by the email function). Both are surfaced as toggle switches in the Profile privacy section and written by the new `updatePrivacyPrefs` DataContext action.
 
-**New files:** `schema_v20_migration.sql`, `netlify/functions/send-notification-email.js`, `src/lib/useFriends.js`, `src/lib/useNotifications.js`, `src/views/FriendProfile.jsx`, `src/styles/pages/_friends.scss`.
+**New files:** `schema_v20_migration.sql`, `netlify/functions/send-notification-email.js`, `src/lib/useFriends.js`, `src/hooks/useNotifications.js`, `src/views/FriendProfile.jsx`, `src/styles/pages/_friends.scss`.
 
 **Modified files:** `DataContext.jsx`, `Nav.jsx`, `Profile.jsx`, `App.jsx`, `RouterContext.jsx`, `main.scss`, `en.json`, `es.json`, `releases.js`, `README.md`.
 
@@ -5074,7 +5074,7 @@ The previous approach used inline `isSpanish ? 'es' : 'en'` ternaries scattered 
 
 ### v0.13 — Release notes, in your language
 
-- "What's new" popup on About page, fully bilingual, powered by `src/lib/releases.js`.
+- "What's new" popup on About page, fully bilingual, powered by `src/data/releases.js`.
 
 ### v0.12 — User categories
 

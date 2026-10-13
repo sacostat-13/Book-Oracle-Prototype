@@ -1,20 +1,20 @@
 import { useState, useMemo } from 'react';
 import BookLoader from '../components/BookLoader';
-import { useData } from '../lib/DataContext';
-import { useRouter } from '../lib/RouterContext';
-import { ALL_BOOKS, bookKey } from '../lib/bookHelpers';
-import { callClaude, parseJSONResponse, QuotaExceededError } from '../lib/claudeApi';
-import { logRecommendations, attachRecommendationIds } from '../lib/oracleProvenance';
+import { useData } from '../contexts/DataContext';
+import { useRouter } from '../contexts/RouterContext';
+import { ALL_BOOKS, bookKey } from '../lib/book/bookHelpers';
+import { callClaude, parseJSONResponse, QuotaExceededError } from '../lib/oracle/claudeApi';
+import { logRecommendations, attachRecommendationIds } from '../lib/oracle/oracleProvenance';
 import OracleMissButton from '../components/OracleMissButton';
-import { fetchMissHint } from '../lib/oracleReadings'; // v0.72.2
-import { useOracleQuota } from '../lib/OracleQuotaContext';
+import { fetchMissHint } from '../lib/oracle/oracleReadings'; // v0.72.2
+import { useOracleQuota } from '../contexts/OracleQuotaContext';
 import { OracleQuotaWall } from '../components/OracleQuotaBadge';
-import { useT, useI18n, langDirective } from '../lib/I18nContext';
+import { useT, useI18n, langDirective } from '../contexts/I18nContext';
 import BookCard from '../components/BookCard';
 import BookCover from '../components/BookCover';
-import { buildTasteProfile, describeTasteProfile, MATCH_SCORING_INSTRUCTIONS } from '../lib/matchHelpers';
-import { buildExcludeHint, buildShelfSignature, filterAlreadyKnown, REASON_INSTRUCTIONS, REPRESENTATION_INSTRUCTIONS } from '../lib/oraclePrompt';
-import { saveDraw, loadDraw } from '../lib/oracleDrawCache';
+import { buildTasteProfile, describeTasteProfile, MATCH_SCORING_INSTRUCTIONS } from '../lib/scoring/matchHelpers';
+import { buildExcludeHint, buildShelfSignature, filterAlreadyKnown, REASON_INSTRUCTIONS, REPRESENTATION_INSTRUCTIONS } from '../lib/oracle/oraclePrompt';
+import { saveDraw, loadDraw } from '../lib/oracle/oracleDrawCache';
 import BookMark from '../components/BookMark';
 
 // Max possible raw score per seed book (3 for genre + 2 for complexity + 1 for

@@ -9,7 +9,7 @@
 //
 // For the rating form itself (clickable stars) see RatingModal.
 
-import { useT } from '../../lib/I18nContext';
+import { useT } from '../../contexts/I18nContext';
 
 const MAX = 5;
 

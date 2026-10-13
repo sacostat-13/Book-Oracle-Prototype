@@ -204,7 +204,7 @@ export const languagesOf = (c) => {
   return [...new Set(raw.filter((l) => l != null && l !== ''))];
 };
 
-// Mirrors normalizeSeriesName() in src/lib/seriesService.js and the SQL behind
+// Mirrors normalizeSeriesName() in src/lib/api/seriesService.js and the SQL behind
 // series.normalized_name. It lived in seriesBackfill.mjs as a fourth copy; one
 // import is one fewer thing to drift.
 export const normSeries = (s) =>

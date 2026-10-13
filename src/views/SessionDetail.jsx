@@ -3,17 +3,17 @@
 // Admins can edit (book, dates, notes) and delete the session.
 
 import { useState, useEffect, useCallback } from 'react';
-import { useData } from '../lib/DataContext';
-import { useRouter } from '../lib/RouterContext';
-import { useAuth } from '../lib/AuthContext';
-import { supabase } from '../lib/supabase';
-import { openBookTab } from '../lib/bookHelpers';
-import { lookupByTitle } from '../lib/bookLookup';
+import { useData } from '../contexts/DataContext';
+import { useRouter } from '../contexts/RouterContext';
+import { useAuth } from '../contexts/AuthContext';
+import { supabase } from '../lib/api/supabase';
+import { openBookTab } from '../lib/book/bookHelpers';
+import { lookupByTitle } from '../lib/sources/bookLookup';
 import BookCover from '../components/BookCover';
 import ProgressUpdateModal from '../components/ProgressUpdateModal';
 import SessionDiscussion from '../components/SessionDiscussion';
 import Modal from '../components/primitives/Modal';
-import { useT } from '../lib/I18nContext';
+import { useT } from '../contexts/I18nContext';
 import Avatar from '../components/Avatar';
 import BookMark from '../components/BookMark';
 import BookThumb from '../components/BookThumb';

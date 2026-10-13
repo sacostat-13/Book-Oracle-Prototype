@@ -45,7 +45,7 @@ describe('accomplishment kinds: app vs database', () => {
   // The migration that fixed it ends with: "this list exists in TWO places that
   // cannot see each other." This test is the place they see each other.
   const appKinds = () => {
-    const src = read('src/lib/accomplishments.js');
+    const src = read('src/lib/achievements/accomplishments.js');
     const grab = (name) => {
       const m = src.match(new RegExp(`export const ${name} = new Set\\(\\[([\\s\\S]*?)\\]\\)`));
       if (!m) throw new Error(`${name} not found in accomplishments.js — did it get renamed?`);
@@ -98,7 +98,7 @@ describe('the genre index floor', () => {
   // Console reports as an error. The number lives in three files; until v0.68
   // one of them was a bare literal.
   const floors = () => ({
-    client: read('src/lib/genreService.js').match(/export const INDEX_FLOOR = (\d+)/)?.[1],
+    client: read('src/lib/api/genreService.js').match(/export const INDEX_FLOOR = (\d+)/)?.[1],
     sitemap: read('netlify/functions/sitemap.js').match(/const INDEX_FLOOR = (\d+)/)?.[1],
     prerender: read('netlify/edge-functions/og-prerender.js').match(/const INDEX_FLOOR = (\d+)/)?.[1],
   });
@@ -207,7 +207,7 @@ describe('series volume lists: three callers, one source', () => {
   });
 
   it('seriesService reads the view, not the books table', () => {
-    const src = read('src/lib/seriesService.js');
+    const src = read('src/lib/api/seriesService.js');
     const fn = src.slice(src.indexOf('export async function fetchBooksInSeriesByName'));
     const body = fn.slice(0, fn.indexOf('\n}'));
     expect(body).toContain(`.from('${VIEW}')`);
@@ -262,7 +262,7 @@ describe('the series index floor: three files, one number', () => {
 
   it('the series floor is the same number in all three files', () => {
     const v = floors('SERIES_INDEX_FLOOR', [
-      ['src/lib/seriesService.js', /export const SERIES_INDEX_FLOOR = (\d+)/],
+      ['src/lib/api/seriesService.js', /export const SERIES_INDEX_FLOOR = (\d+)/],
       ['netlify/edge-functions/og-prerender.js', /const SERIES_INDEX_FLOOR = (\d+)/],
       ['netlify/functions/sitemap.js', /const SERIES_INDEX_FLOOR = (\d+)/],
     ]);
@@ -273,7 +273,7 @@ describe('the series index floor: three files, one number', () => {
 
   it('the genre floor is the same number in all three files', () => {
     floors('INDEX_FLOOR', [
-      ['src/lib/genreService.js', /export const INDEX_FLOOR = (\d+)/],
+      ['src/lib/api/genreService.js', /export const INDEX_FLOOR = (\d+)/],
       ['netlify/edge-functions/og-prerender.js', /const INDEX_FLOOR = (\d+)/],
       ['netlify/functions/sitemap.js', /const INDEX_FLOOR = (\d+)/],
     ]);

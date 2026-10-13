@@ -11,7 +11,7 @@
 // *Aprendiz del Asesino*, *La Nef Du Crépuscule* and *Die Tochter des Wolfs*
 // among Robin Hobb's books, because the filter that should have removed them
 // reads books.language and books.language was null. The stopgap is
-// src/lib/titleLanguage.js, which guesses from function words in the title —
+// src/lib/book/titleLanguage.js, which guesses from function words in the title —
 // deliberately weak, and documented as such. This script is what retires it:
 // callers check the column first, so every row filled here is a row the
 // heuristic never sees again.
@@ -75,7 +75,7 @@
 // left null — the same rule author_gender follows, for the same reason: an
 // honest absence is recoverable and a confident error is not.
 //
-// The title heuristic (src/lib/titleLanguage.js) is used ONLY as a guard here,
+// The title heuristic (src/lib/book/titleLanguage.js) is used ONLY as a guard here,
 // never as a source. It can veto a suspicious answer; it cannot supply one. The
 // registrant fallback replaced the earlier --trust-title escape hatch, which is
 // a better trade: a registration group is a fact about the ISBN rather than a
@@ -101,8 +101,8 @@ import { createServiceClient } from '../_shared/supabaseClient.mjs';
 import { readFileSync } from 'fs';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
-import { cleanIsbn, isValidIsbn, registrantLanguage } from '../../src/lib/isbn.js';
-import { guessIsEnglish } from '../../src/lib/titleLanguage.js';
+import { cleanIsbn, isValidIsbn, registrantLanguage } from '../../src/lib/book/isbn.js';
+import { guessIsEnglish } from '../../src/lib/book/titleLanguage.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 

@@ -17,8 +17,8 @@
 // v0.59
 
 import { useState } from 'react';
-import { useData } from '../lib/DataContext';
-import { useT } from '../lib/I18nContext';
+import { useData } from '../contexts/DataContext';
+import { useT } from '../contexts/I18nContext';
 import ImportCompleteModal from './ImportCompleteModal';
 
 export default function ImportProgressToast() {

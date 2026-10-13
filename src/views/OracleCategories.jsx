@@ -1,21 +1,21 @@
 import { useState, useMemo, useEffect } from 'react';
 import BookLoader from '../components/BookLoader';
-import { useData } from '../lib/DataContext';
-import { useRouter } from '../lib/RouterContext';
-import { ALL_BOOKS, bookKey } from '../lib/bookHelpers';
-import { weightedSample } from '../lib/random';
-import { callClaude, parseJSONResponse, QuotaExceededError } from '../lib/claudeApi';
-import { logRecommendations, attachRecommendationIds } from '../lib/oracleProvenance';
+import { useData } from '../contexts/DataContext';
+import { useRouter } from '../contexts/RouterContext';
+import { ALL_BOOKS, bookKey } from '../lib/book/bookHelpers';
+import { weightedSample } from '../lib/util/random';
+import { callClaude, parseJSONResponse, QuotaExceededError } from '../lib/oracle/claudeApi';
+import { logRecommendations, attachRecommendationIds } from '../lib/oracle/oracleProvenance';
 import OracleMissButton from '../components/OracleMissButton';
-import { fetchMissHint } from '../lib/oracleReadings'; // v0.72.2
-import { useOracleQuota } from '../lib/OracleQuotaContext';
+import { fetchMissHint } from '../lib/oracle/oracleReadings'; // v0.72.2
+import { useOracleQuota } from '../contexts/OracleQuotaContext';
 import { OracleQuotaBadge, OracleQuotaWall } from '../components/OracleQuotaBadge';
-import { useT, useI18n, langDirective } from '../lib/I18nContext';
+import { useT, useI18n, langDirective } from '../contexts/I18nContext';
 import BookCard from '../components/BookCard';
 import GenreSelect from '../components/GenreSelect';
-import { buildTasteProfile, describeTasteProfile, computeLocalMatch, drawWeight, MATCH_SCORING_INSTRUCTIONS } from '../lib/matchHelpers';
-import { buildExcludeHint, buildShelfSignature, filterAlreadyKnown, REASON_INSTRUCTIONS, REPRESENTATION_INSTRUCTIONS } from '../lib/oraclePrompt';
-import { saveDraw, loadDraw } from '../lib/oracleDrawCache';
+import { buildTasteProfile, describeTasteProfile, computeLocalMatch, drawWeight, MATCH_SCORING_INSTRUCTIONS } from '../lib/scoring/matchHelpers';
+import { buildExcludeHint, buildShelfSignature, filterAlreadyKnown, REASON_INSTRUCTIONS, REPRESENTATION_INSTRUCTIONS } from '../lib/oracle/oraclePrompt';
+import { saveDraw, loadDraw } from '../lib/oracle/oracleDrawCache';
 import BookMark from '../components/BookMark';
 
 // v0.15 phase 2.6: copy pass — "categories" → "genres" throughout.
@@ -25,7 +25,7 @@ import BookMark from '../components/BookMark';
 
 // v0.63.3 — the prompt budget, the recency-first denylist hint and the
 // title-normalising comparison used to live here. They now live in
-// src/lib/oraclePrompt.js, because OracleAsk and OracleSimilar had the same
+// src/lib/oracle/oraclePrompt.js, because OracleAsk and OracleSimilar had the same
 // unbounded-denylist bug this file fixed in v0.63 and could not reuse a fix
 // that was written inside a component.
 

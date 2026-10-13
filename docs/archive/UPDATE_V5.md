@@ -11,11 +11,11 @@ This is a small, no-migration iteration that adds two things:
 
 ## Code changes
 
-- `src/lib/purchaseLinks.js` (new) — builds Amazon + Bookshop URLs from whatever data we have (Amazon URL stored on book → ISBN/ASIN → title+author search fallback)
+- `src/lib/book/purchaseLinks.js` (new) — builds Amazon + Bookshop URLs from whatever data we have (Amazon URL stored on book → ISBN/ASIN → title+author search fallback)
 - `src/components/BookCover.jsx` — accepts an optional `coverUrl` prop and uses it immediately, skipping the OpenLibrary/Google Books network fetch entirely when present
 - `src/components/BookCard.jsx` — passes `book.coverUrl` to `BookCover`
 - `src/components/BookModal.jsx` — runs on-demand enrichment when opened; displays both purchase buttons in a new "Acquire this book" section above the action bar
-- `src/lib/DataContext.jsx` — new `cacheBookFields(book, patch)` function that mirrors enriched fields into local state and calls `upsert_book` to persist
+- `src/contexts/DataContext.jsx` — new `cacheBookFields(book, patch)` function that mirrors enriched fields into local state and calls `upsert_book` to persist
 - `src/styles/main.scss` — new styles for the purchase block
 
 ## Deploy

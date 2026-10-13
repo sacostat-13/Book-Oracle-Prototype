@@ -1,4 +1,4 @@
-import { useData } from '../lib/DataContext';
+import { useData } from '../contexts/DataContext';
 
 export default function Toast() {
   const { toast } = useData();

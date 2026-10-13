@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
-import { useRouter } from '../lib/RouterContext';
-import { useT, useTNode } from '../lib/I18nContext';
+import { useRouter } from '../contexts/RouterContext';
+import { useT, useTNode } from '../contexts/I18nContext';
 import CurrentReleaseFooter from '../components/CurrentReleaseFooter';
 import BookMark from '../components/BookMark';
 

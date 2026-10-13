@@ -12,18 +12,18 @@
 //   - Hardcover featured_series for unreleased/upcoming books
 
 import { useEffect, useState, useMemo } from 'react';
-import { useData } from '../lib/DataContext';
-import { useRouter, RouteLink } from '../lib/RouterContext';
-import { useT } from '../lib/I18nContext';
-import { useDocumentMeta } from '../lib/useDocumentMeta';
-import { bookKey, buildBookPageParams } from '../lib/bookHelpers';
-import { fetchSeriesBooks } from '../lib/enrichmentService';
-import { fetchSeriesDescriptionFromWikipedia, fetchBooksInSeriesByName, normalizeSeriesName, SERIES_INDEX_FLOOR } from '../lib/seriesService';
+import { useData } from '../contexts/DataContext';
+import { useRouter, RouteLink } from '../contexts/RouterContext';
+import { useT } from '../contexts/I18nContext';
+import { useDocumentMeta } from '../hooks/useDocumentMeta';
+import { bookKey, buildBookPageParams } from '../lib/book/bookHelpers';
+import { fetchSeriesBooks } from '../lib/sources/enrichmentService';
+import { fetchSeriesDescriptionFromWikipedia, fetchBooksInSeriesByName, normalizeSeriesName, SERIES_INDEX_FLOOR } from '../lib/api/seriesService';
 import BookCover from '../components/BookCover';
-import { openBookTab } from '../lib/bookHelpers';
+import { openBookTab } from '../lib/book/bookHelpers';
 import BookMark from '../components/BookMark';
 import ShareModal from '../components/ShareModal';
-import { seriesShareUrl } from '../lib/shareService';
+import { seriesShareUrl } from '../lib/share/shareService';
 
 // isAuthed/authPending/dataReady mirror BookPage and ListView. This route is
 // in App.jsx's PUBLIC_ROUTES as of 2026-08-24 — before that every /series/ URL

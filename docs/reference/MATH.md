@@ -15,27 +15,27 @@ signal wins, not just by how much.
 
 | # | Topic | Code | Tested |
 |---|---|---|---|
-| 1 | [Book address key](#1-book-address-key) | `src/lib/bookHelpers.js` · SQL `client_title_key` | **yes** |
-| 2 | [Taste profile](#2-taste-profile) | `src/lib/matchHelpers.js` | no |
-| 3 | [Local Match %](#3-local-match-) | `src/lib/matchHelpers.js` | floor only |
-| 4 | [Oracle (LLM) Match %](#4-oracle-llm-match-) | `src/lib/matchHelpers.js` | n/a |
-| 5 | [Reading-level nudge](#5-reading-level-nudge) | `src/lib/matchHelpers.js` | no |
+| 1 | [Book address key](#1-book-address-key) | `src/lib/book/bookHelpers.js` · SQL `client_title_key` | **yes** |
+| 2 | [Taste profile](#2-taste-profile) | `src/lib/scoring/matchHelpers.js` | no |
+| 3 | [Local Match %](#3-local-match-) | `src/lib/scoring/matchHelpers.js` | floor only |
+| 4 | [Oracle (LLM) Match %](#4-oracle-llm-match-) | `src/lib/scoring/matchHelpers.js` | n/a |
+| 5 | [Reading-level nudge](#5-reading-level-nudge) | `src/lib/scoring/matchHelpers.js` | no |
 | 6 | [Similar books (Book page)](#6-similar-books-book-page) | `src/views/BookPage.jsx` | no |
 | 7 | [Similar to your picks (fallback)](#7-similar-to-your-picks-fallback) | `src/views/OracleSimilar.jsx` | no |
-| 8 | [Oracle draw from wishlist / Vault](#8-oracle-draw-from-wishlist--vault) | `src/views/OracleCategories.jsx` · `src/lib/random.js` | **yes** |
+| 8 | [Oracle draw from wishlist / Vault](#8-oracle-draw-from-wishlist--vault) | `src/views/OracleCategories.jsx` · `src/lib/util/random.js` | **yes** |
 | 9 | [Level Passage (fallback plan)](#9-level-passage-fallback-plan) | `src/views/PlanCreate.jsx` | no |
-| 10 | [Best edition for purchase links](#10-best-edition-for-purchase-links) | `src/lib/editionPicker.js` | no |
-| 11 | [Which row represents a work](#11-which-row-represents-a-work) | `src/lib/workGroups.js` | no |
-| 12 | [Picking a lookup hit](#12-picking-a-lookup-hit) | `src/lib/hardcoverService.js` · `src/lib/googleBooksService.js` · `src/lib/titleMatch.js` | no |
+| 10 | [Best edition for purchase links](#10-best-edition-for-purchase-links) | `src/lib/scoring/editionPicker.js` | no |
+| 11 | [Which row represents a work](#11-which-row-represents-a-work) | `src/lib/book/workGroups.js` | no |
+| 12 | [Picking a lookup hit](#12-picking-a-lookup-hit) | `src/lib/sources/hardcoverService.js` · `src/lib/sources/googleBooksService.js` · `src/lib/matching/titleMatch.js` | no |
 | 13 | [Genre inference from subjects](#13-genre-inference-from-subjects) | `batch-scripts/_shared/genreRules.mjs` | partly |
-| 14 | [Primary (shelf) genre](#14-primary-shelf-genre) | `src/lib/bookHelpers.js` | no |
+| 14 | [Primary (shelf) genre](#14-primary-shelf-genre) | `src/lib/book/bookHelpers.js` | no |
 | 15 | [Series matching and queue order](#15-series-matching-and-queue-order) | `batch-scripts/_shared/series*.mjs` | **yes** |
-| 16 | [Daily shuffle and index floors](#16-daily-shuffle-and-index-floors) | `src/lib/genreService.js` · `src/lib/seriesService.js` | contract |
-| 17 | [Reading streak](#17-reading-streak) | `src/lib/readingStreak.js` | **yes** |
-| 18 | [Milestones, accomplishments, reader ranks](#18-milestones-accomplishments-reader-ranks) | `src/lib/shareMoments.js` · `accomplishments.js` · `titles.js` | partly |
-| 19 | [Oracle quota and Pro limits](#19-oracle-quota-and-pro-limits) | SQL `oracle_free_limit` · `src/lib/proGates.js` | no |
-| 20 | [Prompt size budget](#20-prompt-size-budget) | `src/lib/oraclePrompt.js` | no |
-| 21 | [Randomness](#21-randomness) | `src/lib/random.js` and others | **yes** |
+| 16 | [Daily shuffle and index floors](#16-daily-shuffle-and-index-floors) | `src/lib/api/genreService.js` · `src/lib/api/seriesService.js` | contract |
+| 17 | [Reading streak](#17-reading-streak) | `src/lib/scoring/readingStreak.js` | **yes** |
+| 18 | [Milestones, accomplishments, reader ranks](#18-milestones-accomplishments-reader-ranks) | `src/lib/achievements/shareMoments.js` · `accomplishments.js` · `titles.js` | partly |
+| 19 | [Oracle quota and Pro limits](#19-oracle-quota-and-pro-limits) | SQL `oracle_free_limit` · `src/hooks/useProLimits.js` | no |
+| 20 | [Prompt size budget](#20-prompt-size-budget) | `src/lib/oracle/oraclePrompt.js` | no |
+| 21 | [Randomness](#21-randomness) | `src/lib/util/random.js` and others | **yes** |
 
 ## Vocabulary
 
@@ -64,7 +64,7 @@ reader wants harder ones.
 
 ## 1. Book address key
 
-`bookKey(book)` / `addressKey(text)` in `src/lib/bookHelpers.js`, mirrored by
+`bookKey(book)` / `addressKey(text)` in `src/lib/book/bookHelpers.js`, mirrored by
 `client_title_key` / `client_author_key` in SQL.
 
 ```
@@ -207,7 +207,7 @@ AI-failure fallback:
 2. remove anything already in Read Next or the library;
 3. compute §3 Match % for every candidate;
 4. pick **3 without replacement, weighted toward higher Match %**
-   (`weightedSample()` in `src/lib/random.js`, Efraimidis–Spirakis).
+   (`weightedSample()` in `src/lib/util/random.js`, Efraimidis–Spirakis).
 
 ```
 weight = (match / 100) ^ DRAW_WEIGHT_POWER        DRAW_WEIGHT_POWER = 2
@@ -365,7 +365,7 @@ the 1st) and the label said "days". Both are covered by `tests/reading-streak.te
 
 ## 18. Milestones, accomplishments, reader ranks
 
-Milestone ladders (`src/lib/shareMoments.js`) — crossing one creates a share
+Milestone ladders (`src/lib/achievements/shareMoments.js`) — crossing one creates a share
 moment and, for persistent kinds, an accomplishment (`accomplishments.js`, keyed
 so each is awarded at most once):
 
@@ -378,7 +378,7 @@ so each is awarded at most once):
 | books by women authors (`ag` female or mixed) | 5, 10, 25, 50, 100 |
 | "first book in a new family" moments | only once the library has ≥ 5 books |
 
-Reader ranks (`TITLE_TIERS` in `src/lib/titles.js`) by total books read:
+Reader ranks (`TITLE_TIERS` in `src/lib/achievements/readerRanks.js`) by total books read:
 Initiate 1 · Seeker 5 · Scribe 15 · Archivist 30 · Keeper 60 · Voice 100 ·
 Sage 250 · Warden 500 · Library 1000. Ranks are cosmetic and never feed matching.
 
@@ -407,8 +407,8 @@ budget does not improve recommendations — the list is a hint.
 
 | Need | Use |
 |---|---|
-| a fair random order or pick | `shuffle()` / `sample()` in `src/lib/random.js` — Fisher–Yates, never mutates the input |
-| a random pick that favours some items | `weightedSample()` in `src/lib/random.js` (§8) |
+| a fair random order or pick | `shuffle()` / `sample()` in `src/lib/util/random.js` — Fisher–Yates, never mutates the input |
+| a random pick that favours some items | `weightedSample()` in `src/lib/util/random.js` (§8) |
 | the same order for everyone today | `dailyShuffle()` (§16) |
 | a stable value per string (placeholder cover palette, ornament) | `hashStr()` in `bookHelpers.js` |
 | deterministic visuals in 3D scenes | local seeded generators in `components/*/scene.js` |

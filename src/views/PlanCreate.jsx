@@ -1,15 +1,15 @@
 import { useState, useMemo } from 'react';
-import { useData } from '../lib/DataContext';
-import { useRouter } from '../lib/RouterContext';
-import { bookKey, findBookByTitle } from '../lib/bookHelpers';
-import { fetchSeriesBooks } from '../lib/enrichmentService';
-import { callClaude, QuotaExceededError, parseJSONResponse } from '../lib/claudeApi';
-import { useT, useI18n, langDirective } from '../lib/I18nContext';
-import { useOracleQuota } from '../lib/OracleQuotaContext';
-import { goalDirective } from '../lib/matchHelpers';
+import { useData } from '../contexts/DataContext';
+import { useRouter } from '../contexts/RouterContext';
+import { bookKey, findBookByTitle } from '../lib/book/bookHelpers';
+import { fetchSeriesBooks } from '../lib/sources/enrichmentService';
+import { callClaude, QuotaExceededError, parseJSONResponse } from '../lib/oracle/claudeApi';
+import { useT, useI18n, langDirective } from '../contexts/I18nContext';
+import { useOracleQuota } from '../contexts/OracleQuotaContext';
+import { goalDirective } from '../lib/scoring/matchHelpers';
 import GenreSelect from '../components/GenreSelect';
 import ProGate from '../components/ProGate';
-import { useProLimits } from '../lib/proGates';
+import { useProLimits } from '../hooks/useProLimits';
 
 const LEVEL_NAMES = ['', '', '', 'Devoted', 'Literary', 'Voracious'];
 const LEVEL_BLURB = {

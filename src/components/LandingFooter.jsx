@@ -4,8 +4,8 @@
 // copy still lives in the same src/i18n/*.json catalogs as the rest of the
 // app, just under the `landing` key, so translators edit one place.
 import { useState, useRef } from 'react';
-import { useRouter } from '../lib/RouterContext';
-import { useI18n } from '../lib/I18nContext';
+import { useRouter } from '../contexts/RouterContext';
+import { useI18n } from '../contexts/I18nContext';
 import { useClickOutside } from '../hooks/useClickOutside';
 
 const LANGS = [

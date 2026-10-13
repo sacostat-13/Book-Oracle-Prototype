@@ -1,6 +1,6 @@
-import { useRouter } from '../lib/RouterContext';
+import { useRouter } from '../contexts/RouterContext';
 import { OracleQuotaBadge } from '../components/OracleQuotaBadge';
-import { useT, useTNode } from '../lib/I18nContext';
+import { useT, useTNode } from '../contexts/I18nContext';
 
 export default function OracleFork() {
   const { go } = useRouter();

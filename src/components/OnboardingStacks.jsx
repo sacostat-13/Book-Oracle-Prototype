@@ -12,9 +12,9 @@
 // v0.59
 
 import { useState, useCallback, useEffect } from 'react';
-import { useData } from '../lib/DataContext';
-import { useT } from '../lib/I18nContext';
-import { useStacks } from '../lib/useStacks';
+import { useData } from '../contexts/DataContext';
+import { useT } from '../contexts/I18nContext';
+import { useStacks } from '../hooks/useStacks';
 
 // A soft target. The Oracle needs roughly this many books to give a suggestion
 // that isn't generic — but it is never enforced, and the step is skippable.

@@ -1,7 +1,7 @@
 // RatingModal.jsx — v0.31
 
 import { useId, useState } from 'react';
-import { useT } from '../lib/I18nContext';
+import { useT } from '../contexts/I18nContext';
 import Modal from './primitives/Modal';
 
 const STARS = [1, 2, 3, 4, 5];

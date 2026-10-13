@@ -2,18 +2,18 @@
 // Single list — cover grid view matching Library/Wishlist aesthetic.
 
 import { useMemo, useState } from 'react';
-import { useData } from '../lib/DataContext';
-import { useRouter, RouteLink } from '../lib/RouterContext';
-import { useT, useI18n } from '../lib/I18nContext';
-import { openBookTab, bookKey, shelfStateOf, shelfKeySets } from '../lib/bookHelpers';
-import { moodTitleKey } from '../lib/moods';
+import { useData } from '../contexts/DataContext';
+import { useRouter, RouteLink } from '../contexts/RouterContext';
+import { useT, useI18n } from '../contexts/I18nContext';
+import { openBookTab, bookKey, shelfStateOf, shelfKeySets } from '../lib/book/bookHelpers';
+import { moodTitleKey } from '../data/moods';
 import Modal from '../components/primitives/Modal';
-import { useSelection } from '../lib/useSelection';
+import { useSelection } from '../hooks/useSelection';
 import SelectionBar from '../components/SelectionBar';
 import BookCover from '../components/BookCover';
 import ShareModal from '../components/ShareModal';
 import ListMetaEditor from '../components/ListMetaEditor';
-import { listShareUrl } from '../lib/shareService';
+import { listShareUrl } from '../lib/share/shareService';
 import AnthologyEditor from '../components/AnthologyEditor'; // v0.71.1
 import BookMark from '../components/BookMark';
 

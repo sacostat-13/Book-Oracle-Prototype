@@ -1,11 +1,11 @@
 // src/views/SessionCreate.jsx — v0.31
 
 import { useState } from 'react';
-import { useData } from '../lib/DataContext';
-import { useRouter } from '../lib/RouterContext';
-import { useT, useTNode } from '../lib/I18nContext';
-import { supabase } from '../lib/supabase';
-import { lookupByTitle } from '../lib/bookLookup';
+import { useData } from '../contexts/DataContext';
+import { useRouter } from '../contexts/RouterContext';
+import { useT, useTNode } from '../contexts/I18nContext';
+import { supabase } from '../lib/api/supabase';
+import { lookupByTitle } from '../lib/sources/bookLookup';
 import BookThumb from '../components/BookThumb';
 
 // v0.31 note: inputStyle/labelStyle objects (built from dead --paper/--gilt

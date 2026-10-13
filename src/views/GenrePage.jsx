@@ -12,17 +12,17 @@
 // returning reader and a crawler.
 
 import { useEffect, useMemo, useState } from 'react';
-import { useRouter, RouteLink } from '../lib/RouterContext';
-import { useDocumentMeta } from '../lib/useDocumentMeta';
-import { readEntitySeed } from '../lib/entitySeed';
-import { fetchGenre, fetchGenreShelf, fetchBooksByIds, GENRE_PAGE_SIZE, INDEX_FLOOR } from '../lib/genreService';
+import { useRouter, RouteLink } from '../contexts/RouterContext';
+import { useDocumentMeta } from '../hooks/useDocumentMeta';
+import { readEntitySeed } from '../lib/book/entitySeed';
+import { fetchGenre, fetchGenreShelf, fetchBooksByIds, GENRE_PAGE_SIZE, INDEX_FLOOR } from '../lib/api/genreService';
 import BookShelfGrid, { ShelfMore, ShelfOracle } from '../components/BookShelfGrid';
 
 export default function GenrePage() {
   const { route } = useRouter();
   const slug = route.params?.genreSlug;
   // 2026-10-07 — the genre og-prerender.js already resolved, if it left one
-  // (src/lib/entitySeed.js). With it, the heading, description and related
+  // (src/lib/book/entitySeed.js). With it, the heading, description and related
   // genres render on the first pass; only the book shelf waits on the network.
   // Without it, Google's renderer could snapshot "Consulting the shelf…" --
   // the same text on every genre page -- and /genre/sapphicfantasy was filed

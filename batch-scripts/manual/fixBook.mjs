@@ -38,7 +38,7 @@ import { createServiceClient } from '../_shared/supabaseClient.mjs';
 import { readFileSync } from 'fs';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
-import { cleanIsbn, isValidIsbn, isbn10to13 } from '../../src/lib/isbn.js';
+import { cleanIsbn, isValidIsbn, isbn10to13 } from '../../src/lib/book/isbn.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 

@@ -20,8 +20,8 @@
 //   const { dismissCoachmark } = useData();
 //   <button onClick={() => { dismissCoachmark('bookpage-categories'); addCategory(); }}>
 
-import { useData } from '../lib/DataContext';
-import { useT } from '../lib/I18nContext';
+import { useData } from '../contexts/DataContext';
+import { useT } from '../contexts/I18nContext';
 
 export default function CoachMark({ id, title, body, placement = 'bottom', className = '' }) {
   const { coachmarksSeen, dismissCoachmark } = useData();

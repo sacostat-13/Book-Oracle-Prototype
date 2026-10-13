@@ -18,12 +18,12 @@
 // whole component when WebGL is unavailable — so the information is never
 // canvas-only.
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useData } from '../lib/DataContext';
-import { useT, useI18n } from '../lib/I18nContext';
-import { useRouter, RouteLink } from '../lib/RouterContext';
-import { useOracleQuota } from '../lib/OracleQuotaContext';
-import { useProLimits } from '../lib/proGates';
-import { canUseWebGL, readColorVar, isParchment } from '../lib/webgl';
+import { useData } from '../contexts/DataContext';
+import { useT, useI18n } from '../contexts/I18nContext';
+import { useRouter, RouteLink } from '../contexts/RouterContext';
+import { useOracleQuota } from '../contexts/OracleQuotaContext';
+import { useProLimits } from '../hooks/useProLimits';
+import { canUseWebGL, readColorVar, isParchment } from '../lib/device/webgl';
 import { buildSky, THREAD_MAX } from './constellation/buildSky';
 import { starString } from './primitives/StarRating';
 

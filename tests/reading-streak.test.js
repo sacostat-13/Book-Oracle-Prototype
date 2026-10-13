@@ -1,13 +1,13 @@
-// reading-streak.test.js — lib/readingStreak.js, lib/random.js, lib/dates.js.
+// reading-streak.test.js — lib/scoring/readingStreak.js, lib/util/random.js, lib/util/dates.js.
 //
 // The streak cases are the rules in docs/reference/MATH.md → "Reading streak", as
 // examples. The shuffle cases pin the property that broke the Oracle Spark:
 // the input array must never be reordered.
 
 import { describe, it, expect } from 'vitest';
-import { monthlyReadingStreak, streakTemperature } from '../src/lib/readingStreak.js';
-import { shuffle, sample } from '../src/lib/random.js';
-import { parseIsoDate } from '../src/lib/dates.js';
+import { monthlyReadingStreak, streakTemperature } from '../src/lib/scoring/readingStreak.js';
+import { shuffle, sample } from '../src/lib/util/random.js';
+import { parseIsoDate } from '../src/lib/util/dates.js';
 
 const read = (...dates) => dates.map((dateRead) => ({ dateRead }));
 const OCT_12 = new Date(2026, 9, 12); // local time, month is 0-based

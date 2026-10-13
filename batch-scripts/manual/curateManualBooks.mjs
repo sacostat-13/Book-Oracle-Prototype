@@ -40,7 +40,7 @@ import { createServiceClient } from '../_shared/supabaseClient.mjs';
 import { readFileSync, writeFileSync, existsSync } from 'fs';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
-import { pickBestEdition, EDITION_FIELDS } from '../../src/lib/editionPicker.js';
+import { pickBestEdition, EDITION_FIELDS } from '../../src/lib/scoring/editionPicker.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const CSV_PATH = join(__dirname, '..', 'output', 'proposed-titles.csv');

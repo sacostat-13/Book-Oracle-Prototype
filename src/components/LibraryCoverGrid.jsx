@@ -1,5 +1,5 @@
 import BookCover from './BookCover';
-import { RouteLink } from '../lib/RouterContext';
+import { RouteLink } from '../contexts/RouterContext';
 import StarRating, { starString } from './primitives/StarRating';
 
 /**

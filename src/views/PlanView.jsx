@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react';
-import { useData } from '../lib/DataContext';
-import { useRouter } from '../lib/RouterContext';
-import { bookKey, findBookByTitle } from '../lib/bookHelpers';
-import { useT } from '../lib/I18nContext';
-import { supabase } from '../lib/supabase';
+import { useData } from '../contexts/DataContext';
+import { useRouter } from '../contexts/RouterContext';
+import { bookKey, findBookByTitle } from '../lib/book/bookHelpers';
+import { useT } from '../contexts/I18nContext';
+import { supabase } from '../lib/api/supabase';
 import ShareModal from '../components/ShareModal';
-import { planShareUrl } from '../lib/shareService';
+import { planShareUrl } from '../lib/share/shareService';
 import BookMark from '../components/BookMark';
 import { useConfirm } from '../components/primitives/ConfirmDialog';
 

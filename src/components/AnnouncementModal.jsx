@@ -4,7 +4,7 @@
 // so it works without an extra DB fetch.
 
 import { useId } from 'react';
-import { useT } from '../lib/I18nContext';
+import { useT } from '../contexts/I18nContext';
 import Modal from './primitives/Modal';
 
 export default function AnnouncementModal({ announcement, onClose }) {

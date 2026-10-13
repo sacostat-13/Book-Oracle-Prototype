@@ -16,7 +16,7 @@
 //
 // Returns { year, qid } | { year: null, stage } | FAILED.
 
-import { titleMatches, authorMatches } from '../../src/lib/titleMatch.js';
+import { titleMatches, authorMatches } from '../../src/lib/matching/titleMatch.js';
 import { wikidataYear } from './publicationYear.mjs';
 
 const WD_API = 'https://www.wikidata.org/w/api.php';
