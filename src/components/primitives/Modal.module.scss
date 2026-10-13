@@ -1,0 +1,96 @@
+// Modal.module.scss — the modal shell (CSS Modules pilot, spike item S4).
+//
+// Moved here from pages/_social.scss (.rating-modal-overlay, .rating-modal),
+// pages/_misc.scss (.modal-wide) and components/_modal.scss (.overlay, .modal,
+// .modal--scroll). Dialogs are centred on every screen size (2026-10-13: the
+// old mobile bottom sheet is gone).
+//
+// Every rule is wrapped in :where() — zero specificity — so a page class passed
+// through `className` / `overlayClassName` (e.g. .oracle-gate, .share-modal)
+// always wins.
+//
+// BUT zero specificity also ties with the global resets (`* { margin: 0 }` in
+// _reset.scss), and module CSS is emitted BEFORE main.scss (main.jsx imports
+// App before the stylesheet), so a tie goes to the reset. Anything a reset also
+// sets must therefore NOT be in :where() — see .panel's margin below.
+
+// ── Backdrop ────────────────────────────────────────────────────────────────
+:where(.overlay) {
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 8, 6, .78);
+  backdrop-filter: blur(4px);
+  z-index: 1000;
+  display: flex;
+  // Centring is done by `margin: auto` on the panel, not `align-items: center`:
+  // a centred flex item taller than the viewport spills past the top edge where
+  // nothing can scroll to it, while auto margins centre when it fits and fall
+  // back to the top (scrollable) when it doesn't.
+  align-items: flex-start;
+  justify-content: center;
+  padding: 1rem;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+// ── Panel (card layout, the default) ────────────────────────────────────────
+:where(.panel) {
+  position: relative;
+  background: var(--ro-surface);
+  border: 1px solid var(--ro-border-strong);
+  border-radius: var(--ro-radius-xl);
+  width: 100%;
+  padding: 32px;
+  box-shadow: var(--ro-shadow);
+  // No modal may exceed the viewport (v0.60.3): on a short screen the footer
+  // buttons must stay reachable, so the panel caps and scrolls itself.
+  max-height: calc(100vh - 2rem);  // fallback
+  max-height: calc(100dvh - 2rem); // excludes mobile browser chrome
+  overflow-y: auto;
+  overscroll-behavior: contain;
+
+  &:focus { outline: none; } // focus lands here only when nothing inside is focusable
+}
+
+// Class specificity on purpose — `* { margin: 0 }` (zero specificity, emitted
+// later) would otherwise cancel it and pin every dialog to the top.
+.panel { margin: auto; }
+
+:where(.sm) { max-width: 420px; }
+:where(.md) { max-width: 480px; }
+:where(.lg) { max-width: 640px; max-height: 85vh; }
+
+// ── Sections layout: pinned head and foot, only the body scrolls ───────────
+// `min-height: 0` on the body is what lets it shrink: a flex child defaults to
+// min-height:auto and would otherwise push the footer off screen.
+:where(.sections) {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 0;
+
+  > :where(:global(.modal-head), :global(.modal__head), :global(.modal-foot), :global(.modal__actions)) {
+    flex: 0 0 auto;
+  }
+  > :where(:global(.modal-body), :global(.modal__body)) {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+  > :where(:global(.modal__actions)) {
+    background: var(--ro-surface);
+  }
+}
+
+// ── Fullscreen (camera scanner): backdrop only, no panel chrome ─────────────
+:where(.fullscreenOverlay) {
+  padding: 0;
+  align-items: stretch;
+  justify-content: stretch;
+}
+:where(.fullscreen) {
+  width: 100%;
+  &:focus { outline: none; }
+}

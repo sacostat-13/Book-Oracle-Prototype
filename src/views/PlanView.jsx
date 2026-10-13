@@ -7,11 +7,13 @@ import { supabase } from '../lib/supabase';
 import ShareModal from '../components/ShareModal';
 import { planShareUrl } from '../lib/shareService';
 import BookMark from '../components/BookMark';
+import { useConfirm } from '../components/primitives/ConfirmDialog';
 
 export default function PlanView() {
   const { state, addToReadNext, markAsRead, deletePlan, setCurrentPlan, showToast } = useData();
   const { go, route } = useRouter();
   const t = useT();
+  const confirm = useConfirm();
   const [shareOpen, setShareOpen] = useState(false); // v0.43
 
   const planId = route.params?.planId;
@@ -96,7 +98,7 @@ export default function PlanView() {
   }
 
   async function handleDeletePlan() {
-    if (!confirm(t('plans.deleteConfirm') || 'Delete this Passage?')) return;
+    if (!(await confirm({ message: t('plans.deleteConfirm'), confirmLabel: t('common.delete'), danger: true }))) return;
     await deletePlan(plan._id);
     go('dashboard');
   }

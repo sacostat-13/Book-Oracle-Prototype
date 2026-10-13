@@ -20,6 +20,7 @@ import { callClaude, QuotaExceededError } from '../lib/claudeApi';
 import { useT } from '../lib/I18nContext';
 import { useProLimits } from '../lib/proGates';
 import { useOracleQuota } from '../lib/OracleQuotaContext';
+import { useConfirm } from './primitives/ConfirmDialog';
 
 // ── Oracle suggestion flow ────────────────────────────────────────────────────
 
@@ -269,6 +270,7 @@ function CreatePollForm({ onAdd, onCancel }) {
 
 export default function ClubPolls({ clubId, clubName, clubGenres = [], isAdmin, recentBooks = [], onCreateSession }) {
   const t = useT();
+  const confirm = useConfirm();
   const { createPoll, castVote, closePoll, deletePoll } = useData();
   // v0.58: hoisted out of fetchOracleSuggestions / handleOracleSuggest, which
   // were calling hooks outside render.
@@ -312,7 +314,7 @@ export default function ClubPolls({ clubId, clubName, clubGenres = [], isAdmin, 
   }
 
   async function handleDelete(pollId) {
-    if (!confirm(t('polls.confirmDeletePoll'))) return;
+    if (!(await confirm({ message: t('polls.confirmDeletePoll'), confirmLabel: t('common.delete'), danger: true }))) return;
     await deletePoll(pollId);
     setPolls((ps) => ps.filter((p) => p.id !== pollId));
   }

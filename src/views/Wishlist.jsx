@@ -15,6 +15,7 @@ import ShelfFilters from '../components/ShelfFilters';
 import { useShelfFilters } from '../lib/useShelfFilters';
 import { useShelfGrouping } from '../lib/useShelfGrouping';
 import BookMark from '../components/BookMark';
+import { useConfirm } from '../components/primitives/ConfirmDialog';
 
 // v0.15 phase 2.5: two-dropdown filter (genres + categories).
 // v0.16 DS pass: migrated to .lv-* / .btn-* / .select tokens.
@@ -36,6 +37,7 @@ export default function Wishlist({ onOpenBook }) {
   } = useData();
   const { go } = useRouter();
   const t = useT();
+  const confirm = useConfirm();
   const tNode = useTNode();
   const [bulkOpen, setBulkOpen] = useState(false);
   const [viewMode, setViewMode] = useState(() => {
@@ -181,10 +183,10 @@ export default function Wishlist({ onOpenBook }) {
             <button className="btn btn-secondary" onClick={() => setBulkOpen(true)}>+ {t('wishlist.bulkImport')}</button>
             <button
               className="btn btn-tertiary"
-              onClick={() => {
-                if (confirm('Add ~280 curated books to your wishlist? You can remove any you don\'t want afterwards.')) {
+              onClick={async () => {
+                if (await confirm(t('wishlist.confirmSeedVault'))) {
                   seedWishlistIfNeeded();
-                  showToast('Curated catalog added to your wishlist');
+                  showToast(t('wishlist.seedVaultToast'));
                 }
               }}
             >
@@ -293,11 +295,11 @@ export default function Wishlist({ onOpenBook }) {
                           )}
                           <button
                             className="btn btn-danger btn--sm"
-                            onClick={() => {
-                              if (confirm(`Remove "${b.t}" from your wishlist?`)) removeFromWishlist(b);
+                            onClick={async () => {
+                              if (await confirm({ message: t('wishlist.confirmRemove', { title: b.t }), confirmLabel: t('common.remove'), danger: true })) removeFromWishlist(b);
                             }}
                           >
-                            Remove
+                            {t('common.remove')}
                           </button>
                         </div>
                       )}

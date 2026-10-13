@@ -6,19 +6,11 @@ import { useRouter } from '../lib/RouterContext';
 import { useT, useTNode } from '../lib/I18nContext';
 import { supabase } from '../lib/supabase';
 import { lookupByTitle } from '../lib/bookLookup';
-import BookCover from '../components/BookCover';
+import BookThumb from '../components/BookThumb';
 
 // v0.31 note: inputStyle/labelStyle objects (built from dead --paper/--gilt
 // tokens) removed in favor of the real .field-label / .input classes, matching
 // the same fix applied to EditSessionModal in SessionDetail.jsx.
-
-function BookThumb({ book, size = 28 }) {
-  return (
-    <div className="session-form__cover" style={{ '--sc-w': `${size}px`, '--sc-h': `${size * 1.5}px` }}>
-      <BookCover title={book.t} author={book.a} coverUrl={book.coverUrl} />
-    </div>
-  );
-}
 
 export default function SessionCreate() {
   const { state, showToast, upsertBookOnServer, showShareMoment } = useData();

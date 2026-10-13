@@ -318,7 +318,10 @@
     "markRead": "✓ Mark as read",
     "addToNext": "→ Read next",
     "remove": "Remove",
-    "pageTitle": "My <span class=\"accent\">Wishlist</span>"
+    "pageTitle": "My <span class=\"accent\">Wishlist</span>",
+    "confirmRemove": "Remove \"{title}\" from your wishlist?",
+    "confirmSeedVault": "Add about 280 curated books to your wishlist? You can remove any you don't want afterwards.",
+    "seedVaultToast": "Curated catalog added to your wishlist"
   },
   "shelfFilters": {
     "more": "More filters",
@@ -365,7 +368,8 @@
     "bulkImport": "Bulk Import",
     "finishedOn": "Finished {date}",
     "stars": "{count} ★",
-    "pageTitle": "<span class=\"accent\">Books</span> I've Read"
+    "pageTitle": "<span class=\"accent\">Books</span> I've Read",
+    "confirmRemove": "Remove \"{title}\" from your library?"
   },
   "oracle": {
     "breadcrumbDashboard": "Dashboard",
@@ -1016,7 +1020,8 @@
     "saveCreate": "Save & add",
     "saveNoRating": "Add to library",
     "saveEdit": "Save changes",
-    "saving": "Saving…"
+    "saving": "Saving…",
+    "starsAria": "{count} of 5 stars"
   },
   "progress": {
     "eyebrow": "Progress",
@@ -1219,7 +1224,7 @@
     "you": "(you)",
     "makeAdmin": "Make admin",
     "removeMember": "Remove",
-    "confirmRemoveMember": "Remove  from this club?",
+    "confirmRemoveMember": "Remove {name} from this club?",
     "dangerZone": "Danger zone",
     "deleteClub": "Delete club",
     "deleteClubConfirm": "This will delete all sessions and remove all members. Are you sure?",

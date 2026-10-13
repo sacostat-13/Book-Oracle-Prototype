@@ -9,19 +9,9 @@
 // Utility components: CategoryAutocomplete, OracleQuotaBadge, BookCard, BookCover.
 
 // ══════════════════════════════════════════════════════════════════════════════
-// SHARED MODAL SHELL  (reuses rating-modal-overlay + rating-modal from _social)
-// Extra content-specific classes below.
+// MODAL SECTIONS — head / body / foot inside a `layout="sections"` Modal.
+// The shell itself (backdrop, panel, sizes) is components/primitives/Modal.
 // ══════════════════════════════════════════════════════════════════════════════
-
-.modal-wide {
-  // Wider variant of .rating-modal for release notes / announcement
-  max-width: 640px;
-  max-height: 85vh;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  padding: 0; // padding handled per-section
-}
 
 .modal-head {
   padding: 1.6rem 2rem 1rem;
@@ -62,49 +52,6 @@
   &:hover {
     color: var(--ro-text);
   }
-}
-
-// ══════════════════════════════════════════════════════════════════════════════
-// ANNOUNCEMENT MODAL  (parchment-card variant with corner brackets)
-// ══════════════════════════════════════════════════════════════════════════════
-
-.announcement-modal {
-  @extend .rating-modal; // inherits corner brackets + surface
-  max-width: 540px;
-  text-align: center;
-}
-
-.announcement-modal__icon {
-  font-size: 2.4rem;
-  color: var(--ro-gold-text);
-  margin-bottom: 0.75rem;
-  line-height: 1;
-}
-
-.announcement-modal__eyebrow {
-  @extend .rating-modal__eyebrow;
-  margin-bottom: 4px;
-}
-
-.announcement-modal__title {
-  @extend .rating-modal__title;
-  margin-bottom: 1rem;
-}
-
-.announcement-modal__body {
-  font-family: var(--ro-font-body);
-  font-size: 15px;
-  line-height: 1.65;
-  color: var(--ro-text-2);
-  text-align: left;
-  margin-bottom: 1.5rem;
-}
-
-.announcement-modal__actions {
-  display: flex;
-  gap: 0.75rem;
-  justify-content: center;
-  flex-wrap: wrap;
 }
 
 // ══════════════════════════════════════════════════════════════════════════════

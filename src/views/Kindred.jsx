@@ -20,6 +20,7 @@ import { useRouter } from '../lib/RouterContext';
 import { useT } from '../lib/I18nContext';
 import Avatar from '../components/Avatar';
 import { RowListSkeleton } from '../components/Skeleton';
+import Tabs from '../components/primitives/Tabs';
 
 // ── One reader, in a list ────────────────────────────────────────────────────
 
@@ -179,20 +180,17 @@ export default function Kindred() {
       )}
 
       {/* ── Tabs ── */}
-      <div className="kin-tabs" role="tablist">
-        {TABS.map(({ id, label, count }) => (
-          <button
-            key={id}
-            role="tab"
-            aria-selected={tab === id}
-            className={`pf-tab${tab === id ? ' pf-tab--active' : ''}`}
-            onClick={() => setTab(id)}
-          >
-            {label}
-            {count > 0 && <span className="kin-tab__count">{count}</span>}
-          </button>
-        ))}
-      </div>
+      <Tabs
+        className="kin-tabs"
+        tabClassName="pf-tab"
+        activeClassName="pf-tab--active"
+        tabs={TABS.map(({ id, label, count }) => ({
+          id,
+          label: <>{label}{count > 0 && <span className="kin-tab__count">{count}</span>}</>,
+        }))}
+        value={tab}
+        onChange={setTab}
+      />
 
       {loading && <RowListSkeleton rows={4} />}
 

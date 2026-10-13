@@ -1,51 +1,9 @@
 @use "../tokens";
 
 // components/_modal.scss — The Books Oracle
-// Overlay + centered modal surface. Book-detail and confirm dialogs share this.
-//   .overlay        full-screen scrim (blur)
-//   .modal          surface card (520 default)
-//   .modal__head / __body / __actions
-
-@keyframes ov-scale {
-  from { opacity: 0; transform: scale(.97); }
-  to   { opacity: 1; transform: scale(1); }
-}
-@keyframes ov-sheet {
-  from { transform: translateY(100%); }
-  to   { transform: translateY(0); }
-}
-
-.overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 200;
-  background: rgba(5, 8, 18, .66);
-  backdrop-filter: blur(3px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 26px;
-}
-
-.modal {
-  position: relative;
-  background: var(--ro-surface);
-  border: 1px solid var(--ro-border-strong);
-  border-radius: var(--ro-radius-xl);
-  width: 520px;
-  max-width: 100%;
-  max-height: calc(100vh - 52px); // fallback for browsers without dvh support
-  max-height: calc(100dvh - 52px); // v0.39.4: matches the real visible viewport on mobile
-  overflow-y: auto;
-  box-shadow: var(--ro-shadow);
-  animation: ov-scale .2s ease;
-  // Default padding for content placed directly inside .modal (no
-  // __head/__body/__actions structure). Those three each set a complete
-  // padding shorthand of their own, so this has no effect when they're used.
-  padding: 26px;
-}
-.modal--wide { width: 660px; }
-.modal--narrow { width: 420px; }
+// Inner parts of a modal: .modal__head / __title / __body / __actions / __close.
+// The backdrop and panel (formerly .overlay/.modal and .rating-modal) are
+// components/primitives/Modal — see its module stylesheet.
 
 .modal__head {
   padding: 26px 26px 22px;
@@ -91,46 +49,6 @@
   font-size: 18px;
   line-height: 1;
   &:hover { color: var(--ro-text); border-color: var(--ro-gold); }
-}
-
-// Mobile: dock to bottom as a sheet
-@include tokens.ro-down(mobile) {
-  .overlay { align-items: flex-end; padding: 0; }
-  .modal {
-    width: 100%;
-    border-radius: var(--ro-radius-xl) var(--ro-radius-xl) 0 0;
-    max-height: 92vh;
-    animation: ov-sheet .28s ease;
-  }
-}
-
-// ── Tall forms inside a modal (v0.63) ────────────────────────────────────────
-//
-// `.modal` scrolls as a whole, which is fine for a confirm dialog and wrong for
-// a form: on a phone the Create button ends up below fifty chips, so the reader
-// has to scroll past the entire genre taxonomy to find out how to submit.
-//
-// `.modal--scroll` splits it — head and actions stay put, only the body moves.
-// `min-height: 0` on the body is what actually makes it scroll: a flex child
-// defaults to `min-height: auto`, so without it the body refuses to shrink
-// below its content and the overflow leaks out of the modal instead.
-.modal--scroll {
-  display: flex;
-  flex-direction: column;
-  overflow: hidden; // the body owns the scrolling now
-  padding: 0;       // head/body/actions each set their own
-
-  .modal__body {
-    flex: 1 1 auto;
-    min-height: 0;
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
-  }
-
-  .modal__actions {
-    flex-shrink: 0;
-    background: var(--ro-surface);
-  }
 }
 
 // Nothing inside a modal may force it wider than the viewport.

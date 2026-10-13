@@ -3,17 +3,10 @@
 // Includes the ES/EN language dropdown called for in the landing guideline —
 // copy still lives in the same src/i18n/*.json catalogs as the rest of the
 // app, just under the `landing` key, so translators edit one place.
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef } from 'react';
 import { useRouter } from '../lib/RouterContext';
 import { useI18n } from '../lib/I18nContext';
-
-function useClickOutside(ref, onClose) {
-  useEffect(() => {
-    function handler(e) { if (ref.current && !ref.current.contains(e.target)) onClose(); }
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, [ref, onClose]);
-}
+import { useClickOutside } from '../hooks/useClickOutside';
 
 const LANGS = [
   { code: 'en', label: 'English' },

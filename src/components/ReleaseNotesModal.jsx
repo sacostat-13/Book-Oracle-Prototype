@@ -1,7 +1,7 @@
-import { useEffect } from 'react';
+import { useId } from 'react';
 import { useI18n, useT } from '../lib/I18nContext';
 import { publishedReleases, currentRelease, CURRENT_VERSION } from '../lib/releases';
-import CornerBrackets from './CornerBrackets';
+import Modal from './primitives/Modal';
 
 // Two modes, one component.
 //
@@ -24,73 +24,58 @@ export default function ReleaseNotesModal({ onClose, announce = false, onCta }) 
   const releases = announce && current ? [current] : publishedReleases();
   const ctaLabel = announce && current ? (isSpanish ? current.ctaEs : current.ctaEn) : null;
 
-  useEffect(() => {
-    function onKey(e) { if (e.key === 'Escape') onClose?.(); }
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [onClose]);
-
-  useEffect(() => {
-    document.body.style.overflow = 'hidden';
-    return () => { document.body.style.overflow = ''; };
-  }, []);
+  const titleId = useId();
 
   return (
-    <div
-      className="rating-modal-overlay"
-      onClick={(e) => { if (e.target === e.currentTarget) onClose?.(); }}
-    >
-      <div className={`rating-modal modal-wide${announce ? ' rn-announce' : ''}`}>
-        <CornerBrackets />
-        {/* Header */}
-        <div className="modal-head">
-          <div>
-            <div className="rn-version">
-              {announce ? t('releaseNotes.whatsNew') : t('releaseNotes.changelog')}
-            </div>
-            <h2 className="rn-title">
-              {announce && current
-                ? (isSpanish ? current.titleEs : current.titleEn)
-                : t('releaseNotes.whatsNew')}
-            </h2>
+    <Modal onClose={onClose} labelledBy={titleId} size="lg" layout="sections" className={announce ? 'rn-announce' : undefined}>
+      {/* Header */}
+      <div className="modal-head">
+        <div>
+          <div className="rn-version">
+            {announce ? t('releaseNotes.whatsNew') : t('releaseNotes.changelog')}
           </div>
-          <button onClick={onClose} aria-label={t('common.close')} className="modal-close-btn">
-            ×
-          </button>
+          <h2 className="rn-title" id={titleId}>
+            {announce && current
+              ? (isSpanish ? current.titleEs : current.titleEn)
+              : t('releaseNotes.whatsNew')}
+          </h2>
         </div>
-
-        {/* Scrollable body */}
-        <div className="modal-body">
-          {releases.map((r, i) => (
-            <ReleaseEntry
-              key={r.version}
-              release={r}
-              isCurrent={r.version === CURRENT_VERSION}
-              isLast={i === releases.length - 1}
-              isSpanish={isSpanish}
-              // In announce mode the release title is already the modal's
-              // heading, so repeating it with a version badge underneath reads
-              // as a changelog rather than as news.
-              bare={announce}
-              t={t}
-            />
-          ))}
-        </div>
-
-        {announce && (
-          <div className="modal-foot">
-            <button className="btn-secondary" onClick={onClose}>
-              {t('releaseNotes.later')}
-            </button>
-            {ctaLabel && onCta && (
-              <button className="btn-primary rn-cta" onClick={onCta}>
-                {ctaLabel}
-              </button>
-            )}
-          </div>
-        )}
+        <button onClick={onClose} aria-label={t('common.close')} className="modal-close-btn">
+          ×
+        </button>
       </div>
-    </div>
+
+      {/* Scrollable body */}
+      <div className="modal-body">
+        {releases.map((r, i) => (
+          <ReleaseEntry
+            key={r.version}
+            release={r}
+            isCurrent={r.version === CURRENT_VERSION}
+            isLast={i === releases.length - 1}
+            isSpanish={isSpanish}
+            // In announce mode the release title is already the modal's
+            // heading, so repeating it with a version badge underneath reads
+            // as a changelog rather than as news.
+            bare={announce}
+            t={t}
+          />
+        ))}
+      </div>
+
+      {announce && (
+        <div className="modal-foot">
+          <button className="btn-secondary" onClick={onClose}>
+            {t('releaseNotes.later')}
+          </button>
+          {ctaLabel && onCta && (
+            <button className="btn-primary rn-cta" onClick={onCta}>
+              {ctaLabel}
+            </button>
+          )}
+        </div>
+      )}
+    </Modal>
   );
 }
 

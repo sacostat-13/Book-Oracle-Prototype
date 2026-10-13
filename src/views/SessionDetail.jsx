@@ -12,10 +12,11 @@ import { lookupByTitle } from '../lib/bookLookup';
 import BookCover from '../components/BookCover';
 import ProgressUpdateModal from '../components/ProgressUpdateModal';
 import SessionDiscussion from '../components/SessionDiscussion';
-import CornerBrackets from '../components/CornerBrackets';
+import Modal from '../components/primitives/Modal';
 import { useT } from '../lib/I18nContext';
 import Avatar from '../components/Avatar';
 import BookMark from '../components/BookMark';
+import BookThumb from '../components/BookThumb';
 
 // ── Shared sub-components ─────────────────────────────────────────────────────
 
@@ -70,14 +71,6 @@ function MemberProgressRow({ member }) {
 // tokens that don't exist post theme-rename (should be --ro-text/--ro-gold).
 // Replaced with the real .field-label / .input classes used everywhere else.
 
-function BookThumb({ book, size = 28 }) {
-  return (
-    <div className="session-form__cover" style={{ '--sc-w': `${size}px`, '--sc-h': `${size * 1.5}px` }}>
-      <BookCover title={book.t || book.title} author={book.a || book.author} coverUrl={book.coverUrl || book.cover_url} />
-    </div>
-  );
-}
-
 function EditSessionModal({ session, book, onSave, onClose }) {
   const { state, upsertBookOnServer } = useData();
   const t = useT();
@@ -122,108 +115,95 @@ function EditSessionModal({ session, book, onSave, onClose }) {
     setSaving(false);
   }
 
-  // Close on Escape
-  useEffect(() => {
-    const onKey = (e) => { if (e.key === 'Escape' && !saving) onClose(); };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [onClose, saving]);
-
   return (
-    <div
-      onClick={(e) => { if (e.target === e.currentTarget && !saving) onClose(); }}
-      className="rating-modal-overlay"
-    >
-      <div className="rating-modal rating-modal--scroll">
-        <CornerBrackets />
-        <div className="rating-modal__eyebrow">
-          {t('sessions.editEyebrow', { clubName: 'Admin' })}
-        </div>
-        <h2 className="rating-modal__title">
-          {t('sessions.editTitle')}
-        </h2>
+    <Modal onClose={onClose} dismissible={!saving} label={t('sessions.editTitle')}>
+      <div className="rating-modal__eyebrow">
+        {t('sessions.editEyebrow', { clubName: 'Admin' })}
+      </div>
+      <h2 className="rating-modal__title">
+        {t('sessions.editTitle')}
+      </h2>
 
-        <div className="session-form">
-          {/* Book picker */}
-          <div>
-            <label className="field-label">Book</label>
-            {selectedBook ? (
-              <div className="session-form__book-row">
-                <BookThumb book={selectedBook} size={28} />
-                <div className="club-member-row__body">
-                  <div className="session-form__book-title">{selectedBook.t || selectedBook.title}</div>
-                  {(selectedBook.a || selectedBook.author) && <div className="session-form__book-author">{selectedBook.a || selectedBook.author}</div>}
-                </div>
-                <button className="btn-text" onClick={() => { setSelectedBook(null); setBookResults([]); }}>{t('sessions.changeBook')}</button>
+      <div className="session-form">
+        {/* Book picker */}
+        <div>
+          <label className="field-label">Book</label>
+          {selectedBook ? (
+            <div className="session-form__book-row">
+              <BookThumb book={selectedBook} size={28} />
+              <div className="club-member-row__body">
+                <div className="session-form__book-title">{selectedBook.t || selectedBook.title}</div>
+                {(selectedBook.a || selectedBook.author) && <div className="session-form__book-author">{selectedBook.a || selectedBook.author}</div>}
               </div>
-            ) : (
-              <div className="session-form__dropdown">
-                <input
-                  className="input"
-                  placeholder="Search by title or author…"
-                  value={bookQuery}
-                  onChange={(e) => { setBookQuery(e.target.value); searchBooks(e.target.value); }}
-                  autoFocus
-                />
-                {(bookResults.length > 0 || searching) && (
-                  <div className="session-form__search-results">
-                    {searching && <div className="ldetail-empty">Searching…</div>}
-                    {bookResults.map((b, i) => (
-                      <div
-                        key={b.bookId || i}
-                        className="ldetail-pick-row"
-                        onClick={() => { setSelectedBook(b); setBookResults([]); setBookQuery(''); }}
-                      >
-                        <BookThumb book={b} size={24} />
-                        <div>
-                          <div className="ldetail-pick-title">{b.t}</div>
-                          {b.a && <div className="ldetail-pick-author">{b.a}</div>}
-                        </div>
+              <button className="btn-text" onClick={() => { setSelectedBook(null); setBookResults([]); }}>{t('sessions.changeBook')}</button>
+            </div>
+          ) : (
+            <div className="session-form__dropdown">
+              <input
+                className="input"
+                placeholder="Search by title or author…"
+                value={bookQuery}
+                onChange={(e) => { setBookQuery(e.target.value); searchBooks(e.target.value); }}
+                autoFocus
+              />
+              {(bookResults.length > 0 || searching) && (
+                <div className="session-form__search-results">
+                  {searching && <div className="ldetail-empty">Searching…</div>}
+                  {bookResults.map((b, i) => (
+                    <div
+                      key={b.bookId || i}
+                      className="ldetail-pick-row"
+                      onClick={() => { setSelectedBook(b); setBookResults([]); setBookQuery(''); }}
+                    >
+                      <BookThumb book={b} size={24} />
+                      <div>
+                        <div className="ldetail-pick-title">{b.t}</div>
+                        {b.a && <div className="ldetail-pick-author">{b.a}</div>}
                       </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-
-          {/* Dates */}
-          <div className="db-stats-grid">
-            <div>
-              <label className="field-label">Starts</label>
-              <input type="date" className="input" value={startsAt} onChange={(e) => setStartsAt(e.target.value)} />
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
-            <div>
-              <label className="field-label">Ends</label>
-              <input type="date" className="input" value={endsAt} min={startsAt} onChange={(e) => setEndsAt(e.target.value)} />
-            </div>
-          </div>
+          )}
+        </div>
 
-          {/* Notes */}
+        {/* Dates */}
+        <div className="db-stats-grid">
           <div>
-            <label className="field-label">
-              Notes for members{' '}
-              <span className="club-form__optional">(optional)</span>
-            </label>
-            <textarea
-              className="textarea"
-              placeholder="Discussion questions, reading goals, pace suggestions…"
-              value={adminNotes}
-              onChange={(e) => setAdminNotes(e.target.value)}
-              rows={3}
-            />
+            <label className="field-label">Starts</label>
+            <input type="date" className="input" value={startsAt} onChange={(e) => setStartsAt(e.target.value)} />
           </div>
+          <div>
+            <label className="field-label">Ends</label>
+            <input type="date" className="input" value={endsAt} min={startsAt} onChange={(e) => setEndsAt(e.target.value)} />
+          </div>
+        </div>
 
-          {/* Actions */}
-          <div className="bp-actions">
-            <button className="btn-secondary" onClick={onClose} disabled={saving}>Cancel</button>
-            <button className="btn-primary" onClick={handleSave} disabled={!selectedBook || !startsAt || !endsAt || saving}>
-              {saving ? t('sessions.saving') : t('sessions.saveButton')}
-            </button>
-          </div>
+        {/* Notes */}
+        <div>
+          <label className="field-label">
+            Notes for members{' '}
+            <span className="club-form__optional">(optional)</span>
+          </label>
+          <textarea
+            className="textarea"
+            placeholder="Discussion questions, reading goals, pace suggestions…"
+            value={adminNotes}
+            onChange={(e) => setAdminNotes(e.target.value)}
+            rows={3}
+          />
+        </div>
+
+        {/* Actions */}
+        <div className="bp-actions">
+          <button className="btn-secondary" onClick={onClose} disabled={saving}>Cancel</button>
+          <button className="btn-primary" onClick={handleSave} disabled={!selectedBook || !startsAt || !endsAt || saving}>
+            {saving ? t('sessions.saving') : t('sessions.saveButton')}
+          </button>
         </div>
       </div>
-    </div>
+    </Modal>
   );
 }
 

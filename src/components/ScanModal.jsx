@@ -18,6 +18,7 @@ import { useT } from '../lib/I18nContext';
 import { createScanner, screenCode } from '../lib/barcodeScanner';
 import { resolveIsbn } from '../lib/scanResolve';
 import { bookKey } from '../lib/bookHelpers';
+import Modal from './primitives/Modal';
 
 const CONFIRM_MS = 2200;
 
@@ -168,7 +169,7 @@ export default function ScanModal({ onClose, target = null }) {
   }[problem];
 
   return (
-    <div className="overlay scan-overlay" role="dialog" aria-modal="true" aria-label={t('scan.title')}>
+    <Modal onClose={onClose} label={t('scan.title')} layout="fullscreen" overlayClassName="scan-overlay">
       <div className="scan">
 
         <div className="scan__stage">
@@ -321,7 +322,7 @@ export default function ScanModal({ onClose, target = null }) {
           </div>
         )}
       </div>
-    </div>
+    </Modal>
   );
 }
 

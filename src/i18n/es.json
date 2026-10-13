@@ -318,7 +318,10 @@
     "markRead": "✓ Marcar como leído",
     "addToNext": "→ Por leer",
     "remove": "Quitar",
-    "pageTitle": "Mi <span class=\"accent\">lista de deseos</span>"
+    "pageTitle": "Mi <span class=\"accent\">lista de deseos</span>",
+    "confirmRemove": "¿Quitás \"{title}\" de tu Lista de Deseos?",
+    "confirmSeedVault": "¿Agregás unos 280 libros curados a tu Lista de Deseos? Después podés quitar los que no quieras.",
+    "seedVaultToast": "Agregamos el catálogo curado a tu Lista de Deseos"
   },
   "shelfFilters": {
     "more": "Más filtros",
@@ -365,7 +368,8 @@
     "bulkImport": "Agregar varios",
     "finishedOn": "Terminado el {date}",
     "stars": "{count} ★",
-    "pageTitle": "<span class=\"accent\">Libros</span> que he leído"
+    "pageTitle": "<span class=\"accent\">Libros</span> que he leído",
+    "confirmRemove": "¿Quitás \"{title}\" de tu biblioteca?"
   },
   "oracle": {
     "breadcrumbDashboard": "Inicio",
@@ -1016,7 +1020,8 @@
     "saveCreate": "Guardar y agregar",
     "saveNoRating": "Agregar a biblioteca",
     "saveEdit": "Guardar cambios",
-    "saving": "Guardando…"
+    "saving": "Guardando…",
+    "starsAria": "{count} de 5 estrellas"
   },
   "progress": {
     "eyebrow": "Progreso",
@@ -1219,7 +1224,7 @@
     "you": "(vos)",
     "makeAdmin": "Hacer admin",
     "removeMember": "Quitar",
-    "confirmRemoveMember": "¿Quitar a  de este grupo?",
+    "confirmRemoveMember": "¿Quitar a {name} de este grupo?",
     "dangerZone": "Zona de peligro",
     "deleteClub": "Eliminar club",
     "deleteClubConfirm": "Esto eliminará todas las sesiones y quitará a todos los miembros. ¿Estás segura?",

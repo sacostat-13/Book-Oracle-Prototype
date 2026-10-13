@@ -112,7 +112,7 @@
 }
 
 @include tokens.ro-down(mobile) {
-  .rating-modal-overlay:has(.share-moment-modal) { padding: 12px; }
+  .share-moment-overlay { padding: 12px; }
 
   .share-moment-modal {
     padding: 24px 16px 16px;

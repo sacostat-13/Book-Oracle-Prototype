@@ -25,6 +25,7 @@ import { useOracleQuota } from '../lib/OracleQuotaContext';
 import { useProLimits } from '../lib/proGates';
 import { canUseWebGL, readColorVar, isParchment } from '../lib/webgl';
 import { buildSky, THREAD_MAX } from './constellation/buildSky';
+import { starString } from './primitives/StarRating';
 
 const MIN_STARS = 3;
 const TIP_LINGER_MS = 350;
@@ -220,7 +221,7 @@ export default function ReaderConstellation() {
                     <span className="rc__tip-meta">
                       {sky.families[star.family]?.name}
                       {star.readAt ? ` · ${t('profile.constellationRead', { date: fmtDate(star.readAt) })}` : ''}
-                      {star.book.rating ? ` · ${'★'.repeat(star.book.rating)}` : ''}
+                      {star.book.rating ? ` · ${starString(star.book.rating)}` : ''}
                     </span>
                     <RouteLink className="rc__tip-open" to="book-page" params={{ bookKey: star.key }}>
                       {t('profile.constellationOpen')}

@@ -23,6 +23,10 @@ import { groupFamilyAccomplishments, nextRung } from '../lib/ledger';
 import { FamilyRowsSkeleton } from '../components/Skeleton';
 import BookMark from '../components/BookMark';
 import InstallAppSection from '../components/InstallAppSection';
+import { useConfirm } from '../components/primitives/ConfirmDialog';
+import StarRating from '../components/primitives/StarRating';
+import ChipToggleGroup from '../components/primitives/ChipToggleGroup';
+import Tabs from '../components/primitives/Tabs';
 
 // v0.75: display price of the annual Pro variant, e.g. "$49.99". Unset = monthly only.
 const ANNUAL_PRICE = import.meta.env.VITE_ANNUAL_PRICE || null;
@@ -376,11 +380,7 @@ function PaceChart({ books, onOpenBook }) {
                 <div style={{ minWidth: 0 }}>
                   <div className="pf-pace-drill__title">{b.t}</div>
                   <div className="pf-pace-drill__author">{b.a}</div>
-                  {b.rating > 0 && (
-                    <div className="pf-pace-drill__stars">
-                      {'★'.repeat(b.rating)}<span className="dim">{'★'.repeat(5 - b.rating)}</span>
-                    </div>
-                  )}
+                  <StarRating as="div" className="pf-pace-drill__stars" value={b.rating} showEmpty emptyClassName="dim" />
                 </div>
               </div>
             ))}
@@ -820,18 +820,6 @@ function ReaderPrefsSection({ state, setProfile, t }) {
   const goal = state.profile.goal || null;
   const genreOptions = (state.genres || []).slice().sort((a, b) => a.name.localeCompare(b.name));
 
-  function toggleGenre(name) {
-    const has = favoriteGenres.includes(name);
-    if (!has && favoriteGenres.length >= GENRE_MAX) return;
-    setProfile({ favoriteGenres: has ? favoriteGenres.filter((g) => g !== name) : [...favoriteGenres, name] });
-  }
-
-  function toggleMood(id) {
-    const has = currentMood.includes(id);
-    if (!has && currentMood.length >= MOOD_MAX) return;
-    setProfile({ currentMood: has ? currentMood.filter((m) => m !== id) : [...currentMood, id] });
-  }
-
   return (
     <div className="pf-section">
       <div className="pf-pref">
@@ -845,18 +833,15 @@ function ReaderPrefsSection({ state, setProfile, t }) {
             </>
         ) : (
           <>
-            <div className="chip-grid">
-              {genreOptions.map((g) => (
-                <button
-                  key={g.id}
-                  className={`chip ${favoriteGenres.includes(g.name) ? 'selected' : ''}`}
-                  disabled={!favoriteGenres.includes(g.name) && favoriteGenres.length >= GENRE_MAX}
-                  onClick={() => toggleGenre(g.name)}
-                >
-                  {g.name}
-                </button>
-              ))}
-            </div>
+            <ChipToggleGroup
+              className="chip-grid"
+              selectedClassName="selected"
+              label={t('profile.labelFavoriteGenres')}
+              options={genreOptions.map((g) => ({ value: g.name, label: g.name }))}
+              value={favoriteGenres}
+              onChange={(next) => setProfile({ favoriteGenres: next })}
+              max={GENRE_MAX}
+            />
             <p className="onb-hint">{t('profile.genreMaxHint', { max: GENRE_MAX })}</p>
             <button className="btn-secondary" onClick={() => setEditingGenres(false)}>{t('common.done')}</button>
           </>
@@ -874,18 +859,15 @@ function ReaderPrefsSection({ state, setProfile, t }) {
             </>
         ) : (
           <>
-            <div className="chip-grid">
-              {MOODS.map((id) => (
-                <button
-                  key={id}
-                  className={`chip ${currentMood.includes(id) ? 'selected' : ''}`}
-                  disabled={!currentMood.includes(id) && currentMood.length >= MOOD_MAX}
-                  onClick={() => toggleMood(id)}
-                >
-                  {t(moodTitleKey(id))}
-                </button>
-              ))}
-            </div>
+            <ChipToggleGroup
+              className="chip-grid"
+              selectedClassName="selected"
+              label={t('profile.labelCurrentMood')}
+              options={MOODS.map((id) => ({ value: id, label: t(moodTitleKey(id)) }))}
+              value={currentMood}
+              onChange={(next) => setProfile({ currentMood: next })}
+              max={MOOD_MAX}
+            />
             <p className="onb-hint">{t('profile.moodMaxHint', { max: MOOD_MAX })}</p>
             <button className="btn-secondary" onClick={() => setEditingMood(false)}>{t('common.done')}</button>
           </>
@@ -1133,6 +1115,7 @@ export default function Profile() {
   const { user } = useAuth();
   const { go, route } = useRouter();
   const t = useT();
+  const confirm = useConfirm();
   const tNode = useTNode();
   const { lang } = useI18n();
   const fileRef = useRef(null);
@@ -1503,28 +1486,24 @@ export default function Profile() {
       <div className="pf-account-card" id="pf-settings">
         <CornerBrackets />
 
-        <div className="pf-tabs" role="tablist" aria-label={t('profile.breadcrumb')}>
-          {[
-            ['overview', t('profile.tabOverview')],
-            ['ledger', t('profile.tabLedger')],
-            ['account', t('profile.tabAccount')],
-            ['privacy', t('profile.tabPrivacy')],
+        <Tabs
+          className="pf-tabs"
+          tabClassName="pf-tab"
+          activeClassName="pf-tab--active"
+          label={t('profile.breadcrumb')}
+          tabs={[
+            { id: 'overview', label: t('profile.tabOverview') },
+            { id: 'ledger', label: t('profile.tabLedger') },
+            { id: 'account', label: t('profile.tabAccount') },
+            { id: 'privacy', label: t('profile.tabPrivacy') },
             ...(user ? [
-              ['subscription', t('profile.tabSubscription')],
-              ['notifications', t('profile.tabNotifications')],
+              { id: 'subscription', label: t('profile.tabSubscription') },
+              { id: 'notifications', label: t('profile.tabNotifications') },
             ] : []),
-          ].map(([id, label]) => (
-            <button
-              key={id}
-              role="tab"
-              aria-selected={tab === id}
-              className={`pf-tab${tab === id ? ' pf-tab--active' : ''}`}
-              onClick={() => selectTab(id)}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
+          ]}
+          value={tab}
+          onChange={selectTab}
+        />
 
         {tab === 'overview' && (
         <>
@@ -1785,8 +1764,8 @@ export default function Profile() {
         <div className="pf-section">
           <button
             className="btn-danger"
-            onClick={() => {
-              if (confirm(t('profile.confirmReset'))) {
+            onClick={async () => {
+              if (await confirm({ message: t('profile.confirmReset'), confirmLabel: t('profile.resetProfile'), danger: true })) {
                 resetAll();
                 go('dashboard');
               }

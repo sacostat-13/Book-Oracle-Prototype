@@ -33,6 +33,8 @@ import { profileShareUrl } from '../lib/shareService';
 import { titleLabel } from '../lib/titles';
 import Avatar from '../components/Avatar';
 import { RowListSkeleton, CoverGridSkeleton } from '../components/Skeleton';
+import StarRating from '../components/primitives/StarRating';
+import CoverThumb from '../components/CoverThumb';
 
 const PAGE_SIZE = 48;
 
@@ -61,30 +63,9 @@ function normalizeBook(row) {
 
 // ── Sub-components ────────────────────────────────────────────────────────────
 
-function Cover({ book, size = 80, onClick }) {
-  const style = {
-    width: size, height: Math.round(size * 1.5), borderRadius: 2,
-    objectFit: 'cover', display: 'block', flexShrink: 0,
-    boxShadow: '0 2px 8px rgba(0,0,0,0.45)',
-    cursor: onClick ? 'pointer' : 'default',
-  };
-  if (book.coverUrl) return <img src={book.coverUrl} alt={book.t} style={style} onClick={onClick} />;
-  return (
-    <div style={{ ...style, background: 'linear-gradient(155deg,#3a2a1c,#1a100a)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--ro-border-subtle)' }} onClick={onClick}>
-      <span style={{ fontFamily: 'var(--ro-font-display)', fontStyle: 'italic', fontSize: Math.max(7, size / 9), color: 'rgba(233,217,182,0.45)', textAlign: 'center', padding: '4px', lineHeight: 1.2 }}>
-        {book.t?.slice(0, 14)}
-      </span>
-    </div>
-  );
-}
 
 function Stars({ rating }) {
-  if (!rating) return null;
-  return (
-    <div className="fp-mini-stars">
-      {'★'.repeat(rating)}<span>{'★'.repeat(5 - rating)}</span>
-    </div>
-  );
+  return <StarRating as="div" className="fp-mini-stars" value={rating} showEmpty />;
 }
 
 // ── Friend Library ─────────────────────────────────────────────────────────────
@@ -243,7 +224,7 @@ function FriendLibrary({ library, go, t }) {
                 onClick={() => openBookTab(b, 'reader-profile')}
                 title={`${b.t}${b.a ? ` · ${b.a}` : ''}${b.dateRead ? ` · ${new Date(b.dateRead).getFullYear()}` : ''}`}
               >
-                <Cover book={b} size={90} onClick={() => openBookTab(b, 'reader-profile')} />
+                <CoverThumb book={b} width={90} onClick={() => openBookTab(b, 'reader-profile')} />
                 <Stars rating={b.rating} />
                 {/* Show title + author on hover via title attr; on mobile show abbreviated */}
                 <div >
@@ -495,7 +476,7 @@ export default function FriendProfile() {
               const b = cr.book || cr;
               return (
                 <div key={i} className="db-cr-card" onClick={() => openBookTab({ t: b.title || b.t, a: b.author || b.a, coverUrl: b.cover_url || b.coverUrl }, 'reader-profile')}>
-                  <Cover book={{ t: b.title || b.t, a: b.author || b.a, coverUrl: b.cover_url || b.coverUrl }} size={72} />
+                  <CoverThumb book={{ t: b.title || b.t, a: b.author || b.a, coverUrl: b.cover_url || b.coverUrl }} width={72} />
                   <div className="db-cr-body">
                     <div className="db-cr-title">{b.title || b.t}</div>
                     <div className="db-cr-author">{b.author || b.a}</div>

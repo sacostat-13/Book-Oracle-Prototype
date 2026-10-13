@@ -24,6 +24,8 @@ import { logRecommendations } from '../lib/oracleProvenance';
 import Avatar from '../components/Avatar';
 import AddBooksChooser from '../components/AddBooksChooser';
 import BookMark from '../components/BookMark';
+import StarRating from '../components/primitives/StarRating';
+import CoverThumb from '../components/CoverThumb';
 
 const FEED_PAGE_SIZE = 5;
 
@@ -109,21 +111,6 @@ const IconBook = ({ size = 12 }) => (
   </svg>
 );
 
-// ─── Book cover ────────────────────────────────────────────────────────────────
-function Cover({ book, w = 60, h, onClick }) {
-  const rh = h || Math.round(w * 1.5);
-  const vars = { '--db-cw': `${w}px`, '--db-ch': `${rh}px`, cursor: onClick ? 'pointer' : 'default' };
-  if (book.coverUrl) {
-    return <img src={book.coverUrl} alt={book.t} className="db-cover" style={vars} onClick={onClick} />;
-  }
-  return (
-    <div className="db-cover db-cover--placeholder" style={vars} onClick={onClick}>
-      <span className="db-cover__label" style={{ fontSize: Math.max(7, w / 9) }}>
-        {book.t?.slice(0, 16)}
-      </span>
-    </div>
-  );
-}
 
 // ─── Widget heading ──────────────────────────────────────────────
 // Real <h2> so the dashboard has a document outline; styled serif roman rather
@@ -155,7 +142,7 @@ function CurrentlyReadingWidget({ books, onOpenBook, t }) {
       <div className="db-cr-grid">
         {books.map((b, i) => (
           <div key={b.bookId || i} className="db-cr-card" onClick={() => onOpenBook?.(b)}>
-            <Cover book={b} w={60} />
+            <CoverThumb book={b} width={60} />
             <div className="db-cr-body">
               <div className="db-cr-title">{b.t}</div>
               <div className="db-cr-author">{b.a}</div>
@@ -289,7 +276,7 @@ function OracleSparkWidget({ wishlist, go, t, profile, tasteProfile }) {
         {state === 'result' && result && (
           <div className="db-spark__result">
             {result.book && (
-              <Cover book={result.book} w={64} onClick={() => result.book && openBookTab(result.book, 'dashboard')} />
+              <CoverThumb book={result.book} width={64} onClick={() => result.book && openBookTab(result.book, 'dashboard')} />
             )}
             <div className="db-spark__result-meta">
               <div className="db-spark__result-eyebrow">
@@ -666,7 +653,7 @@ function ClubsWidget({ clubs, summary, go, t }) {
               onClick={() => go('book-club-detail', { clubId: c.id })}>
 
               {hasBook && (
-                <Cover book={{ coverUrl: s.current_book_cover, t: s.current_book_title }} w={44} />
+                <CoverThumb book={{ coverUrl: s.current_book_cover, t: s.current_book_title }} width={44} />
               )}
 
               <div className="db-club-body">
@@ -769,14 +756,10 @@ function FinishedEvent({ ev, onOpenBook, t }) {
         <span className="feed-verb">{t('dashboard.feedFinished')}</span>{' '}
         <span className="feed-title">{b.t}</span>
         {b.a && <span className="feed-author"> {t('dashboard.feedBy')} {b.a}</span>}
-        {b.rating > 0 && (
-          <span className="feed-sub feed-stars">
-            {'★'.repeat(b.rating)}<span>{'★'.repeat(5 - b.rating)}</span>
-          </span>
-        )}
+        <StarRating className="feed-sub feed-stars" value={b.rating} showEmpty />
         {b.g && !b.rating && <span className="feed-tag">{b.g}</span>}
       </div>
-      <Cover book={b} w={40} h={60} onClick={() => onOpenBook?.(b)} />
+      <CoverThumb book={b} width={40} height={60} onClick={() => onOpenBook?.(b)} />
     </div>
   );
 }
@@ -790,7 +773,7 @@ function StartedEvent({ ev, onOpenBook, t }) {
         <span className="feed-title">{b.t}</span>
         {b.a && <span className="feed-author"> {t('dashboard.feedBy')} {b.a}</span>}
       </div>
-      <Cover book={b} w={40} h={60} onClick={() => onOpenBook?.(b)} />
+      <CoverThumb book={b} width={40} height={60} onClick={() => onOpenBook?.(b)} />
     </div>
   );
 }
@@ -806,7 +789,7 @@ function WishlistEvent({ ev, onOpenBook, t }) {
           <span className="feed-title">{b.t}</span>
           {b.a && <span className="feed-author"> {t('dashboard.feedBy')} {b.a}</span>}
         </div>
-        <Cover book={b} w={40} h={60} onClick={() => onOpenBook?.(b)} />
+        <CoverThumb book={b} width={40} height={60} onClick={() => onOpenBook?.(b)} />
       </div>
     );
   }
@@ -817,7 +800,7 @@ function WishlistEvent({ ev, onOpenBook, t }) {
         <span className="feed-verb">{t('dashboard.feedAddedMany', { count: books.length })}</span>
         <div className="feed-bulk">
           {books.slice(0, 8).map((b, i) => (
-            <Cover key={i} book={b} w={40} h={60} onClick={(e) => { e.stopPropagation(); onOpenBook?.(b); }} />
+            <CoverThumb key={i} book={b} width={40} height={60} onClick={(e) => { e.stopPropagation(); onOpenBook?.(b); }} />
           ))}
           {books.length > 8 && <div className="feed-bulk__more">+{books.length - 8}</div>}
         </div>
@@ -1060,11 +1043,7 @@ function FriendsFeedWidget({ userId, hasFriends, go, t, scope = 'both' }) {
                     </span>
                   </div>
                   <div className="db-ff-meta">
-                    {ev.book?.rating > 0 && (
-                      <span className="db-ff-stars">
-                        {'★'.repeat(ev.book.rating)}<span>{'★'.repeat(5 - ev.book.rating)}</span>
-                      </span>
-                    )}
+                    <StarRating className="db-ff-stars" value={ev.book?.rating} showEmpty />
                     <span className="db-ff-time-label">{timeLabel}</span>
                   </div>
                 </div>

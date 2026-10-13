@@ -79,8 +79,9 @@ until you edit that rule, then convert.
 - Prefer a **mixin** or a **shared class** over `@extend`. Cross-file `@extend`
   (there are ~78) couples partials invisibly; never add a new one. `%placeholder`
   extends inside the same file are acceptable.
-- Before writing a new modal, chip, empty state, star rating or cover, check
-  `components/` — and if the shared version doesn't fit, extend it.
+- Before writing a new modal, chip picker, tab bar, star rating or cover, check
+  [`components/primitives/README.md`](../components/primitives/README.md) — and
+  if the shared version doesn't fit, extend it.
 
 ## `!important`
 
@@ -100,8 +101,16 @@ Recorded so new work leans the right way (code-health spike §5):
 1. **CSS Modules for feature styles** — `Component.module.scss` next to
    `Component.jsx`, locally scoped class names, deleted with the component. The
    global layer shrinks to tokens, themes, reset, typography and shared
-   primitives. Piloted first on the new shared components (S4), then migrated
-   view by view (S5).
+   primitives. **Piloted on `Modal`** (S4, `components/primitives/Modal.module.scss`);
+   next, view by view (S5). Two rules from the pilot:
+   - wrap module rules in `:where()` so page classes passed via `className`
+     still win — but module CSS is emitted **before** `main.scss`, so a
+     zero-specificity rule also loses to the resets (`* { margin: 0 }`). Give
+     anything a reset also sets real class specificity (Modal's `margin: auto`
+     shipped in `:where()` and pinned every dialog to the top);
+   - never look a module class up from JS or another stylesheet — it is
+     hashed. Use a role/attribute (`[aria-modal="true"]`) or a prop
+     (`overlayClassName`) instead.
 2. **`@layer reset, tokens, base, primitives, features, overrides`** so order,
    not specificity or `!important`, decides who wins.
 3. **A z-index scale** (`--ro-z-base … --ro-z-toast`) replacing the 77 raw

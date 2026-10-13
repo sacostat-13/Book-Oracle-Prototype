@@ -64,7 +64,27 @@ import GenresIndex from './views/GenresIndex';
 import FamilyPage from './views/FamilyPage';
 import GenrePage from './views/GenrePage';
 
+// Overlays that must work on EVERY screen a reader can act on. They used to be
+// mounted only in the main shell at the bottom of AppRoutes, so the early-return
+// shells (book page, list view, plan view, join club…) had none of them:
+// finishing a book on its own page queued the share moment, but nothing showed
+// it until the reader navigated to a main-shell page; an Oracle call from the
+// book page could wait on a confirmation dialog that wasn't mounted. Rendering
+// them once, around every route, makes that class of bug impossible. Each one
+// renders nothing until its state says otherwise.
 export default function App() {
+  return (
+    <>
+      <AppRoutes />
+      <ShareMomentModal />
+      <ImportProgressToast />
+      {/* Inside RouterProvider (main.jsx) because its upgrade CTA needs the router. */}
+      <OracleGateDialog />
+    </>
+  );
+}
+
+function AppRoutes() {
   const { state, loading, upsertDiscoveredBook } = useData();
   const { route, go } = useRouter();
   const { user, loading: authLoading, recoveringPassword } = useAuth();
@@ -270,11 +290,10 @@ export default function App() {
     }
     // NOT an unconditional early return, unlike the branches below.
     //
-    // A signed-in reader keeps the full app shell from the main switch — Footer,
-    // ShareMomentModal, ImportProgressToast and OracleGateDialog. "Create a
-    // reading plan" is this page's primary CTA and it can open the Oracle gate,
-    // so dropping OracleGateDialog here would break the flow silently. The
-    // public shell is for the visitor who has no shell to keep.
+    // A signed-in reader keeps the full app shell from the main switch (Nav,
+    // Footer). The global overlays — share moments, import progress, the Oracle
+    // gate — are mounted by App around every route, so no branch can drop them.
+    // The public shell is for the visitor who has no shell to keep.
     //
     // While authPending, isAuthed is false and this renders the public view with
     // its CTA suppressed — no sign-in flash — then hands over once auth resolves.
@@ -462,9 +481,7 @@ export default function App() {
       <div className="app">
         <Onboarding />
         <Toast />
-        {/* v0.59: also mounted here — an import started during onboarding
-            must keep reporting across the swap to the main app. */}
-        <ImportProgressToast />      </div>
+      </div>
     );
   }
 
@@ -552,13 +569,6 @@ export default function App() {
       </div>
       <Footer />
       <Toast />
-      {/* v0.43: global action-share modal — fires after completions */}
-      <ShareMomentModal />
-      <ImportProgressToast />
-      {/* v0.58: the one place the "this spends a call" confirmation lives.
-          Mounted here, inside RouterProvider, because its upgrade CTA needs
-          the router — OracleQuotaProvider sits above it in main.jsx. */}
-      <OracleGateDialog />
     </div>
   );
 }

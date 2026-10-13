@@ -27,7 +27,7 @@
 // src/lib/editions.js and the spec for why that conversion would be a
 // fabrication rather than a convenience.
 
-import { useEffect, useState } from 'react';
+import { useId, useState } from 'react';
 import { useT } from '../lib/I18nContext';
 import { useData } from '../lib/DataContext';
 import {
@@ -36,7 +36,7 @@ import {
 } from '../lib/editions';
 import { cleanIsbn, isValidIsbn } from '../lib/isbn';
 import { googleBooksLookupByIsbn } from '../lib/googleBooksService';
-import CornerBrackets from './CornerBrackets';
+import Modal from './primitives/Modal';
 import CoachMark from './CoachMark';
 
 export default function ProgressUpdateModal({ book, onSave, onClose }) {
@@ -78,11 +78,7 @@ export default function ProgressUpdateModal({ book, onSave, onClose }) {
   const [memoryText, setMemoryText] = useState('');
   const lastMemory = memoriesForBook(book)[0] || null;
 
-  useEffect(() => {
-    function onKey(e) { if (e.key === 'Escape' && !saving) onClose?.(); }
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [onClose, saving]);
+  const titleId = useId();
 
   // An unset format behaves as print. It is what the overwhelming majority of
   // rows are, and defaulting the SELECT to 'print' instead would write a claim
@@ -200,284 +196,278 @@ export default function ProgressUpdateModal({ book, onSave, onClose }) {
   }
 
   return (
-    <div
-      onClick={(e) => { if (e.target === e.currentTarget && !saving) onClose?.(); }}
-      className="rating-modal-overlay"
-    >
-      <div className="rating-modal pu-modal">
-        <CornerBrackets size="sm" />
-        <div className="rating-modal__eyebrow">
-          {t('progress.eyebrow')}
-        </div>
-        <h2 className="plan-step-title plan-step-title--tight">
-          {t('progress.title')}
-        </h2>
-        <p className="pu-book-sub">
-          {book.t}
-          {book.a ? <span className="pu-book-author"> · {book.a}</span> : null}
-        </p>
+    <Modal onClose={onClose} dismissible={!saving} labelledBy={titleId} brackets="sm" className="pu-modal">
+      <div className="rating-modal__eyebrow">
+        {t('progress.eyebrow')}
+      </div>
+      <h2 className="plan-step-title plan-step-title--tight" id={titleId}>
+        {t('progress.title')}
+      </h2>
+      <p className="pu-book-sub">
+        {book.t}
+        {book.a ? <span className="pu-book-author"> · {book.a}</span> : null}
+      </p>
 
-        {lastMemory && (
-          <div className="memory-recall">
-            <div className="memory-recall__meta">
-              {t('memory.lastTime')}
-              {lastMemory.pagesAt != null && <> · {t('memory.pageAt', { page: lastMemory.pagesAt })}</>}
-              {' · '}
-              {new Date(lastMemory.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
-            </div>
-            <div className="memory-recall__body">{lastMemory.body}</div>
+      {lastMemory && (
+        <div className="memory-recall">
+          <div className="memory-recall__meta">
+            {t('memory.lastTime')}
+            {lastMemory.pagesAt != null && <> · {t('memory.pageAt', { page: lastMemory.pagesAt })}</>}
+            {' · '}
+            {new Date(lastMemory.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
           </div>
-        )}
+          <div className="memory-recall__body">{lastMemory.body}</div>
+        </div>
+      )}
 
-        <div className="pu-form">
-          {/* ── What the copy is ──────────────────────────────────────────── */}
+      <div className="pu-form">
+        {/* ── What the copy is ──────────────────────────────────────────── */}
 
-          <div className="pu-field">
-            <label className="field-label" htmlFor="pu-ed-isbn">
-              {t('progress.editionIsbnLabel')}
-            </label>
-            <div className="pu-edition__isbn">
+        <div className="pu-field">
+          <label className="field-label" htmlFor="pu-ed-isbn">
+            {t('progress.editionIsbnLabel')}
+          </label>
+          <div className="pu-edition__isbn">
+            <input
+              id="pu-ed-isbn"
+              type="text"
+              inputMode="numeric"
+              value={edIsbn}
+              onChange={(e) => { setEdIsbn(e.target.value); setIsbnNote(null); }}
+              placeholder="978…"
+              className="input"
+            />
+            <button
+              type="button"
+              className="btn-tertiary btn--sm"
+              onClick={lookUpIsbn}
+              disabled={isbnLooking || !edIsbn.trim()}
+            >
+              {isbnLooking ? t('progress.editionIsbnLooking') : t('progress.editionIsbnLookup')}
+            </button>
+          </div>
+          {isbnNote && <div className="pu-note">{isbnNote}</div>}
+        </div>
+
+        {/* The switch. Everything below this changes shape with it. */}
+        <div className="pu-field">
+          <label className="field-label" htmlFor="pu-ed-format">
+            {t('progress.editionFormatLabel')}
+          </label>
+          <select
+            id="pu-ed-format"
+            className="input"
+            value={edFormat}
+            onChange={(e) => setEdFormat(e.target.value)}
+          >
+            <option value="">{t('progress.editionFormatUnset')}</option>
+            {EDITION_FORMATS.map((f) => (
+              <option key={f} value={f}>{t(`progress.editionFormat_${f}`)}</option>
+            ))}
+          </select>
+        </div>
+
+        <div className="pu-field">
+          <label className="field-label" htmlFor="pu-ed-title">
+            {t('progress.editionTitleLabel')}
+          </label>
+          <input
+            id="pu-ed-title"
+            type="text"
+            value={edTitle}
+            onChange={(e) => setEdTitle(e.target.value)}
+            placeholder={book?.t || ''}
+            className="input"
+          />
+        </div>
+
+        <div className="pu-field">
+          <label className="field-label" htmlFor="pu-ed-lang">
+            {t('progress.editionLanguageLabel')}
+          </label>
+          <select
+            id="pu-ed-lang"
+            className="input"
+            value={edLang}
+            onChange={(e) => setEdLang(e.target.value)}
+          >
+            <option value="">{t('progress.editionLanguageUnset')}</option>
+            {EDITION_LANGUAGES.map((code) => (
+              <option key={code} value={code}>{t(`language.${code}`)}</option>
+            ))}
+          </select>
+        </div>
+
+        {/* ── How far in ────────────────────────────────────────────────── */}
+
+        {isAudio ? (
+          <>
+            <div className="pu-field">
+              <label className="field-label" htmlFor="pu-lis-h">
+                {t('progress.listenedLabel')}
+                {pct != null && (
+                  <span className="club-form__optional">{pct}%</span>
+                )}
+              </label>
+              <div className="pu-hm">
+                <input
+                  id="pu-lis-h" type="number" min="0" className="input"
+                  value={lisH} onChange={(e) => setLisH(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleSave()}
+                  placeholder="0" autoFocus
+                />
+                <span className="pu-hm__unit">{t('progress.hoursShort')}</span>
+                <input
+                  type="number" min="0" className="input"
+                  value={lisM} onChange={(e) => setLisM(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleSave()}
+                  placeholder="00"
+                />
+                <span className="pu-hm__unit">{t('progress.minutesShort')}</span>
+              </div>
+            </div>
+
+            <div className="pu-field">
+              <label className="field-label" htmlFor="pu-dur-h">
+                {t('progress.editionDurationLabel')}
+              </label>
+              <div className="pu-hm">
+                <input
+                  id="pu-dur-h" type="number" min="0" className="input"
+                  value={durH} onChange={(e) => setDurH(e.target.value)}
+                  placeholder="0"
+                />
+                <span className="pu-hm__unit">{t('progress.hoursShort')}</span>
+                <input
+                  type="number" min="0" className="input"
+                  value={durM} onChange={(e) => setDurM(e.target.value)}
+                  placeholder="00"
+                />
+                <span className="pu-hm__unit">{t('progress.minutesShort')}</span>
+              </div>
+              {/* Optional on purpose: the hours-listened total works without
+                  it, and only the progress bar needs it. Saying so stops the
+                  field reading as a requirement the reader cannot meet. */}
+              <div className="pu-note">{t('progress.editionDurationNote')}</div>
+            </div>
+
+            <div className="pu-field">
+              <label className="field-label" htmlFor="pu-ed-narrator">
+                {t('progress.editionNarratorLabel')}
+              </label>
               <input
-                id="pu-ed-isbn"
+                id="pu-ed-narrator"
                 type="text"
-                inputMode="numeric"
-                value={edIsbn}
-                onChange={(e) => { setEdIsbn(e.target.value); setIsbnNote(null); }}
-                placeholder="978…"
+                value={edNarrator}
+                onChange={(e) => setEdNarrator(e.target.value)}
                 className="input"
               />
-              <button
-                type="button"
-                className="btn-tertiary btn--sm"
-                onClick={lookUpIsbn}
-                disabled={isbnLooking || !edIsbn.trim()}
-              >
-                {isbnLooking ? t('progress.editionIsbnLooking') : t('progress.editionIsbnLookup')}
-              </button>
             </div>
-            {isbnNote && <div className="pu-note">{isbnNote}</div>}
-          </div>
-
-          {/* The switch. Everything below this changes shape with it. */}
-          <div className="pu-field">
-            <label className="field-label" htmlFor="pu-ed-format">
-              {t('progress.editionFormatLabel')}
-            </label>
-            <select
-              id="pu-ed-format"
-              className="input"
-              value={edFormat}
-              onChange={(e) => setEdFormat(e.target.value)}
-            >
-              <option value="">{t('progress.editionFormatUnset')}</option>
-              {EDITION_FORMATS.map((f) => (
-                <option key={f} value={f}>{t(`progress.editionFormat_${f}`)}</option>
-              ))}
-            </select>
-          </div>
-
-          <div className="pu-field">
-            <label className="field-label" htmlFor="pu-ed-title">
-              {t('progress.editionTitleLabel')}
-            </label>
-            <input
-              id="pu-ed-title"
-              type="text"
-              value={edTitle}
-              onChange={(e) => setEdTitle(e.target.value)}
-              placeholder={book?.t || ''}
-              className="input"
-            />
-          </div>
-
-          <div className="pu-field">
-            <label className="field-label" htmlFor="pu-ed-lang">
-              {t('progress.editionLanguageLabel')}
-            </label>
-            <select
-              id="pu-ed-lang"
-              className="input"
-              value={edLang}
-              onChange={(e) => setEdLang(e.target.value)}
-            >
-              <option value="">{t('progress.editionLanguageUnset')}</option>
-              {EDITION_LANGUAGES.map((code) => (
-                <option key={code} value={code}>{t(`language.${code}`)}</option>
-              ))}
-            </select>
-          </div>
-
-          {/* ── How far in ────────────────────────────────────────────────── */}
-
-          {isAudio ? (
-            <>
-              <div className="pu-field">
-                <label className="field-label" htmlFor="pu-lis-h">
-                  {t('progress.listenedLabel')}
-                  {pct != null && (
-                    <span className="club-form__optional">{pct}%</span>
-                  )}
-                </label>
-                <div className="pu-hm">
-                  <input
-                    id="pu-lis-h" type="number" min="0" className="input"
-                    value={lisH} onChange={(e) => setLisH(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && handleSave()}
-                    placeholder="0" autoFocus
-                  />
-                  <span className="pu-hm__unit">{t('progress.hoursShort')}</span>
-                  <input
-                    type="number" min="0" className="input"
-                    value={lisM} onChange={(e) => setLisM(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && handleSave()}
-                    placeholder="00"
-                  />
-                  <span className="pu-hm__unit">{t('progress.minutesShort')}</span>
-                </div>
-              </div>
-
-              <div className="pu-field">
-                <label className="field-label" htmlFor="pu-dur-h">
-                  {t('progress.editionDurationLabel')}
-                </label>
-                <div className="pu-hm">
-                  <input
-                    id="pu-dur-h" type="number" min="0" className="input"
-                    value={durH} onChange={(e) => setDurH(e.target.value)}
-                    placeholder="0"
-                  />
-                  <span className="pu-hm__unit">{t('progress.hoursShort')}</span>
-                  <input
-                    type="number" min="0" className="input"
-                    value={durM} onChange={(e) => setDurM(e.target.value)}
-                    placeholder="00"
-                  />
-                  <span className="pu-hm__unit">{t('progress.minutesShort')}</span>
-                </div>
-                {/* Optional on purpose: the hours-listened total works without
-                    it, and only the progress bar needs it. Saying so stops the
-                    field reading as a requirement the reader cannot meet. */}
-                <div className="pu-note">{t('progress.editionDurationNote')}</div>
-              </div>
-
-              <div className="pu-field">
-                <label className="field-label" htmlFor="pu-ed-narrator">
-                  {t('progress.editionNarratorLabel')}
-                </label>
-                <input
-                  id="pu-ed-narrator"
-                  type="text"
-                  value={edNarrator}
-                  onChange={(e) => setEdNarrator(e.target.value)}
-                  className="input"
-                />
-              </div>
-            </>
-          ) : (
-            <>
-              <div className="pu-field">
-                <label className="field-label" htmlFor="pu-pages">
-                  {t('progress.pagesLabel')}
-                  {totalPages && (
-                    <span className="club-form__optional">
-                      {t('progress.pagesOf', { total: totalPages })}
-                    </span>
-                  )}
-                </label>
-                <div className="pu-input-row">
-                  <input
-                    id="pu-pages"
-                    type="number" min="0" max={totalPages || undefined}
-                    value={pages} onChange={(e) => setPages(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && handleSave()}
-                    placeholder="0" autoFocus className="input"
-                  />
-                  {pct != null ? <span className="pu-progress-label">{pct}%</span> : null}
-                </div>
-              </div>
-
-              <div className="pu-field">
-                <label className="field-label" htmlFor="pu-ed-pages">
-                  {t('progress.editionPagesLabel')}
-                </label>
-                <input
-                  id="pu-ed-pages"
-                  type="number" min="1"
-                  value={overridePages}
-                  onChange={(e) => setOverridePages(e.target.value)}
-                  placeholder={catalogPages ? String(catalogPages) : ''}
-                  className="input"
-                />
-                <div className="pu-note">{t('progress.editionOverrideNote')}</div>
-              </div>
-
-              <div className="pu-field">
-                <label className="field-label" htmlFor="pu-ed-translator">
-                  {t('progress.editionTranslatorLabel')}
-                </label>
-                <input
-                  id="pu-ed-translator"
-                  type="text"
-                  value={edTranslator}
-                  onChange={(e) => setEdTranslator(e.target.value)}
-                  className="input"
-                />
-              </div>
-            </>
-          )}
-
-          {/* One bar, either unit. Absent when the fraction cannot be known —
-              which is now also the honest answer for a print book with no page
-              count, where this used to render stuck at zero. */}
-          {pct != null ? (
-            <div className="db-ai__track">
-              <div className="db-ai__fill" style={{ '--ai-pct': `${pct}%` }} />
-            </div>
-          ) : null}
-
-          <button type="button" className="btn-text btn--sm pu-form__reset" onClick={clearEdition}>
-            {t('progress.editionUseDefault')}
-          </button>
-        </div>
-
-        {!memoryOpen ? (
-          <div style={{ position: 'relative', display: 'inline-block' }}>
-            <button type="button" className="btn-text btn--sm" onClick={() => { dismissCoachmark('memory-note'); setMemoryOpen(true); }}>
-              ✎ {t('memory.captureLink')}
-            </button>
-            <CoachMark
-              id="memory-note"
-              placement="top"
-              title={t('coachmark.memoryTitle')}
-              body={t('coachmark.memoryBody')}
-            />
-          </div>
+          </>
         ) : (
-          <div className="memory-capture">
-            <label className="field-label">
-              {t('memory.captureLabel')}
-              <span className="club-form__optional">{t('memory.captureOptional')}</span>
-            </label>
-            <textarea
-              className="textarea"
-              rows={3}
-              maxLength={2000}
-              placeholder={t('memory.capturePlaceholder')}
-              value={memoryText}
-              onChange={(e) => setMemoryText(e.target.value)}
-            />
-          </div>
+          <>
+            <div className="pu-field">
+              <label className="field-label" htmlFor="pu-pages">
+                {t('progress.pagesLabel')}
+                {totalPages && (
+                  <span className="club-form__optional">
+                    {t('progress.pagesOf', { total: totalPages })}
+                  </span>
+                )}
+              </label>
+              <div className="pu-input-row">
+                <input
+                  id="pu-pages"
+                  type="number" min="0" max={totalPages || undefined}
+                  value={pages} onChange={(e) => setPages(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleSave()}
+                  placeholder="0" autoFocus className="input"
+                />
+                {pct != null ? <span className="pu-progress-label">{pct}%</span> : null}
+              </div>
+            </div>
+
+            <div className="pu-field">
+              <label className="field-label" htmlFor="pu-ed-pages">
+                {t('progress.editionPagesLabel')}
+              </label>
+              <input
+                id="pu-ed-pages"
+                type="number" min="1"
+                value={overridePages}
+                onChange={(e) => setOverridePages(e.target.value)}
+                placeholder={catalogPages ? String(catalogPages) : ''}
+                className="input"
+              />
+              <div className="pu-note">{t('progress.editionOverrideNote')}</div>
+            </div>
+
+            <div className="pu-field">
+              <label className="field-label" htmlFor="pu-ed-translator">
+                {t('progress.editionTranslatorLabel')}
+              </label>
+              <input
+                id="pu-ed-translator"
+                type="text"
+                value={edTranslator}
+                onChange={(e) => setEdTranslator(e.target.value)}
+                className="input"
+              />
+            </div>
+          </>
         )}
 
-        <div className="pu-actions">
-          <button type="button" className="btn-tertiary" onClick={onClose} disabled={saving}>
-            {t('progress.cancel')}
-          </button>
-          <button type="button" className="btn-primary" onClick={handleSave} disabled={saving || !canSave}>
-            {saving ? t('progress.saving') : pct === 100 ? t('progress.saveFinished') : t('progress.save')}
-          </button>
-        </div>
+        {/* One bar, either unit. Absent when the fraction cannot be known —
+            which is now also the honest answer for a print book with no page
+            count, where this used to render stuck at zero. */}
+        {pct != null ? (
+          <div className="db-ai__track">
+            <div className="db-ai__fill" style={{ '--ai-pct': `${pct}%` }} />
+          </div>
+        ) : null}
+
+        <button type="button" className="btn-text btn--sm pu-form__reset" onClick={clearEdition}>
+          {t('progress.editionUseDefault')}
+        </button>
       </div>
-    </div>
+
+      {!memoryOpen ? (
+        <div style={{ position: 'relative', display: 'inline-block' }}>
+          <button type="button" className="btn-text btn--sm" onClick={() => { dismissCoachmark('memory-note'); setMemoryOpen(true); }}>
+            ✎ {t('memory.captureLink')}
+          </button>
+          <CoachMark
+            id="memory-note"
+            placement="top"
+            title={t('coachmark.memoryTitle')}
+            body={t('coachmark.memoryBody')}
+          />
+        </div>
+      ) : (
+        <div className="memory-capture">
+          <label className="field-label">
+            {t('memory.captureLabel')}
+            <span className="club-form__optional">{t('memory.captureOptional')}</span>
+          </label>
+          <textarea
+            className="textarea"
+            rows={3}
+            maxLength={2000}
+            placeholder={t('memory.capturePlaceholder')}
+            value={memoryText}
+            onChange={(e) => setMemoryText(e.target.value)}
+          />
+        </div>
+      )}
+
+      <div className="pu-actions">
+        <button type="button" className="btn-tertiary" onClick={onClose} disabled={saving}>
+          {t('progress.cancel')}
+        </button>
+        <button type="button" className="btn-primary" onClick={handleSave} disabled={saving || !canSave}>
+          {saving ? t('progress.saving') : pct === 100 ? t('progress.saveFinished') : t('progress.save')}
+        </button>
+      </div>
+    </Modal>
   );
 }

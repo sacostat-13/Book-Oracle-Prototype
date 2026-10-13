@@ -20,7 +20,7 @@ import { useRef, useState } from 'react';
 import { useData } from '../lib/DataContext';
 import { SITE_ORIGIN } from '../lib/siteUrl';
 import { useI18n } from '../lib/I18nContext';
-import CornerBrackets from './CornerBrackets';
+import Modal from './primitives/Modal';
 import ShareCard from './ShareCard';
 import { shareOrCopy, canShareFile } from '../lib/shareService';
 import { momentCardFile } from '../lib/shareCardImage';
@@ -100,40 +100,41 @@ export default function ShareMomentModal() {
   }
 
   return (
-    <div
-      className="rating-modal-overlay"
-      onClick={(e) => { if (e.target === e.currentTarget && !busy) dismissShareMoment(); }}
+    <Modal
+      onClose={dismissShareMoment}
+      dismissible={!busy}
+      label={t('share.momentEyebrow')}
+      brackets="sm"
+      className="share-moment-modal"
+      overlayClassName="share-moment-overlay"
     >
-      <div className="rating-modal share-moment-modal">
-        <CornerBrackets size="sm" />
-        <div className="rating-modal__eyebrow">{t('share.momentEyebrow')}</div>
+      <div className="rating-modal__eyebrow">{t('share.momentEyebrow')}</div>
 
-        <div className="share-moment-modal__card-scale">
-          <ShareCard moment={moment} cardRef={cardRef} />
-        </div>
-
-        {feedback === 'image_failed' && (
-          <p className="share-moment-modal__note">{t('share.imageFailed')}</p>
-        )}
-        {feedback === 'downloaded' && (
-          <p className="share-moment-modal__note">{t('share.downloaded')}</p>
-        )}
-        {feedback === 'copied' && (
-          <p className="share-moment-modal__note">{t('share.copied')}</p>
-        )}
-
-        <div className="modal__actions">
-          <button className="btn-tertiary" onClick={dismissShareMoment} disabled={busy}>
-            {t('share.notNow')}
-          </button>
-          <button className="btn-secondary" onClick={handleShareLink} disabled={busy}>
-            {t('share.shareLink')}
-          </button>
-          <button className="btn-primary" onClick={handleShareImage} disabled={busy}>
-            {busy ? t('share.preparing') : t('share.shareImage')}
-          </button>
-        </div>
+      <div className="share-moment-modal__card-scale">
+        <ShareCard moment={moment} cardRef={cardRef} />
       </div>
-    </div>
+
+      {feedback === 'image_failed' && (
+        <p className="share-moment-modal__note">{t('share.imageFailed')}</p>
+      )}
+      {feedback === 'downloaded' && (
+        <p className="share-moment-modal__note">{t('share.downloaded')}</p>
+      )}
+      {feedback === 'copied' && (
+        <p className="share-moment-modal__note">{t('share.copied')}</p>
+      )}
+
+      <div className="modal__actions">
+        <button className="btn-tertiary" onClick={dismissShareMoment} disabled={busy}>
+          {t('share.notNow')}
+        </button>
+        <button className="btn-secondary" onClick={handleShareLink} disabled={busy}>
+          {t('share.shareLink')}
+        </button>
+        <button className="btn-primary" onClick={handleShareImage} disabled={busy}>
+          {busy ? t('share.preparing') : t('share.shareImage')}
+        </button>
+      </div>
+    </Modal>
   );
 }

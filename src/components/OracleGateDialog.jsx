@@ -18,27 +18,15 @@
 // both mean cancel, because the safe default when someone is unsure is to not
 // spend their call.
 
-import { useEffect } from 'react';
 import { useT } from '../lib/I18nContext';
 import { useOracleQuota } from '../lib/OracleQuotaContext';
 import { useRouter } from '../lib/RouterContext';
-import CornerBrackets from './CornerBrackets';
+import Modal from './primitives/Modal';
 
 export default function OracleGateDialog() {
   const { gate, resolveGate, markIntroSeen, quota } = useOracleQuota();
   const t = useT();
   const { go } = useRouter();
-
-  useEffect(() => {
-    if (!gate) return;
-    function onKey(e) { if (e.key === 'Escape') resolveGate(false); }
-    window.addEventListener('keydown', onKey);
-    document.body.style.overflow = 'hidden';
-    return () => {
-      window.removeEventListener('keydown', onKey);
-      document.body.style.overflow = '';
-    };
-  }, [gate, resolveGate]);
 
   if (!gate) return null;
 
@@ -55,7 +43,7 @@ export default function OracleGateDialog() {
       })
     : null;
 
-  function confirm() {
+  function proceed() {
     // Acknowledged by proceeding, not by dismissing — see
     // profiles.oracle_intro_seen_at in schema_v44.
     if (isIntro) markIntroSeen();
@@ -63,89 +51,80 @@ export default function OracleGateDialog() {
   }
 
   return (
-    <div
-      className="rating-modal-overlay"
-      onClick={(e) => { if (e.target === e.currentTarget) resolveGate(false); }}
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="oracle-gate-title"
-    >
-      <div className="rating-modal oracle-gate">
-        <CornerBrackets />
+    <Modal onClose={() => resolveGate(false)} labelledBy="oracle-gate-title" layout="sections" className="oracle-gate">
 
-        <div className="modal-head">
-          <div>
-            <div className="rn-version">
-              {t(isIntro ? 'oracleGate.introEyebrow' : 'oracleGate.lastEyebrow')}
-            </div>
-            <h2 className="rn-title" id="oracle-gate-title">
-              {t(isIntro ? 'oracleGate.introTitle' : 'oracleGate.lastTitle')}
-            </h2>
+      <div className="modal-head">
+        <div>
+          <div className="rn-version">
+            {t(isIntro ? 'oracleGate.introEyebrow' : 'oracleGate.lastEyebrow')}
           </div>
-          <button
-            onClick={() => resolveGate(false)}
-            aria-label={t('common.close')}
-            className="modal-close-btn"
-          >
-            ×
-          </button>
+          <h2 className="rn-title" id="oracle-gate-title">
+            {t(isIntro ? 'oracleGate.introTitle' : 'oracleGate.lastTitle')}
+          </h2>
         </div>
-
-        <div className="modal-body">
-          {isIntro ? (
-            <>
-              <p className="about-section__body">{t('oracleGate.introBody')}</p>
-              <p className="about-section__body">{t('oracleGate.introFree')}</p>
-              {/* `quota &&` matters: the disclosure can fire before the quota
-                  has loaded, and `?? 5` would then assert a specific number of
-                  remaining calls that nobody has checked. Say nothing rather
-                  than say something unverified about someone's balance. */}
-              {quota && !quota.unlimited && (
-                <p className="about-section__body">
-                  {t(isDay ? 'oracleGate.introCount' : 'oracleGate.introCountMonth', { remaining, limit })}
-                </p>
-              )}
-              {/* Both conditions at once: say so here instead of opening a
-                  second dialog the moment this one closes. */}
-              {gate.isLast && (
-                <p className="oracle-gate__warn">
-                  {t(isDay ? 'oracleGate.alsoLast' : 'oracleGate.alsoLastMonth')}
-                </p>
-              )}
-            </>
-          ) : (
-            <>
-              <p className="about-section__body">
-                {t(isDay ? 'oracleGate.lastBody' : 'oracleGate.lastBodyMonth', { limit })}
-              </p>
-              {resetDate && (
-                <p className="about-section__body">
-                  {t('oracleGate.lastReset', { date: resetDate })}
-                </p>
-              )}
-            </>
-          )}
-
-          <p className="oracle-gate__hint">{t('oracleGate.historyHint')}</p>
-        </div>
-
-        <div className="modal-foot oracle-gate__foot">
-          {!isPro && !quota?.unlimited && (
-            <button
-              className="btn-text btn--sm"
-              onClick={() => { resolveGate(false); go('profile', { tab: 'subscription' }); }}
-            >
-              {t('oracleGate.seePlans')}
-            </button>
-          )}
-          <button className="btn-secondary" onClick={() => resolveGate(false)}>
-            {t('oracleGate.cancel')}
-          </button>
-          <button className="btn-primary" onClick={confirm}>
-            {t(isIntro ? 'oracleGate.introConfirm' : 'oracleGate.lastConfirm')}
-          </button>
-        </div>
+        <button
+          onClick={() => resolveGate(false)}
+          aria-label={t('common.close')}
+          className="modal-close-btn"
+        >
+          ×
+        </button>
       </div>
-    </div>
+
+      <div className="modal-body">
+        {isIntro ? (
+          <>
+            <p className="about-section__body">{t('oracleGate.introBody')}</p>
+            <p className="about-section__body">{t('oracleGate.introFree')}</p>
+            {/* `quota &&` matters: the disclosure can fire before the quota
+                has loaded, and `?? 5` would then assert a specific number of
+                remaining calls that nobody has checked. Say nothing rather
+                than say something unverified about someone's balance. */}
+            {quota && !quota.unlimited && (
+              <p className="about-section__body">
+                {t(isDay ? 'oracleGate.introCount' : 'oracleGate.introCountMonth', { remaining, limit })}
+              </p>
+            )}
+            {/* Both conditions at once: say so here instead of opening a
+                second dialog the moment this one closes. */}
+            {gate.isLast && (
+              <p className="oracle-gate__warn">
+                {t(isDay ? 'oracleGate.alsoLast' : 'oracleGate.alsoLastMonth')}
+              </p>
+            )}
+          </>
+        ) : (
+          <>
+            <p className="about-section__body">
+              {t(isDay ? 'oracleGate.lastBody' : 'oracleGate.lastBodyMonth', { limit })}
+            </p>
+            {resetDate && (
+              <p className="about-section__body">
+                {t('oracleGate.lastReset', { date: resetDate })}
+              </p>
+            )}
+          </>
+        )}
+
+        <p className="oracle-gate__hint">{t('oracleGate.historyHint')}</p>
+      </div>
+
+      <div className="modal-foot oracle-gate__foot">
+        {!isPro && !quota?.unlimited && (
+          <button
+            className="btn-text btn--sm"
+            onClick={() => { resolveGate(false); go('profile', { tab: 'subscription' }); }}
+          >
+            {t('oracleGate.seePlans')}
+          </button>
+        )}
+        <button className="btn-secondary" onClick={() => resolveGate(false)}>
+          {t('oracleGate.cancel')}
+        </button>
+        <button className="btn-primary" onClick={proceed}>
+          {t(isIntro ? 'oracleGate.introConfirm' : 'oracleGate.lastConfirm')}
+        </button>
+      </div>
+    </Modal>
   );
 }

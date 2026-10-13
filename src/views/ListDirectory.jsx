@@ -32,6 +32,7 @@ import { MOODS, moodTitleKey } from '../lib/moods';
 import CoverStrip from '../components/CoverStrip';
 import FollowListButton from '../components/FollowListButton';
 import BookMark from '../components/BookMark';
+import Modal from '../components/primitives/Modal';
 
 function ListCard({ list, onOpen, onFollowChange }) {
   const t = useT();
@@ -187,68 +188,70 @@ export default function ListDirectory() {
       </div>
 
       {filtersOpen && (
-        <div className="overlay" onClick={() => setFiltersOpen(false)}>
-          {/* modal--scroll: the genre filter lists the whole taxonomy, which is
-              far taller than a phone. Without it the chips scroll the entire
-              modal and Done goes off-screen. */}
-          <div className="modal modal--scroll" onClick={(e) => e.stopPropagation()}>
-            <button className="modal__close" onClick={() => setFiltersOpen(false)}>×</button>
-            <div className="modal__head">
-              <h2 className="modal__title">{t('clubs.directory.filtersTitle')}</h2>
-            </div>
-            <div className="modal__body">
-              {genres.length > 0 && (
-                <>
-                  <div className="directory-filter-label">{t('lists.fieldGenres')}</div>
-                  <div className="directory-chip-row">
-                    <button className={`chip${!genreId ? ' chip--active' : ''}`} onClick={() => setGenreId(null)}>
-                      {t('clubs.directory.allGenres')}
-                    </button>
-                    {genres.map((g) => (
-                      <button
-                        key={g.id}
-                        className={`chip${genreId === g.id ? ' chip--active' : ''}`}
-                        onClick={() => setGenreId(genreId === g.id ? null : g.id)}
-                      >
-                        {g.name}
-                      </button>
-                    ))}
-                  </div>
-                </>
-              )}
-
-              <div className="directory-filter-label">{t('clubs.directory.moodLabel')}</div>
-              <div className="directory-chip-row">
-                <button className={`chip${!mood ? ' chip--active' : ''}`} onClick={() => setMood(null)}>
-                  {t('clubs.directory.allMoods')}
-                </button>
-                {MOODS.map((id) => (
-                  <button
-                    key={id}
-                    className={`chip${mood === id ? ' chip--active' : ''}`}
-                    onClick={() => setMood(mood === id ? null : id)}
-                  >
-                    {t(moodTitleKey(id))}
+        // layout="sections": the genre filter lists the whole taxonomy, far
+        // taller than a phone. Only the body scrolls, so Done stays on screen.
+        <Modal
+          onClose={() => setFiltersOpen(false)}
+          label={t('clubs.directory.filtersTitle')}
+          layout="sections"
+          brackets={false}
+        >
+          <button className="modal__close" onClick={() => setFiltersOpen(false)} aria-label={t('common.close')}>×</button>
+          <div className="modal__head">
+            <h2 className="modal__title">{t('clubs.directory.filtersTitle')}</h2>
+          </div>
+          <div className="modal__body">
+            {genres.length > 0 && (
+              <>
+                <div className="directory-filter-label">{t('lists.fieldGenres')}</div>
+                <div className="directory-chip-row">
+                  <button className={`chip${!genreId ? ' chip--active' : ''}`} onClick={() => setGenreId(null)}>
+                    {t('clubs.directory.allGenres')}
                   </button>
-                ))}
-              </div>
-            </div>
-            {/* `modal__actions`, matching ClubDirectory — `modal__foot` was
-                my invention and resolves to nothing. */}
-            <div className="modal__actions">
-              <button
-                className="btn-text"
-                disabled={activeFilterCount === 0}
-                onClick={() => { setGenreId(null); setMood(null); }}
-              >
-                {t('clubs.directory.clearFilters')}
+                  {genres.map((g) => (
+                    <button
+                      key={g.id}
+                      className={`chip${genreId === g.id ? ' chip--active' : ''}`}
+                      onClick={() => setGenreId(genreId === g.id ? null : g.id)}
+                    >
+                      {g.name}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+
+            <div className="directory-filter-label">{t('clubs.directory.moodLabel')}</div>
+            <div className="directory-chip-row">
+              <button className={`chip${!mood ? ' chip--active' : ''}`} onClick={() => setMood(null)}>
+                {t('clubs.directory.allMoods')}
               </button>
-              <button className="btn-primary" onClick={() => setFiltersOpen(false)}>
-                {t('clubs.directory.filtersDone')}
-              </button>
+              {MOODS.map((id) => (
+                <button
+                  key={id}
+                  className={`chip${mood === id ? ' chip--active' : ''}`}
+                  onClick={() => setMood(mood === id ? null : id)}
+                >
+                  {t(moodTitleKey(id))}
+                </button>
+              ))}
             </div>
           </div>
-        </div>
+          {/* `modal__actions`, matching ClubDirectory — `modal__foot` was
+              my invention and resolves to nothing. */}
+          <div className="modal__actions">
+            <button
+              className="btn-text"
+              disabled={activeFilterCount === 0}
+              onClick={() => { setGenreId(null); setMood(null); }}
+            >
+              {t('clubs.directory.clearFilters')}
+            </button>
+            <button className="btn-primary" onClick={() => setFiltersOpen(false)}>
+              {t('clubs.directory.filtersDone')}
+            </button>
+          </div>
+        </Modal>
       )}
 
       {loading && lists.length === 0 && <CardGridSkeleton count={6} />}
