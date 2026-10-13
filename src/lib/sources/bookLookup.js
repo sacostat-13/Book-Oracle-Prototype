@@ -79,7 +79,8 @@ import {
   hardcoverSearch,
 } from './hardcoverService';
 import { wikipediaLookup } from './wikipediaService';
-import { googleBooksLookup, bestTitleMatch } from './googleBooksService';
+import { googleBooksLookup } from './googleBooksService';
+import { bestTitleMatch } from '../matching/tokenMatch';
 import { callClaudeWithStatus, parseJSONResponse } from '../oracle/claudeApi';
 
 // A merged Hardcover/OL/Wikipedia result is only trusted if its title actually

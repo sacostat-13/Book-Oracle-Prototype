@@ -1,6 +1,7 @@
 // OpenLibrary enrichment (series + page count). Cached in localStorage — this
 // is per-device cache data, no reason to put it in Supabase.
 import { cleanTitle, cleanAuthor } from '../book/bookHelpers';
+import { compactKey } from '../matching/titleMatch';
 
 const ENRICH_CACHE_KEY = 'wishlist_oracle_ol_enrich_v1';
 
@@ -121,17 +122,16 @@ export async function fetchSeriesBooks(seriesName) {
 
     const matches = [];
     const seenKeys = new Set();
-    const normalize = (s) => (s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-    const targetSeries = normalize(seriesName);
+    const targetSeries = compactKey(seriesName);
 
     for (const doc of data.docs) {
       if (!doc.series) continue;
       for (const s of doc.series) {
         const parsed = parseSeriesString(s);
         if (!parsed) continue;
-        if (normalize(parsed.name) !== targetSeries) continue;
+        if (compactKey(parsed.name) !== targetSeries) continue;
         const author = (doc.author_name || [])[0] || '';
-        const k = normalize(doc.title) + '|' + normalize(author).slice(0, 10);
+        const k = compactKey(doc.title) + '|' + compactKey(author).slice(0, 10);
         if (seenKeys.has(k)) continue;
         seenKeys.add(k);
         matches.push({

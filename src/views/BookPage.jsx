@@ -40,6 +40,7 @@ import BookMark from '../components/BookMark';
 import { useConfirm } from '../components/primitives/ConfirmDialog';
 import StarRating from '../components/primitives/StarRating';
 import { rankSimilar } from '../lib/scoring/similarity';
+import { compactKey } from '../lib/matching/titleMatch';
 
 
 // ─── Similar books ────────────────────────────────────────────────────────────
@@ -983,9 +984,8 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
     // Hardcover search can return a wrong series (e.g. searching "Bride" returns
     // "Scared Sexy"). Validate by checking the fetched books' s.name.
     const fetchedSeriesName = seriesBooks[0]?.s?.name;
-    const normalize = (s) => (s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
     const fetchedMatchesSeries = fetchedSeriesName &&
-      normalize(fetchedSeriesName) === normalize(seriesName);
+      compactKey(fetchedSeriesName) === compactKey(seriesName);
     const validSeriesBooks = fetchedMatchesSeries ? seriesBooks : [];
     for (const ob of validSeriesBooks) {
       if (!entries.some((e) => bookKey(e) === bookKey(ob))) entries.push(ob);

@@ -156,6 +156,45 @@ export async function hardcoverLookupByAsin(asin) {
   return hardcoverSearch(asin);
 }
 
+// ── Search-hit ranking (shared by hardcoverSearch and hardcoverSearchMulti) ──
+// Used to be defined twice, once inside each function.
+
+const COMPILATION_KW_RX = /\b(omnibus|box\s*set|complete\s+collect|books?\s+\d+[-\u2013\u2014]\d+|volumes?\s+\d+[-\u2013\u2014]\d+|complet[ea]|anthology)\b/i;
+
+/**
+ * Is this Hardcover search document a box set / collected edition?
+ * Trusts Hardcover's own `compilation` flag, then title heuristics: compilation
+ * keywords, three or more commas (a list of titles), or "Author's: …".
+ * (editionPicker.js has its own detector for edition FORMAT strings — different input.)
+ *
+ * @param {object} doc  Typesense document
+ * @returns {boolean}
+ */
+export function isCompilationHit(doc) {
+  if (doc?.compilation === true) return true;
+  const title = doc?.title || '';
+  if (COMPILATION_KW_RX.test(title)) return true;
+  if ((title.match(/,/g) || []).length >= 3) return true;
+  if (/^[^:]+'s\s*:/i.test(title)) return true;
+  return false;
+}
+
+/**
+ * Relevance of one search hit: compilation −10, title contains the query +2,
+ * popularity up to +1 (users_count / 1000, capped) as the tie-breaker.
+ *
+ * @param {object} hit          Typesense hit (`{document}`) or bare document
+ * @param {string} targetTitle  the query, cleaned and lower-cased
+ * @returns {number}
+ */
+export function scoreSearchHit(hit, targetTitle) {
+  const doc = hit.document || hit;
+  const title = doc?.title || '';
+  const titleMatch = title.toLowerCase().includes(targetTitle);
+  const popularity = doc?.users_count || doc?.ratings_count || 0;
+  return (isCompilationHit(doc) ? -10 : 0) + (titleMatch ? 2 : 0) + Math.min(popularity / 1000, 1);
+}
+
 // Search by free text. Hardcover's search() returns Typesense-style hits in
 // `results.hits[]` where each hit has a `document` containing the actual fields.
 export async function hardcoverSearch(query, author) {
@@ -179,27 +218,10 @@ export async function hardcoverSearch(query, author) {
   // Hardcover sets document.compilation=true on box sets/collected editions.
   // Heuristics catch edge cases. Popularity breaks ties between equal scores.
   const targetTitle = cleanTitle(query).toLowerCase();
-  const COMPILATION_KW_RX = /\b(omnibus|box\s*set|complete\s+collect|books?\s+\d+[-\u2013\u2014]\d+|volumes?\s+\d+[-\u2013\u2014]\d+|complet[ea]|anthology)\b/i;
-  function isCompilation(doc) {
-    if (doc?.compilation === true) return true;
-    const title = doc?.title || '';
-    if (COMPILATION_KW_RX.test(title)) return true;
-    if ((title.match(/,/g) || []).length >= 3) return true;
-    if (/^[^:]+\'s\s*:/i.test(title)) return true;
-    return false;
-  }
-  function scoreHit(h) {
-    const doc = h.document || h;
-    const title = doc?.title || '';
-    const titleMatch = title.toLowerCase().includes(targetTitle);
-    const compilation = isCompilation(doc);
-    const popularity = doc?.users_count || doc?.ratings_count || 0;
-    return (compilation ? -10 : 0) + (titleMatch ? 2 : 0) + Math.min(popularity / 1000, 1);
-  }
   let bestHit = hits[0];
-  let bestScore = scoreHit(hits[0]);
+  let bestScore = scoreSearchHit(hits[0], targetTitle);
   for (const h of hits.slice(1)) {
-    const s = scoreHit(h);
+    const s = scoreSearchHit(h, targetTitle);
     if (s > bestScore) { bestScore = s; bestHit = h; }
   }
 
@@ -267,26 +289,9 @@ export async function hardcoverSearchMulti(query, limit = 6) {
   if (!hits.length) return [];
 
   const targetTitle = q.toLowerCase();
-  const COMPILATION_KW_RX = /\b(omnibus|box\s*set|complete\s+collect|books?\s+\d+[-\u2013\u2014]\d+|volumes?\s+\d+[-\u2013\u2014]\d+|complet[ea]|anthology)\b/i;
-  function isCompilation(doc) {
-    if (doc?.compilation === true) return true;
-    const title = doc?.title || '';
-    if (COMPILATION_KW_RX.test(title)) return true;
-    if ((title.match(/,/g) || []).length >= 3) return true;
-    if (/^[^:]+\'s\s*:/i.test(title)) return true;
-    return false;
-  }
-  function scoreHit(h) {
-    const doc = h.document || h;
-    const title = doc?.title || '';
-    const titleMatch = title.toLowerCase().includes(targetTitle);
-    const compilation = isCompilation(doc);
-    const popularity = doc?.users_count || doc?.ratings_count || 0;
-    return (compilation ? -10 : 0) + (titleMatch ? 2 : 0) + Math.min(popularity / 1000, 1);
-  }
 
   const scored = hits
-    .map((h) => ({ h, score: scoreHit(h) }))
+    .map((h) => ({ h, score: scoreSearchHit(h, targetTitle) }))
     .filter(({ score }) => score > -10) // drop pure compilations with no title match
     .sort((a, b) => b.score - a.score)
     .slice(0, limit);

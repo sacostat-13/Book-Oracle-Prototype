@@ -9,6 +9,43 @@ Moved here from README.md on 2026-10-12 (code-health spike, item O1). Entries ar
 
 ---
 
+# Unreleased — Sprint 3: structure and the maths in code
+
+Sprint 3 of the 2026-10-12 code-health spike (§3). Internal: no reader-facing behaviour changes, so no
+`releases.js` entry. Every refactored formula is compared against a frozen copy of the v0.72.4 code
+(`tests/reference/`) over thousands of seeded random inputs.
+
+### Changed
+- **L6 — pages load on demand.** 38 views are `React.lazy` chunks behind a `<Suspense>` loader; Landing,
+  Dashboard, Book page and Onboarding stay in the entry bundle (the Book page's cover morph needs it
+  synchronous). Navigation runs in `startTransition`. Entry script 1.72 MB → 1.42 MB.
+- **L3 — `src/lib` by domain.** Providers in `src/contexts/`, hooks in `src/hooks/` (`proGates.js` →
+  `useProLimits.js`), static data in `src/data/`, and `src/lib/{book,matching,scoring,sources,api,oracle,
+  achievements,share,genres,device,util}/` with a `src/lib/README.md` map. `titles.js` →
+  `achievements/readerRanks.js`.
+- **M2–M4 — one module per formula.** `matchHelpers.js` split into `scoring/tasteProfile`, `localMatch`,
+  `levelNudge`, `drawWeight` and `oracle/tastePrompt`. New `scoring/similarity.js`: the Book page's "You
+  might also like" and Find Similar's fallback are two weight presets over one `similarityScore()`.
+  Weights are named, exported tables in `editionPicker`, `workRepresentative`, `primaryGenre` and
+  `levelPlan` (the Level Passage loop moved out of `PlanCreate.jsx`).
+- **L4 — duplicates consolidated.** Google Books' word-share title matching → `matching/tokenMatch.js`
+  (NavSearch and bookLookup import it directly). Hardcover's `isCompilation`/`scoreHit`, defined twice
+  inside two functions, → module-level `isCompilationHit`/`scoreSearchHit`. Seeded randomness →
+  `util/random.js` (`hashSeed`, `xorshift32`, `seededRandom`); `dailyShuffle` uses it with identical
+  output. Inline series-name normalisers in BookPage and enrichmentService → `compactKey()` in
+  `matching/titleMatch.js`.
+
+### Added
+- `tests/scoring.test.js` (equivalence + MATH.md example tables), `tests/consolidation.test.js`
+  (equivalence for L4, plus a contract test that the client and Netlify Function copies of
+  `splitGoodreadsSeriesTitle` are identical — they cannot share a file).
+- `docs/reference/MATH.md`: code paths updated; "Tested" now yes for §2–3, 5–12, 14, 16.
+
+### Verify
+`TZ=America/Costa_Rica npm run verify` — lint, build, 535 tests.
+
+---
+
 # v0.72.4 — Shared UI building blocks (2026-10-13)
 
 Sprint 2 of the 2026-10-12 code-health spike (§2), plus two fixes found in review.

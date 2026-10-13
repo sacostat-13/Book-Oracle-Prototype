@@ -6,8 +6,9 @@
 // state array it silently reorders the reader's real data. Both bit the Oracle
 // Spark before this file existed.
 //
-// Deterministic, seeded shuffling for SEO-stable pages lives in
-// genreService.dailyShuffle; this file is for ordinary per-draw randomness.
+// For REPEATABLE randomness (the same order for everyone today — genre cover
+// walls, prerendered pages) pass a seeded generator: shuffle(items,
+// seededRandom('gothic:2026-10-13')). genreService.dailyShuffle does exactly that.
 
 /**
  * Return a shuffled copy of `items` (Fisher–Yates). Never mutates the input.
@@ -63,4 +64,47 @@ export function weightedSample(items, count, weightOf, random = Math.random) {
   });
   keyed.sort((x, y) => (y.key - x.key) || (y.fallback - x.fallback));
   return keyed.slice(0, count).map((k) => k.item);
+}
+
+/**
+ * 32-bit FNV-1a hash of a string. Same string → same unsigned integer, on every
+ * device and in the edge prerender, which is what makes a seeded order stable.
+ *
+ * @param {string} str
+ * @returns {number} unsigned 32-bit integer
+ */
+export function hashSeed(str) {
+  let h = 2166136261;
+  for (let i = 0; i < str.length; i++) {
+    h ^= str.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return h >>> 0;
+}
+
+/**
+ * A deterministic random-number generator (xorshift32) starting from `seed`.
+ * Adequate for shuffling covers; not for anything security-related.
+ *
+ * @param {number} seed  unsigned 32-bit integer (0 would stick at 0 — hashSeed never returns it in practice)
+ * @returns {() => number} returns numbers in [0, 1), same sequence for the same seed
+ */
+export function xorshift32(seed) {
+  let state = seed >>> 0;
+  return () => {
+    state ^= state << 13; state >>>= 0;
+    state ^= state >> 17;
+    state ^= state << 5;  state >>>= 0;
+    return state / 4294967296;
+  };
+}
+
+/**
+ * Seeded generator from a string key: `xorshift32(hashSeed(key))`.
+ *
+ * @param {string} key  e.g. "gothic:2026-10-13"
+ * @returns {() => number}
+ */
+export function seededRandom(key) {
+  return xorshift32(hashSeed(key));
 }

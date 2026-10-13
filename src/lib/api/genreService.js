@@ -7,6 +7,7 @@
 // are all granted to anon — and nothing here touches user state.
 
 import { supabase } from './supabase';
+import { shuffle, seededRandom } from '../util/random';
 
 // One page of the wall. The genre page is a browse surface like The Stacks —
 // you scroll, you press More, you keep going — so this is a page size, not a
@@ -34,15 +35,6 @@ export const INDEX_FLOOR = 5;
 // nothing reshuffles under the reader on hydration; the cache stays valid for a
 // day; and across a week the internal link graph surfaces far more of the
 // catalogue than a fixed list ever would.
-function hashSeed(str) {
-  let h = 2166136261;
-  for (let i = 0; i < str.length; i++) {
-    h ^= str.charCodeAt(i);
-    h = Math.imul(h, 16777619);
-  }
-  return h >>> 0;
-}
-
 export function dayStamp(now = new Date()) {
   return now.toISOString().slice(0, 10); // UTC, so every viewer agrees
 }
@@ -53,20 +45,8 @@ export function dailyShuffle(items, seedKey, now = new Date()) {
   // alone.
   if (!Array.isArray(items) || items.length <= GENRE_PAGE_SIZE) return items || [];
 
-  let state = hashSeed(`${seedKey}:${dayStamp(now)}`);
-  const rand = () => {
-    // xorshift32 — deterministic from the seed, adequate for shuffling covers.
-    state ^= state << 13; state >>>= 0;
-    state ^= state >> 17;
-    state ^= state << 5;  state >>>= 0;
-    return state / 4294967296;
-  };
-  const out = items.slice();
-  for (let i = out.length - 1; i > 0; i--) {
-    const j = Math.floor(rand() * (i + 1));
-    [out[i], out[j]] = [out[j], out[i]];
-  }
-  return out;
+  // Fisher–Yates driven by a generator seeded from genre + UTC day (util/random.js).
+  return shuffle(items, seededRandom(`${seedKey}:${dayStamp(now)}`));
 }
 
 // ── Reads ─────────────────────────────────────────────────────────────────────

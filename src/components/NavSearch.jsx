@@ -22,7 +22,8 @@ import { useRouter } from '../contexts/RouterContext';
 import { useT } from '../contexts/I18nContext';
 import { bookKey, buildBookPageParams } from '../lib/book/bookHelpers';
 import { hardcoverSearchMulti } from '../lib/sources/hardcoverService';
-import { googleBooksSearchMulti, titleMatchScore } from '../lib/sources/googleBooksService';
+import { googleBooksSearchMulti } from '../lib/sources/googleBooksService';
+import { titleMatchScore } from '../lib/matching/tokenMatch';
 import { callClaude, parseJSONResponse, QuotaExceededError } from '../lib/oracle/claudeApi';
 import BookCover from './BookCover';
 

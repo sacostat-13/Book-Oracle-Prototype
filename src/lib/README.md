@@ -6,8 +6,8 @@ about, so the folder name tells you where to look.
 | Folder | Holds | Examples |
 |---|---|---|
 | `book/` | The book model and its rules: identity keys, editions, ISBNs, languages, purchase links | `bookHelpers` (`bookKey`, `addressKey`), `editions`, `isbn`, `workGroups` |
-| `matching/` | "Is this the same title / author?" | `titleMatch` (shared with `batch-scripts/`) |
-| `scoring/` | Every ranking, weight and threshold — documented in [docs/reference/MATH.md](../../docs/reference/MATH.md) | `matchHelpers`, `editionPicker`, `readingStreak` |
+| `matching/` | "Is this the same title / author?" | `tokenMatch` (forgiving, live search), `titleMatch` (strict, shared with `batch-scripts/`) |
+| `scoring/` | Every ranking, weight and threshold — documented in [docs/reference/MATH.md](../../docs/reference/MATH.md) | `localMatch`, `similarity`, `editionPicker`, `readingStreak` |
 | `sources/` | External book data: lookup chain and its clients, imports, scanner resolution | `bookLookup`, `hardcoverService`, `googleBooksService`, `goodreadsImport` |
 | `api/` | Our own backend (Supabase reads/RPCs) | `supabase`, `genreService`, `seriesService`, `anthologyInsights` |
 | `oracle/` | Talking to the Oracle: prompts, the Claude proxy, provenance, cached draws | `claudeApi`, `oraclePrompt`, `oracleProvenance` |

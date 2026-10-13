@@ -33,11 +33,26 @@
 // diverge in the middle — so both the exact and the prefix rule failed on what is
 // plainly the same book. Expanding before stripping makes the two sides agree.
 export const normTitle = (s) =>
-  (s || '')
-    .toLowerCase()
-    .replace(/\s*&\s*/g, ' and ')
-    .replace(/\s\+\s/g, ' and ')
-    .replace(/[^a-z0-9]/g, '');
+  compactKey(
+    (s || '')
+      .toLowerCase()
+      .replace(/\s*&\s*/g, ' and ')
+      .replace(/\s\+\s/g, ' and ')
+  );
+
+/**
+ * Lower-case letters and digits only: "The Sandman, Vol. 1" → "thesandmanvol1".
+ * The plain comparison key for names that only differ by case, spacing or
+ * punctuation (series names, titles in a dedupe key). No accent folding —
+ * "Páramo" loses its "á" — and no "&"/"and" expansion; use normTitle for titles
+ * coming from two different catalogues.
+ *
+ * @param {string|null|undefined} s
+ * @returns {string}
+ */
+export function compactKey(s) {
+  return (s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+}
 
 // The three forms of a title, kept LABELLED rather than as a bare array.
 //
