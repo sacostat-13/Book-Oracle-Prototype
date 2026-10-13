@@ -9,7 +9,7 @@ Moved here from README.md on 2026-10-12 (code-health spike, item O1). Entries ar
 
 ---
 
-# Unreleased — Sprint 4: Anthologies and clubs out of DataContext; Dashboard and Profile split
+# Unreleased — Sprint 4: DataContext split into domains; Dashboard and Profile split
 
 Sprint 4 of the 2026-10-12 code-health spike (the "ongoing" track: L1/L2 for two domains, U4). Internal: no
 reader-facing change, so no `releases.js` entry. Dashboard and every Profile tab were screenshotted before and
@@ -29,15 +29,26 @@ nav off by 1/255 in one colour channel.
   `sections/*` (username, display name, password, avatar, titles, reader preferences, privacy, notifications)
   and `overview/*`. The stats calculation is a pure function, `profileStats.js`.
 
+- **The rest of `DataContext` split by domain** (3,025 → 179 lines). `contexts/data/` holds loading
+  (`useDataLoad`, `load.js`), the caches (`cache.js`), `rollups.js` and the state shape (`defaults.js`).
+  `contexts/domains/` gained `notices`, `catalog`, `shelves`, `accomplishments`, `memories`, `reading`,
+  `imports`, `categories`, `profile`, `plans` and `vault`; each callback moved verbatim into a hook the
+  provider calls in the original order. Largest new file: `domains/reading.js`, 585 lines. `useData()`
+  is unchanged.
+
 ### Removed
 - `KindredCallout` in Profile.jsx — defined, never rendered.
 
 ### Added
+- `tests/data-provider.test.jsx`: the real `DataProvider` in jsdom with a recording fake Supabase. Four
+  load paths and 45 actions, each as a guest and signed in, snapshotted (state, share moment, toast, import
+  job, console output, every request). Recorded from the code before the split; all 91 match after it.
 - `tests/domains.test.js` (23 tests: list and club actions against a recording fake Supabase, mapping, pure
   state), `tests/profile-stats.test.js`.
+- Dev dependencies: `jsdom`, `@testing-library/react`, `@testing-library/dom` (tests only).
 
 ### Verify
-`TZ=America/Costa_Rica npm run verify` — lint, build, 569 tests.
+`TZ=America/Costa_Rica npm run verify` — lint, build, 660 tests.
 
 ---
 

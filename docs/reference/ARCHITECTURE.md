@@ -35,23 +35,32 @@ provider may read the ones outside it:
 ThemeProvider → I18nProvider → AuthProvider → DataProvider → OracleQuotaProvider → RouterProvider → App
 ```
 
-`DataProvider` (`src/contexts/DataContext.jsx`) holds the reader's shelves and every
-mutation on them, for both signed-in readers (Supabase) and guests
-(`localStorage`). It is being split by domain (code-health spike, L1/L2); each
-moved domain has three layers:
+`DataProvider` (`src/contexts/DataContext.jsx`, ~180 lines) holds the reader's data in
+one `state` object (shape: `contexts/data/defaults.js`) and exposes it, with every action
+on it, through `useData()`. Signed-in readers load from and persist to Supabase; guests
+live in `localStorage`. The provider only wires the pieces together:
 
-| Layer | Example (Anthologies) | Holds |
-|---|---|---|
-| `src/lib/api/<domain>Api.js` | `listsApi.js` | Supabase requests and row → client mapping. No React. |
-| `src/contexts/domains/<domain>.js` | `lists.js` | Pure state transitions (`listsState`) and `create<Domain>Actions({ user, setState, … })`, the methods views call |
-| `src/hooks/use<Domain>.js` | `useLists()` | What a view imports: the domain's state slice and methods |
+| Folder | What lives there |
+|---|---|
+| `contexts/data/` | `useDataLoad` (initial load: session cache → Supabase → localStorage fallback, and the persist effect), `load.js` (`loadFromSupabase`, `savePreferences`), `cache.js` (local and session caches, catalogue and shelf stamps), `rollups.js`, `defaults.js` |
+| `contexts/domains/` | One module per area. **Hooks** the provider calls in order: `notices` (toast, share moment), `catalog` (`upsertBookOnServer`), `shelves` (wishlist, Read Next), `accomplishments` (earning, completion moment, backfill), `memories`, `reading` (`markAsRead`, currently reading, progress, editions, editing the library), `imports`, `categories`, `profile` (settings), `plans`, `vault`. **Action builders** for the two domains with no cross-domain ties: `lists` (Anthologies) and `clubs`. |
+| `lib/api/<domain>Api.js` | Supabase requests and row mapping with no React, so far for `lists` and `clubs` |
+| `hooks/useLists.js`, `useClubs.js` | Domain-shaped access for views. Every other domain is still reached through `useData()`, which exposes every name it always did. |
 
-Moved so far: **Anthologies** (`useLists`) and **clubs**, with discussion and polls
-(`useClubs`). State still lives in DataProvider's single `state` object, because the
-session cache and the load path serialise it whole, so the actions get `setState`.
-`useData()` still exposes every method under its old name; new code should use the
-domain hook. Shelves, reading progress and the Ledger (`markAsRead` and friends) are
-still inside DataContext and are meant to move last.
+Why two shapes in `domains/`: lists and clubs only touch their own slice, so they were
+rewritten as plain factories and unit-tested. Everything else calls into everything
+else (`markAsRead` updates four shelves, earns accomplishments, queues the share moment
+and can write a memory), so those callbacks were moved **verbatim** into hooks, keeping
+every closure and dependency list, and the hooks are called in the order the code ran
+before so effects (load → persist → accomplishments backfill) still run in sequence.
+Later domains receive earlier ones' functions as arguments: the call list at the top of
+`DataProvider` is the dependency graph.
+
+**Before changing any domain, run `tests/data-provider.test.jsx`.** It renders the real
+provider with a recording fake Supabase and snapshots, for every action as a guest and as
+a signed-in reader, the state, share moment, toast, console output and every request.
+A changed snapshot is a behaviour change: re-record it (`npx vitest run -u`) only when
+the change is intended, and say so in the PR.
 
 ## Project layout
 
@@ -76,7 +85,8 @@ still inside DataContext and are meant to move last.
     ├── main.jsx               Mount + providers
     ├── App.jsx                Global overlays + route switch (pages lazy-loaded)
     ├── contexts/              Auth, Data, I18n, OracleQuota, Router, Theme providers
-    │   └── domains/           Domain actions split out of DataContext (lists, clubs)
+    │   ├── data/              Loading, caches, saving preferences
+    │   └── domains/           One module per area of the reader's data
     ├── hooks/                 useX hooks: overlays, shelves, follows, Pro limits…
     ├── lib/                   Plain modules by domain — see src/lib/README.md
     │   ├── book/  matching/  scoring/  sources/  api/  oracle/
