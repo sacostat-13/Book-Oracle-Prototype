@@ -9,7 +9,7 @@ about, so the folder name tells you where to look.
 | `matching/` | "Is this the same title / author?" | `tokenMatch` (forgiving, live search), `titleMatch` (strict, shared with `batch-scripts/`) |
 | `scoring/` | Every ranking, weight and threshold — documented in [docs/reference/MATH.md](../../docs/reference/MATH.md) | `localMatch`, `similarity`, `editionPicker`, `readingStreak` |
 | `sources/` | External book data: lookup chain and its clients, imports, scanner resolution | `bookLookup`, `hardcoverService`, `googleBooksService`, `goodreadsImport` |
-| `api/` | Our own backend (Supabase reads/RPCs) | `supabase`, `genreService`, `seriesService`, `anthologyInsights` |
+| `api/` | Our own backend (Supabase reads/RPCs) | `supabase`, `listsApi`, `clubsApi`, `genreService`, `seriesService`, `anthologyInsights` |
 | `oracle/` | Talking to the Oracle: prompts, the Claude proxy, provenance, cached draws | `claudeApi`, `oraclePrompt`, `oracleProvenance` |
 | `achievements/` | Milestones, the accomplishments ledger, reader ranks | `shareMoments`, `accomplishments`, `readerRanks` |
 | `share/` | Sharing: Web Share / clipboard, share-card images | `shareService`, `shareCardImage` |

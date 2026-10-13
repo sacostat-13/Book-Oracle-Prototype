@@ -9,6 +9,38 @@ Moved here from README.md on 2026-10-12 (code-health spike, item O1). Entries ar
 
 ---
 
+# Unreleased — Sprint 4: Anthologies and clubs out of DataContext; Dashboard and Profile split
+
+Sprint 4 of the 2026-10-12 code-health spike (the "ongoing" track: L1/L2 for two domains, U4). Internal: no
+reader-facing change, so no `releases.js` entry. Dashboard and every Profile tab were screenshotted before and
+after at 1280px and 390px as a signed-in reader: pixel-identical, except one pixel of the blurred translucent
+nav off by 1/255 in one colour channel.
+
+### Changed
+- **Anthologies and clubs have their own modules.** `lib/api/listsApi.js` and `lib/api/clubsApi.js` hold every
+  Supabase request and row mapping; `contexts/domains/lists.js` and `clubs.js` hold pure state transitions and
+  `createListActions` / `createClubActions`; `hooks/useLists.js` and `useClubs.js` are what views import
+  (18 views and components migrated). `useData()` still exposes every old name. `DataContext.jsx` 3,587 →
+  3,025 lines. `addBookToList` now reads the current lists at call time through a ref instead of a closure.
+- `bookRowToClient` moved to `lib/book/bookRow.js`.
+- **Dashboard** (1,334 → 186 lines): one file per widget in `views/dashboard/`, plus `layout.js` (default and
+  saved layouts) and `feed.js` (activity events). Its club reads use `useClubs()`.
+- **Profile** (1,980 → 209 lines): `views/profile/OverviewTab`, `AccountTab`, `SubscriptionTab`, `Ledger`,
+  `sections/*` (username, display name, password, avatar, titles, reader preferences, privacy, notifications)
+  and `overview/*`. The stats calculation is a pure function, `profileStats.js`.
+
+### Removed
+- `KindredCallout` in Profile.jsx — defined, never rendered.
+
+### Added
+- `tests/domains.test.js` (23 tests: list and club actions against a recording fake Supabase, mapping, pure
+  state), `tests/profile-stats.test.js`.
+
+### Verify
+`TZ=America/Costa_Rica npm run verify` — lint, build, 569 tests.
+
+---
+
 # Unreleased — Sprint 3: structure and the maths in code
 
 Sprint 3 of the 2026-10-12 code-health spike (§3). Internal: no reader-facing behaviour changes, so no

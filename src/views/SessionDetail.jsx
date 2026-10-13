@@ -212,7 +212,7 @@ function EditSessionModal({ session, book, onSave, onClose }) {
 
 export default function SessionDetail() {
   const t = useT();
-  const { state, updateReadingProgress, startReading, showToast, showShareMoment } = useData();
+  const { updateReadingProgress, startReading, showToast, showShareMoment } = useData();
   const { clubs } = useClubs();
   const { go, route } = useRouter();
   const { user } = useAuth();

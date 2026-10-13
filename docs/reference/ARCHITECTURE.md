@@ -37,8 +37,21 @@ ThemeProvider → I18nProvider → AuthProvider → DataProvider → OracleQuota
 
 `DataProvider` (`src/contexts/DataContext.jsx`) holds the reader's shelves and every
 mutation on them, for both signed-in readers (Supabase) and guests
-(`localStorage`). It is the largest file in the repo and the first candidate
-for splitting — see the code-health spike.
+(`localStorage`). It is being split by domain (code-health spike, L1/L2); each
+moved domain has three layers:
+
+| Layer | Example (Anthologies) | Holds |
+|---|---|---|
+| `src/lib/api/<domain>Api.js` | `listsApi.js` | Supabase requests and row → client mapping. No React. |
+| `src/contexts/domains/<domain>.js` | `lists.js` | Pure state transitions (`listsState`) and `create<Domain>Actions({ user, setState, … })`, the methods views call |
+| `src/hooks/use<Domain>.js` | `useLists()` | What a view imports: the domain's state slice and methods |
+
+Moved so far: **Anthologies** (`useLists`) and **clubs**, with discussion and polls
+(`useClubs`). State still lives in DataProvider's single `state` object, because the
+session cache and the load path serialise it whole, so the actions get `setState`.
+`useData()` still exposes every method under its old name; new code should use the
+domain hook. Shelves, reading progress and the Ledger (`markAsRead` and friends) are
+still inside DataContext and are meant to move last.
 
 ## Project layout
 
@@ -63,6 +76,7 @@ for splitting — see the code-health spike.
     ├── main.jsx               Mount + providers
     ├── App.jsx                Global overlays + route switch (pages lazy-loaded)
     ├── contexts/              Auth, Data, I18n, OracleQuota, Router, Theme providers
+    │   └── domains/           Domain actions split out of DataContext (lists, clubs)
     ├── hooks/                 useX hooks: overlays, shelves, follows, Pro limits…
     ├── lib/                   Plain modules by domain — see src/lib/README.md
     │   ├── book/  matching/  scoring/  sources/  api/  oracle/
@@ -71,7 +85,9 @@ for splitting — see the code-health spike.
     ├── i18n/                  en.json + es.json (keys must stay in parity)
     ├── styles/                main.scss → tokens, layout/, components/, pages/
     ├── components/            Shared UI; primitives/ = Modal, Tabs, StarRating…
-    └── views/                 One file per route
+    └── views/                 One file per route; big pages keep their parts beside them:
+        ├── dashboard/         one file per widget, plus layout.js and feed.js
+        └── profile/           one component per tab, sections/, overview/, profileStats.js
 ```
 
 ## Data model
@@ -206,7 +222,7 @@ and forward requests. Locally you need `netlify dev` to make them work.
 
 **Reading progress (v0.28).** `currently_reading` now carries a `pages_read` integer (default 0). `updateReadingProgress(book, pagesRead)` in DataContext optimistically updates local state and persists via a direct update. The `ProgressUpdateModal` component is shared between Currently Reading and SessionDetail.
 
-**Discussion architecture (v0.29).** One `session_comments` table covers all comment surfaces — free comments (`question_id` null), question answers (`question_id` set), and replies (`parent_id` set). A DB constraint prevents replies-to-replies. `get_session_discussion` returns the full thread structure in one RPC call with `is_mine` flags pre-computed. `CommentThread` is a pure rendering component; `SessionDiscussion` owns data-fetching and is the only component that calls DataContext mutations.
+**Discussion architecture (v0.29).** One `session_comments` table covers all comment surfaces — free comments (`question_id` null), question answers (`question_id` set), and replies (`parent_id` set). A DB constraint prevents replies-to-replies. `get_session_discussion` returns the full thread structure in one RPC call with `is_mine` flags pre-computed. `CommentThread` is a pure rendering component; `SessionDiscussion` owns data-fetching and is the only component that calls the discussion mutations (`useClubs()`).
 
 **Oracle question suggestions (v0.29).** Admins trigger from the session discussion panel. The existing questions are sent as context so Claude avoids duplicates. Results render as a persistent pick-list — tapping adds immediately without closing the list, allowing multiple picks in one flow.
 

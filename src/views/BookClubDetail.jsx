@@ -47,7 +47,7 @@ function SessionCard({ session, onClick, t }) {
 }
 
 export default function BookClubDetail() {
-  const { state, showToast } = useData();
+  const { showToast } = useData();
   const { clubs, deleteClub, leaveClub, regenerateJoinToken } = useClubs();
   const { go, route } = useRouter();
   const { user } = useAuth();
