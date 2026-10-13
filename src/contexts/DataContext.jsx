@@ -1,0 +1,3587 @@
+// Central app data store. Mirrors the original `state` shape (library, readNext,
+// wishlist, currentPlan, profile, etc.) but loads from and persists to Supabase
+// when a user is signed in. When signed out, falls back to localStorage so the
+// app still works for anonymous prototyping.
+import { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
+import { supabase } from '../lib/api/supabase';
+import { fetchAllRows } from '../lib/api/supabasePaging';
+import { useAuth } from './AuthContext';
+import { ALL_BOOKS, bookKey, storableAuthor } from '../lib/book/bookHelpers';
+import { computeCompletionMoments } from '../lib/achievements/shareMoments';
+import {
+  entryFromMoment,
+  rowToMoment,
+  computeBackfillAccomplishments,
+} from '../lib/achievements/accomplishments';
+import { CURRENT_VERSION } from '../data/releases';
+import { knownMoods } from '../data/moods';
+import { resolveRecommendation, isOracleSuggested } from '../lib/oracle/oracleProvenance';
+
+const LOCAL_KEY    = 'wishlist_oracle_state_v2';
+const SESSION_KEY  = 'wishlist_oracle_session_v3'; // bumped v0.31: genres now included in cache
+
+const defaultState = {
+  onboarded: false,
+  profile: {
+    readingLevel: null,
+    goal: null,
+    goodreadsImported: false,
+    favoriteGenres: [], // v0.38: onboarding — up to 5 genre names
+    currentMood: [],    // v0.38: onboarding — up to 3 mood/intent chip ids
+    // v0.66 — follows.
+    bio: null,
+    // Who may read this reader's shelves: 'public' | 'followers' | 'private'.
+    // Mirrors profiles.shelf_visibility, which is what the RLS policy actually
+    // consults. This copy is for rendering the setting, never for deciding
+    // access — the server already decided that.
+    shelfVisibility: 'followers',
+    // Whose updates reach the feed: 'follows' | 'mutuals' | 'both'.
+    feedScope: 'both',
+    isCurator: false,
+    // v0.51: the earned Reader Title the user chose to wear (tier key from
+    // titles.js), or null. App-granted only — the picker offers earned tiers.
+    displayTitle: null,
+    displayName: null,
+    username: null,
+    avatarUrl: null,
+    isDiscoverable: true,
+    emailNotifications: true,
+    // v0.45: set once the retroactive accomplishments backfill has run for
+    // this profile (server column profiles.accomplishments_backfilled_at;
+    // for guests it rides localStorage with the rest of profile).
+    accomplishmentsBackfilledAt: null,
+  },
+  library: [],
+  readNext: [],
+  wishlist: [],
+  currentPlan: null,
+  plans: [],
+  lists: [],
+  shelfSortMode: 'recent',
+  oracleMode: 'wishlist',
+  // v0.35: dashboard layout — ordered list of widget configs
+  dashboardLayout: null,  // null = use DEFAULT_DASHBOARD_LAYOUT
+  // v0.35: numeric reading goal (books per year), null = not set
+  readingGoalCount: null,
+  // v0.12: a Map keyed by book_id (uuid) → array of { categoryId, name,
+  // verified, usageCount, source: 'verified' | 'user' }. Populated on load
+  // and kept in sync by addCategoryToBook / removeCategoryFromBook.
+  // Books not in this map have no categories (empty array, not null).
+  categoriesByBookId: {},
+  // v0.15 phase 2.3: canonical genre taxonomy. keyed by book_id (uuid) →
+  // array of { genreId, name, normalizedName, source, usageCount, assignedBySource,
+  // description, familySlug, familyName, familySort }.
+  // Global (not user-scoped). Populated from book_genres_view on load.
+  genresByBookId: {},
+  // Full genre catalog: [{ id, name, normalizedName, source, usageCount, description,
+  //   familySlug, familyName, familySort }]
+  // Sorted alphabetically. Used by PlanCreate genre select and genre browsers.
+  genres: [],
+  // v0.22: books currently being read. Each entry is a full book client object
+  // with an extra `startedAt` (ISO date string) field.
+  currentlyReading: [],
+  // v0.65 — { [bookId]: reader_editions row }. Which edition THIS reader read,
+  // keyed by book so it is reachable from any shelf. See src/lib/book/editions.js.
+  editionsByBookId: {},
+  // v0.28: book clubs. Each entry is { id, name, description, joinToken,
+  // createdBy, createdAt, callerRole: 'member'|'admin', memberCount }.
+  // Full detail (members, sessions) is fetched on demand by the club views.
+  clubs: [],
+  // v0.44: Reading Memory. Keyed by bookId (authed) or bookKey (guest) →
+  // array of { id, kind: 'progress'|'finished', body, pagesAt, pctAt,
+  // createdAt }, newest first. Private per user; guests persist via
+  // localStorage with the rest of state.
+  memories: {},
+  // v0.45: Reading Accomplishments — the persistent, retroactive ledger.
+  // Flat array of { id, key, kind, bookId, meta, earnedAt }, newest first.
+  // Earned once and kept; deduped by `key`. Guests persist via localStorage.
+  accomplishments: [],
+  // v0.46: Feature-discovery coach-marks the reader has dismissed. Flat array
+  // of mark ids; a mark whose id is here never renders again. Rides
+  // profile.preferences (authed) / localStorage (guest), like dashboardLayout.
+  coachmarksSeen: [],
+  // v0.46: the release version the reader last opened in the "what's new"
+  // panel. When it differs from CURRENT_VERSION, the nav shows an unseen dot.
+  lastSeenVersion: null,
+};
+
+export const DataContext = createContext(null);
+
+// ---------- sessionStorage cache ----------
+// Stores the last known Supabase state per user so new tabs render instantly.
+// Keyed by userId so switching accounts invalidates automatically.
+
+// v0.57: the cached payload carries the catalog version it was built from.
+// Returns { state, catalogVersion } so the caller can check it against the live value.
+function loadSessionCache(userId) {
+  try {
+    const raw = sessionStorage.getItem(SESSION_KEY);
+    if (!raw) return null;
+    const { uid, state, ts, catalogVersion, shelfStamp } = JSON.parse(raw);
+    if (uid !== userId) return null; // wrong user, ignore
+    // Expire after 30 minutes — forces a fresh load if stale
+    if (Date.now() - ts > 30 * 60 * 1000) return null;
+    return {
+      state,
+      catalogVersion: catalogVersion ?? null,
+      shelfStamp: shelfStamp ?? null,
+    };
+  } catch (_) { return null; }
+}
+
+// One integer, bumped by a statement-level trigger on public.books (schema_v43).
+// Deliberately a separate, tiny query rather than a full state refetch: this decides
+// whether the cache is USABLE, it never overwrites in-memory state, so it does not
+// reintroduce the race that the no-background-refresh comment below guards against.
+async function fetchCatalogVersion() {
+  try {
+    const { data, error } = await supabase.from('catalog_meta').select('version').single();
+    return error ? null : (data?.version ?? null);
+  } catch (_) { return null; }
+}
+
+// Module-scoped so the persist effect can stamp saves without threading it through
+// every call site. Set on load and whenever a fresh version is observed.
+const catalogVersionRef = { current: null };
+
+// v0.65.3 — the shelf half of the same idea.
+//
+// catalogVersionRef above tracks changes to the CATALOGUE. Nothing tracked
+// changes to the reader's own SHELF, so a read_books row edited anywhere other
+// than this tab's React state — another tab, another device, a hand-run UPDATE
+// in the SQL editor, a batch script — stayed invisible for the cache's full
+// 30-minute life. sessionStorage is designed to survive F5, so a hard refresh
+// did not clear it either. That is how a corrected read date can keep counting
+// toward this month while the database has been right the whole time.
+//
+// `{ n, latest }`: row count plus the newest updated_at. Count alone misses an
+// edit (no row created); updated_at alone misses a delete. Together they move
+// on any change that matters. Requires migration
+// 20260820140000_read_books_updated_at.sql; falls back to the old
+// catalog-version-only behaviour when the column is absent, so the client can
+// ship before the migration lands.
+//
+// NOTE ON STALENESS OF THE REF ITSELF: a local mutation bumps updated_at on the
+// server but not this ref, so the next load sees a stamp mismatch and refetches
+// once. That is the correct direction to fail — an unnecessary refetch costs one
+// round trip; a missed one costs a wrong number on the Profile that no amount of
+// refreshing will fix.
+const shelfStampRef = { current: null };
+
+function sameShelfStamp(a, b) {
+  if (!a || !b) return true;   // unknown on either side proves nothing
+  return a.n === b.n && a.latest === b.latest;
+}
+
+async function fetchShelfStamp(userId) {
+  try {
+    const { data, error, count } = await supabase
+      .from('read_books')
+      .select('updated_at', { count: 'exact' })
+      .eq('user_id', userId)
+      .order('updated_at', { ascending: false })
+      .limit(1);
+    // The column does not exist yet — migration not applied. Not an error
+    // worth surfacing; it just means this check is unavailable.
+    if (error) return null;
+    return { n: typeof count === 'number' ? count : null, latest: data?.[0]?.updated_at ?? null };
+  } catch (_) { return null; }
+}
+
+function saveSessionCache(userId, state) {
+  try {
+    // Cache the full state including genres — the full genre list is small
+    // (a few dozen rows) and is needed by PlanCreate, genre browsers, etc.
+    // Excluding it caused genres to be empty whenever the cache was hit.
+    sessionStorage.setItem(SESSION_KEY, JSON.stringify({
+      uid: userId,
+      state,
+      ts: Date.now(),
+      // Preserved across saves — the persist effect has no reason to re-fetch it, and a
+      // change made outside the app is exactly what the load path is checking for.
+      catalogVersion: catalogVersionRef.current,
+      shelfStamp: shelfStampRef.current,
+    }));
+  } catch (_) {} // quota errors — fail silently
+}
+
+function clearSessionCache() {
+  try { sessionStorage.removeItem(SESSION_KEY); } catch (_) {}
+}
+
+function dedupeBooks(books) {
+  if (!books || books.length === 0) return books;
+  const seen = new Set();
+  const out = [];
+  for (const b of books) {
+    const k = bookKey(b);
+    if (seen.has(k)) continue;
+    seen.add(k);
+    out.push(b);
+  }
+  return out;
+}
+
+// ---------- localStorage fallback ----------
+function loadLocal() {
+  try {
+    const raw = localStorage.getItem(LOCAL_KEY);
+    if (!raw) return { ...defaultState };
+    const parsed = JSON.parse(raw);
+    return {
+      ...defaultState,
+      ...parsed,
+      profile: { ...defaultState.profile, ...(parsed.profile || {}) },
+      wishlist: dedupeBooks(parsed.wishlist || []),
+      library: dedupeBooks(parsed.library || []),
+      readNext: dedupeBooks(parsed.readNext || []),
+      // v0.12: guest-mode categories live in localStorage too
+      categoriesByBookId: parsed.categoriesByBookId || {},
+      // v0.15 phase 2.3: genres are globally loaded on sign-in; for guests
+      // they remain empty (genres require Supabase access).
+      genresByBookId: {},
+      genres: [],
+      currentlyReading: dedupeBooks(parsed.currentlyReading || []),
+      // v0.44: guest-mode reading memories ride localStorage too
+      memories: parsed.memories || {},
+      // v0.45: guest-mode accomplishments ride localStorage too
+      accomplishments: parsed.accomplishments || [],
+      // v0.46: guest-mode dismissed coach-marks ride localStorage too
+      coachmarksSeen: parsed.coachmarksSeen || [],
+      // v0.46: guest-mode "what's new" seen-marker rides localStorage too
+      lastSeenVersion: parsed.lastSeenVersion || null,
+    };
+  } catch {
+    return { ...defaultState };
+  }
+}
+function saveLocal(state) {
+  try {
+    localStorage.setItem(LOCAL_KEY, JSON.stringify(state));
+  } catch {}
+}
+
+function bookRowToClient(b, extra = {}) {
+  if (!b) return null;
+  const series = b.series
+    ? {
+        name: b.series.name,
+        n: b.position_in_series || null,
+        total: b.series.total_books || null,
+        // v0.15: status replaces verified. 'oracle_categorized' counts as verified in the UI.
+        status: b.series.status || 'unreviewed',
+        verifiedSource: b.series.verified_source || null,
+        verifiedAt: b.series.verified_at || null,
+        verifiedBy: b.series.verified_by || null,
+        // v0.14: series.status was renamed to publication_status. Old API rows
+        // may still have `status` populated with publication state during the
+        // brief transition; fall back to it if publication_status is null.
+        publicationStatus: b.series.publication_status || 'unknown',
+        seriesId: b.series.id,
+        fromHardcover: b.series.source === 'hardcover',
+        fromOpenLibrary: b.series.source === 'openlibrary',
+      }
+    : undefined;
+  return {
+    t: b.title,
+    // v0.63: '' rather than the raw null. A null author is correct in the
+    // database but interpolates as the string "null" in every template literal
+    // that builds a title — see displayAuthor() in bookHelpers for what is
+    // actually rendered.
+    a: b.author || '',
+    g: b.genre || undefined,
+    // v0.55: author gender for the "books by women" accomplishment. NOT a
+    // genre — deliberately a separate column/field so it never touches the
+    // genres/genresByBookId taxonomy. 'unknown' (checked, no signal) is kept
+    // undefined here same as other unset enrichment fields.
+    ag: (b.author_gender && b.author_gender !== 'unknown') ? b.author_gender : undefined,
+    // v0.60.1: `ag` collapses 'unknown' and never-checked into undefined, which
+    // is right for display but useless for deciding whether to spend an Oracle
+    // call. Without this flag, every book the Oracle honestly answered
+    // "unknown" for would look unprocessed forever and be re-billed on every
+    // run. The timestamp is stamped for 'unknown' too, so it is the only
+    // reliable "we already asked" signal.
+    agChecked: !!b.author_gender_checked_at,
+    c: b.complexity || undefined,
+    p: b.depth || undefined,
+    d: b.description || undefined,
+    pp: b.pages || undefined,
+    coverUrl: b.cover_url || undefined,
+    isbn: b.isbn || undefined,
+    s: series,
+    // v0.15: status replaces verified. 'oracle_categorized' counts as verified in the UI.
+    status: b.status || 'unreviewed',
+    verifiedSource: b.verified_source || null,
+    verifiedAt: b.verified_at || null,
+    verifiedBy: b.verified_by || null,
+    source: b.source,
+    bookId: b.id,
+    // v0.64 — carried for collapseWorks (src/lib/book/workGroups.js), which uses
+    // them to tell a TRANSLATION of a book already on the shelf from a
+    // different book. Nothing renders these; they are identity, not display.
+    //
+    // hardcover_id is the one that matters most: Hardcover's `books` node is
+    // work-level, so two rows sharing it are the same novel even when their
+    // titles share no characters — which is the case no title comparison can
+    // ever catch.
+    hardcoverId: b.hardcover_id ?? undefined,
+    goodreadsId: b.goodreads_id ?? undefined,
+    language: b.language || undefined,
+    originalLanguage: b.original_language || undefined,
+    // Round-tripped so cacheBookFields → upsertBookOnServer re-sends what the
+    // catalog already knows rather than nothing (20260930140000).
+    fy: b.first_published_year ?? undefined,
+    ...extra,
+  };
+}
+
+// v0.15: helper for UI "verified" checks. Both 'verified' and 'oracle_categorized'
+// render as verified (gilt ☩). 'incomplete', 'unreviewed', 'flagged' don't.
+// Use this everywhere we used to check `book.verified`.
+export function isBookVerified(bookOrSeries) {
+  const s = bookOrSeries?.status;
+  return s === 'verified' || s === 'oracle_categorized';
+}
+
+// v0.12: take a list of book_categories_view rows (with bookId + category
+// fields) and roll them up into the { bookId → [categories] } shape used
+// in state. Dedupes by category_id within each book — a category can appear
+// in both the verified-global and user-private rows; we keep one entry but
+// prefer 'verified' as the source for the pill style.
+function rollupCategories(rows) {
+  const map = {};
+  for (const r of rows || []) {
+    const bookId = r.book_id;
+    if (!bookId) continue;
+    if (!map[bookId]) map[bookId] = {};
+    const existing = map[bookId][r.category_id];
+    const incoming = {
+      categoryId: r.category_id,
+      name: r.category_name,
+      verified: r.verified,
+      usageCount: r.usage_count,
+      source: r.source, // 'verified' | 'user'
+    };
+    // If we already have this category for this book, prefer 'verified'
+    // source over 'user' (the verified pill style wins).
+    if (existing) {
+      if (existing.source === 'user' && incoming.source === 'verified') {
+        map[bookId][r.category_id] = incoming;
+      }
+    } else {
+      map[bookId][r.category_id] = incoming;
+    }
+  }
+  // Convert inner objects → arrays, sorted verified-first then alphabetical.
+  const out = {};
+  for (const bookId of Object.keys(map)) {
+    out[bookId] = Object.values(map[bookId]).sort((a, b) => {
+      if (a.verified !== b.verified) return a.verified ? -1 : 1;
+      return a.name.localeCompare(b.name);
+    });
+  }
+  return out;
+}
+
+// v0.15 phase 2.3: roll up book_genres_view rows into { bookId → [genres] }.
+// Each genre row: { genreId, name, normalizedName, source, usageCount, description, assignedBySource }.
+// Sorted by usage_count desc then alpha — most-used genres surface first.
+function rollupGenres(rows) {
+  const map = {};
+  for (const r of rows) {
+    const key = r.book_id;
+    if (!map[key]) map[key] = {};
+    const gKey = r.genre_id;
+    if (!map[key][gKey]) {
+      map[key][gKey] = {
+        genreId: r.genre_id,
+        name: r.genre_name,
+        normalizedName: r.normalized_name,
+        source: r.genre_source,
+        usageCount: r.usage_count,
+        description: r.genre_description || null,
+        assignedBySource: r.assigned_by_source,
+        // v0.67 — the browsing axis. Null until curation assigns a family, which
+        // is the state every Oracle-invented genre is born in; the UI groups
+        // those under a fallback heading rather than dropping them.
+        familySlug: r.family_slug || null,
+        familyName: r.family_name || null,
+        familySort: r.family_sort ?? 999,
+      };
+    }
+  }
+  const out = {};
+  for (const bookId of Object.keys(map)) {
+    out[bookId] = Object.values(map[bookId]).sort((a, b) => {
+      if (b.usageCount !== a.usageCount) return b.usageCount - a.usageCount;
+      return a.name.localeCompare(b.name);
+    });
+  }
+  return out;
+}
+
+// ---------- Supabase loaders ----------
+
+/**
+ * Run a query that names a column added by a migration, and fall back to a
+ * query that does not if the column is not there yet.
+ *
+ * v0.65.1, written the day after this exact failure shipped. Adding
+ * `progress_minutes` to the currently_reading select made the whole query fail
+ * on any database where 20260820120000 had not been applied — PostgREST
+ * answers `column ... does not exist` — and because that result is consumed as
+ * `(res.data || [])`, four books rendered as an empty shelf. Not an error, not
+ * a spinner: an empty state, which reads as "you are not reading anything"
+ * rather than "the app could not ask".
+ *
+ * The lesson had already been learnt one commit earlier, in
+ * originalLanguageBackfill.mjs, where detectStampColumn() exists for the same
+ * reason and says so at length. It was applied to the batch script and not to
+ * the app, which is the half a reader can see.
+ *
+ * A schema mismatch between a deployed bundle and a database is not an edge
+ * case here — it is the NORMAL state for the minutes between a deploy and a
+ * migration, and for a developer who pulls before applying. Degrading to the
+ * old shape and saying so is the behaviour that fits.
+ */
+async function selectTolerant(run, runWithout, column) {
+  const res = await run();
+  if (!res?.error) return res;
+  if (!new RegExp(column).test(res.error.message || '')) return res;
+  console.warn(
+    `[schema] ${column} is missing — falling back to the previous query shape. ` +
+    'Apply the pending migration; until then this column reads as null.',
+    res.error.message
+  );
+  return runWithout();
+}
+
+// currently_reading, with and without the audiobook column.
+const CR_TAIL = 'book:books(*, position_in_series, series:series(*))';
+const CR_COLS = `started_at, pages_read, user_page_count, progress_minutes, ${CR_TAIL}`;
+const CR_COLS_PRE_AUDIO = `started_at, pages_read, user_page_count, ${CR_TAIL}`;
+
+// reader_editions, likewise. This one already degraded to {} on error, which
+// is correct for a missing TABLE and wrong for a missing column: it would have
+// thrown away every recorded edition — page counts, languages, translators —
+// over two columns nobody had migrated yet.
+const RE_COLS = 'book_id, language, isbn, edition_title, translator, page_count, format, source, duration_minutes, narrator';
+const RE_COLS_PRE_AUDIO = 'book_id, language, isbn, edition_title, translator, page_count, format, source';
+
+async function loadFromSupabase(userId) {
+  const [profileRes, wishlistRes, readBooksRes, plansRes, currentlyReadingRes, memoriesRes, accomplishmentsRes, editionsRes] = await Promise.all([
+    supabase.from('profiles').select('*').eq('id', userId).maybeSingle(),
+    // v0.48: paged. PostgREST caps any single response at `max-rows` (1000) and
+    // truncates SILENTLY — a 1170-item wishlist loaded as 1000 on every visit.
+    // Both queries carry an explicit stable sort so page boundaries are safe.
+    fetchAllRows(() =>
+      supabase
+        .from('wishlist_items')
+        .select('id, added_at, notes, book:books(*, position_in_series, series:series(*))')
+        .eq('user_id', userId)
+        .order('added_at', { ascending: true })
+        .order('id', { ascending: true })
+    ),
+    fetchAllRows(() =>
+      supabase
+        .from('read_books')
+        .select('id, rating, notes, read_at, source, book:books(*, position_in_series, series:series(*))')
+        .eq('user_id', userId)
+        .order('read_at', { ascending: false, nullsFirst: false })
+        .order('id', { ascending: true })
+    ),
+    supabase
+      .from('plans')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false }),
+    selectTolerant(
+      () => supabase.from('currently_reading').select(CR_COLS).eq('user_id', userId),
+      () => supabase.from('currently_reading').select(CR_COLS_PRE_AUDIO).eq('user_id', userId),
+      'progress_minutes'
+    ),
+    // v0.44: reading memories — one flat query, keyed by book_id client-side
+    supabase
+      .from('reading_memories')
+      .select('id, book_id, kind, body, pages_at, pct_at, created_at')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false }),
+    // v0.45: reading accomplishments — flat ledger, newest first
+    supabase
+      .from('reading_accomplishments')
+      .select('id, key, kind, book_id, meta, earned_at')
+      .eq('user_id', userId)
+      .order('earned_at', { ascending: false }),
+    // v0.65: the reader's own editions (migration 20260818120000). Owner-only
+    // RLS, so this returns this reader's rows and nothing else without the
+    // query having to say so.
+    selectTolerant(
+      () => supabase.from('reader_editions').select(RE_COLS).eq('user_id', userId),
+      () => supabase.from('reader_editions').select(RE_COLS_PRE_AUDIO).eq('user_id', userId),
+      'duration_minutes'
+    ),
+  ]);
+
+  // v0.65: reader editions by book_id.
+  //
+  // Degrades to {} on failure exactly like memories below, and that matters
+  // more here than it looks: effectivePages() falls back to the catalog page
+  // count, so a failed load means progress bars read slightly wrong for one
+  // session rather than the shelf failing to open.
+  //
+  // It also degrades to {} when the migration has not been applied yet, since
+  // PostgREST answers an unknown table with an error rather than throwing.
+  const editionsByBookId = {};
+  if (editionsRes?.error) {
+    console.warn('reader_editions load failed — continuing without editions', editionsRes.error);
+  } else {
+    for (const e of (editionsRes?.data || [])) editionsByBookId[e.book_id] = e;
+  }
+
+  // v0.44: group memories by book_id (newest first, from the query order).
+  // A failed query degrades to "no memories" — never blocks the main load.
+  const memories = {};
+  if (memoriesRes.error) {
+    console.warn('reading_memories load failed — continuing without memories', memoriesRes.error);
+  } else {
+    for (const m of (memoriesRes.data || [])) {
+      (memories[m.book_id] = memories[m.book_id] || []).push({
+        id: m.id,
+        kind: m.kind,
+        body: m.body,
+        pagesAt: m.pages_at,
+        pctAt: m.pct_at,
+        createdAt: m.created_at,
+      });
+    }
+  }
+
+  // v0.45: reading accomplishments — flat array, newest first (query order).
+  // A failed query degrades to "no ledger" — never blocks the main load.
+  let accomplishments = [];
+  if (accomplishmentsRes.error) {
+    console.warn('reading_accomplishments load failed — continuing without ledger', accomplishmentsRes.error);
+  } else {
+    accomplishments = (accomplishmentsRes.data || []).map((a) => ({
+      id: a.id,
+      key: a.key,
+      kind: a.kind,
+      bookId: a.book_id,
+      meta: a.meta || {},
+      earnedAt: a.earned_at,
+    }));
+  }
+
+  // Lists loaded separately — a failure here must not break genres/library load
+  let listsRes = { data: [] };
+  try {
+    listsRes = await supabase
+      .from('lists')
+      // v0.63: genres and moods ride along on the same request. They are tiny
+      // join tables and the alternative is two more round-trips on every load
+      // to render chips the list editor needs anyway.
+      .select('*, list_items(position, note, added_at, book:books(*, position_in_series, series:series(*))), list_genres(genre_id), list_moods(mood)')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+  } catch (e) {
+    console.warn('Lists query failed — continuing without lists', e);
+  }
+
+  // v0.28: Clubs — lightweight index load (no full member/session detail)
+  let clubsRes = { data: [] };
+  try {
+    clubsRes = await supabase
+      .from('book_club_members')
+      .select('role, club:book_clubs(id, name, description, join_token, created_by, created_at, visibility, join_mode, max_members)')
+      .eq('user_id', userId);
+  } catch (e) {
+    console.warn('Clubs query failed — continuing without clubs', e);
+  }
+
+  const profile = profileRes.data || {};
+  const wishlist = (wishlistRes.data || [])
+    .map((r) =>
+      r.book
+        ? bookRowToClient(r.book, {
+            notes: r.notes || undefined,
+            addedAt: r.added_at,
+            _id: r.id,
+          })
+        : null
+    )
+    .filter(Boolean);
+  const library = (readBooksRes.data || [])
+    .map((r) =>
+      r.book
+        ? bookRowToClient(r.book, {
+            rating: r.rating || undefined,
+            notes: r.notes || undefined,
+            dateRead: r.read_at || undefined,
+            fromGoodreads: r.source === 'goodreads_import',
+            _id: r.id,
+          })
+        : null
+    )
+    .filter(Boolean);
+  const plans = (plansRes.data || []).map((r) => ({
+    ...(r.content || {}),
+    _id: r.id,
+    title: r.title,
+    createdAt: r.created_at,
+  }));
+  const currentPlan = plans[0] || null;
+
+  const lists = (listsRes?.data || []).map((l) => ({
+    ...l,
+    books: (l.list_items || [])
+      .sort((a, b) => a.position - b.position)
+      .map((li) => li.book ? { ...bookRowToClient(li.book), _listNote: li.note, _listPos: li.position } : null)
+      .filter(Boolean),
+    // Ids, not names: the editor drives a picker keyed on genre id, and names
+    // are resolvable from `state.genres` wherever they need to be displayed.
+    genreIds: (l.list_genres || []).map((g) => g.genre_id),
+    moods: knownMoods((l.list_moods || []).map((m) => m.mood)),
+  }));
+
+  // A FAILED SHELF QUERY MUST NOT BE RETURNED AS AN EMPTY SHELF.
+  //
+  // This is the defect the progress_minutes mistake exposed, and it is much
+  // worse than the mistake was. loadFromSupabase did not throw when a shelf
+  // query errored — it returned a state object with `currentlyReading: []`,
+  // because every result is consumed as `(res.data || [])`. The caller has no
+  // way to tell that apart from a reader who genuinely has nothing on the go,
+  // so it did what it does with any successful load:
+  //
+  //   supabaseLoadedRef.current = true;   // "this is real data now"
+  //   setState(remote);                   // renders the empty shelf
+  //   saveSessionCache(user.id, remote);  // caches the empty shelf, 30 min
+  //   saveLocal(state);                   // and writes it to localStorage
+  //
+  // So one failed request became a persistent empty shelf that survived
+  // reloading, survived fixing the actual cause, and could only be cleared by
+  // closing the tab — sessionStorage does not die on F5. A transient failure
+  // was laundered into cached truth.
+  //
+  // Throwing puts it back on the path that already handles this correctly: the
+  // caller catches, falls back to localStorage, and crucially does NOT set
+  // supabaseLoadedRef, so nothing is persisted and the next load tries again.
+  //
+  // Only the shelves. memories, accomplishments and reader_editions degrade to
+  // empty on purpose and say so where they do it — losing those costs a
+  // progress bar's precision, not a reader's library.
+  const shelfFailures = [
+    ['currently_reading', currentlyReadingRes],
+    ['wishlist_items', wishlistRes],
+    ['read_books', readBooksRes],
+    ['plans', plansRes],
+  ].filter(([, res]) => res?.error);
+
+  if (shelfFailures.length) {
+    const detail = shelfFailures.map(([name, res]) => `${name}: ${res.error.message}`).join('; ');
+    throw new Error(
+      `Shelf load failed, refusing to cache an empty library. A missing column here is ` +
+      `usually a migration that has not been applied — or applied to a different project ` +
+      `than .env.local points at, or applied without PostgREST reloading its schema ` +
+      `cache. ${detail}`
+    );
+  }
+
+  const currentlyReading = (currentlyReadingRes.data || [])
+    .map((r) =>
+      r.book
+        ? bookRowToClient(r.book, {
+            startedAt: r.started_at,
+            pagesRead: r.pages_read ?? 0,
+            userPageCount: r.user_page_count ?? null,
+            // v0.65.1 — the audio counterpart of pagesRead. Null for every
+            // print row, which is what makes it safe to read unconditionally.
+            progressMinutes: r.progress_minutes ?? null,
+          })
+        : null
+    )
+    .filter(Boolean);
+
+  // v0.12: load categories for all books in wishlist + library. One round
+  // trip via the book_categories_view (UNION of verified global + this user's
+  // private categories). RLS on user_book_categories enforces the user filter
+  // automatically.
+  const allBookIds = [...new Set([
+    ...wishlist.map((b) => b.bookId).filter(Boolean),
+    ...library.map((b) => b.bookId).filter(Boolean),
+    ...currentlyReading.map((b) => b.bookId).filter(Boolean),
+  ])];
+  // v0.12 hotfix 3: chunk the book_id list. For users with large libraries
+  // (700+ books), a single `in.(...)` query exceeds PostgREST's URL length
+  // limit and gets rejected with a bare 400 at the edge layer (not by
+  // PostgREST itself, which is why no JSON body comes back). 50 IDs per
+  // chunk keeps each URL well under 2KB.
+  let categoriesByBookId = {};
+  if (allBookIds.length > 0) {
+    const CHUNK_SIZE = 50;
+    const chunks = [];
+    for (let i = 0; i < allBookIds.length; i += CHUNK_SIZE) {
+      chunks.push(allBookIds.slice(i, i + CHUNK_SIZE));
+    }
+
+    // Fire all chunked queries in parallel — both tables, every chunk.
+    const allQueries = [];
+    for (const chunk of chunks) {
+      allQueries.push(
+        supabase
+          .from('book_categories')
+          .select('book_id, category_id')
+          .in('book_id', chunk)
+          .then((r) => ({ kind: 'global', ...r }))
+      );
+      allQueries.push(
+        supabase
+          .from('user_book_categories')
+          .select('book_id, category_id')
+          .in('book_id', chunk)
+          .then((r) => ({ kind: 'user', ...r }))
+      );
+    }
+    const results = await Promise.all(allQueries);
+
+    const globalLinks = [];
+    const userLinks = [];
+    for (const r of results) {
+      if (r.error) {
+        console.warn(`${r.kind} categories chunk failed`, r.error);
+        continue;
+      }
+      if (r.kind === 'global') globalLinks.push(...(r.data || []));
+      else userLinks.push(...(r.data || []));
+    }
+
+    const allCategoryIds = [...new Set([
+      ...globalLinks.map((r) => r.category_id),
+      ...userLinks.map((r) => r.category_id),
+    ])];
+
+    // Categories themselves may also be many — chunk this query too. Less
+    // likely to hit limits (categories are global, total is small), but
+    // belt-and-suspenders.
+    let categoriesById = {};
+    if (allCategoryIds.length > 0) {
+      const catChunks = [];
+      for (let i = 0; i < allCategoryIds.length; i += CHUNK_SIZE) {
+        catChunks.push(allCategoryIds.slice(i, i + CHUNK_SIZE));
+      }
+      const catResults = await Promise.all(
+        catChunks.map((chunk) =>
+          supabase
+            .from('categories')
+            .select('id, name, normalized_name, verified, usage_count')
+            .in('id', chunk)
+        )
+      );
+      for (const r of catResults) {
+        if (r.error) {
+          console.warn('categories table chunk failed', r.error);
+          continue;
+        }
+        for (const c of (r.data || [])) {
+          categoriesById[c.id] = c;
+        }
+      }
+    }
+
+    const buildRow = (linkRow, baseSource) => {
+      const c = categoriesById[linkRow.category_id];
+      if (!c) return null;
+      return {
+        book_id: linkRow.book_id,
+        category_id: c.id,
+        category_name: c.name,
+        normalized_name: c.normalized_name,
+        verified: c.verified,
+        usage_count: c.usage_count,
+        source: baseSource === 'verified'
+          ? 'verified'
+          : (c.verified ? 'verified' : 'user'),
+      };
+    };
+
+    const merged = [
+      ...globalLinks.map((r) => buildRow(r, 'verified')).filter(Boolean),
+      ...userLinks.map((r) => buildRow(r, 'user')).filter(Boolean),
+    ];
+    categoriesByBookId = rollupCategories(merged);
+  }
+
+  // v0.15 phase 2.3: load canonical genres for all books in wishlist + library.
+  // book_genres_view is globally readable (no user scoping). We chunk the same
+  // allBookIds list — genres use the same 50-id chunking strategy as categories.
+  let genresByBookId = {};
+  if (allBookIds.length > 0) {
+    const GENRE_CHUNK = 50;
+    const genreChunks = [];
+    for (let i = 0; i < allBookIds.length; i += GENRE_CHUNK) {
+      genreChunks.push(allBookIds.slice(i, i + GENRE_CHUNK));
+    }
+    const genreResults = await Promise.all(
+      genreChunks.map((chunk) =>
+        supabase
+          .from('book_genres_view')
+          .select('book_id, genre_id, genre_name, normalized_name, genre_source, usage_count, genre_description, assigned_by_source, family_slug, family_name, family_sort')
+          .in('book_id', chunk)
+      )
+    );
+    const allGenreRows = [];
+    for (const r of genreResults) {
+      if (r.error) {
+        console.warn('book_genres_view chunk failed', r.error);
+        continue;
+      }
+      allGenreRows.push(...(r.data || []));
+    }
+    genresByBookId = rollupGenres(allGenreRows);
+  }
+
+  // Load full genre catalog (for PlanCreate select, genre browser, descriptions).
+  // Sorted alphabetically by name.
+  let genres = [];
+  const { data: genreRows, error: genreErr } = await supabase
+    .from('genres')
+    .select('id, name, normalized_name, source, usage_count, description, family_id, genre_families ( slug, name, sort_order )')
+    .order('name', { ascending: true });
+  if (!genreErr && genreRows) {
+    genres = genreRows.map((g) => ({
+      id: g.id,
+      name: g.name,
+      normalizedName: g.normalized_name,
+      source: g.source,
+      usageCount: g.usage_count,
+      description: g.description || null,
+      // v0.67 — the family this genre is shelved under. PostgREST embeds it as
+      // an object (or null when family_id is null), so flatten it here rather
+      // than teaching every consumer the embed shape.
+      familySlug: g.genre_families?.slug || null,
+      familyName: g.genre_families?.name || null,
+      familySort: g.genre_families?.sort_order ?? 999,
+    }));
+  }
+
+  return {
+    ...defaultState,
+    onboarded: !!profile.preferences?.onboarded,
+    profile: {
+      ...defaultState.profile,
+      ...(profile.preferences || {}),
+      displayName: profile.display_name,
+      username: profile.username || null,
+      avatarUrl: profile.avatar_url,
+      isDiscoverable: profile.is_discoverable ?? true,
+      // v0.66: real columns now, not preferences keys. favoriteGenres prefers
+      // the column and falls back to the blob, because the migration backfills
+      // one from the other and a reader who has not saved since then still has
+      // their genres only in preferences.
+      bio: profile.bio || null,
+      shelfVisibility: profile.shelf_visibility || 'followers',
+      isCurator: !!profile.is_curator,
+      favoriteGenres: (profile.favorite_genres?.length
+        ? profile.favorite_genres
+        : profile.preferences?.favoriteGenres) || [],
+      emailNotifications: profile.email_notifications ?? true,
+      // v0.45: dedicated column (not preferences) — stamped once by the backfill
+      accomplishmentsBackfilledAt: profile.accomplishments_backfilled_at || null,
+    },
+    wishlist: dedupeBooks(wishlist),
+    library: dedupeBooks(library),
+    // v0.35.1: filter readNext against currentlyReading and library on load.
+    // Stale entries can persist in preferences when startReading or markAsRead
+    // failed to clean up readNext (e.g. the pre-fix authenticated startReading path).
+    readNext: dedupeBooks(
+      (profile.preferences?.readNext || []).filter((b) => {
+        const k = bookKey(b);
+        return !currentlyReading.some((cr) => bookKey(cr) === k)
+            && !library.some((lb) => bookKey(lb) === k);
+      })
+    ),
+    currentPlan,
+    plans,
+    lists,
+    shelfSortMode: profile.preferences?.shelfSortMode || 'recent',
+    oracleMode: profile.preferences?.oracleMode || 'wishlist',
+    dashboardLayout: profile.preferences?.dashboardLayout || null,
+    readingGoalCount: profile.preferences?.readingGoalCount || null,
+    coachmarksSeen: profile.preferences?.coachmarksSeen || [],
+    lastSeenVersion: profile.preferences?.lastSeenVersion || null,
+    categoriesByBookId,
+    genresByBookId,
+    genres,
+    currentlyReading: dedupeBooks(currentlyReading),
+    editionsByBookId,
+    memories,
+    accomplishments,
+    clubs: (clubsRes.data || []).map((m) => ({
+      id: m.club?.id,
+      name: m.club?.name,
+      description: m.club?.description,
+      joinToken: m.club?.join_token,
+      createdBy: m.club?.created_by,
+      createdAt: m.club?.created_at,
+      visibility: m.club?.visibility,
+      joinMode: m.club?.join_mode,
+      maxMembers: m.club?.max_members,
+      callerRole: m.role,
+    })).filter((c) => c.id),
+  };
+}
+
+async function savePreferences(userId, state) {
+  // v0.71.2: supabase-js resolves with { error } instead of throwing, so the
+  // .catch() at the call site never saw a refused write (RLS, a trigger, a
+  // missing column). Throw it so it reaches the console.
+  const { error } = await supabase
+    .from('profiles')
+    .update({
+      preferences: {
+        onboarded: state.onboarded,
+        readingLevel: state.profile.readingLevel,
+        goal: state.profile.goal,
+        goodreadsImported: state.profile.goodreadsImported,
+        // v0.38: onboarding personalization — feeds Oracle prompts + editable from Profile
+        favoriteGenres: state.profile.favoriteGenres || [],
+        currentMood: state.profile.currentMood || [],
+        // v0.50: highest level the reader has accepted or dismissed a growth
+        // nudge for — keeps the dashboard nudge from re-firing.
+        levelNudgeDismissed: state.profile.levelNudgeDismissed || 0,
+        // v0.51: chosen Reader Title (earned tier key, see titles.js)
+        displayTitle: state.profile.displayTitle || null,
+        readNext: state.readNext,
+        shelfSortMode: state.shelfSortMode,
+        oracleMode: state.oracleMode,
+        dashboardLayout: state.dashboardLayout,
+        // v0.66: which follows feed the dashboard widget draws from.
+        feedScope: state.profile.feedScope || 'both',
+        readingGoalCount: state.readingGoalCount,
+        coachmarksSeen: state.coachmarksSeen || [],
+        lastSeenVersion: state.lastSeenVersion,
+      },
+      // v0.66: the column, written alongside the blob it was promoted out of.
+      // ReaderPrefsSection still edits state.profile.favoriteGenres and knows
+      // nothing about the column — keeping the two in step here means one
+      // place to delete when preferences.favoriteGenres is finally retired,
+      // rather than an editor that has to remember.
+      favorite_genres: state.profile.favoriteGenres || [],
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', userId);
+  if (error) throw error;
+}
+
+export function DataProvider({ children }) {
+  const { user, loading: authLoading } = useAuth();
+  const [state, setState] = useState(() => loadLocal());
+  // No-user (guest/logged-out) path has nothing to load from Supabase, so
+  // we can render immediately. Only flip to true when fetching for a real user.
+  const [loading, setLoading] = useState(false);
+  const [toast, setToast] = useState(null);
+  const [shareMoment, setShareMoment] = useState(null); // v0.43: pending action-share moment
+
+  // v0.13.1 follow-up: ref-guarded "already loaded for this user ID". Prevents
+  // the load effect from refetching when the user reference changes without
+  // the user identity actually changing — defense in depth on top of the
+  // AuthContext fix.
+  // Use a sentinel that can never equal a real userId or null-after-load, so
+  // the first run always executes (fixes guest mode where null === null guard
+  // was skipping the effect and leaving loading stuck at its initial value).
+  const loadedUserIdRef = useRef('__uninitialized__');
+  // True once we have real Supabase data (not just cache or localStorage).
+  // Prevents the persist effect from overwriting localStorage with stale data.
+  const supabaseLoadedRef = useRef(false);
+  // v0.71.2: the same fact as supabaseLoadedRef, but as state and keyed to the
+  // user, so components can wait on it. `loading` is not enough: it starts
+  // false and is only flipped by this provider's load effect, which runs AFTER
+  // its children's effects in the same commit. Public routes (book-page,
+  // list-view, plan-view…) mount Nav for a signed-in reader before the load
+  // resolves, so anything deciding on `state` there was reading the
+  // localStorage snapshot, not the reader's profile.
+  const [hydratedUserId, setHydratedUserId] = useState(null);
+  // v0.45: guards the one-time accomplishments backfill against re-running
+  // within a session (belt-and-braces on top of the persisted stamp).
+  const backfillRanRef = useRef(false);
+  // v0.67: true while the replay is in flight. Now that nothing is gated on a
+  // stamp, the recompute runs on every mount, so the Ledger has a real gap
+  // between "shelves loaded" and "family rows exist" — this is what lets it
+  // draw placeholders in that gap instead of an empty panel that looks final.
+  // Deliberately NOT part of `state`: it is session-scoped UI status, and
+  // persisting it to localStorage would recreate the stamp we just deleted.
+  const [backfillPending, setBackfillPending] = useState(false);
+
+  // ---------- Initial load ----------
+  useEffect(() => {
+    if (authLoading) return;
+    const userId = user?.id || null;
+    // Clear session cache if switching users
+    if (loadedUserIdRef.current !== '__uninitialized__' &&
+        loadedUserIdRef.current !== null &&
+        loadedUserIdRef.current !== userId) {
+      clearSessionCache();
+    }
+    if (loadedUserIdRef.current === userId) return;
+    let cancelled = false;
+    (async () => {
+      if (user) {
+        // Check session cache first — render instantly without a spinner
+        const cached = loadSessionCache(user.id);
+        if (cached) {
+          const merged = { ...defaultState, ...cached.state };
+          if (!cancelled) {
+            supabaseLoadedRef.current = true; // treat cache as authoritative
+            catalogVersionRef.current = cached.catalogVersion;
+            setState(merged);
+            setHydratedUserId(user.id);
+            loadedUserIdRef.current = user.id;
+            setLoading(false);
+          }
+          // No background refresh of STATE — mutations keep the cache fresh via
+          // saveSessionCache in the persist effect, and a stale Supabase read would
+          // overwrite in-memory mutations.
+          //
+          // v0.57: but we DO check one integer. Changes made outside the app — the
+          // weekly maintenance job, fixBook.mjs, a merge_books() call — are invisible
+          // to the cache, and for a merge that means holding a book_id that no longer
+          // exists. Checking the catalog version overwrites nothing; it only decides
+          // whether this cache is still trustworthy.
+          // v0.65.3: two checks now, same rule — each only decides whether the
+          // cache is trustworthy, neither overwrites in-memory state.
+          //   catalogVersion — did the CATALOGUE change under us?
+          //   shelfStamp     — did this reader's SHELF change under us?
+          // The second is the one that was missing, and it is the one that
+          // matters for "I edited a read date somewhere else and this tab never
+          // noticed". Fetched together; a null from either means the check is
+          // unavailable and we fall back to trusting the cache, as before.
+          const [live, liveShelf] = await Promise.all([
+            fetchCatalogVersion(),
+            fetchShelfStamp(user.id),
+          ]);
+          const catalogMoved =
+            live != null && cached.catalogVersion != null && live !== cached.catalogVersion;
+          const shelfMoved = !sameShelfStamp(cached.shelfStamp, liveShelf);
+          if (!cancelled && (catalogMoved || shelfMoved)) {
+            console.info(
+              catalogMoved
+                ? `[catalog] cache built at v${cached.catalogVersion}, live is v${live} — reloading`
+                : '[shelf] read_books changed since this cache was written — reloading'
+            );
+            clearSessionCache();
+            try {
+              const remote = await loadFromSupabase(user.id);
+              if (!cancelled) {
+                catalogVersionRef.current = live;
+                shelfStampRef.current = liveShelf;
+                setState(remote);
+                saveSessionCache(user.id, remote);
+              }
+            } catch (e) {
+              console.error('[catalog] refresh after version change failed', e);
+            }
+          } else if (!cancelled) {
+            // Cache predates one or both mechanisms — stamp it so the next load
+            // has something to compare against.
+            if (live != null && cached.catalogVersion == null) catalogVersionRef.current = live;
+            if (cached.shelfStamp == null) shelfStampRef.current = liveShelf;
+          }
+        } else {
+          // No cache — fetch from Supabase with spinner
+          setLoading(true);
+          try {
+            const [remote, live, liveShelf] = await Promise.all([
+              loadFromSupabase(user.id),
+              fetchCatalogVersion(),
+              fetchShelfStamp(user.id),
+            ]);
+            if (!cancelled) {
+              supabaseLoadedRef.current = true;
+              catalogVersionRef.current = live;
+              // v0.65.3: stamped on the no-cache path too, or the FIRST cache
+              // written in a session would carry a null shelfStamp and the
+              // check would be unavailable for exactly the reader who just
+              // loaded fresh.
+              shelfStampRef.current = liveShelf;
+              setState(remote);
+              saveSessionCache(user.id, remote);
+              loadedUserIdRef.current = user.id;
+              setHydratedUserId(user.id);
+            }
+          } catch (e) {
+            // Deliberately does NOT set supabaseLoadedRef, so the persist effect
+            // stays quiet and neither cache learns anything from a failed load.
+            console.error('Failed to load from Supabase, falling back to local', e);
+            if (!cancelled) setState(loadLocal());
+          }
+          if (!cancelled) setLoading(false);
+        }
+      } else {
+        // Guest / logged-out: load from localStorage synchronously, no spinner needed
+        clearSessionCache();
+        setState(loadLocal());
+        loadedUserIdRef.current = null;
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [user, authLoading]);
+
+  // ---------- Persist on every state change ----------
+  // Only persist after real Supabase data has loaded — prevents stale cache/localStorage
+  // state (with empty genresByBookId) from overwriting good data on mount.
+  useEffect(() => {
+    if (loading) return;
+    if (!supabaseLoadedRef.current) return; // wait for real data before persisting
+    saveLocal(state);
+    if (user) {
+      saveSessionCache(user.id, state); // keep session cache fresh on mutations
+      savePreferences(user.id, state).catch(console.error);
+    }
+  }, [state, loading, user]);
+
+  // ---------- Toast helper ----------
+  const showToast = useCallback((msg, isError = false) => {
+    setToast({ msg, isError, id: Math.random() });
+    setTimeout(() => setToast(null), 2800);
+  }, []);
+
+  // ---------- Share moments (v0.43) ----------
+  // The pending action-share moment, rendered globally by <ShareMomentModal/>.
+  // State-only, never persisted: a moment exists exactly between the action
+  // that produced it and the user sharing/dismissing the modal.
+  const showShareMoment = useCallback((moment) => {
+    if (moment) setShareMoment(moment);
+  }, []);
+  const dismissShareMoment = useCallback(() => setShareMoment(null), []);
+
+  // v0.45: re-open the share card for an already-earned accomplishment from the
+  // Ledger. Reconstructs the moment from the stored row — no library lookup.
+  const shareAccomplishment = useCallback((entry) => {
+    if (entry) setShareMoment(rowToMoment(entry));
+  }, []);
+
+  // ---------- Mutations ----------
+
+  const upsertBookOnServer = useCallback(
+    async (book, source = 'user_manual') => {
+      if (!user) return null;
+      const resolvedSource = book.fromHardcover
+        ? 'hardcover'
+        : book.fromOpenLibrary
+          ? 'openlibrary'
+          : book.fromGoodreads
+            ? 'goodreads_import'
+            // v0.63: a book that arrived from an Oracle recommendation was
+            // being written to `books.source` as 'user_manual', because this
+            // chain only ever knew about the three lookup providers. The
+            // provenance was already known — `read_books.source` is set to
+            // 'oracle' a few hundred lines below from the same predicate — so
+            // the catalogue and the shelf were disagreeing about where the same
+            // book came from. `books.source` is free text with no CHECK, so
+            // 'oracle' is safe to write.
+            : isOracleSuggested(book)
+              ? 'oracle'
+              : source;
+      // v0.15: derive review status from client signals. needsReview is set
+      // by bookLookup when all APIs missed (low-confidence add). Curated seed
+      // path passes source='curated', which we promote to status='verified' +
+      // verified_source='curated_seed'.
+      const resolvedStatus = resolvedSource === 'curated'
+        ? 'verified'
+        : book.needsReview
+          ? 'incomplete'
+          : 'unreviewed';
+      const resolvedVerifiedSource = resolvedSource === 'curated'
+        ? 'curated_seed'
+        : null;
+      const args = {
+        _title: book.t,
+        // v0.63 — THIS IS THE DUPLICATE-ROW BUG.
+        //
+        // "Unknown author" is a DISPLAY placeholder. bookLookup, hardcoverService
+        // and googleBooksService all fall back to it when a provider returns no
+        // author (six call sites), which is fine on screen and wrong in the
+        // database — it was being stored as though it were a person's name.
+        //
+        // Book identity is compute_book_key(title, author), so the placeholder
+        // does not merely look untidy, it FORKS THE BOOK. "Like Water for
+        // Chocolate" + "Laura Esquivel" and "Like Water for Chocolate" +
+        // "Unknown author" are two rows with two ids, two sets of genre links
+        // and two shelf lives, for one novel — with the same ISBN on both.
+        //
+        // Sanitising here rather than at the six call sites is deliberate: the
+        // placeholder is still wanted on screen, and this is the single point
+        // where a book crosses from the client into the catalogue. Nothing the
+        // reader sees changes; only what is persisted.
+        _author: storableAuthor(book.a),
+        _isbn: book.isbn || null,
+        _hardcover_id: book.hardcoverId || null,
+        _series_name: book.s?.name || null,
+        _series_position: book.s?.n || null,
+        _pages: book.pp || null,
+        _description: book.d || null,
+        _cover_url: book.coverUrl || null,
+        _genre: book.g || null,
+        _complexity: book.c || null,
+        _depth: book.p || null,
+        _source: resolvedSource,
+        _status: resolvedStatus,
+        _verified_source: resolvedVerifiedSource,
+        _metadata: {
+          amazonUrl: book.amazonUrl || null,
+          manuallyAdded: book.manuallyAdded || false,
+          // v0.59: true when a lookup STAGE NEVER RAN (free-search throttle saturated,
+          // a source threw, quota spent) rather than when every source ran and missed.
+          // The weekly catalog job retries these; genuine dead ends it leaves for the
+          // Claude curate pass. Without the distinction a book that was simply never
+          // looked at is indistinguishable from one that doesn't exist.
+          lookupIncomplete: book.lookupIncomplete || false,
+        },
+        _series_source: book.s
+          ? book.s.fromHardcover
+            ? 'hardcover'
+            : book.s.fromOpenLibrary
+              ? 'openlibrary'
+              : resolvedSource
+          : null,
+        // v0.64. `lang` is what googleBooksService.normalize has always
+        // returned from volumeInfo.language and nothing ever read; `language`
+        // is what a book already carrying the field passes back through
+        // cacheBookFields. upsert_book merges these with
+        // coalesce(existing, incoming), so the first source to know wins and a
+        // later lookup cannot relabel a row's language.
+        _language: book.language || book.lang || null,
+        _original_language: book.originalLanguage || null,
+        // 20260930140000. The lookup chain already fetched it (Hardcover
+        // release_year, OpenLibrary first_publish_year); nothing stored it.
+        _first_published_year: book.fy || null,
+      };
+      let { data, error } = await supabase.rpc('upsert_book', args);
+      // PostgREST schema-cache miss (PGRST202): the first RPC after a cold
+      // start or a fresh migration can 404 because the function isn't in the
+      // cached schema yet. The cache reloads within a moment, so retry once
+      // rather than silently dropping the user's action.
+      if (error && (error.code === 'PGRST202' || error.status === 404 || error.message?.includes('schema cache'))) {
+        await new Promise((r) => setTimeout(r, 600));
+        ({ data, error } = await supabase.rpc('upsert_book', args));
+      }
+      if (error) {
+        console.error('upsert_book failed', error);
+        return null;
+      }
+      return data;
+    },
+    [user]
+  );
+
+  const cacheBookFields = useCallback(
+    async (book, patch) => {
+      if (!patch || Object.keys(patch).length === 0) return;
+
+      setState((s) => {
+        const k = bookKey(book);
+        const apply = (list) =>
+          list.map((b) => (bookKey(b) === k ? { ...b, ...patch } : b));
+        return {
+          ...s,
+          wishlist: apply(s.wishlist),
+          library: apply(s.library),
+          readNext: apply(s.readNext),
+        };
+      });
+
+      if (!user) return;
+      const merged = { ...book, ...patch };
+      await upsertBookOnServer(merged);
+    },
+    [user, upsertBookOnServer]
+  );
+
+  // Silently upsert a book with status='discovered'.
+  // Called when a user views a book page from search without adding it.
+  // Creates the books row for catalog enrichment but no wishlist_items row.
+  const upsertDiscoveredBook = useCallback(
+    async (book) => {
+      if (!user || !book?.t) return;
+      // Don't overwrite a book that already has a real status
+      const k = bookKey(book);
+      const inCollection = [
+        ...state.wishlist, ...state.library, ...state.readNext
+      ].some((b) => bookKey(b) === k);
+      if (inCollection) return;
+      const resolvedSource = book.fromHardcover ? 'hardcover'
+        : book.fromClaude ? 'claude'
+        : 'user_manual';
+      await supabase.rpc('upsert_book', {
+        _title: book.t,
+        // v0.63 — the SECOND write path into `books`, and the one that actually
+        // produced the reported duplicate.
+        //
+        // upsertBookOnServer is not the only caller of upsert_book; this
+        // function calls the RPC directly, so the storableAuthor() sanitising
+        // added there did not apply here. Viewing a book page from search
+        // silently upserts with status='discovered' (see NavSearch.jsx), and
+        // when the result came from Hardcover without an author,
+        // hardcoverService's 'Unknown author' display placeholder went straight
+        // into the key column.
+        //
+        // That is exactly the shape of the row in the report: source
+        // 'hardcover', status 'discovered', author 'Unknown author', same ISBN
+        // as the real row — created by looking at a search result, not by
+        // adding anything.
+        _author: storableAuthor(book.a),
+        _isbn: book.isbn || null,
+        _hardcover_id: book.hardcoverId || null,
+        _series_name: book.s?.name || null,
+        _series_position: book.s?.n || null,
+        _pages: book.pp || null,
+        _description: book.d || null,
+        _cover_url: book.coverUrl || null,
+        _genre: book.g || null,
+        _source: resolvedSource,
+        _status: 'discovered',
+        _metadata: {},
+        // v0.64. Worth having on THIS path in particular: a discovered row is
+        // created by viewing a search result, and a Spanish search result is
+        // how a translated duplicate enters the catalog in the first place.
+        // Recording its language is what later lets the two rows be shown as
+        // one book.
+        _language: book.language || book.lang || null,
+        _first_published_year: book.fy || null,
+      });
+    },
+    [user, state.wishlist, state.library, state.readNext]
+  );
+
+  const seedWishlistIfNeeded = useCallback(async () => {
+    if (!state.onboarded) return;
+    if (state.wishlist && state.wishlist.length > 0) return;
+    const libraryKeys = new Set(state.library.map(bookKey));
+    const seedBooks = ALL_BOOKS.filter((b) => !libraryKeys.has(bookKey(b)));
+
+    if (!user) {
+      setState((s) => ({ ...s, wishlist: seedBooks.map((b) => ({ ...b, status: 'verified', verifiedSource: 'curated_seed', source: 'curated' })) }));
+      return;
+    }
+
+    const linked = [];
+    for (const b of seedBooks) {
+      const bookId = await upsertBookOnServer(b, 'curated');
+      if (!bookId) continue;
+      // No .select().single() here any more. It was there to read the row back,
+      // but it turned an already-seeded book into an error twice over: the
+      // insert raised 23505, and .single() then raised again on zero rows. The
+      // book was dropped from `linked` and vanished from the seeded wishlist.
+      // Nothing downstream needs the returned row — bookId is already known.
+      const { error } = await supabase
+        .from('wishlist_items')
+        .upsert(
+          { user_id: user.id, book_id: bookId },
+          { onConflict: 'user_id,book_id', ignoreDuplicates: true }
+        );
+      if (!error) linked.push({ ...b, bookId, status: 'verified', verifiedSource: 'curated_seed', source: 'curated' });
+    }
+    setState((s) => ({ ...s, wishlist: dedupeBooks([...s.wishlist, ...linked]) }));
+  }, [state.onboarded, state.wishlist, state.library, user, upsertBookOnServer]);
+
+  const addToWishlist = useCallback(
+    async (book) => {
+      const k = bookKey(book);
+      if (state.wishlist.some((b) => bookKey(b) === k)) return false;
+      if (state.library.some((b) => bookKey(b) === k)) return false;
+
+      if (!user) {
+        setState((s) => ({ ...s, wishlist: [...s.wishlist, { ...book }] }));
+        showToast(`"${book.t}" added to your wishlist`);
+        return true;
+      }
+
+      const bookId = await upsertBookOnServer(book);
+      if (!bookId) {
+        showToast(`Couldn't save "${book.t}"`, true);
+        return false;
+      }
+      // upsert, not insert: matches bulkAddToLibrary, and means a book already
+      // on the shelf is a no-op instead of a 409. The old code forgave 23505 in
+      // JS, so the UI was correct — but the request still failed at the network
+      // layer and filled the console with errors that looked like real ones.
+      const { error } = await supabase
+        .from('wishlist_items')
+        .upsert(
+          { user_id: user.id, book_id: bookId, notes: book.notes || null },
+          { onConflict: 'user_id,book_id', ignoreDuplicates: true }
+        );
+      if (error) {
+        console.error('wishlist upsert failed', error);
+        return false;
+      }
+      // v0.58 provenance: the reader took the Oracle up on it.
+      //
+      // Fire-and-forget and unconditional — resolveRecommendation is a no-op
+      // for a book that was never recommended, so this path does not need to
+      // branch on where the book came from. Deliberately NOT awaited: an add
+      // must feel instant, and the accept stamp only matters in aggregate.
+      // book_id is passed so the recommendation row can be backfilled with the
+      // catalog link it could not have when it was only an impression.
+      if (isOracleSuggested(book)) {
+        resolveRecommendation({
+          recommendationId: book.recommendationId ?? null,
+          title: book.t,
+          bookId,
+        });
+      }
+
+      setState((s) => ({ ...s, wishlist: [...s.wishlist, { ...book, bookId }] }));
+      showToast(`"${book.t}" added to your wishlist`);
+      return true;
+    },
+    [user, state.wishlist, state.library, showToast, upsertBookOnServer]
+  );
+
+  const removeFromWishlist = useCallback(
+    async (book, silent = false) => {
+      const k = bookKey(book);
+      setState((s) => ({ ...s, wishlist: s.wishlist.filter((b) => bookKey(b) !== k) }));
+      if (user && book.bookId) {
+        await supabase
+          .from('wishlist_items')
+          .delete()
+          .eq('user_id', user.id)
+          .eq('book_id', book.bookId);
+      }
+      if (!silent) showToast(`"${book.t}" removed from wishlist`);
+    },
+    [user, showToast]
+  );
+
+  const addToReadNext = useCallback(
+    (book) => {
+      setState((s) => {
+        const k = bookKey(book);
+        if (s.readNext.some((b) => bookKey(b) === k)) return s;
+        if (s.library.some((b) => bookKey(b) === k)) return s;
+        return { ...s, readNext: [...s.readNext, book] };
+      });
+      showToast(`"${book.t}" added to Read Next`);
+    },
+    [showToast]
+  );
+
+  const removeFromReadNext = useCallback((book) => {
+    const k = bookKey(book);
+    setState((s) => ({ ...s, readNext: s.readNext.filter((b) => bookKey(b) !== k) }));
+  }, []);
+
+  // v0.45: persist a batch of earned accomplishments. Idempotent via the DB's
+  // unique(user_id, key) (on-conflict-do-nothing) and, in memory, by deduping
+  // against keys already held. Optimistic: merges into state immediately so the
+  // ledger updates without a round-trip; server ids reconcile on next load.
+  const earnAccomplishments = useCallback(
+    async (entries) => {
+      const earnable = (entries || []).filter((e) => e && e.key);
+      // Returns whether the rows are SAFELY PERSISTED. Callers that record
+      // "this has been done" — the backfill's version stamp — must not treat a
+      // failed write as done. Until v0.67 this returned undefined either way,
+      // and the backfill stamped success over a 400.
+      if (!earnable.length) return { ok: true, written: 0 };
+
+      setState((s) => {
+        const have = new Set((s.accomplishments || []).map((a) => a.key));
+        const additions = [];
+        const seen = new Set();
+        for (const e of earnable) {
+          if (have.has(e.key) || seen.has(e.key)) continue;
+          seen.add(e.key);
+          additions.push({
+            id: (typeof crypto !== 'undefined' && crypto.randomUUID)
+              ? crypto.randomUUID()
+              : `local-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+            key: e.key,
+            kind: e.kind,
+            bookId: e.bookId ?? null,
+            meta: e.meta || {},
+            earnedAt: e.earnedAt || new Date().toISOString(),
+          });
+        }
+        if (!additions.length) return s;
+        return { ...s, accomplishments: [...additions, ...(s.accomplishments || [])] };
+      });
+
+      if (user) {
+        const rows = earnable.map((e) => ({
+          user_id: user.id,
+          key: e.key,
+          kind: e.kind,
+          book_id: e.bookId ?? null,
+          meta: e.meta || {},
+          earned_at: e.earnedAt || new Date().toISOString(),
+        }));
+        const { error } = await supabase
+          .from('reading_accomplishments')
+          .upsert(rows, { onConflict: 'user_id,key', ignoreDuplicates: true });
+        if (error) {
+          console.warn('reading_accomplishments upsert failed', error);
+          return { ok: false, written: 0, error };
+        }
+        return { ok: true, written: rows.length };
+      }
+      // Guest mode: local state IS the store, so the optimistic update above is
+      // the write.
+      return { ok: true, written: earnable.length };
+    },
+    [user]
+  );
+
+  // v0.43: after a completion lands in the library, compute the share moment
+  // it produced (goal / series / plan / milestone / plain book card) and
+  // queue the action-share modal. Skipped for Goodreads imports — a bulk
+  // import of 400 books is not 400 celebrations (imported books earn their
+  // accomplishments through the retroactive backfill instead, dated to each
+  // book's read date, so no modal fires).
+  const fireCompletionMoment = useCallback(
+    (book, newLibrary, opts = {}) => {
+      if (book.fromGoodreads) return null;
+      try {
+        const moments = computeCompletionMoments({
+          book,
+          library: newLibrary,
+          genresByBookId: state.genresByBookId,
+          goal: state.readingGoalCount,
+          plans: state.plans,
+        });
+        // v0.45: the same computation feeds the persistent ledger — every
+        // milestone-bearing moment (all but the plain book_completed fallback)
+        // is earned. One computation, two consumers.
+        earnAccomplishments(moments.map((m) => entryFromMoment(m)).filter((e) => e.key));
+        // opts.defer lets the caller open the share modal itself later — e.g. the
+        // Book page rates the finished book first, then celebrates — instead of
+        // the share modal opening hidden behind the rating modal.
+        if (moments[0] && !opts.defer) setShareMoment(moments[0]);
+        return moments[0] || null;
+      } catch (err) {
+        // A share card (or ledger write) must never break a completion.
+        console.warn('share moment computation failed', err);
+        return null;
+      }
+    },
+    [state.genresByBookId, state.readingGoalCount, state.plans, earnAccomplishments]
+  );
+
+  // v0.45: one-time retroactive backfill. On the first load where this profile
+  // has no backfill stamp, replay the milestone ladders over the existing
+  // library (dated to each crossing read) and earn everything already implied —
+  // pre-feature history and Goodreads imports included. Idempotent against the
+  // DB unique key, which is what makes running it every mount safe.
+  useEffect(() => {
+    if (loading) return;
+    if (user && !supabaseLoadedRef.current) return;        // wait for real data
+    if (!user && loadedUserIdRef.current !== null) return; // guest not loaded yet
+    // v0.67: NO GATE. This used to check a stamp — first a timestamp, then a
+    // version — and skip the recompute when it was set.
+    //
+    // The stamp was only ever an optimisation (the v1 spec says so), and it
+    // cost more than it saved. A stamp records "this has been done", so it is
+    // only true if the write actually landed; when the kind-check constraint
+    // rejected the family rows, the stamp was written anyway and every profile
+    // was permanently marked as backfilled against ladders it had never
+    // computed. Fixing that meant a version column, a migration to add it, and
+    // a second migration to repair the values the flaw had already written.
+    //
+    // Recomputing every mount is genuinely wasteful — O(library), and it
+    // re-sends rows that already exist — and it is entirely safe: every insert
+    // is `on conflict (user_id, key) do nothing`. A few hundred redundant rows
+    // on load is a cheaper problem than a cache that can lie about work being
+    // finished. If this ever becomes a real cost, the fix is to make the write
+    // cheaper, not to reintroduce a flag that can be wrong.
+    //
+    // backfillRanRef stays: it stops the replay firing more than once per
+    // mount, which is a different job from remembering across sessions.
+    if (backfillRanRef.current) return;
+    backfillRanRef.current = true;
+    setBackfillPending(true);
+    (async () => {
+      try {
+        const entries = computeBackfillAccomplishments({
+          library: state.library,
+          genresByBookId: state.genresByBookId,
+          plans: state.plans,
+          goal: state.readingGoalCount,
+        });
+        const result = await earnAccomplishments(entries);
+        // Nothing gates on this any more, but the check stays: an error path
+        // that returns what the success path returns is the failure shape that
+        // cost three rounds of debugging here, and a warning is the point.
+        if (!result?.ok) {
+          backfillRanRef.current = false; // try again on the next mount
+        }
+      } catch (e) {
+        console.warn('accomplishments backfill failed', e);
+        backfillRanRef.current = false; // allow a retry on the next mount
+      } finally {
+        // finally, not the try tail: a skeleton that outlives its failure is a
+        // spinner that never stops, which is worse than an empty panel.
+        setBackfillPending(false);
+      }
+    })();
+  }, [
+    user,
+    loading,
+    state.library,
+    state.genresByBookId,
+    state.plans,
+    state.readingGoalCount,
+    earnAccomplishments,
+  ]);
+
+  // ── v0.44: Reading Memory ────────────────────────────────────────────────
+  // Private notes tied to the moment a book is put down or finished.
+  // state.memories is keyed by bookId when the book exists on the server,
+  // bookKey otherwise (guest mode); bookKey normalization makes the two
+  // capture/resurface sides agree on the same key for the same book.
+
+  const memoryKeyFor = (book) => book.bookId || bookKey(book);
+
+  const memoriesForBook = useCallback(
+    (book) => (state.memories || {})[memoryKeyFor(book)] || [],
+    [state.memories]
+  );
+
+  const addReadingMemory = useCallback(
+    async (book, body, { pagesAt = null, pctAt = null, kind = 'progress' } = {}) => {
+      const text = (body || '').trim().slice(0, 2000);
+      if (!text) return null;
+
+      if (!user) {
+        const entry = {
+          id: (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : `local-${Date.now()}`,
+          kind, body: text, pagesAt, pctAt,
+          createdAt: new Date().toISOString(),
+        };
+        const key = memoryKeyFor(book);
+        setState((s) => ({
+          ...s,
+          memories: { ...s.memories, [key]: [entry, ...((s.memories || {})[key] || [])] },
+        }));
+        return entry;
+      }
+
+      const bookId = book.bookId || (await upsertBookOnServer(book));
+      if (!bookId) return null;
+      const { data, error } = await supabase
+        .from('reading_memories')
+        .insert({ user_id: user.id, book_id: bookId, kind, body: text, pages_at: pagesAt, pct_at: pctAt })
+        .select('id, created_at')
+        .single();
+      if (error) {
+        console.error('reading_memories insert failed', error);
+        return null;
+      }
+      const entry = { id: data.id, kind, body: text, pagesAt, pctAt, createdAt: data.created_at };
+      setState((s) => ({
+        ...s,
+        memories: { ...s.memories, [bookId]: [entry, ...((s.memories || {})[bookId] || [])] },
+      }));
+      return entry;
+    },
+    [user, upsertBookOnServer]
+  );
+
+  const deleteReadingMemory = useCallback(
+    async (book, memoryId) => {
+      const key = memoryKeyFor(book);
+      setState((s) => ({
+        ...s,
+        memories: { ...s.memories, [key]: ((s.memories || {})[key] || []).filter((m) => m.id !== memoryId) },
+      }));
+      if (user) {
+        const { error } = await supabase
+          .from('reading_memories')
+          .delete()
+          .eq('user_id', user.id)
+          .eq('id', memoryId);
+        if (error) console.error('reading_memories delete failed', error);
+      }
+    },
+    [user]
+  );
+
+  const markAsRead = useCallback(
+    async (book, extra = {}, opts = {}) => {
+      const k = bookKey(book);
+
+      // v0.63 — this was a bare `return`, and it is the whole of the reported
+      // bug: "marked a book as read, it shows the Read label, it is not in the
+      // library, the share modal never appeared, and there were no errors."
+      //
+      // All four symptoms are this one line. The guard fires BEFORE any server
+      // write, so no read_books row is created; it returns undefined, so
+      // fireCompletionMoment never runs and no share modal opens; it shows no
+      // toast, so nothing is reported; and the Read label the reader sees is
+      // real — it is keyed on bookKey, and the OTHER row's library entry
+      // matches, which is precisely what tripped the guard.
+      //
+      // bookKey is normalised-title + the first 10 characters of the author, so
+      // two DIFFERENT rows in `books` collide whenever they agree on those.
+      // That is not hypothetical: compute_book_key on the server has the same
+      // shape and no subtitle handling, so a catalogue can hold several rows
+      // for one work ("Like Water for Chocolate" / "…: A Novel in Monthly
+      // Installments…"), and a reader who adds one and then the other lands
+      // here.
+      //
+      // Treating them as the same book is right — the reader thinks of it as
+      // one book and a second library entry would be wrong. Doing it in silence
+      // is not. Say so, and leave a breadcrumb when the collision is between
+      // two distinct catalogue rows, because that is a data defect worth
+      // finding rather than a reader repeating themselves.
+      const already = state.library.find((b) => bookKey(b) === k);
+      if (already) {
+        if (book.bookId && already.bookId && book.bookId !== already.bookId) {
+          console.warn(
+            '[markAsRead] two catalogue rows share a book key — treating as the ' +
+            'same book and not adding a second library entry.\n' +
+            `  incoming: ${book.bookId} "${book.t}" by ${book.a || '(no author)'}\n` +
+            `  in library: ${already.bookId} "${already.t}" by ${already.a || '(no author)'}\n` +
+            '  See docs/sql/duplicate-books-diagnostic.sql to find every affected work.'
+          );
+        }
+        showToast(`"${already.t}" is already in your library`);
+        return null;
+      }
+
+      const today = new Date().toISOString().slice(0, 10);
+      // v0.65: honour a date the reader actually chose.
+      //
+      // RatingModal has offered a "Finished on" field since v0.63 and BookCard
+      // has been passing it through as `extra.readAt` — but this function
+      // hard-coded `today`, so picking a date in that modal silently did
+      // nothing on the create path. Only the edit path (updateReadBook) ever
+      // respected it. Explicit date wins; today remains the default, which is
+      // right here because marking a book read IS a deliberate act.
+      const readAt = extra.readAt ? String(extra.readAt).slice(0, 10) : today;
+
+      const ratingRaw = extra.rating != null ? extra.rating : book.rating;
+      const rating = ratingRaw && ratingRaw > 0 ? ratingRaw : null;
+      const notes =
+        extra.notes != null ? (extra.notes.trim() || null) : (book.notes || null);
+
+      const enriched = { ...book, dateRead: readAt };
+      if (rating != null) enriched.rating = rating;
+      if (notes != null) enriched.notes = notes;
+
+      if (!user) {
+        setState((s) => ({
+          ...s,
+          readNext: s.readNext.filter((b) => bookKey(b) !== k),
+          wishlist: s.wishlist.filter((b) => bookKey(b) !== k),
+          // A book can only live in one shelf. Marking it read must clear any
+          // currently-reading entry, or it shows in Library and Currently
+          // Reading at once (e.g. "Mark as Read" on a book that was started).
+          currentlyReading: s.currentlyReading.filter((b) => bookKey(b) !== k),
+          library: [...s.library, enriched],
+        }));
+        showToast(`"${book.t}" added to your library`);
+        const moment = fireCompletionMoment(enriched, [...state.library, enriched], opts);
+        // v0.44: a note written at the finish moment joins the book's memory
+        // thread (kind 'finished'). Only notes typed in this flow — not
+        // wishlist notes carried on the book object.
+        if (extra.notes != null && extra.notes.trim()) {
+          addReadingMemory(enriched, extra.notes, { kind: 'finished' });
+        }
+        return moment;
+      }
+
+      const bookId = book.bookId || (await upsertBookOnServer(book));
+      if (!bookId) {
+        showToast(`Couldn't save "${book.t}"`, true);
+        return;
+      }
+
+      const { error: rbErr } = await supabase
+        .from('read_books')
+        .upsert(
+          {
+            user_id: user.id,
+            book_id: bookId,
+            read_at: readAt,
+            // v0.58: 'oracle' is the cheap join key behind the whole point of
+            // provenance — "did the Oracle pick better books than you did?" is
+            // one filter on this column against `rating`. Ordered before the
+            // Goodreads check because a book can be both (imported long ago,
+            // then recommended and read); the Oracle origin is the newer and
+            // more specific fact, and it is the one being measured.
+            source: isOracleSuggested(book)
+              ? 'oracle'
+              : (book.fromGoodreads ? 'goodreads_import' : 'manual'),
+            rating,
+            notes,
+          },
+          { onConflict: 'user_id,book_id' }
+        );
+      if (rbErr) {
+        console.error('read_books upsert failed', rbErr);
+      }
+
+      // v0.58 provenance. Also stamped here, not only in addToWishlist: a
+      // reader can go straight from a recommendation to "mark as read" without
+      // the book ever passing through the wishlist. Idempotent server-side, so
+      // a book that took the wishlist route is not counted twice.
+      if (isOracleSuggested(book)) {
+        resolveRecommendation({
+          recommendationId: book.recommendationId ?? null,
+          title: book.t,
+          bookId,
+        });
+      }
+
+      await supabase
+        .from('wishlist_items')
+        .delete()
+        .eq('user_id', user.id)
+        .eq('book_id', bookId);
+      // Clear any currently-reading row so a direct "Mark as Read" (from the
+      // Book page or Read Next) can't leave the book in both Library and
+      // Currently Reading. Harmless no-op when there's no such row.
+      await supabase
+        .from('currently_reading')
+        .delete()
+        .eq('user_id', user.id)
+        .eq('book_id', bookId);
+
+      setState((s) => ({
+        ...s,
+        readNext: s.readNext.filter((b) => bookKey(b) !== k),
+        wishlist: s.wishlist.filter((b) => bookKey(b) !== k),
+        currentlyReading: s.currentlyReading.filter((b) => bookKey(b) !== k),
+        library: [...s.library, { ...enriched, bookId }],
+      }));
+      showToast(`"${book.t}" added to your library`);
+      const moment = fireCompletionMoment({ ...enriched, bookId }, [...state.library, { ...enriched, bookId }], opts);
+      // v0.44: same finished-moment memory as the guest path
+      if (extra.notes != null && extra.notes.trim()) {
+        addReadingMemory({ ...enriched, bookId }, extra.notes, { kind: 'finished' });
+      }
+      return moment;
+    },
+    [user, state.library, showToast, upsertBookOnServer, fireCompletionMoment, addReadingMemory]
+  );
+
+  // v0.22: Currently Reading actions
+
+  const startReading = useCallback(
+    async (book, startedAt) => {
+      const k = bookKey(book);
+      if (state.currentlyReading.some((b) => bookKey(b) === k)) return;
+      const date = startedAt || new Date().toISOString().slice(0, 10);
+      const enriched = { ...book, startedAt: date };
+
+      if (!user) {
+        setState((s) => ({
+          ...s,
+          currentlyReading: [...s.currentlyReading, enriched],
+          readNext: s.readNext.filter((b) => bookKey(b) !== k),
+        }));
+        showToast(`Started reading "${book.t}"`);
+        return;
+      }
+
+      const bookId = book.bookId || (await upsertBookOnServer(book));
+      if (!bookId) { showToast(`Couldn't save "${book.t}"`, true); return; }
+
+      const { error } = await supabase
+        .from('currently_reading')
+        .upsert({ user_id: user.id, book_id: bookId, started_at: date }, { onConflict: 'user_id,book_id' });
+      if (error) console.error('currently_reading upsert failed', error);
+
+      setState((s) => ({
+        ...s,
+        currentlyReading: [...s.currentlyReading, { ...enriched, bookId }],
+        readNext: s.readNext.filter((b) => bookKey(b) !== k),  // fix: was missing in authed path
+      }));
+      showToast(`Started reading "${book.t}"`);
+    },
+    [user, state.currentlyReading, showToast, upsertBookOnServer]
+  );
+
+  const removeFromCurrentlyReading = useCallback(
+    async (book) => {
+      const k = bookKey(book);
+      if (user && book.bookId) {
+        await supabase
+          .from('currently_reading')
+          .delete()
+          .eq('user_id', user.id)
+          .eq('book_id', book.bookId);
+      }
+      // Remove startedAt before returning the book to Read Next so it
+      // doesn't carry stale reading-session metadata into the queue.
+      const { startedAt: _dropped, ...bookWithoutStartedAt } = book;
+      setState((s) => {
+        const alreadyQueued = s.readNext.some((b) => bookKey(b) === k);
+        return {
+          ...s,
+          currentlyReading: s.currentlyReading.filter((b) => bookKey(b) !== k),
+          readNext: alreadyQueued ? s.readNext : [...s.readNext, bookWithoutStartedAt],
+        };
+      });
+    },
+    [user]
+  );
+
+  // Finishes a currently-reading book: removes it from currentlyReading and
+  // delegates to markAsRead for the read_books upsert + library update.
+  //
+  // Note: this deliberately does NOT go through removeFromCurrentlyReading,
+  // which re-queues the book into readNext (that's the "stop reading / put it
+  // back" action). Routing finish through it left the book in readNext whenever
+  // markAsRead short-circuited, producing the Library + Read Next duplicate.
+  const finishReading = useCallback(
+    async (book, extra = {}) => {
+      const k = bookKey(book);
+      if (user && book.bookId) {
+        const { error } = await supabase
+          .from('currently_reading')
+          .delete()
+          .eq('user_id', user.id)
+          .eq('book_id', book.bookId);
+        if (error) console.error('currently_reading delete failed', error);
+      }
+      setState((s) => ({
+        ...s,
+        currentlyReading: s.currentlyReading.filter((b) => bookKey(b) !== k),
+      }));
+      await markAsRead(book, extra);
+    },
+    [user, markAsRead]
+  );
+
+  // v0.28: update how many pages the user has read for a currently-reading book.
+  // Optimistically updates local state; persists to currently_reading.pages_read.
+  // v0.65 — record (or clear) which edition this reader read.
+  //
+  // Upsert on (user_id, book_id), which the table declares unique, so a reader
+  // editing their edition twice does not accumulate rows. Passing null for
+  // every field clears the edition rather than storing an empty one: a row of
+  // all-nulls is indistinguishable from "no edition recorded" to every reader
+  // of this data, and keeping it would make editionIsNotable() lie.
+  const saveReaderEdition = useCallback(
+    async (book, patch) => {
+      if (!book?.bookId) return;
+
+      const next = {
+        language: patch?.language ?? null,
+        isbn: patch?.isbn ?? null,
+        edition_title: patch?.edition_title ?? null,
+        translator: patch?.translator ?? null,
+        page_count: patch?.page_count ?? null,
+        format: patch?.format ?? null,
+        // v0.65.1 — audiobooks. duration_minutes is the audio counterpart of
+        // page_count and narrator of translator; both are nullable and both are
+        // included in the emptiness check below, so an edition consisting of
+        // nothing but a narrator still counts as recorded.
+        duration_minutes: patch?.duration_minutes ?? null,
+        narrator: patch?.narrator ?? null,
+      };
+      const empty = Object.values(next).every((v) => v == null || v === '');
+
+      // Optimistic, so the modal closes on a decision rather than on a round
+      // trip — the same pattern updateReadingProgress uses below.
+      setState((s) => {
+        const map = { ...s.editionsByBookId };
+        if (empty) delete map[book.bookId];
+        else map[book.bookId] = { book_id: book.bookId, ...next, source: patch?.source || 'manual' };
+        return { ...s, editionsByBookId: map };
+      });
+
+      if (!user) return;
+
+      if (empty) {
+        const { error } = await supabase
+          .from('reader_editions')
+          .delete()
+          .eq('user_id', user.id)
+          .eq('book_id', book.bookId);
+        if (error) console.error('saveReaderEdition (clear) failed', error);
+        return;
+      }
+
+      const { error } = await supabase
+        .from('reader_editions')
+        .upsert(
+          {
+            user_id: user.id,
+            book_id: book.bookId,
+            ...next,
+            source: patch?.source || 'manual',
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: 'user_id,book_id' }
+        );
+      if (error) console.error('saveReaderEdition failed', error);
+    },
+    [user]
+  );
+
+  /**
+   * How far into an audio edition this reader is, in minutes.
+   *
+   * A sibling of updateReadingProgress rather than a parameter on it, and the
+   * separation is the point: pages and minutes are different units on different
+   * columns, and a reader who switches format mid-book must not have one
+   * reinterpreted as the other. See docs/specs/audiobook-progress-v1-spec.md.
+   *
+   * `null` clears the position — a reader who empties the field is saying they
+   * do not know where they are, which is different from saying zero.
+   */
+  const updateListeningProgress = useCallback(
+    async (book, minutes) => {
+      if (!book?.bookId) return;
+      const value = Number.isFinite(minutes) && minutes > 0 ? Math.round(minutes) : null;
+
+      // Optimistic, matching updateReadingProgress: the modal closes on the
+      // decision, not on the round trip.
+      setState((s) => ({
+        ...s,
+        currentlyReading: s.currentlyReading.map((b) =>
+          b.bookId === book.bookId ? { ...b, progressMinutes: value } : b
+        ),
+      }));
+
+      if (!user) return;
+
+      const { error } = await supabase
+        .from('currently_reading')
+        .update({ progress_minutes: value })
+        .eq('user_id', user.id)
+        .eq('book_id', book.bookId);
+
+      if (error) console.error('updateListeningProgress failed', error);
+    },
+    [user]
+  );
+
+  const updateReadingProgress = useCallback(
+    // userPageCount: pass a positive integer to set a per-user page-count
+    // override for this book (e.g. a different edition), or null to clear
+    // the override and fall back to the catalog book.pages. Passing
+    // undefined leaves whatever override is already stored untouched.
+    async (book, pagesRead, userPageCount) => {
+      const pages = Math.max(0, Math.floor(pagesRead));
+      const hasOverrideArg = userPageCount !== undefined;
+
+      // Optimistic local update
+      setState((s) => ({
+        ...s,
+        currentlyReading: s.currentlyReading.map((b) =>
+          b.bookId === book.bookId
+            ? { ...b, pagesRead: pages, ...(hasOverrideArg ? { userPageCount } : {}) }
+            : b
+        ),
+      }));
+
+      if (!user || !book.bookId) return;
+
+      const update = { pages_read: pages };
+      // v0.65: user_page_count is still written for ONE more release.
+      //
+      // reader_editions is now the home for this number, but the previously
+      // deployed bundle reads the old column, and a reader with two tabs open
+      // (or a stale service worker — it happens) would otherwise see their
+      // page count vanish. effectivePages() reads the new table first and this
+      // second. Drop both this line and the column together.
+      if (hasOverrideArg) update.user_page_count = userPageCount;
+
+      // The durable write. Merged into any edition already recorded rather than
+      // replacing it, so setting a page count from the progress modal does not
+      // silently erase the ISBN or translator the reader entered earlier.
+      if (hasOverrideArg) {
+        const existing = state.editionsByBookId?.[book.bookId] || null;
+        await saveReaderEdition(book, { ...(existing || {}), page_count: userPageCount });
+      }
+
+      const { error } = await supabase
+        .from('currently_reading')
+        .update(update)
+        .eq('user_id', user.id)
+        .eq('book_id', book.bookId);
+
+      if (error) console.error('updateReadingProgress failed', error);
+    },
+    [user, state.editionsByBookId, saveReaderEdition]
+  );
+
+  const updateReadBook = useCallback(
+    async (book, patch) => {
+      if (!patch || (
+        patch.rating === undefined &&
+        patch.notes === undefined &&
+        patch.readAt === undefined
+      )) return;
+      const k = bookKey(book);
+
+      const update = {};
+      if (patch.rating !== undefined) {
+        const r = patch.rating && patch.rating > 0 ? patch.rating : null;
+        update.rating = r;
+      }
+      if (patch.notes !== undefined) {
+        const n = patch.notes ? patch.notes.trim() : '';
+        update.notes = n.length > 0 ? n : null;
+      }
+      // v0.65: a plain YYYY-MM-DD string, not an ISO timestamp.
+      //
+      // read_books.read_at is a DATE column, and the old
+      // `new Date(patch.readAt).toISOString()` round-trip shifted the value by
+      // a timezone: '2025-11-15' parses as UTC midnight, so a reader west of
+      // Greenwich got '2025-11-14' back out of `new Date()` on every stats
+      // pass. It also wrote a full timestamp into local state while
+      // loadUserData maps the column back as a bare date, so the value the
+      // reader saw before a refresh was not the value they saw after one.
+      //
+      // The input is already YYYY-MM-DD (RatingModal's <input type="date">), so
+      // the correct handling is to leave it alone.
+      if (patch.readAt) {
+        update.read_at = String(patch.readAt).slice(0, 10);
+      }
+
+      // v0.65: build the CLIENT patch explicitly rather than spreading the DB
+      // row. `update` is keyed by column name (read_at, not dateRead), and
+      // spreading it stamped those column names onto the book object alongside
+      // the client fields — harmless until something reads the wrong one.
+      const localPatch = {};
+      if (update.rating !== undefined) localPatch.rating = update.rating || undefined;
+      if (update.notes !== undefined) localPatch.notes = update.notes || undefined;
+      if (update.read_at !== undefined) localPatch.dateRead = update.read_at;
+      setState((s) => ({
+        ...s,
+        library: s.library.map((b) =>
+          bookKey(b) === k ? { ...b, ...localPatch } : b
+        ),
+      }));
+
+      if (!user) return;
+      // v0.39.6: previously `if (!user || !book.bookId) return;` silently
+      // skipped the Supabase write whenever bookId was missing — the
+      // optimistic local update above made the edit *look* successful in
+      // the moment, but it reverted on the next fresh load since nothing
+      // was ever persisted. Mirrors the same resolve-or-create fallback
+      // markAsRead already uses.
+      const bookId = book.bookId || (await upsertBookOnServer(book));
+      if (!bookId) {
+        showToast("Couldn't save your changes", true);
+        return;
+      }
+
+      // v0.65: `.select()` so we can tell "saved" from "matched nothing".
+      //
+      // A PostgREST UPDATE that matches zero rows is not an error — it returns
+      // 204 with no error object. So an edit aimed at a book_id with no
+      // read_books row (the catalogue holds duplicate rows for the same work;
+      // a library entry created against one of them, then re-resolved to the
+      // other, lands here) reported success, patched local state, and then
+      // reverted on the next load. That is exactly the shape of "I changed the
+      // read date to last year and the stats still count it this year, even
+      // after a hard reset": the number never left the browser.
+      //
+      // Zero rows now falls through to an upsert, which writes the row the
+      // update was looking for.
+      // v0.65.2: update EVERY read_books row for this work, not one book_id.
+      //
+      // This is the actual reason a corrected read date came back wrong after a
+      // reload. The catalogue holds duplicate rows for the same work — the
+      // v0.63 note in useStacks counts 17 pairs that share an ISBN while
+      // disagreeing on title or author, and markAsRead has a warning for the
+      // same condition. When The Stacks serves one of those rows for a book the
+      // reader already finished under the other, they end up with TWO
+      // read_books rows for one book.
+      //
+      // The local patch below already fixes both, because it matches on
+      // bookKey — which is why the edit looked like it worked. The server write
+      // matched on a single book_id and fixed one. On the next load the
+      // untouched row came back carrying the old date, and the stats counted
+      // it. Hence "still showing this month, even after a hard reset".
+      //
+      // Collecting the ids from the shelf rather than the argument means the
+      // edit reaches every copy the reader can actually see.
+      const workIds = Array.from(new Set(
+        [bookId, ...state.library.filter((b) => bookKey(b) === k).map((b) => b.bookId)]
+          .filter(Boolean)
+      ));
+
+      const { data: updated, error } = await supabase
+        .from('read_books')
+        .update(update)
+        .eq('user_id', user.id)
+        .in('book_id', workIds)
+        .select('id');
+      if (error) {
+        console.error('read_books update failed', error);
+        showToast("Couldn't save your changes", true);
+        return;
+      }
+      if (updated && updated.length > 1) {
+        // Not an error, but it IS the duplicate-catalogue-row condition, and
+        // the reader has one book counted twice in every stat on the Profile.
+        console.warn(
+          `[updateReadBook] "${book.t}" has ${updated.length} read_books rows ` +
+          `(book_ids: ${workIds.join(', ')}). All were updated, so the edit holds — ` +
+          'but the book is still double-counted in reading stats. ' +
+          'See docs/sql/duplicate-read-books-diagnostic.sql.'
+        );
+      }
+      if (!updated || updated.length === 0) {
+        console.warn(
+          `[updateReadBook] no read_books row for book_id ${bookId} — upserting one. ` +
+          'Usually means this library entry predates the current catalogue row for the work; ' +
+          'see docs/sql/duplicate-books-diagnostic.sql.'
+        );
+        const { error: upsertError } = await supabase.from('read_books').upsert(
+          { user_id: user.id, book_id: bookId, source: 'manual', ...update },
+          { onConflict: 'user_id,book_id' }
+        );
+        if (upsertError) {
+          console.error('read_books upsert fallback failed', upsertError);
+          showToast("Couldn't save your changes", true);
+        }
+      }
+    },
+    [user, state.library, showToast, upsertBookOnServer]
+  );
+
+  const removeFromLibrary = useCallback(
+    async (book) => {
+      const k = bookKey(book);
+      setState((s) => ({ ...s, library: s.library.filter((b) => bookKey(b) !== k) }));
+      if (user && book.bookId) {
+        await supabase
+          .from('read_books')
+          .delete()
+          .eq('user_id', user.id)
+          .eq('book_id', book.bookId);
+      }
+    },
+    [user]
+  );
+
+  const importGoodreads = useCallback(
+    // v0.44: onProgress(done, total) — fired per book on the authed path so
+    // large imports (500+ books, one upsert_book RPC each) show progress
+    // instead of an indeterminate "Adding…" for minutes.
+    async (books, onProgress) => {
+      const existingKeys = new Set(state.library.map(bookKey));
+      const toAdd = books.filter((b) => !existingKeys.has(bookKey(b)));
+
+      if (!user) {
+        setState((s) => ({
+          ...s,
+          // v0.59: undated imports stay undated. See the note on the authed
+          // path below — backfilling today's date here made the guest library
+          // disagree with what a signed-in reload would show.
+          library: dedupeBooks([...s.library, ...toAdd]),
+          profile: { ...s.profile, goodreadsImported: true },
+        }));
+        return toAdd.length;
+      }
+
+      const linked = [];
+      for (let i = 0; i < toAdd.length; i++) {
+        const b = toAdd[i];
+        const bookId = await upsertBookOnServer(
+          { ...b, fromGoodreads: true },
+          'goodreads_import'
+        );
+        if (bookId) {
+          const { error } = await supabase.from('read_books').upsert(
+            {
+              user_id: user.id,
+              book_id: bookId,
+              rating: b.rating && b.rating > 0 ? b.rating : null,
+              read_at: b.dateRead || null,
+              source: 'goodreads_import',
+            },
+            { onConflict: 'user_id,book_id' }
+          );
+          // v0.59: do NOT backfill dateRead here.
+          //
+          // read_at above is correctly written as NULL when Goodreads has no
+          // date (most books — Goodreads only records one when the reader
+          // explicitly dated the shelving). Stamping today's date into local
+          // state made the two disagree: an undated import counted toward this
+          // year's reading challenge, this month's streak, the pace chart and
+          // the activity feed — and then silently dropped out of all four on
+          // the next page load, when loadUserData maps read_at → undefined.
+          //
+          // Numbers that change on refresh are worse than numbers that are
+          // simply absent. Undated stays undated, on both sides.
+          if (!error) linked.push({ ...b, bookId, dateRead: b.dateRead || undefined });
+        }
+        onProgress?.(i + 1, toAdd.length);
+      }
+
+      setState((s) => ({
+        ...s,
+        library: dedupeBooks([...s.library, ...linked]),
+        profile: { ...s.profile, goodreadsImported: true },
+      }));
+      // v0.59: returns the count instead of toasting. The caller
+      // (runGoodreadsImport) owns user-facing reporting now — two overlapping
+      // notifications for one action was noise, and this number is also
+      // needed to tell "500 added" apart from "500 already there".
+      return linked.length;
+    },
+    [user, state.library, upsertBookOnServer]
+  );
+
+  const bulkAddToLibrary = useCallback(
+    // v0.44: onProgress(done, total) — same per-book progress as importGoodreads
+    //
+    // v0.65: UNDATED by default, extending the v0.59 importGoodreads rule to
+    // every bulk path.
+    //
+    // All three callers (The Stacks, OnboardingStacks, BulkImport) are a reader
+    // saying "I have read this", not "I finished this today". Stamping today's
+    // date turned each of those taps into a fabricated data point: the book
+    // counted toward this year's reading challenge, this month's bar on the
+    // pace chart, and the streak — so clearing forty cards off the wall in one
+    // sitting read as forty books finished that afternoon.
+    //
+    // A read date the reader never gave us is a guess, and a guess that feeds
+    // stats is worse than a blank. Undated stays undated; the date gets set
+    // later, deliberately, from the rating editor.
+    async (books, onProgress) => {
+      const existingKeys = new Set(state.library.map(bookKey));
+      const toAdd = books.filter((b) => !existingKeys.has(bookKey(b)));
+
+      if (!user) {
+        setState((s) => ({
+          ...s,
+          library: dedupeBooks([...s.library, ...toAdd.map((b) => ({ ...b, dateRead: b.dateRead || undefined }))]),
+        }));
+        return toAdd.length;
+      }
+
+      const linked = [];
+      for (let i = 0; i < toAdd.length; i++) {
+        const b = toAdd[i];
+        const bookId = b.bookId || (await upsertBookOnServer(b));
+        if (bookId) {
+          const { error } = await supabase.from('read_books').upsert(
+            {
+              user_id: user.id,
+              book_id: bookId,
+              rating: b.rating && b.rating > 0 ? b.rating : null,
+              // v0.65: carries a date only when the book already had one (a
+              // Goodreads-sourced row re-added, say). Otherwise NULL, matching
+              // what loadUserData maps back to `undefined` on the next load —
+              // the two sides must agree or the number changes on refresh.
+              read_at: b.dateRead || null,
+              source: 'manual',
+            },
+            { onConflict: 'user_id,book_id' }
+          );
+          if (!error) linked.push({ ...b, bookId, dateRead: b.dateRead || undefined });
+        }
+        onProgress?.(i + 1, toAdd.length);
+      }
+      setState((s) => ({
+        ...s,
+        library: dedupeBooks([...s.library, ...linked]),
+      }));
+      return linked.length;
+    },
+    [user, state.library, upsertBookOnServer]
+  );
+
+  const bulkAddToWishlist = useCallback(
+    // v0.59: wishlist counterpart to bulkAddToLibrary. Needed because the
+    // Goodreads RSS import brings the "Want to Read" shelf automatically, and
+    // that shelf is routinely the largest one on an account — looping
+    // addToWishlist would fire a showToast and a setState per book.
+    //
+    // One toast (raised by the caller), one state commit, at the end.
+    async (books, onProgress) => {
+      // Exclude anything already on EITHER list. A book can sit on both
+      // "read" and "want-to-read" on Goodreads; the finished state wins and
+      // must not be duplicated into the wishlist. Same rule addToWishlist
+      // applies for a single book.
+      const wishKeys = new Set(state.wishlist.map(bookKey));
+      const libKeys = new Set(state.library.map(bookKey));
+      const toAdd = books.filter((b) => {
+        const k = bookKey(b);
+        return !wishKeys.has(k) && !libKeys.has(k);
+      });
+
+      if (!user) {
+        setState((s) => ({
+          ...s,
+          wishlist: dedupeBooks([...s.wishlist, ...toAdd]),
+        }));
+        return toAdd.length;
+      }
+
+      const linked = [];
+      for (let i = 0; i < toAdd.length; i++) {
+        const b = toAdd[i];
+        const bookId =
+          b.bookId ||
+          (await upsertBookOnServer(b, b.fromGoodreads ? 'goodreads_import' : undefined));
+        if (bookId) {
+          // upsert rather than insert-and-forgive-23505: a book already on the
+          // shelf is a no-op at the database, so no 409 is raised in the first
+          // place. Still counted as linked — being already present is success.
+          const { error } = await supabase
+            .from('wishlist_items')
+            .upsert(
+              { user_id: user.id, book_id: bookId, notes: b.notes || null },
+              { onConflict: 'user_id,book_id', ignoreDuplicates: true }
+            );
+          if (!error) {
+            linked.push({ ...b, bookId });
+          } else {
+            console.error('wishlist bulk upsert failed', error);
+          }
+        }
+        onProgress?.(i + 1, toAdd.length);
+      }
+
+      setState((s) => ({
+        ...s,
+        wishlist: dedupeBooks([...s.wishlist, ...linked]),
+      }));
+      return linked.length;
+    },
+    // Deliberately no resolveRecommendation here, unlike addToWishlist:
+    // imported books were never recommended, so there is nothing to resolve.
+    [user, state.wishlist, state.library, upsertBookOnServer]
+  );
+
+  // ---------- v0.59: Goodreads import job ----------
+  //
+  // Why this lives in DataContext and not in the view that starts it:
+  //
+  // Onboarding.finish() calls setOnboarded(true), and App.jsx renders
+  // <Onboarding/> only while !state.onboarded. So the moment onboarding
+  // completes, the Onboarding component unmounts — taking any local progress
+  // UI with it — while the import keeps running in a detached closure for
+  // another two or three minutes. From the reader's side that looked like the
+  // page reloading for no reason, then books quietly appearing much later.
+  //
+  // The job state lives here, above the router, so progress survives
+  // navigation, view swaps and onboarding completion. ImportProgressToast
+  // renders it globally.
+  //
+  // job: null | { phase: 'writing' | 'done', done, total, added, skipped }
+  const [importJob, setImportJob] = useState(null);
+  const dismissImportJob = useCallback(() => setImportJob(null), []);
+
+  const runGoodreadsImport = useCallback(
+    async ({ read = [], toRead = [], currentlyReading = [] }, enrich = (b) => b) => {
+      const current = currentlyReading.slice(0, 20);
+      const total = read.length + toRead.length + current.length;
+      if (total === 0) return { added: 0, total: 0 };
+
+      let offset = 0;
+      let added = 0;
+      setImportJob({ phase: 'writing', done: 0, total, added: 0, skipped: 0 });
+      const step = (done) =>
+        setImportJob((j) => (j ? { ...j, done: Math.min(offset + done, total) } : j));
+
+      try {
+        if (read.length > 0) {
+          // importGoodreads reports its own count via toast; we track the
+          // pre-dedupe total here so the bar reaches 100% either way.
+          const n = await importGoodreads(read.map(enrich), step);
+          offset += read.length;
+          added += n || 0;
+        }
+        if (toRead.length > 0) {
+          const n = await bulkAddToWishlist(toRead.map(enrich), step);
+          offset += toRead.length;
+          added += n || 0;
+        }
+        for (let i = 0; i < current.length; i++) {
+          try { await startReading(enrich(current[i])); added += 1; }
+          catch (e) { console.error('startReading failed on import', e); }
+          step(i + 1);
+        }
+      } catch (e) {
+        console.error('goodreads import failed', e);
+      }
+
+      // Deliberately does NOT auto-clear. The reader has to see this — it is
+      // the only confirmation that a multi-minute background job finished.
+      setImportJob({ phase: 'done', done: total, total, added, skipped: Math.max(0, total - added) });
+      return { added, total };
+    },
+    [importGoodreads, bulkAddToWishlist, startReading]
+  );
+
+  // ---------- v0.12: Category mutations ----------
+
+  // Add a category by raw name to a book. The RPC handles upsert + soft-cap.
+  // Updates local state optimistically with a placeholder, then reconciles
+  // with the real row once the server responds. Returns true on success.
+  const addCategoryToBook = useCallback(
+    async (book, rawName) => {
+      const trimmed = (rawName || '').trim();
+      if (!trimmed) return false;
+      if (!book?.bookId && user) {
+        showToast("Can't tag this book yet — try reopening it", true);
+        return false;
+      }
+
+      // Guest path: store local-only categories. No verified flag possible.
+      if (!user) {
+        const placeholderId = `local:${trimmed.toLowerCase().replace(/[^a-z0-9]/g, '')}`;
+        setState((s) => {
+          // Use a synthetic book identity for guest mode (no bookId).
+          const key = book.bookId || `key:${bookKey(book)}`;
+          const existing = s.categoriesByBookId[key] || [];
+          if (existing.some((c) => c.categoryId === placeholderId)) return s;
+          if (existing.length >= 10) {
+            return s; // soft cap
+          }
+          return {
+            ...s,
+            categoriesByBookId: {
+              ...s.categoriesByBookId,
+              [key]: [
+                ...existing,
+                {
+                  categoryId: placeholderId,
+                  name: trimmed,
+                  verified: false,
+                  usageCount: 1,
+                  source: 'user',
+                },
+              ].sort((a, b) => {
+                if (a.verified !== b.verified) return a.verified ? -1 : 1;
+                return a.name.localeCompare(b.name);
+              }),
+            },
+          };
+        });
+        return true;
+      }
+
+      // Signed-in path: RPC handles it all.
+      const { data, error } = await supabase.rpc('link_user_category', {
+        _book_id: book.bookId,
+        _raw_name: trimmed,
+      });
+      if (error) {
+        // 23514 = soft-cap violation surfaced from the RPC
+        if (error.code === '23514') {
+          showToast('You can have up to 10 categories per book.', true);
+        } else {
+          console.error('link_user_category failed', error);
+          showToast("Couldn't add that category", true);
+        }
+        return false;
+      }
+      const row = Array.isArray(data) ? data[0] : data;
+      if (!row) return false;
+
+      setState((s) => {
+        const existing = s.categoriesByBookId[book.bookId] || [];
+        const already = existing.find((c) => c.categoryId === row.id);
+        const updated = already
+          ? existing.map((c) =>
+              c.categoryId === row.id
+                ? { ...c, verified: row.verified, source: row.verified ? 'verified' : 'user' }
+                : c
+            )
+          : [
+              ...existing,
+              {
+                categoryId: row.id,
+                name: row.name,
+                verified: row.verified,
+                usageCount: row.usage_count,
+                source: row.verified ? 'verified' : 'user',
+              },
+            ];
+        updated.sort((a, b) => {
+          if (a.verified !== b.verified) return a.verified ? -1 : 1;
+          return a.name.localeCompare(b.name);
+        });
+        return {
+          ...s,
+          categoriesByBookId: {
+            ...s.categoriesByBookId,
+            [book.bookId]: updated,
+          },
+        };
+      });
+      return true;
+    },
+    [user, showToast]
+  );
+
+  // Remove a category from a book for the current user. Verified global links
+  // (from book_categories) are not removable from the client — only the
+  // user's personal link goes away. After remove, if the category was also
+  // verified, it stays in the pill list as 'verified' source.
+  const removeCategoryFromBook = useCallback(
+    async (book, categoryId) => {
+      if (!book || !categoryId) return false;
+
+      // Guest path: just drop from local state
+      if (!user) {
+        const key = book.bookId || `key:${bookKey(book)}`;
+        setState((s) => {
+          const existing = s.categoriesByBookId[key] || [];
+          return {
+            ...s,
+            categoriesByBookId: {
+              ...s.categoriesByBookId,
+              [key]: existing.filter((c) => c.categoryId !== categoryId),
+            },
+          };
+        });
+        return true;
+      }
+
+      if (!book.bookId) return false;
+
+      const { data, error } = await supabase.rpc('unlink_user_category', {
+        _book_id: book.bookId,
+        _category_id: categoryId,
+      });
+      if (error) {
+        console.error('unlink_user_category failed', error);
+        showToast("Couldn't remove that category", true);
+        return false;
+      }
+
+      // After unlink, the category might still appear if it's a verified
+      // global one. Refetch without embedded-select syntax (some Supabase
+      // edge configs reject the `category:categories(...)` shorthand
+      // with a bare 400).
+      const [refreshGlobal, refreshUser] = await Promise.all([
+        supabase
+          .from('book_categories')
+          .select('book_id, category_id')
+          .eq('book_id', book.bookId),
+        supabase
+          .from('user_book_categories')
+          .select('book_id, category_id')
+          .eq('book_id', book.bookId),
+      ]);
+      const refreshErr = refreshGlobal.error || refreshUser.error;
+
+      let refreshed = null;
+      if (!refreshErr) {
+        const allCategoryIds = [...new Set([
+          ...(refreshGlobal.data || []).map((r) => r.category_id),
+          ...(refreshUser.data || []).map((r) => r.category_id),
+        ])];
+        let categoriesById = {};
+        if (allCategoryIds.length > 0) {
+          const { data: catRows } = await supabase
+            .from('categories')
+            .select('id, name, normalized_name, verified, usage_count')
+            .in('id', allCategoryIds);
+          for (const c of (catRows || [])) {
+            categoriesById[c.id] = c;
+          }
+        }
+        const buildRow = (linkRow, baseSource) => {
+          const c = categoriesById[linkRow.category_id];
+          if (!c) return null;
+          return {
+            book_id: linkRow.book_id,
+            category_id: c.id,
+            category_name: c.name,
+            normalized_name: c.normalized_name,
+            verified: c.verified,
+            usage_count: c.usage_count,
+            source: baseSource === 'verified'
+              ? 'verified'
+              : (c.verified ? 'verified' : 'user'),
+          };
+        };
+        refreshed = [
+          ...(refreshGlobal.data || []).map((r) => buildRow(r, 'verified')).filter(Boolean),
+          ...(refreshUser.data || []).map((r) => buildRow(r, 'user')).filter(Boolean),
+        ];
+      }
+      if (refreshErr) {
+        // Fall back to optimistic local removal
+        setState((s) => {
+          const existing = s.categoriesByBookId[book.bookId] || [];
+          return {
+            ...s,
+            categoriesByBookId: {
+              ...s.categoriesByBookId,
+              [book.bookId]: existing.filter((c) => c.categoryId !== categoryId),
+            },
+          };
+        });
+        return true;
+      }
+      const rolled = rollupCategories(refreshed || []);
+      setState((s) => ({
+        ...s,
+        categoriesByBookId: {
+          ...s.categoriesByBookId,
+          [book.bookId]: rolled[book.bookId] || [],
+        },
+      }));
+      return true;
+    },
+    [user, showToast]
+  );
+
+  // Autocomplete search. Returns a list of { id, name, verified, usageCount,
+  // exactMatch } ranked by the RPC. Empty query returns most-used verified
+  // categories. Component handles the "Create new" affordance.
+  const searchCategories = useCallback(
+    async (query, limit = 8) => {
+      // Guest mode: no remote catalog. Return empty so the component shows
+      // only the "Create new" affordance. We could enhance this later by
+      // scanning local categoriesByBookId for matches, but for now keep
+      // guest categorization purely local-input.
+      if (!user) {
+        return [];
+      }
+      const { data, error } = await supabase.rpc('search_categories', {
+        _query: query || '',
+        _limit: limit,
+      });
+      if (error) {
+        console.error('search_categories failed', error);
+        return [];
+      }
+      return (data || []).map((r) => ({
+        id: r.id,
+        name: r.name,
+        normalizedName: r.normalized_name,
+        verified: r.verified,
+        usageCount: r.usage_count,
+        exactMatch: r.exact_match,
+      }));
+    },
+    [user]
+  );
+
+  // Lookup for a book's category list. Returns array (possibly empty).
+  // Looks up by bookId when available, falling back to a synthetic key
+  // for guest-mode books that don't have a Supabase id.
+  const getCategoriesForBook = useCallback(
+    (book) => {
+      if (!book) return [];
+      const key = book.bookId || `key:${bookKey(book)}`;
+      return state.categoriesByBookId[key] || [];
+    },
+    [state.categoriesByBookId]
+  );
+
+  // ---------- Profile / misc mutations (unchanged) ----------
+
+  // v0.15 phase 2.3: called by the Oracle categorization service (phase 2.4)
+  // after it assigns genres to a batch of books. `assignments` is an array of
+  // { bookId, genres: [{ genreId, name, normalizedName, source, usageCount, assignedBySource }] }.
+  // Merges new genre assignments into state.genresByBookId so the UI updates
+  // immediately without a full reload.
+  const setBookGenres = useCallback((assignments) => {
+    setState((s) => {
+      const updated = { ...s.genresByBookId };
+      for (const { bookId, genres } of assignments) {
+        // Merge: keep existing genres, add/overwrite with new ones (by genreId).
+        const existing = updated[bookId] || [];
+        const existingMap = {};
+        for (const g of existing) existingMap[g.genreId] = g;
+        for (const g of genres) existingMap[g.genreId] = g;
+        updated[bookId] = Object.values(existingMap).sort((a, b) => {
+          if (b.usageCount !== a.usageCount) return b.usageCount - a.usageCount;
+          return a.name.localeCompare(b.name);
+        });
+      }
+      return { ...s, genresByBookId: updated };
+    });
+  }, []);
+
+  const setProfile = useCallback((patch) => {
+    setState((s) => ({ ...s, profile: { ...s.profile, ...patch } }));
+  }, []);
+
+  const setOnboarded = useCallback((v) => {
+    // v0.70: finishing onboarding also marks the current release as seen.
+    //
+    // Without this, `lastSeenVersion === null` is ambiguous — it means both
+    // "brand new account" and "long-time reader who never clicked the sparkle"
+    // — and the what's-new modal has to guess which. Stamping it here makes
+    // null mean only the second, so a reader who starts on v0.70 is not
+    // told what is new in the version they arrived on, and everyone else is.
+    setState((s) => ({
+      ...s,
+      onboarded: v,
+      lastSeenVersion: v ? CURRENT_VERSION : s.lastSeenVersion,
+    }));
+  }, []);
+
+  const setShelfSortMode = useCallback((mode) => {
+    setState((s) => ({ ...s, shelfSortMode: mode }));
+  }, []);
+
+  const setOracleMode = useCallback((mode) => {
+    setState((s) => ({ ...s, oracleMode: mode }));
+  }, []);
+
+  // v0.35: dashboard layout customization
+  const setDashboardLayout = useCallback((layout) => {
+    setState((s) => ({ ...s, dashboardLayout: layout }));
+  }, []);
+
+  // v0.46: dismiss a feature-discovery coach-mark for good. Idempotent — a mark
+  // already seen is not re-added. Persists via the normal preferences path.
+  const dismissCoachmark = useCallback((id) => {
+    if (!id) return;
+    setState((s) => {
+      const seen = s.coachmarksSeen || [];
+      if (seen.includes(id)) return s;
+      return { ...s, coachmarksSeen: [...seen, id] };
+    });
+  }, []);
+
+  // v0.46: mark the current release as seen — clears the nav "what's new" dot.
+  const markReleasesSeen = useCallback(() => {
+    setState((s) => (s.lastSeenVersion === CURRENT_VERSION
+      ? s
+      : { ...s, lastSeenVersion: CURRENT_VERSION }));
+  }, []);
+
+  // v0.35: numeric reading goal (books per year)
+  const setReadingGoalCount = useCallback((count) => {
+    setState((s) => ({ ...s, readingGoalCount: count }));
+  }, []);
+
+  // v0.36: update username — writes directly to profiles.username
+  const updateUsername = useCallback(async (username) => {
+    if (!user) return { error: 'not_authed' };
+    const { error } = await supabase
+      .from('profiles')
+      .update({ username: username.toLowerCase().trim(), updated_at: new Date().toISOString() })
+      .eq('id', user.id);
+    if (error) return { error: error.message };
+    setState((s) => ({ ...s, profile: { ...s.profile, username: username.toLowerCase().trim() } }));
+    return { ok: true };
+  }, [user]);
+
+  // v0.36: update display name — writes to profiles.display_name
+  const updateDisplayName = useCallback(async (displayName) => {
+    if (!user) return { error: 'not_authed' };
+    const trimmed = displayName.trim() || null;
+    const { error } = await supabase
+      .from('profiles')
+      .update({ display_name: trimmed, updated_at: new Date().toISOString() })
+      .eq('id', user.id);
+    if (error) return { error: error.message };
+    setState((s) => ({ ...s, profile: { ...s.profile, displayName: trimmed } }));
+    return { ok: true };
+  }, [user]);
+
+  // v0.52: update avatar — writes to profiles.avatar_url. Accepts a preset
+  // sigil path (/avatars/<name>.svg), the reader's OAuth photo URL (to switch
+  // back), or null to clear down to the initials disc.
+  const updateAvatar = useCallback(async (avatarUrl) => {
+    if (!user) return { error: 'not_authed' };
+    const url = avatarUrl || null;
+    const { error } = await supabase
+      .from('profiles')
+      .update({ avatar_url: url, updated_at: new Date().toISOString() })
+      .eq('id', user.id);
+    if (error) return { error: error.message };
+    setState((s) => ({ ...s, profile: { ...s.profile, avatarUrl: url } }));
+    return { ok: true };
+  }, [user]);
+
+  // v0.36: update privacy preferences
+  const updatePrivacyPrefs = useCallback(async ({ isDiscoverable, emailNotifications }) => {
+    if (!user) return;
+    const patch = {};
+    if (isDiscoverable  !== undefined) patch.is_discoverable     = isDiscoverable;
+    if (emailNotifications !== undefined) patch.email_notifications = emailNotifications;
+    patch.updated_at = new Date().toISOString();
+    await supabase.from('profiles').update(patch).eq('id', user.id);
+    setState((s) => ({
+      ...s,
+      profile: {
+        ...s.profile,
+        ...(isDiscoverable    !== undefined ? { isDiscoverable }    : {}),
+        ...(emailNotifications !== undefined ? { emailNotifications } : {}),
+      },
+    }));
+  }, [user]);
+
+  const setCurrentPlan = useCallback(
+    async (plan) => {
+      if (!plan) return null;
+      if (user) {
+        const { data, error } = await supabase
+          .from('plans')
+          .insert({
+            user_id: user.id,
+            title: plan.title || 'Untitled Plan',
+            content: plan,
+          })
+          .select()
+          .single();
+        if (!error && data) {
+          const saved = { ...plan, _id: data.id, createdAt: data.created_at };
+          setState((s) => ({
+            ...s,
+            currentPlan: saved,
+            plans: [saved, ...(s.plans || [])],
+          }));
+          return saved;
+        } else {
+          if (error) console.error('setCurrentPlan Supabase insert failed:', error);
+          setState((s) => ({
+            ...s,
+            currentPlan: plan,
+            plans: [plan, ...(s.plans || [])],
+          }));
+          return plan;
+        }
+      } else {
+        setState((s) => ({
+          ...s,
+          currentPlan: plan,
+          plans: [plan, ...(s.plans || [])],
+        }));
+        return plan;
+      }
+    },
+    [user]
+  );
+
+  // ── List mutations ────────────────────────────────────────────────────────
+
+  const createList = useCallback(async (title, description = '') => {
+    if (!user) return null;
+    const { data, error } = await supabase
+      .from('lists')
+      .insert({ user_id: user.id, title, description, is_public: false })
+      .select('*')
+      .single();
+    if (error || !data) return null;
+    const newList = { ...data, books: [] };
+    setState((s) => ({ ...s, lists: [newList, ...(s.lists || [])] }));
+    return newList;
+  }, [user]);
+
+  const updateList = useCallback(async (listId, updates) => {
+    if (!user) return { error: { message: 'signed_out' } };
+    // v0.71.1: returns { error } and leaves local state alone on failure. The
+    // cover guard (pro_required:cover) can refuse a write, and an optimistic
+    // update would show a cover the server never stored.
+    const { error } = await supabase.from('lists').update(updates).eq('id', listId).eq('user_id', user.id);
+    if (error) { console.error('updateList failed:', error); return { error }; }
+    setState((s) => ({
+      ...s,
+      lists: (s.lists || []).map((l) => l.id === listId ? { ...l, ...updates } : l),
+    }));
+    return { error: null };
+  }, [user]);
+
+  const deleteList = useCallback(async (listId) => {
+    if (!user) return;
+    await supabase.from('lists').delete().eq('id', listId).eq('user_id', user.id);
+    setState((s) => ({ ...s, lists: (s.lists || []).filter((l) => l.id !== listId) }));
+  }, [user]);
+
+  const addBookToList = useCallback(async (listId, book) => {
+    if (!user || !book.bookId) return;
+    const list = (state.lists || []).find((l) => l.id === listId);
+    if (!list) return;
+    const position = (list.books || []).length;
+    const { error } = await supabase
+      .from('list_items')
+      .insert({ list_id: listId, book_id: book.bookId, position });
+    if (error) return;
+    setState((s) => ({
+      ...s,
+      lists: (s.lists || []).map((l) =>
+        l.id === listId
+          ? { ...l, books: [...(l.books || []), { ...book, _listPos: position }] }
+          : l
+      ),
+    }));
+  }, [user, state.lists]);
+
+  const removeBookFromList = useCallback(async (listId, bookId) => {
+    if (!user) return;
+    await supabase.from('list_items').delete().eq('list_id', listId).eq('book_id', bookId);
+    setState((s) => ({
+      ...s,
+      lists: (s.lists || []).map((l) =>
+        l.id === listId
+          ? { ...l, books: (l.books || []).filter((b) => b.bookId !== bookId) }
+          : l
+      ),
+    }));
+  }, [user]);
+
+  // ── v0.63: Curated Lists — genres, moods, follows ─────────────────────────
+
+  // Replace-in-full rather than diff.
+  //
+  // A list carries a handful of genres, so computing an add-set and a
+  // remove-set costs more code than it saves requests, and gets the edge cases
+  // (last genre removed, all genres swapped) wrong more often. Delete-then-
+  // insert is one round-trip each and is trivially correct.
+  const setListGenres = useCallback(async (listId, genreIds) => {
+    if (!user) return;
+    const ids = [...new Set(genreIds || [])];
+    await supabase.from('list_genres').delete().eq('list_id', listId);
+    if (ids.length) {
+      const { error } = await supabase
+        .from('list_genres')
+        .insert(ids.map((genre_id) => ({ list_id: listId, genre_id })));
+      if (error) { console.error('setListGenres failed', error); return; }
+    }
+    setState((s) => ({
+      ...s,
+      lists: (s.lists || []).map((l) => l.id === listId ? { ...l, genreIds: ids } : l),
+    }));
+  }, [user]);
+
+  const setListMoods = useCallback(async (listId, moods) => {
+    if (!user) return;
+    // Filtered against the taxonomy before it reaches the database: `mood` is a
+    // plain text column, so nothing else stops a retired id being stored and
+    // later rendering as a raw i18n key on every card.
+    const vals = knownMoods([...new Set(moods || [])]);
+    await supabase.from('list_moods').delete().eq('list_id', listId);
+    if (vals.length) {
+      const { error } = await supabase
+        .from('list_moods')
+        .insert(vals.map((mood) => ({ list_id: listId, mood })));
+      if (error) { console.error('setListMoods failed', error); return; }
+    }
+    setState((s) => ({
+      ...s,
+      lists: (s.lists || []).map((l) => l.id === listId ? { ...l, moods: vals } : l),
+    }));
+  }, [user]);
+
+  // Follows go through RPCs, not table writes: follow_list enforces "public
+  // only" and "not your own" server-side, where the UI cannot be the only
+  // thing standing between a private list and a follower who can no longer
+  // read it.
+  const followList = useCallback(async (listId) => {
+    if (!user) return false;
+    const { data, error } = await supabase.rpc('follow_list', { p_list_id: listId });
+    if (error) { console.error('followList failed', error); return false; }
+    return !!data;
+  }, [user]);
+
+  const unfollowList = useCallback(async (listId) => {
+    if (!user) return false;
+    const { error } = await supabase.rpc('unfollow_list', { p_list_id: listId });
+    if (error) { console.error('unfollowList failed', error); return false; }
+    return true;
+  }, [user]);
+
+  const markListSeen = useCallback(async (listId) => {
+    if (!user) return;
+    await supabase.rpc('mark_list_seen', { p_list_id: listId });
+  }, [user]);
+
+  const fetchFollowedLists = useCallback(async () => {
+    if (!user) return [];
+    const { data, error } = await supabase.rpc('get_followed_lists');
+    if (error) { console.error('get_followed_lists failed', error); return []; }
+    return (data || []).map((r) => ({
+      id: r.id,
+      title: r.title,
+      description: r.description,
+      ownerUsername: r.owner_username,
+      ownerDisplay: r.owner_display,
+      ownerAvatar: r.owner_avatar,
+      bookCount: Number(r.book_count) || 0,
+      followerCount: Number(r.follower_count) || 0,
+      coverUrls: r.cover_urls || [],
+      hasUpdates: !!r.has_updates,
+    }));
+  }, [user]);
+
+  // Deliberately NOT gated on `user`. Unlike the club directory, Discover is a
+  // public landing surface — a list posted on social has to render for someone
+  // who has never signed in. `caller_follows` comes back false for them.
+  const searchPublicLists = useCallback(async ({
+    query = null, genreIds = null, moods = null, sort = 'followers',
+  } = {}) => {
+    const { data, error } = await supabase.rpc('search_public_lists', {
+      p_query: query || null,
+      p_genre_ids: genreIds && genreIds.length ? genreIds : null,
+      p_moods: moods && moods.length ? moods : null,
+      p_sort: sort,
+    });
+    if (error) { console.error('searchPublicLists failed', error); return []; }
+    return (data || []).map((r) => ({
+      id: r.id,
+      title: r.title,
+      description: r.description,
+      createdAt: r.created_at,
+      ownerUsername: r.owner_username,
+      ownerDisplay: r.owner_display,
+      ownerAvatar: r.owner_avatar,
+      bookCount: Number(r.book_count) || 0,
+      followerCount: Number(r.follower_count) || 0,
+      genreNames: r.genre_names || [],
+      moods: knownMoods(r.moods || []),
+      coverUrls: r.cover_urls || [],
+      callerFollows: !!r.caller_follows,
+    }));
+  }, []);
+
+  // ── v0.28: Club mutations ─────────────────────────────────────────────────
+
+  const createClub = useCallback(async ({
+    name, description, genreIds = [],
+    // v0.40: public club directory
+    moods = [], visibility = 'private', joinMode = 'auto', maxMembers = null,
+  }) => {
+    if (!user) return null;
+    const { data, error } = await supabase
+      .from('book_clubs')
+      .insert({
+        name,
+        description: description || null,
+        visibility,
+        join_mode: joinMode,
+        max_members: maxMembers || null,
+      })
+      .select()
+      .single();
+    if (error) { console.error('createClub failed', error); return null; }
+
+    // Creator becomes admin
+    await supabase.from('book_club_members').insert({
+      club_id: data.id,
+      user_id: user.id,
+      role: 'admin',
+    });
+
+    // Attach genre tags
+    if (genreIds.length > 0) {
+      await supabase.from('book_club_genres').insert(
+        genreIds.map((gid) => ({ club_id: data.id, genre_id: gid }))
+      );
+    }
+
+    // Attach mood tags (v0.40 — same taxonomy as onboarding's mood chips)
+    if (moods.length > 0) {
+      await supabase.from('book_club_moods').insert(
+        moods.map((mood) => ({ club_id: data.id, mood }))
+      );
+    }
+
+    const newClub = {
+      id: data.id,
+      name: data.name,
+      description: data.description,
+      joinToken: data.join_token,
+      createdBy: data.created_by,
+      createdAt: data.created_at,
+      visibility: data.visibility,
+      joinMode: data.join_mode,
+      maxMembers: data.max_members,
+      callerRole: 'admin',
+    };
+    setState((s) => ({ ...s, clubs: [newClub, ...(s.clubs || [])] }));
+    return newClub;
+  }, [user]);
+
+  const updateClub = useCallback(async (clubId, updates) => {
+    if (!user) return;
+    const dbUpdates = {};
+    if (updates.name !== undefined) dbUpdates.name = updates.name;
+    if (updates.description !== undefined) dbUpdates.description = updates.description;
+    if (updates.visibility !== undefined) dbUpdates.visibility = updates.visibility;
+    if (updates.joinMode !== undefined) dbUpdates.join_mode = updates.joinMode;
+    if (updates.maxMembers !== undefined) dbUpdates.max_members = updates.maxMembers;
+    await supabase.from('book_clubs').update(dbUpdates).eq('id', clubId);
+    setState((s) => ({
+      ...s,
+      clubs: (s.clubs || []).map((c) => c.id === clubId ? { ...c, ...updates } : c),
+    }));
+  }, [user]);
+
+  const deleteClub = useCallback(async (clubId) => {
+    if (!user) return;
+    await supabase.from('book_clubs').delete().eq('id', clubId);
+    setState((s) => ({ ...s, clubs: (s.clubs || []).filter((c) => c.id !== clubId) }));
+  }, [user]);
+
+  const leaveClub = useCallback(async (clubId) => {
+    if (!user) return;
+    await supabase.from('book_club_members').delete()
+      .eq('club_id', clubId).eq('user_id', user.id);
+    setState((s) => ({ ...s, clubs: (s.clubs || []).filter((c) => c.id !== clubId) }));
+  }, [user]);
+
+  const regenerateJoinToken = useCallback(async (clubId) => {
+    if (!user) return null;
+    const { data, error } = await supabase.rpc('regenerate_join_token', { p_club_id: clubId });
+    if (error || !data) return null;
+    setState((s) => ({
+      ...s,
+      clubs: (s.clubs || []).map((c) => c.id === clubId ? { ...c, joinToken: data } : c),
+    }));
+    return data;
+  }, [user]);
+
+  // ── v0.40: Public club directory ──────────────────────────────────────────
+
+  const searchPublicClubs = useCallback(async ({
+    query = null, genreIds = null, moods = null, openOnly = false, sort = 'activity',
+  } = {}) => {
+    const { data, error } = await supabase.rpc('search_public_clubs', {
+      p_query: query || null,
+      p_genre_ids: genreIds && genreIds.length ? genreIds : null,
+      p_moods: moods && moods.length ? moods : null,
+      p_open_only: openOnly,
+      p_sort: sort,
+    });
+    if (error) { console.error('searchPublicClubs failed', error); return []; }
+    return (data || []).map((r) => ({
+      id: r.id,
+      name: r.name,
+      description: r.description,
+      joinMode: r.join_mode,
+      maxMembers: r.max_members,
+      memberCount: Number(r.member_count) || 0,
+      createdAt: r.created_at,
+      genreNames: r.genre_names || [],
+      moods: r.moods || [],
+      currentBook: r.current_book_title
+        ? { title: r.current_book_title, author: r.current_book_author, coverUrl: r.current_book_cover }
+        : null,
+      callerStatus: r.caller_status, // 'none' | 'member' | 'pending_approval' | 'waitlisted'
+    }));
+  }, []);
+
+  const joinPublicClub = useCallback(async (clubId) => {
+    if (!user) return null;
+    const { data, error } = await supabase.rpc('join_public_club', { p_club_id: clubId });
+    if (error) { console.error('joinPublicClub failed', error); return null; }
+    return data?.status || null; // 'joined' | 'pending_approval' | 'waitlisted' | 'already_member'
+  }, [user]);
+
+  const fetchClubJoinRequests = useCallback(async (clubId) => {
+    if (!user) return [];
+    const { data, error } = await supabase
+      .from('club_join_requests')
+      .select('id, user_id, status, created_at, profile:profiles(display_name, username, avatar_url)')
+      .eq('club_id', clubId)
+      .in('status', ['pending_approval', 'waitlisted'])
+      .order('created_at', { ascending: true });
+    if (error) { console.error('fetchClubJoinRequests failed', error); return []; }
+    return data || [];
+  }, [user]);
+
+  const approveJoinRequest = useCallback(async (requestId) => {
+    if (!user) return null;
+    const { data, error } = await supabase.rpc('approve_join_request', { p_request_id: requestId });
+    if (error) { console.error('approveJoinRequest failed', error); return null; }
+    return data?.status || null;
+  }, [user]);
+
+  const rejectJoinRequest = useCallback(async (requestId) => {
+    if (!user) return null;
+    const { data, error } = await supabase.rpc('reject_join_request', { p_request_id: requestId });
+    if (error) { console.error('rejectJoinRequest failed', error); return null; }
+    return data?.status || null;
+  }, [user]);
+
+  // ── v0.29: Discussion mutations ───────────────────────────────────────────
+
+  const postComment = useCallback(async ({ sessionId, clubId, body, questionId = null, parentId = null }) => {
+    if (!user || !body?.trim()) return null;
+    const { data, error } = await supabase
+      .from('session_comments')
+      .insert({ session_id: sessionId, club_id: clubId, body: body.trim(), question_id: questionId || null, parent_id: parentId || null, created_by: user.id })
+      .select()
+      .single();
+    if (error) { console.error('postComment failed', error); return null; }
+    return data;
+  }, [user]);
+
+  const deleteComment = useCallback(async (commentId) => {
+    if (!user) return;
+    const { error } = await supabase.from('session_comments').delete().eq('id', commentId);
+    if (error) console.error('deleteComment failed', error);
+  }, [user]);
+
+  const editComment = useCallback(async (commentId, body) => {
+    if (!user || !body?.trim()) return;
+    const { error } = await supabase
+      .from('session_comments')
+      .update({ body: body.trim() })
+      .eq('id', commentId)
+      .eq('created_by', user.id);
+    if (error) console.error('editComment failed', error);
+  }, [user]);
+
+  const addQuestion = useCallback(async ({ sessionId, clubId, body, position = 0 }) => {
+    if (!user || !body?.trim()) return null;
+    const { data, error } = await supabase
+      .from('session_questions')
+      .insert({ session_id: sessionId, club_id: clubId, body: body.trim(), position, created_by: user.id })
+      .select()
+      .single();
+    if (error) { console.error('addQuestion failed', error); return null; }
+    return data;
+  }, [user]);
+
+  const deleteQuestion = useCallback(async (questionId) => {
+    if (!user) return;
+    await supabase.from('session_questions').delete().eq('id', questionId);
+  }, [user]);
+
+  // ── v0.29: Poll mutations ─────────────────────────────────────────────────
+
+  const createPoll = useCallback(async ({ clubId, question, options, closesAt = null, isOraclePick = false }) => {
+    if (!user) return null;
+    const { data: poll, error: pollErr } = await supabase
+      .from('club_polls')
+      .insert({ club_id: clubId, question, closes_at: closesAt, is_oracle_pick: isOraclePick })
+      .select()
+      .single();
+    if (pollErr) { console.error('createPoll failed', pollErr); return null; }
+
+    // Insert options in order
+    const optionRows = options.map((opt, i) => ({
+      poll_id: poll.id,
+      label: opt.label,
+      book_id: opt.bookId || null,
+      book_author: opt.bookAuthor || null,
+      cover_url: opt.coverUrl || null,
+      position: i,
+    }));
+    const { error: optErr } = await supabase.from('poll_options').insert(optionRows);
+    if (optErr) console.error('poll options insert failed', optErr);
+
+    return poll;
+  }, [user]);
+
+  const castVote = useCallback(async (pollId, optionId) => {
+    if (!user) return null;
+    const { data, error } = await supabase.rpc('cast_vote', { p_poll_id: pollId, p_option_id: optionId });
+    if (error) { console.error('castVote failed', error); return null; }
+    return data; // updated vote counts for all options
+  }, [user]);
+
+  const closePoll = useCallback(async (pollId) => {
+    if (!user) return;
+    await supabase.from('club_polls').update({ closed: true }).eq('id', pollId);
+  }, [user]);
+
+  const deletePoll = useCallback(async (pollId) => {
+    if (!user) return;
+    await supabase.from('club_polls').delete().eq('id', pollId);
+  }, [user]);
+
+  const deletePlan = useCallback(
+    async (planId) => {
+      // Remove from local state immediately so UI reflects change without refresh
+      setState((s) => {
+        const remaining = (s.plans || []).filter((p) => p._id !== planId);
+        return {
+          ...s,
+          plans: remaining,
+          currentPlan: remaining[0] || null,
+        };
+      });
+      // Persist to Supabase
+      if (user && planId) {
+        await supabase.from('plans').delete().eq('id', planId).eq('user_id', user.id);
+      }
+    },
+    [user]
+  );
+
+  const resetAll = useCallback(async () => {
+    setState({ ...defaultState });
+    saveLocal({ ...defaultState });
+    loadedUserIdRef.current = null;
+    if (user) {
+      await Promise.all([
+        supabase.from('wishlist_items').delete().eq('user_id', user.id),
+        supabase.from('read_books').delete().eq('user_id', user.id),
+        supabase.from('plans').delete().eq('user_id', user.id),
+        supabase.from('user_book_categories').delete().eq('user_id', user.id),
+      ]);
+    }
+  }, [user]);
+
+  // ---------- The Vault ----------
+  // v0.49 Vault Source Upgrade: the Vault is fed by the get_curated_catalog
+  // RPC — the union of every curator's wishlist (taste) and library
+  // (experience; explicit ratings < 3 excluded server-side, unrated reads
+  // kept). Guests get the same catalog: the function is granted to anon and
+  // exposes no PII. This replaces both the old source='curated' books query
+  // (signed-in) and the bundled ALL_BOOKS seed (guests) — ALL_BOOKS is now
+  // only the emergency fallback when the RPC fails or returns empty.
+  // Rows carry vault_source ('wishlist'|'library'|'both') and curator_rating
+  // — stored on the client book as future ranking signal, unused for now.
+  const [vault, setVault] = useState(null);
+  const loadVault = useCallback(async () => {
+    if (vault) return vault;
+    try {
+      // PostgREST caps every response at the project's Max Rows setting
+      // (default 1000) — including RPC results — so a single call silently
+      // truncates once the catalog outgrows it (first seen at 1352 books).
+      // Paginate with .range() until a short page, same tradeoff
+      // og-prerender.js makes. Ordering is stable (the function orders by
+      // title), so pages don't overlap. MAX_PAGES is a runaway guard.
+      const PAGE_SIZE = 1000;
+      const MAX_PAGES = 20;
+      const rows = [];
+      for (let page = 0; page < MAX_PAGES; page++) {
+        const { data, error } = await supabase
+          .rpc('get_curated_catalog')
+          .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
+        if (error) throw error;
+        if (!Array.isArray(data)) break;
+        rows.push(...data);
+        if (data.length < PAGE_SIZE) break;
+      }
+      if (rows.length > 0) {
+        const v = rows.map((b) => bookRowToClient(b, {
+          vaultSource: b.vault_source || undefined,
+          curatorRating: b.curator_rating ?? undefined,
+        }));
+        setVault(v);
+        return v;
+      }
+      console.error('Vault RPC returned empty');
+    } catch (err) {
+      console.error('Vault RPC failed', err);
+    }
+    const v = ALL_BOOKS.map((b) => ({ ...b, status: 'verified', verifiedSource: 'curated_seed', source: 'curated' }));
+    setVault(v);
+    return v;
+  }, [vault]);
+
+  const value = {
+    state,
+    loading,
+    toast,
+    showToast,
+    seedWishlistIfNeeded,
+    addToWishlist,
+    removeFromWishlist,
+    addToReadNext,
+    removeFromReadNext,
+    markAsRead,
+    updateReadBook,
+    removeFromLibrary,
+    // v0.22: currently reading
+    startReading,
+    finishReading,
+    removeFromCurrentlyReading,
+    // v0.28: reading progress
+    updateReadingProgress,
+    updateListeningProgress,
+    saveReaderEdition,
+    // v0.44: reading memory
+    memoriesForBook,
+    addReadingMemory,
+    deleteReadingMemory,
+    // v0.45: reading accomplishments (the Ledger)
+    accomplishments: state.accomplishments || [],
+    // v0.67: the Ledger draws skeleton rows while this is true.
+    accomplishmentsBackfilling: backfillPending,
+    shareAccomplishment,
+    // v0.46: feature-discovery coach-marks
+    coachmarksSeen: state.coachmarksSeen || [],
+    dismissCoachmark,
+    // v0.46: "what's new" seen-marker
+    lastSeenVersion: state.lastSeenVersion || null,
+    markReleasesSeen,
+    // v0.71.2: true once `state` is this reader's real data (session cache or
+    // Supabase), never the localStorage snapshot it boots from.
+    dataHydrated: !!user && hydratedUserId === user.id,
+    importGoodreads,
+    bulkAddToLibrary,
+    bulkAddToWishlist,
+    importJob,
+    runGoodreadsImport,
+    dismissImportJob,
+    cacheBookFields,
+    upsertDiscoveredBook,
+    upsertBookOnServer,
+    // v0.12: category mutations
+    addCategoryToBook,
+    removeCategoryFromBook,
+    searchCategories,
+    getCategoriesForBook,
+    // v0.15 phase 2.3: genre mutations (called by Oracle categorization service)
+    setBookGenres,
+    setProfile,
+    setOnboarded,
+    setShelfSortMode,
+    setOracleMode,
+    setDashboardLayout,
+    setReadingGoalCount,
+    updateUsername,
+    updateDisplayName,
+    updateAvatar,
+    updatePrivacyPrefs,
+    plans: state.plans || [],
+    lists: state.lists || [],
+    clubs: state.clubs || [],
+    setCurrentPlan,
+    deletePlan,
+    createList,
+    updateList,
+    deleteList,
+    addBookToList,
+    removeBookFromList,
+    setListGenres,
+    setListMoods,
+    followList,
+    unfollowList,
+    markListSeen,
+    fetchFollowedLists,
+    searchPublicLists,
+    // v0.28: club mutations
+    createClub,
+    updateClub,
+    deleteClub,
+    leaveClub,
+    regenerateJoinToken,
+    // v0.40: public club directory
+    searchPublicClubs,
+    joinPublicClub,
+    fetchClubJoinRequests,
+    approveJoinRequest,
+    rejectJoinRequest,
+    // v0.29: discussion mutations
+    postComment,
+    deleteComment,
+    editComment,
+    addQuestion,
+    deleteQuestion,
+    // v0.29: poll mutations
+    createPoll,
+    castVote,
+    closePoll,
+    deletePoll,
+    resetAll,
+    vault,
+    loadVault,
+    // v0.43: action-share moments
+    shareMoment,
+    showShareMoment,
+    dismissShareMoment,
+  };
+
+  return <DataContext.Provider value={value}>{children}</DataContext.Provider>;
+}
+
+export const useData = () => useContext(DataContext);

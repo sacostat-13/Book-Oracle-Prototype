@@ -13,18 +13,19 @@
 // unlimited for someone (a downgrade, the fair-use ceiling).
 
 import { useEffect, useMemo, useState } from 'react';
-import { useData } from '../lib/DataContext';
-import { useT, useI18n, langDirective } from '../lib/I18nContext';
-import { useOracleQuota } from '../lib/OracleQuotaContext';
-import { useProLimits } from '../lib/proGates';
-import { useAuth } from '../lib/AuthContext';
-import { bookKey, buildBookPageParams } from '../lib/bookHelpers';
-import { useRouter } from '../lib/RouterContext';
+import { useData } from '../contexts/DataContext';
+import { useT, useI18n, langDirective } from '../contexts/I18nContext';
+import { useOracleQuota } from '../contexts/OracleQuotaContext';
+import { useProLimits } from '../hooks/useProLimits';
+import { useAuth } from '../contexts/AuthContext';
+import { bookKey, buildBookPageParams } from '../lib/book/bookHelpers';
+import { useRouter } from '../contexts/RouterContext';
 import BookCover from './BookCover';
-import { callClaude, parseJSONResponse, QuotaExceededError } from '../lib/claudeApi';
-import { buildShelfSignature, normalizeTitle } from '../lib/oraclePrompt';
-import { buildTasteProfile, describeTasteProfile } from '../lib/matchHelpers';
-import { loadReading, saveReading } from '../lib/oracleReadings';
+import { callClaude, parseJSONResponse, QuotaExceededError } from '../lib/oracle/claudeApi';
+import { buildShelfSignature, normalizeTitle } from '../lib/oracle/oraclePrompt';
+import { buildTasteProfile } from '../lib/scoring/tasteProfile';
+import { describeTasteProfile } from '../lib/oracle/tastePrompt';
+import { loadReading, saveReading } from '../lib/oracle/oracleReadings';
 
 export default function OracleLongReading({ book, reason = null }) {
   const t = useT();

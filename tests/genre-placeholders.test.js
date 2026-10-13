@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'fs';
-import { GENRE_PLACEHOLDERS, isPlaceholderGenre } from '../src/lib/genrePlaceholders.js';
+import { GENRE_PLACEHOLDERS, isPlaceholderGenre } from '../src/lib/genres/genrePlaceholders.js';
 
 describe('isPlaceholderGenre', () => {
   it('catches placeholders however they are spelled', () => {

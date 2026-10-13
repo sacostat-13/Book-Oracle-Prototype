@@ -8,7 +8,7 @@
 //
 // WHAT IS WORTH PROBING HERE
 //
-// Two rules in src/lib/originalLanguage.js can lose data, and neither of them
+// Two rules in src/lib/book/originalLanguage.js can lose data, and neither of them
 // fails loudly:
 //
 //   authorLikelySame() is the ONLY thing between a Wikidata title search and a
@@ -28,7 +28,7 @@
 import {
   normPerson, normTitleLoose, isPlaceholderAuthor, authorLikelySame,
   to6391, workKeys, planPropagation, decideWrite, searchTitles, shouldStampChecked,
-} from '../../src/lib/originalLanguage.js';
+} from '../../src/lib/book/originalLanguage.js';
 
 let pass = 0;
 const failures = [];

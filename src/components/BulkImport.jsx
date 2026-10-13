@@ -1,11 +1,11 @@
 import { useState, useMemo } from 'react';
-import { useData } from '../lib/DataContext';
-import { useRouter } from '../lib/RouterContext';
-import { useT } from '../lib/I18nContext';
-import { useOracleQuota } from '../lib/OracleQuotaContext';
-import { findBookByTitle, bookKey, cleanTitle } from '../lib/bookHelpers';
-import { lookupByTitle, parseTitleList } from '../lib/bookLookup';
-import { callClaude, QuotaExceededError, parseJSONResponse } from '../lib/claudeApi';
+import { useData } from '../contexts/DataContext';
+import { useRouter } from '../contexts/RouterContext';
+import { useT } from '../contexts/I18nContext';
+import { useOracleQuota } from '../contexts/OracleQuotaContext';
+import { findBookByTitle, bookKey, cleanTitle } from '../lib/book/bookHelpers';
+import { lookupByTitle, parseTitleList } from '../lib/sources/bookLookup';
+import { callClaude, QuotaExceededError, parseJSONResponse } from '../lib/oracle/claudeApi';
 import ScanModal from './ScanModal';
 import StarRating from './primitives/StarRating';
 

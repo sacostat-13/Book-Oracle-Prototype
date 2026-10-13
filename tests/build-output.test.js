@@ -53,7 +53,7 @@ describe.skipIf(!built)('dist/ carries what the crawlers ask for', () => {
     // vite.config.js already guards this at build time; the test states the
     // contract in a place a human reads, and catches the guard being removed.
     const built = JSON.parse(readFileSync(join(dist, 'app-version.json'), 'utf8')).version;
-    const announced = readFileSync(join(root, 'src/lib/releases.js'), 'utf8')
+    const announced = readFileSync(join(root, 'src/data/releases.js'), 'utf8')
       .match(/export const CURRENT_VERSION = 'v([^']+)'/)[1];
     expect(built).toBe(announced);
   });

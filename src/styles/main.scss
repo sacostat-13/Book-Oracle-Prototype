@@ -50,7 +50,7 @@
 @use 'pages/stacks';
 
 
-// ── Cover-to-page morph (three.js-motion experiment; lib/coverMorph.js) ─────
+// ── Cover-to-page morph (three.js-motion experiment; lib/device/coverMorph.js) ─────
 // The page cross-fades quickly so the travelling cover carries the motion.
 ::view-transition-old(root),
 ::view-transition-new(root) {

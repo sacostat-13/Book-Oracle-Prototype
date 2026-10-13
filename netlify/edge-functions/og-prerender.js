@@ -1,6 +1,6 @@
 // v0.39: OG-tag prerendering for social/link-preview bots.
 //
-// The client-side useDocumentMeta() hook (src/lib/useDocumentMeta.js) sets
+// The client-side useDocumentMeta() hook (src/hooks/useDocumentMeta.js) sets
 // title/description/OG tags after React renders — fine for Google (which
 // executes JS before indexing) but useless for the bots that generate link
 // previews in Slack, Twitter/X, Facebook, Discord, WhatsApp, iMessage, etc.
@@ -203,7 +203,7 @@ function injectBody(html, blockHtml) {
 //
 // So the row this function already resolved is handed to the SPA as JSON, in
 // <head> where React never touches it. BookPage / GenrePage read it
-// synchronously (src/lib/entitySeed.js) and render the real page on their
+// synchronously (src/lib/book/entitySeed.js) and render the real page on their
 // first pass, with no request in the way. It is the same data the page would
 // have fetched -- the same facts as the PREMOUNT body -- so nothing a crawler
 // is shown differs from what a reader is shown.
@@ -223,7 +223,7 @@ function injectSeed(html, seed) {
 
 // A book page is not worth indexing when we cannot say who wrote it, or when
 // the title is a publisher's placeholder. MIRRORS isPlaceholderBook() in
-// src/lib/bookHelpers.js -- the SPA sets the same noindex once it renders, and
+// src/lib/book/bookHelpers.js -- the SPA sets the same noindex once it renders, and
 // a bot/renderer disagreement on robots is the divergence this file keeps
 // fixing. sitemap.js already omits keys with an empty author half.
 function isPlaceholderBook(title, author, shareKey) {
@@ -366,7 +366,7 @@ export default async (request, context) => {
     // as "the hub every genre page hangs off". The top of an internal link graph
     // is the last page that should depend on JavaScript.
     // The index floor, in the THIRD of three places it is written down — the
-    // others are INDEX_FLOOR in src/lib/genreService.js (which GenrePage uses
+    // others are INDEX_FLOOR in src/lib/api/genreService.js (which GenrePage uses
     // for its client-side noindex) and a local const in
     // netlify/functions/sitemap.js (which uses it to decide what to submit).
     // All three must agree: a URL in the sitemap that answers with noindex is a
@@ -711,7 +711,7 @@ export default async (request, context) => {
           ],
         }, body, {
           // 2026-10-07 — see injectSeed. The shape fetchGenre() in
-          // src/lib/genreService.js returns, so GenrePage renders its heading,
+          // src/lib/api/genreService.js returns, so GenrePage renders its heading,
           // description and related genres on the first pass instead of
           // "Consulting the shelf…" (the same text on every genre page, which
           // is how /genre/sapphicfantasy came to be filed as a duplicate of
@@ -800,7 +800,7 @@ export default async (request, context) => {
       if (match.series_id) {
         const [sRes, bRes] = await Promise.all([
           // 2026-10-07: the fields the SPA's series block needs, so the seed
-          // can carry them (same select as attachSeries in src/lib/shareKey.js).
+          // can carry them (same select as attachSeries in src/lib/book/shareKey.js).
           fetch(`${supabaseUrl}/rest/v1/series?select=id,name,total_books,status,publication_status,source&id=eq.${encodeURIComponent(match.series_id)}&limit=1`, { headers: restHeaders }),
           // status filter added 2026-08-24 to match sitemap.js and the series
           // branch below. All three must list the same rows.
@@ -911,7 +911,7 @@ export default async (request, context) => {
         `<p><a href="/">The Books Oracle</a> — reading tracker and book recommendations drawn from your own shelf.</p>`,
       ].filter(Boolean).join('');
 
-      // The seed: exactly the columns rowToBook() in src/lib/shareKey.js reads,
+      // The seed: exactly the columns rowToBook() in src/lib/book/shareKey.js reads,
       // plus the series fields attachSeries() reads -- not the whole row.
       const injected = injectSeed(injectedMeta, {
         kind: 'book',
@@ -1105,7 +1105,7 @@ export default async (request, context) => {
       const canonicalPath = `/series/${encodeURIComponent(match.name)}`;
 
       // The index floor, in the SECOND of three places -- see the note on
-      // SERIES_INDEX_FLOOR in src/lib/seriesService.js for why it is 2 and what
+      // SERIES_INDEX_FLOOR in src/lib/api/seriesService.js for why it is 2 and what
       // the other two are. `held` is the catalog count after series_volumes
       // collapses editions, which is the same number SeriesPage decides on.
       const SERIES_INDEX_FLOOR = 2;

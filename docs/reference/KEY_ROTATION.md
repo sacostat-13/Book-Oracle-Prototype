@@ -78,7 +78,7 @@ batch-scripts/manual/*.mjs      (4 scripts)
 
 ### 3. Move the client onto the publishable key
 
-`src/lib/supabase.js` already reads `VITE_SUPABASE_PUBLISHABLE_KEY`. Confirm it
+`src/lib/api/supabase.js` already reads `VITE_SUPABASE_PUBLISHABLE_KEY`. Confirm it
 is set in Netlify's build environment, because **this is what breaks the app if
 you miss it** — the client falls back to a placeholder and PostgREST answers
 every request with "No API key found in request".

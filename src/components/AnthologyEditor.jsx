@@ -9,10 +9,10 @@
 // it is an orphan, and making the reader press Save to avoid that is a trap.
 
 import { useRef, useState } from 'react';
-import { useData } from '../lib/DataContext';
-import { useT } from '../lib/I18nContext';
-import { useProLimits } from '../lib/proGates';
-import { uploadAnthologyCover, deleteAnthologyCoverFile, CoverError } from '../lib/anthologyCover';
+import { useData } from '../contexts/DataContext';
+import { useT } from '../contexts/I18nContext';
+import { useProLimits } from '../hooks/useProLimits';
+import { uploadAnthologyCover, deleteAnthologyCoverFile, CoverError } from '../lib/api/anthologyCover';
 import ProGate from './ProGate';
 
 const TITLE_MAX = 120;

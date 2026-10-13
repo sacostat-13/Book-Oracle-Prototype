@@ -12,7 +12,7 @@
 actually runs — **never mentions `author_gender`.** Not in the prompt, not in
 the parser, not in the write patch. Grep it: zero hits.
 
-`src/lib/oracleCategorizationService.js` has the full v0.55 gender rules,
+`src/lib/oracle/oracleCategorizationService.js` has the full v0.55 gender rules,
 `VALID_AUTHOR_GENDERS`, `sanitizeAuthorGender()` and a `writeBookEnrichment()`
 that takes an `authorGender` argument. But that module stopped running in the
 browser at v0.61. It is now, by its own header, "Eligibility and Reference."
@@ -81,7 +81,7 @@ divergent branches.
 Extract first. Three new files:
 
 ```
-src/lib/useShelfFilters.js        state + filtering logic + persistence
+src/hooks/useShelfFilters.js        state + filtering logic + persistence
 src/components/ShelfFilters.jsx   the toolbar UI, basic + advanced
 src/styles/components/_shelf-filters.scss
 ```

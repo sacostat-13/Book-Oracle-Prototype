@@ -11,8 +11,8 @@
 // the stack card's flip, back face and shelf actions: this is a browse surface,
 // and the only thing to do with a book here is open it.
 
-import { RouteLink } from '../lib/RouterContext';
-import { bookKey } from '../lib/bookHelpers';
+import { RouteLink } from '../contexts/RouterContext';
+import { bookKey } from '../lib/book/bookHelpers';
 import BookCover from './BookCover';
 
 export default function BookShelfGrid({ books }) {

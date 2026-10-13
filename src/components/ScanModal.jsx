@@ -13,11 +13,11 @@
 // feel slow.
 
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { useData } from '../lib/DataContext';
-import { useT } from '../lib/I18nContext';
-import { createScanner, screenCode } from '../lib/barcodeScanner';
-import { resolveIsbn } from '../lib/scanResolve';
-import { bookKey } from '../lib/bookHelpers';
+import { useData } from '../contexts/DataContext';
+import { useT } from '../contexts/I18nContext';
+import { createScanner, screenCode } from '../lib/device/barcodeScanner';
+import { resolveIsbn } from '../lib/sources/scanResolve';
+import { bookKey } from '../lib/book/bookHelpers';
 import Modal from './primitives/Modal';
 
 const CONFIRM_MS = 2200;

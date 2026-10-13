@@ -1,7 +1,7 @@
 // Series-suffix parsing, shared by the RSS import function.
 //
 // This is a deliberate duplicate of splitGoodreadsSeriesTitle() in
-// src/lib/goodreadsImport.js. Netlify Functions are bundled separately from
+// src/lib/sources/goodreadsImport.js. Netlify Functions are bundled separately from
 // the Vite client build and cannot import across that boundary, so the logic
 // lives in both places.
 //

@@ -14,7 +14,7 @@
 // Hobb's books, because those catalog rows have language = NULL and no shared
 // identifier with their English originals.
 
-import { guessTitleLanguage, isForeignTo } from '../../src/lib/titleLanguage.js';
+import { guessTitleLanguage, isForeignTo } from '../../src/lib/book/titleLanguage.js';
 
 let pass = 0, fail = 0;
 const check = (n, c, e = '') => {

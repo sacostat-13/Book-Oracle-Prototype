@@ -1,6 +1,6 @@
 -- Why does one book show no genres? Read-only.
 --
--- The Book Page resolves genres in this order (src/lib/genreDisplay.js):
+-- The Book Page resolves genres in this order (src/lib/genres/genreDisplay.js):
 --   1. book_genres links, IF the book is on one of your shelves
 --   2. the books.genre scalar, otherwise
 --   3. nothing

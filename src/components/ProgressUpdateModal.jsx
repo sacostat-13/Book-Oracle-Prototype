@@ -24,18 +24,18 @@
 //
 // The two branches are not cosmetic variants of one control. An audiobook is
 // measured in time, and this file never converts between time and pages; see
-// src/lib/editions.js and the spec for why that conversion would be a
+// src/lib/book/editions.js and the spec for why that conversion would be a
 // fabrication rather than a convenience.
 
 import { useId, useState } from 'react';
-import { useT } from '../lib/I18nContext';
-import { useData } from '../lib/DataContext';
+import { useT } from '../contexts/I18nContext';
+import { useData } from '../contexts/DataContext';
 import {
   EDITION_LANGUAGES, EDITION_FORMATS, effectivePages, normalizeLanguage,
   toMinutes, splitMinutes,
-} from '../lib/editions';
-import { cleanIsbn, isValidIsbn } from '../lib/isbn';
-import { googleBooksLookupByIsbn } from '../lib/googleBooksService';
+} from '../lib/book/editions';
+import { cleanIsbn, isValidIsbn } from '../lib/book/isbn';
+import { googleBooksLookupByIsbn } from '../lib/sources/googleBooksService';
 import Modal from './primitives/Modal';
 import CoachMark from './CoachMark';
 

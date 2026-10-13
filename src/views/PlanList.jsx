@@ -1,7 +1,7 @@
-import { useData } from '../lib/DataContext';
-import { useRouter } from '../lib/RouterContext';
-import { bookKey, findBookByTitle } from '../lib/bookHelpers';
-import { useT, useTNode, useI18n } from '../lib/I18nContext';
+import { useData } from '../contexts/DataContext';
+import { useRouter } from '../contexts/RouterContext';
+import { bookKey, findBookByTitle } from '../lib/book/bookHelpers';
+import { useT, useTNode, useI18n } from '../contexts/I18nContext';
 import EmptyState from '../components/EmptyState';
 
 // How many books in this plan does the user already have in their library?

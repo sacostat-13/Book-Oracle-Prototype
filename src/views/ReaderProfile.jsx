@@ -15,10 +15,10 @@
 // should not have.
 
 import { useEffect, useState, useMemo } from 'react';
-import { useData } from '../lib/DataContext';
-import { useRouter } from '../lib/RouterContext';
-import { useT } from '../lib/I18nContext';
-import { useAuth } from '../lib/AuthContext';
+import { useData } from '../contexts/DataContext';
+import { useRouter } from '../contexts/RouterContext';
+import { useT } from '../contexts/I18nContext';
+import { useAuth } from '../contexts/AuthContext';
 import {
   useFollows,
   getProfileByUsername,
@@ -26,11 +26,11 @@ import {
   getReaderCurrentlyReading,
   getFollowCounts,
   getVisibleListsFor,
-} from '../lib/useFollows';
-import { openBookTab } from '../lib/bookHelpers';
+} from '../hooks/useFollows';
+import { openBookTab } from '../lib/book/bookHelpers';
 import ShareModal from '../components/ShareModal';
-import { profileShareUrl } from '../lib/shareService';
-import { titleLabel } from '../lib/titles';
+import { profileShareUrl } from '../lib/share/shareService';
+import { titleLabel } from '../lib/achievements/readerRanks';
 import Avatar from '../components/Avatar';
 import { RowListSkeleton, CoverGridSkeleton } from '../components/Skeleton';
 import StarRating from '../components/primitives/StarRating';

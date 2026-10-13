@@ -171,7 +171,7 @@ Oracle judging itself.
 ## 5. Phase 2 — v0.72 Pro gates (creation limits)
 
 All enforced **server-side** by `BEFORE INSERT` triggers calling one helper,
-`is_pro(uid)` (`subscription_status = 'active'`, curators included). The UI
+`is_pro(uid)` (`subscription_status = 'active'`; curators were included until 2026-10-13, now excluded — see `20261013120000_curators_are_not_pro.sql`). The UI
 gate is a courtesy on top. **Existing content is grandfathered.** Only
 *creating* past the limit is blocked. A downgrade never deletes or hides
 anything.

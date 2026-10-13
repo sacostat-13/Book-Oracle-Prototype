@@ -117,7 +117,7 @@ book's contribution to the stat is read from. This is precisely the
 
 ## Resolution: one helper, alongside the existing one
 
-`src/lib/editions.js` gains a sibling to `effectivePages`:
+`src/lib/book/editions.js` gains a sibling to `effectivePages`:
 
 ```js
 // Minutes of audio this edition runs to, or null. The audio counterpart of

@@ -23,12 +23,12 @@
 //    cannot be full.
 
 import { useState, useEffect, useCallback } from 'react';
-import { useData } from '../lib/DataContext';
-import { useAuth } from '../lib/AuthContext';
-import { useRouter } from '../lib/RouterContext';
-import { useT, useTNode } from '../lib/I18nContext';
+import { useData } from '../contexts/DataContext';
+import { useAuth } from '../contexts/AuthContext';
+import { useRouter } from '../contexts/RouterContext';
+import { useT, useTNode } from '../contexts/I18nContext';
 import { CardGridSkeleton } from '../components/Skeleton';
-import { MOODS, moodTitleKey } from '../lib/moods';
+import { MOODS, moodTitleKey } from '../data/moods';
 import CoverStrip from '../components/CoverStrip';
 import FollowListButton from '../components/FollowListButton';
 import BookMark from '../components/BookMark';

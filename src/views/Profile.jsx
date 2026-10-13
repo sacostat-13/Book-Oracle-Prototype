@@ -1,25 +1,25 @@
 import { useRef, useMemo, useState, useEffect, Fragment } from 'react';
-import { useData } from '../lib/DataContext';
-import { useAuth } from '../lib/AuthContext';
-import { useRouter } from '../lib/RouterContext';
-import { useT, useTNode, useI18n } from '../lib/I18nContext';
-import { useOracleQuota } from '../lib/OracleQuotaContext';
-import { MOODS, moodTitleKey } from '../lib/moods';
-import { parseGoodreadsCSV } from '../lib/goodreadsImport';
+import { useData } from '../contexts/DataContext';
+import { useAuth } from '../contexts/AuthContext';
+import { useRouter } from '../contexts/RouterContext';
+import { useT, useTNode, useI18n } from '../contexts/I18nContext';
+import { useOracleQuota } from '../contexts/OracleQuotaContext';
+import { MOODS, moodTitleKey } from '../data/moods';
+import { parseGoodreadsCSV } from '../lib/sources/goodreadsImport';
 import GoodreadsImportPanel from '../components/GoodreadsImportPanel';
-import { findBookByTitle, bookKey, openBookTab } from '../lib/bookHelpers';
-import { useFollows, checkUsernameAvailability, validateUsername } from '../lib/useFollows';
+import { findBookByTitle, bookKey, openBookTab } from '../lib/book/bookHelpers';
+import { useFollows, checkUsernameAvailability, validateUsername } from '../hooks/useFollows';
 import ReaderSettings from '../components/ReaderSettings';
-import { supabase } from '../lib/supabase';
-import { TITLE_TIERS, isTierEarned, sanitizeTitleKey, titleLabel } from '../lib/titles';
-import { STANDARD_AVATARS, GENRE_AVATARS } from '../lib/avatars';
+import { supabase } from '../lib/api/supabase';
+import { TITLE_TIERS, isTierEarned, sanitizeTitleKey, titleLabel } from '../lib/achievements/readerRanks';
+import { STANDARD_AVATARS, GENRE_AVATARS } from '../data/avatars';
 import Avatar from '../components/Avatar';
 import CornerBrackets from '../components/CornerBrackets';
 import ShareModal from '../components/ShareModal';
 import OracleCallHistory from '../components/OracleCallHistory';
 import TasteChart from '../components/TasteChart';
 import ReaderConstellation from '../components/ReaderConstellation';
-import { groupFamilyAccomplishments, nextRung } from '../lib/ledger';
+import { groupFamilyAccomplishments, nextRung } from '../lib/achievements/ledger';
 import { FamilyRowsSkeleton } from '../components/Skeleton';
 import BookMark from '../components/BookMark';
 import InstallAppSection from '../components/InstallAppSection';
@@ -802,7 +802,7 @@ function PrivacySection({ profile, updatePrivacyPrefs, t }) {
 }
 
 // ── Favorite genres + current mood (v0.38, editable from Profile) ────────────
-// MOODS imported from lib/moods.js — this was one of four hand-kept copies.
+// MOODS imported from data/moods.js — this was one of four hand-kept copies.
 const GENRE_MAX = 5;
 const MOOD_MAX = 3;
 
@@ -1201,7 +1201,7 @@ export default function Profile() {
     if (!user) return;
     setCheckoutLoading(true);
     try {
-      // v0.43.1: use the static import — the dynamic import('../lib/supabase')
+      // v0.43.1: use the static import — the dynamic import('../lib/api/supabase')
       // resolved to a namespace without `supabase` in the prod bundle
       // (chunk/SW interop), killing checkout with "reading 'auth'".
       const { data } = await supabase.auth.getSession();
@@ -1312,7 +1312,7 @@ export default function Profile() {
     if (!user) return;
     setPortalLoading(true);
     try {
-      // v0.43.1: use the static import — the dynamic import('../lib/supabase')
+      // v0.43.1: use the static import — the dynamic import('../lib/api/supabase')
       // resolved to a namespace without `supabase` in the prod bundle
       // (chunk/SW interop), killing checkout with "reading 'auth'".
       const { data } = await supabase.auth.getSession();

@@ -20,7 +20,7 @@
 -- v0.65.2 makes the client update every row for the work, so new edits hold.
 -- It does NOT merge the rows. This query finds the ones already there.
 --
--- Grouping key mirrors bookKey() in src/lib/bookHelpers.js exactly:
+-- Grouping key mirrors bookKey() in src/lib/book/bookHelpers.js exactly:
 -- lowercase, strip everything but a-z0-9, plus the first 10 such characters of
 -- the author. If you change one, change the other.
 

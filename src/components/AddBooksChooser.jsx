@@ -11,9 +11,9 @@
 // Every option hands off to the existing flow; nothing here imports a book.
 
 import { useState } from 'react';
-import { useData } from '../lib/DataContext';
-import { useRouter } from '../lib/RouterContext';
-import { useT } from '../lib/I18nContext';
+import { useData } from '../contexts/DataContext';
+import { useRouter } from '../contexts/RouterContext';
+import { useT } from '../contexts/I18nContext';
 import ScanModal from './ScanModal';
 import BulkImport from './BulkImport';
 

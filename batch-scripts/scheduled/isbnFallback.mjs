@@ -63,8 +63,8 @@ import { createServiceClient } from '../_shared/supabaseClient.mjs';
 import { readFileSync, writeFileSync } from 'fs';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
-import { cleanIsbn, isValidIsbn, isEnglishRegistrant, isbn10to13 } from '../../src/lib/isbn.js';
-import { titleMatches, authorMatches, titleVariants } from '../../src/lib/titleMatch.js';
+import { cleanIsbn, isValidIsbn, isEnglishRegistrant, isbn10to13 } from '../../src/lib/book/isbn.js';
+import { titleMatches, authorMatches, titleVariants } from '../../src/lib/matching/titleMatch.js';
 
 // The most-stripped variant is what we send to a relevance-ranked search: series markers
 // and subtitles are noise to the search engine even though they matter to the matcher.

@@ -7,7 +7,7 @@
 import { useRef } from 'react';
 import gsap from 'gsap';
 import { useGSAP } from '@gsap/react';
-import { useT } from '../../lib/I18nContext';
+import { useT } from '../../contexts/I18nContext';
 import OracleCard from './OracleCard';
 import useCardTilt from './useCardTilt';
 import { burstFromElement } from './burst';

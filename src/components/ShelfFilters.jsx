@@ -14,12 +14,12 @@
 // docs/specs/shelf-filters-v1-spec.md.
 
 import { useMemo, useState } from 'react';
-import { useT } from '../lib/I18nContext';
-import { PAGE_OPTIONS, GENDER_OPTIONS, LEVELS } from '../lib/useShelfFilters';
+import { useT } from '../contexts/I18nContext';
+import { PAGE_OPTIONS, GENDER_OPTIONS, LEVELS } from '../hooks/useShelfFilters';
 import GenreSelect from './GenreSelect';
 
 // Endpoint labels only. The 1-5 scales are defined canonically in
-// src/lib/oracleCategorizationService.js (COMPLEXITY RULES / DEPTH RULES) and
+// src/lib/oracle/oracleCategorizationService.js (COMPLEXITY RULES / DEPTH RULES) and
 // the tooltips below quote them — paraphrasing here is how the classifier and
 // the UI drift apart, which is exactly how author_gender got lost.
 const LEVEL_HINTS = {

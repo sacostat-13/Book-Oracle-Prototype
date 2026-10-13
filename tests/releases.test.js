@@ -6,7 +6,7 @@
 // item must be a whole paragraph: it ends like a sentence does.
 
 import { describe, it, expect } from 'vitest';
-import { RELEASES } from '../src/lib/releases.js';
+import { RELEASES } from '../src/data/releases.js';
 
 const ENDS_LIKE_A_SENTENCE = /[.!?…:)»"”']$/;
 

@@ -12,14 +12,14 @@
 //   recentBooks — books from past sessions for Oracle context (title, author)
 
 import { useState, useEffect, useCallback } from 'react';
-import { useData } from '../lib/DataContext';
-import { useAuth } from '../lib/AuthContext';
-import { supabase } from '../lib/supabase';
+import { useData } from '../contexts/DataContext';
+import { useAuth } from '../contexts/AuthContext';
+import { supabase } from '../lib/api/supabase';
 import BookCover from './BookCover';
-import { callClaude, QuotaExceededError } from '../lib/claudeApi';
-import { useT } from '../lib/I18nContext';
-import { useProLimits } from '../lib/proGates';
-import { useOracleQuota } from '../lib/OracleQuotaContext';
+import { callClaude, QuotaExceededError } from '../lib/oracle/claudeApi';
+import { useT } from '../contexts/I18nContext';
+import { useProLimits } from '../hooks/useProLimits';
+import { useOracleQuota } from '../contexts/OracleQuotaContext';
 import { useConfirm } from './primitives/ConfirmDialog';
 
 // ── Oracle suggestion flow ────────────────────────────────────────────────────

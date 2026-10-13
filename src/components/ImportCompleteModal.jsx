@@ -11,8 +11,8 @@
 // v0.59
 
 import { useId } from 'react';
-import { useT } from '../lib/I18nContext';
-import { useRouter } from '../lib/RouterContext';
+import { useT } from '../contexts/I18nContext';
+import { useRouter } from '../contexts/RouterContext';
 import Modal from './primitives/Modal';
 
 export default function ImportCompleteModal({ count, onClose }) {

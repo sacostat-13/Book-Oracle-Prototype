@@ -6,8 +6,8 @@
 // Tone rule: it names what they already have before what they don't. "Your
 // first club is yours" — never "you have hit your limit".
 
-import { useT } from '../lib/I18nContext';
-import { useProLimits } from '../lib/proGates';
+import { useT } from '../contexts/I18nContext';
+import { useProLimits } from '../hooks/useProLimits';
 
 export default function ProGate({ feature, compact = false }) {
   const t = useT();

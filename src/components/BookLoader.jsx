@@ -41,13 +41,13 @@
 import { useState, useEffect, useRef, useMemo, useLayoutEffect, useContext } from 'react';
 import gsap from 'gsap';
 import { SplitText } from 'gsap/SplitText';
-import { DataContext } from '../lib/DataContext';
-import { hrefFor } from '../lib/RouterContext';
-import { useT } from '../lib/I18nContext';
+import { DataContext } from '../contexts/DataContext';
+import { hrefFor } from '../contexts/RouterContext';
+import { useT } from '../contexts/I18nContext';
 import { prefersReducedMotion } from './landing/motion';
 import OracleWaitSpread from './OracleWaitSpread';
 import burst from './landing/burst';
-import { shuffle } from '../lib/random';
+import { shuffle } from '../lib/util/random';
 
 const QUOTES = [
   // ── Adventure ──

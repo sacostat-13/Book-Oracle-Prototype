@@ -27,22 +27,22 @@
 // cover case and is what every other surface uses.
 
 import { useState, useEffect, useMemo } from 'react';
-import { useRouter } from '../lib/RouterContext';
-import { useAuth } from '../lib/AuthContext';
+import { useRouter } from '../contexts/RouterContext';
+import { useAuth } from '../contexts/AuthContext';
 // tNode, not t: the curator's name is spliced in as a real <strong> element.
 // `t()` runs String(value) over its vars, so passing a React element there
 // renders the literal text "[object Object]" — and the two strings were
 // missing their {name} placeholder entirely, so the name was silently dropped.
-import { useT, useTNode } from '../lib/I18nContext';
-import { supabase } from '../lib/supabase';
-import { buildBookPageParams, shelfStateOf, shelfKeySets } from '../lib/bookHelpers';
-import { useData } from '../lib/DataContext';
-import { moodTitleKey, knownMoods } from '../lib/moods';
+import { useT, useTNode } from '../contexts/I18nContext';
+import { supabase } from '../lib/api/supabase';
+import { buildBookPageParams, shelfStateOf, shelfKeySets } from '../lib/book/bookHelpers';
+import { useData } from '../contexts/DataContext';
+import { moodTitleKey, knownMoods } from '../data/moods';
 import BookCover from '../components/BookCover';
 import BookLoader from '../components/BookLoader';
 import FollowListButton from '../components/FollowListButton';
 import SignInGate from '../components/SignInGate';
-import { logAnthologyView, logAnthologyOpen, rememberReferral } from '../lib/anthologyInsights'; // v0.74
+import { logAnthologyView, logAnthologyOpen, rememberReferral } from '../lib/api/anthologyInsights'; // v0.74
 import BookMark from '../components/BookMark';
 
 // The RPC returns `row_to_json(b)` straight off the books table, so the shape

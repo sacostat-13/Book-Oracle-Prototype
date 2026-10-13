@@ -1,9 +1,9 @@
 // ReportBookForm.jsx — v0.31
 
 import { useState, useEffect, useRef } from 'react';
-import { useData } from '../lib/DataContext';
-import { useT } from '../lib/I18nContext';
-import { supabase } from '../lib/supabase';
+import { useData } from '../contexts/DataContext';
+import { useT } from '../contexts/I18nContext';
+import { supabase } from '../lib/api/supabase';
 
 export default function ReportBookForm({ book }) {
   const { showToast } = useData();

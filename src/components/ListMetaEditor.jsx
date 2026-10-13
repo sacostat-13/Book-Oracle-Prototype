@@ -16,8 +16,8 @@
 // stay alphabetical.
 
 import { useMemo, useState } from 'react';
-import { useT } from '../lib/I18nContext';
-import { MOODS, moodTitleKey } from '../lib/moods';
+import { useT } from '../contexts/I18nContext';
+import { MOODS, moodTitleKey } from '../data/moods';
 import ChipToggleGroup from './primitives/ChipToggleGroup';
 
 // Below this many genres the "show all" toggle is pointless — everything fits.

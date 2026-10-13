@@ -191,7 +191,7 @@ describe('the SPA reads the seed', () => {
   it('only for the entity it describes', async () => {
     vi.resetModules();
     globalThis.document = { getElementById: (id) => (id === '__ENTITY__' ? { textContent: legion.seedText } : null) };
-    const { readEntitySeed } = await import('../src/lib/entitySeed.js');
+    const { readEntitySeed } = await import('../src/lib/book/entitySeed.js');
     expect(readEntitySeed('book', 'legion|danabnett')).not.toBeNull();
     // The route param may arrive encoded.
     expect(readEntitySeed('book', 'legion%7Cdanabnett')).not.toBeNull();
@@ -204,13 +204,13 @@ describe('the SPA reads the seed', () => {
   it('a page with no seed (every human visit today) reads null', async () => {
     vi.resetModules();
     globalThis.document = { getElementById: () => null };
-    const { readEntitySeed } = await import('../src/lib/entitySeed.js');
+    const { readEntitySeed } = await import('../src/lib/book/entitySeed.js');
     expect(readEntitySeed('book', 'legion|danabnett')).toBeNull();
     delete globalThis.document;
   });
 
   it('maps to the same book shape the share-key lookup produces', async () => {
-    const { bookFromSeed } = await import('../src/lib/shareKey.js');
+    const { bookFromSeed } = await import('../src/lib/book/shareKey.js');
     const book = bookFromSeed(legion.seed);
     expect(book).toMatchObject({
       bookId: 'b-legion', t: 'Legion', a: 'Dan Abnett', pp: 416, g: 'Military Science Fiction',
@@ -220,7 +220,7 @@ describe('the SPA reads the seed', () => {
   });
 
   it('flags the same placeholder books the prerender noindexes', async () => {
-    const { isPlaceholderBook } = await import('../src/lib/bookHelpers.js');
+    const { isPlaceholderBook } = await import('../src/lib/book/bookHelpers.js');
     expect(isPlaceholderBook({ t: 'Be my Alibi', a: '' })).toBe(true);
     expect(isPlaceholderBook({ t: 'Expecting Better', a: 'Unknown author' })).toBe(true);
     expect(isPlaceholderBook({ t: 'Out', a: '桐野夏生' })).toBe(true); // author key empty

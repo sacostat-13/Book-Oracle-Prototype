@@ -10,32 +10,36 @@ signal wins, not just by how much.
 
 > Written 2026-10-12 from the code at that date (code-health spike, item M1).
 > When you change a formula, change its section here in the same commit.
+>
+> **Tested = yes** means `tests/scoring.test.js` (or the test named in the
+> section) pins the numbers in an example table. Those tables are what you
+> update when you change a weight on purpose.
 
 ## Contents
 
 | # | Topic | Code | Tested |
 |---|---|---|---|
-| 1 | [Book address key](#1-book-address-key) | `src/lib/bookHelpers.js` · SQL `client_title_key` | **yes** |
-| 2 | [Taste profile](#2-taste-profile) | `src/lib/matchHelpers.js` | no |
-| 3 | [Local Match %](#3-local-match-) | `src/lib/matchHelpers.js` | floor only |
-| 4 | [Oracle (LLM) Match %](#4-oracle-llm-match-) | `src/lib/matchHelpers.js` | n/a |
-| 5 | [Reading-level nudge](#5-reading-level-nudge) | `src/lib/matchHelpers.js` | no |
-| 6 | [Similar books (Book page)](#6-similar-books-book-page) | `src/views/BookPage.jsx` | no |
-| 7 | [Similar to your picks (fallback)](#7-similar-to-your-picks-fallback) | `src/views/OracleSimilar.jsx` | no |
-| 8 | [Oracle draw from wishlist / Vault](#8-oracle-draw-from-wishlist--vault) | `src/views/OracleCategories.jsx` · `src/lib/random.js` | **yes** |
-| 9 | [Level Passage (fallback plan)](#9-level-passage-fallback-plan) | `src/views/PlanCreate.jsx` | no |
-| 10 | [Best edition for purchase links](#10-best-edition-for-purchase-links) | `src/lib/editionPicker.js` | no |
-| 11 | [Which row represents a work](#11-which-row-represents-a-work) | `src/lib/workGroups.js` | no |
-| 12 | [Picking a lookup hit](#12-picking-a-lookup-hit) | `src/lib/hardcoverService.js` · `src/lib/googleBooksService.js` · `src/lib/titleMatch.js` | no |
+| 1 | [Book address key](#1-book-address-key) | `src/lib/book/bookHelpers.js` · SQL `client_title_key` | **yes** |
+| 2 | [Taste profile](#2-taste-profile) | `src/lib/scoring/tasteProfile.js` | **yes** |
+| 3 | [Local Match %](#3-local-match-) | `src/lib/scoring/localMatch.js` | **yes** |
+| 4 | [Oracle (LLM) Match %](#4-oracle-llm-match-) | `src/lib/oracle/tastePrompt.js` | n/a |
+| 5 | [Reading-level nudge](#5-reading-level-nudge) | `src/lib/scoring/levelNudge.js` | **yes** |
+| 6 | [Similar books (Book page)](#6-similar-books-book-page) | `src/lib/scoring/similarity.js` | **yes** |
+| 7 | [Similar to your picks (fallback)](#7-similar-to-your-picks-fallback) | `src/lib/scoring/similarity.js` | **yes** |
+| 8 | [Oracle draw from wishlist / Vault](#8-oracle-draw-from-wishlist--vault) | `src/views/OracleCategories.jsx` · `src/lib/scoring/drawWeight.js` · `src/lib/util/random.js` | **yes** |
+| 9 | [Level Passage (fallback plan)](#9-level-passage-fallback-plan) | `src/lib/scoring/levelPlan.js` | **yes** |
+| 10 | [Best edition for purchase links](#10-best-edition-for-purchase-links) | `src/lib/scoring/editionPicker.js` | **yes** |
+| 11 | [Which row represents a work](#11-which-row-represents-a-work) | `src/lib/scoring/workRepresentative.js` · `src/lib/book/workGroups.js` | **yes** |
+| 12 | [Picking a lookup hit](#12-picking-a-lookup-hit) | `src/lib/sources/hardcoverService.js` · `src/lib/matching/tokenMatch.js` · `src/lib/matching/titleMatch.js` | **yes** |
 | 13 | [Genre inference from subjects](#13-genre-inference-from-subjects) | `batch-scripts/_shared/genreRules.mjs` | partly |
-| 14 | [Primary (shelf) genre](#14-primary-shelf-genre) | `src/lib/bookHelpers.js` | no |
+| 14 | [Primary (shelf) genre](#14-primary-shelf-genre) | `src/lib/scoring/primaryGenre.js` | **yes** |
 | 15 | [Series matching and queue order](#15-series-matching-and-queue-order) | `batch-scripts/_shared/series*.mjs` | **yes** |
-| 16 | [Daily shuffle and index floors](#16-daily-shuffle-and-index-floors) | `src/lib/genreService.js` · `src/lib/seriesService.js` | contract |
-| 17 | [Reading streak](#17-reading-streak) | `src/lib/readingStreak.js` | **yes** |
-| 18 | [Milestones, accomplishments, reader ranks](#18-milestones-accomplishments-reader-ranks) | `src/lib/shareMoments.js` · `accomplishments.js` · `titles.js` | partly |
-| 19 | [Oracle quota and Pro limits](#19-oracle-quota-and-pro-limits) | SQL `oracle_free_limit` · `src/lib/proGates.js` | no |
-| 20 | [Prompt size budget](#20-prompt-size-budget) | `src/lib/oraclePrompt.js` | no |
-| 21 | [Randomness](#21-randomness) | `src/lib/random.js` and others | **yes** |
+| 16 | [Daily shuffle and index floors](#16-daily-shuffle-and-index-floors) | `src/lib/api/genreService.js` · `src/lib/util/random.js` · `src/lib/api/seriesService.js` | **yes** |
+| 17 | [Reading streak](#17-reading-streak) | `src/lib/scoring/readingStreak.js` | **yes** |
+| 18 | [Milestones, accomplishments, reader ranks](#18-milestones-accomplishments-reader-ranks) | `src/lib/achievements/shareMoments.js` · `accomplishments.js` · `readerRanks.js` | partly |
+| 19 | [Oracle quota and Pro limits](#19-oracle-quota-and-pro-limits) | SQL `oracle_free_limit` · `src/hooks/useProLimits.js` | no |
+| 20 | [Prompt size budget](#20-prompt-size-budget) | `src/lib/oracle/oraclePrompt.js` | no |
+| 21 | [Randomness](#21-randomness) | `src/lib/util/random.js` and others | **yes** |
 
 ## Vocabulary
 
@@ -64,7 +68,7 @@ reader wants harder ones.
 
 ## 1. Book address key
 
-`bookKey(book)` / `addressKey(text)` in `src/lib/bookHelpers.js`, mirrored by
+`bookKey(book)` / `addressKey(text)` in `src/lib/book/bookHelpers.js`, mirrored by
 `client_title_key` / `client_author_key` in SQL.
 
 ```
@@ -164,7 +168,8 @@ Always one step, however far ahead the earned level is; never written silently.
 
 ## 6. Similar books (Book page)
 
-`computeSimilar(display, genresByBookId, pool, limit, exclude)` — the
+`rankSimilar(display, pool, { genresByBookId, limit, exclude })` with
+`BOOK_PAGE_WEIGHTS` in `src/lib/scoring/similarity.js` — the
 "You might also like" strip. Candidates are the reader's own wishlist, library
 and Read Next; **books the reader has finished are excluded**. The page scores
 the top 24, collapses same-work rows (§11), then shows 12.
@@ -180,12 +185,13 @@ the top 24, collapses same-work rows (§11), then shows 12.
 Score-0 candidates are dropped; the rest sort by score, top `limit` shown. Ties
 keep pool order.
 
-**Watch out:** §6 and §7 answer the same question with different weights. Any
-change to "what similar means" should change both (spike item M4 merges them).
+§6 and §7 are two weight presets over the same `similarityScore()`; changing
+what "similar" means is one edit to a preset in `similarity.js`.
 
 ## 7. Similar to your picks (fallback)
 
-`fallbackSimilar(selection, candidates)` in `OracleSimilar.jsx` — used when the
+`rankBySeeds(selection, candidates, { limit })` with `SEED_WEIGHTS` in
+`src/lib/scoring/similarity.js`, called from `OracleSimilar.jsx` — used when the
 AI call fails or in wishlist mode. Scores each candidate against each of the
 1–3 seed books the reader picked, and sums:
 
@@ -195,7 +201,7 @@ AI call fails or in wishlist mode. Scores each candidate against each of the
 | complexity within ±1 | +2 |
 | depth within ±1 | +1 |
 
-`match % = round(100 × score / (seeds × 6))` — 6 is `MAX_SCORE_PER_SEED`. Top
+`match % = round(100 × score / (seeds × 6))` — 6 is `maxScore(SEED_WEIGHTS)`. Top
 `SIMILAR_COUNT` (5) returned.
 
 ## 8. Oracle draw from wishlist / Vault
@@ -207,14 +213,14 @@ AI-failure fallback:
 2. remove anything already in Read Next or the library;
 3. compute §3 Match % for every candidate;
 4. pick **3 without replacement, weighted toward higher Match %**
-   (`weightedSample()` in `src/lib/random.js`, Efraimidis–Spirakis).
+   (`weightedSample()` in `src/lib/util/random.js`, Efraimidis–Spirakis).
 
 ```
 weight = (match / 100) ^ DRAW_WEIGHT_POWER        DRAW_WEIGHT_POWER = 2
 match  = UNSCORED_DRAW_MATCH (50) when §3 returns null
 ```
 
-| Lever (`matchHelpers.js`) | Value | Effect |
+| Lever (`scoring/drawWeight.js`) | Value | Effect |
 |---|---|---|
 | `DRAW_WEIGHT_POWER` | 2 | a 90 % book is 4× as likely as a 45 % one; higher = closer to "always the top 3", 1 = proportional, 0 = uniform |
 | `UNSCORED_DRAW_MATCH` | 50 | books with no signal are neither favoured nor buried |
@@ -225,7 +231,9 @@ books every time.
 
 ## 9. Level Passage (fallback plan)
 
-`buildFallbackPlan()` in `PlanCreate.jsx`, type `level`, when the AI plan fails.
+`levelPlanSteps()` in `src/lib/scoring/levelPlan.js`, called by
+`buildFallbackPlan()` in `PlanCreate.jsx` (type `level`) when the AI plan fails.
+Constants: `COMPLEXITY_TOLERANCE` 0.7, `PICK_AMONG` 5, `UNRATED_COMPLEXITY` 3.
 For month `i` of `timeline` months, from the reader's level `start` to `end`:
 
 ```
@@ -240,7 +248,8 @@ asked.
 ## 10. Best edition for purchase links
 
 `scoreEdition(e)` / `pickBestEdition(editions)` — which ISBN/ASIN the Amazon
-and Bookshop links use. Highest score wins.
+and Bookshop links use. Highest score wins. Weights: `FORMAT_SCORE` and
+`EDITION_WEIGHTS` in `editionPicker.js`.
 
 | Rule | Points |
 |---|---|
@@ -262,7 +271,8 @@ audio only, sparse) for batch review.
 
 `collapseWorks(books, { uiLang })` merges rows that are the same work (union-find
 over title/author and other identity rules; each group keeps the position of its
-first member) and shows the best row by `scoreCandidate`:
+first member) and shows the best row by `scoreWorkRepresentative()`
+(`REPRESENTATIVE_WEIGHTS` in `src/lib/scoring/workRepresentative.js`):
 
 | Rule | Points |
 |---|---|
@@ -282,18 +292,20 @@ English original of an English novel, not its translation.
 
 When the lookup chain (Hardcover → OpenLibrary → Wikipedia) gets several results:
 
-- **Hardcover** (`scoreHit`): compilation −10; title contains the query +2;
+- **Hardcover** (`scoreSearchHit` / `isCompilationHit`): compilation −10; title contains the query +2;
   popularity `min(users / 1000, 1)`. Compilation = flagged, or title matches
   omnibus/box set/"Books 1–3"/anthology, or has 3+ commas.
-- **Google Books** (`matchScore`): share (0–1) of the query's content words
+- **Live search** (`titleMatchScore` in `matching/tokenMatch.js`): share (0–1) of the query's content words
   present in the candidate title, accent-insensitive, stop-words removed;
   `bestTitleMatch` takes the best over the whole query and each colon/dash
   segment ("Morras Malditas: Apaguemos la luz" matches on its second half).
 - **Batch scripts** (`titleMatch.js`): `titleMatches()` and `authorMatches()`
   must both pass before any ISBN or year is written.
 
-Three implementations of "is this the same title" exist; consolidating them is
-spike item L4.
+Two title matchers remain, on purpose: `tokenMatch.js` is forgiving (live
+search, where a near miss just shows a less relevant result) and `titleMatch.js`
+is strict (batch scripts, where a near miss writes a wrong ISBN). For plain
+"same name ignoring case and punctuation" use `compactKey()` in `titleMatch.js`.
 
 ## 13. Genre inference from subjects
 
@@ -332,8 +344,9 @@ head. Tested by simulating several runs.
 
 ## 16. Daily shuffle and index floors
 
-**Daily shuffle** (`dailyShuffle(items, seedKey)`): deterministic Fisher–Yates
-seeded by FNV-1a of `"<seedKey>:<UTC date>"` through xorshift32. Everyone sees
+**Daily shuffle** (`dailyShuffle(items, seedKey)`): `shuffle()` driven by
+`seededRandom("<seedKey>:<UTC date>")` — FNV-1a (`hashSeed`) into xorshift32,
+all in `src/lib/util/random.js`. Everyone sees
 the same order today and a new one tomorrow, so prerendered HTML and the client
 agree and caches stay valid for a day. Lists that fit on one page (≤ 20,
 `GENRE_PAGE_SIZE`) are not shuffled.
@@ -365,7 +378,7 @@ the 1st) and the label said "days". Both are covered by `tests/reading-streak.te
 
 ## 18. Milestones, accomplishments, reader ranks
 
-Milestone ladders (`src/lib/shareMoments.js`) — crossing one creates a share
+Milestone ladders (`src/lib/achievements/shareMoments.js`) — crossing one creates a share
 moment and, for persistent kinds, an accomplishment (`accomplishments.js`, keyed
 so each is awarded at most once):
 
@@ -378,7 +391,7 @@ so each is awarded at most once):
 | books by women authors (`ag` female or mixed) | 5, 10, 25, 50, 100 |
 | "first book in a new family" moments | only once the library has ≥ 5 books |
 
-Reader ranks (`TITLE_TIERS` in `src/lib/titles.js`) by total books read:
+Reader ranks (`TITLE_TIERS` in `src/lib/achievements/readerRanks.js`) by total books read:
 Initiate 1 · Seeker 5 · Scribe 15 · Archivist 30 · Keeper 60 · Voice 100 ·
 Sage 250 · Warden 500 · Library 1000. Ranks are cosmetic and never feed matching.
 
@@ -393,8 +406,9 @@ the client only displays them.
 | Pro | unlimited, with a silent fair-use ceiling of 30 per day |
 
 "None of these call to me" records a miss; a charged free draw is refunded, up
-to 2 per month. Free creation limits (`FREE_LIMITS` in `proGates.js`): 1 owned
-club, 3 Anthologies, 1 Passage. Curators count as Pro.
+to 2 per month. Free creation limits (`FREE_LIMITS` in `src/hooks/useProLimits.js`): 1 owned
+club, 3 Anthologies, 1 Passage. Pro means an active subscription only: curators
+are not Pro (decided 2026-10-13); their own exemption is unmetered categorization.
 
 ## 20. Prompt size budget
 
@@ -407,9 +421,9 @@ budget does not improve recommendations — the list is a hint.
 
 | Need | Use |
 |---|---|
-| a fair random order or pick | `shuffle()` / `sample()` in `src/lib/random.js` — Fisher–Yates, never mutates the input |
-| a random pick that favours some items | `weightedSample()` in `src/lib/random.js` (§8) |
-| the same order for everyone today | `dailyShuffle()` (§16) |
+| a fair random order or pick | `shuffle()` / `sample()` in `src/lib/util/random.js` — Fisher–Yates, never mutates the input |
+| a random pick that favours some items | `weightedSample()` in `src/lib/util/random.js` (§8) |
+| the same order for everyone today | `dailyShuffle()` (§16), or `shuffle(items, seededRandom(key))` for any other stable order |
 | a stable value per string (placeholder cover palette, ornament) | `hashStr()` in `bookHelpers.js` |
 | deterministic visuals in 3D scenes | local seeded generators in `components/*/scene.js` |
 

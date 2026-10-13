@@ -16,9 +16,9 @@
 // disappears entirely once the backlog clears rather than sitting there as
 // permanent furniture.
 
-import { useData } from '../lib/DataContext';
-import { useT } from '../lib/I18nContext';
-import { getBooksNeedingGenres } from '../lib/oracleCategorizationService';
+import { useData } from '../contexts/DataContext';
+import { useT } from '../contexts/I18nContext';
+import { getBooksNeedingGenres } from '../lib/oracle/oracleCategorizationService';
 
 export default function CurationNotice({ books }) {
   const { state } = useData();

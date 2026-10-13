@@ -8,18 +8,18 @@
 // Props:
 //   title   — share sheet title (usually the entity name)
 //   text    — one-line pitch used by intents and navigator.share
-//   url     — canonical share URL (build via src/lib/shareService.js)
+//   url     — canonical share URL (build via src/lib/share/shareService.js)
 //   onClose
 
 import { useId, useState } from 'react';
-import { useT } from '../lib/I18nContext';
+import { useT } from '../contexts/I18nContext';
 import Modal from './primitives/Modal';
 import {
   shareOrCopy,
   twitterIntent,
   whatsappIntent,
   telegramIntent,
-} from '../lib/shareService';
+} from '../lib/share/shareService';
 
 export default function ShareModal({ title, text, url, onClose }) {
   const t = useT();

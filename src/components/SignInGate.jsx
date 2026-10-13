@@ -15,8 +15,8 @@
 // The link is kept, demoted to a secondary option, because it remains the only
 // way in for anyone who signed up through Google and never set a password.
 import { useState } from 'react';
-import { useAuth } from '../lib/AuthContext';
-import { useT, useTNode } from '../lib/I18nContext';
+import { useAuth } from '../contexts/AuthContext';
+import { useT, useTNode } from '../contexts/I18nContext';
 import CornerBrackets from './CornerBrackets';
 import Tabs from './primitives/Tabs';
 

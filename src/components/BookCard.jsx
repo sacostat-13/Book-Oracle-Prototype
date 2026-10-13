@@ -1,10 +1,10 @@
 import { useState } from 'react';
-import { useData } from '../lib/DataContext';
-import { RouteLink } from '../lib/RouterContext';
-import { useT } from '../lib/I18nContext';
-import { bookKey } from '../lib/bookHelpers';
-import { displayAuthor } from '../lib/bookHelpers';
-import { resolveGenreNames } from '../lib/genreDisplay';
+import { useData } from '../contexts/DataContext';
+import { RouteLink } from '../contexts/RouterContext';
+import { useT } from '../contexts/I18nContext';
+import { bookKey } from '../lib/book/bookHelpers';
+import { displayAuthor } from '../lib/book/bookHelpers';
+import { resolveGenreNames } from '../lib/genres/genreDisplay';
 import BookCover from './BookCover';
 import RatingModal from './RatingModal';
 

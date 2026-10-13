@@ -16,6 +16,7 @@ API proxies.
 |---|---|
 | Understand how the app is put together | [docs/reference/ARCHITECTURE.md](docs/reference/ARCHITECTURE.md) |
 | Change a ranking, weight, threshold or match % | [docs/reference/MATH.md](docs/reference/MATH.md) |
+| Find where a piece of logic lives | [src/lib/README.md](src/lib/README.md) |
 | Write or change styles | [src/styles/README.md](src/styles/README.md) |
 | Touch the database schema | [supabase/SETUP.md](supabase/SETUP.md) |
 | Run catalog maintenance scripts | [batch-scripts/README.md](batch-scripts/README.md) |
@@ -108,7 +109,7 @@ What else depends on whether readers should hear about it:
 
 | Release | Also update |
 |---|---|
-| **Reader-facing** — something a reader will see or use | `src/lib/releases.js`: the bilingual EN/ES entry **and** `CURRENT_VERSION`; plus `public/app-version.json` to the same number (the build refuses to run if they differ). This shows the What's New dot (and the popup, if the entry is `major`) and lets installed apps detect the update. Keep `critical: false` unless old clients must reload immediately. |
+| **Reader-facing** — something a reader will see or use | `src/data/releases.js`: the bilingual EN/ES entry **and** `CURRENT_VERSION`; plus `public/app-version.json` to the same number (the build refuses to run if they differ). This shows the What's New dot (and the popup, if the entry is `major`) and lets installed apps detect the update. Keep `critical: false` unless old clients must reload immediately. |
 | **Internal** — refactors, docs, tooling, fixes nobody would notice | nothing else. Leave `releases.js` and `CURRENT_VERSION` alone, and say so at the top of the CHANGELOG entry. |
 
 ## Google OAuth setup

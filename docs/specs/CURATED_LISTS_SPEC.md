@@ -78,7 +78,7 @@ character-driven · atmospheric · fast-paced · short-read
 ```
 
 That constant is currently duplicated in the club create view. Lift it to
-`src/lib/moods.js` and import it in both places as part of this work — a third
+`src/data/moods.js` and import it in both places as part of this work — a third
 copy is how the taxonomies drift, and a mood that exists on lists but not clubs
 breaks the "same filters" promise the directory makes.
 
@@ -140,7 +140,7 @@ know whether more edits are coming, and `auth.uid()` is NULL in trigger context
 (see the standing note in project memory) so the actor has to come from the row,
 not the session.
 
-Follow the existing pattern in `src/lib/useNotifications.js`: add `list_updated`
+Follow the existing pattern in `src/hooks/useNotifications.js`: add `list_updated`
 to `notificationLabel` and to `notificationRoute` (route to
 `['list-view', { listId }]`). Add the EN and ES strings under
 `notifications.listUpdated`.
@@ -361,7 +361,7 @@ Each step leaves the app shippable.
 1. **Migration** — `list_genres`, `list_moods`, `list_followers`,
    `list_change_log`, `search_public_lists`, RLS on all of it. Nothing
    user-visible yet.
-2. **`src/lib/moods.js`** — lift the taxonomy, update `BookClubCreate` to import
+2. **`src/data/moods.js`** — lift the taxonomy, update `BookClubCreate` to import
    it. Pure refactor, no behaviour change.
 3. **Genres + moods in the list editor** — writes real data, so Discover has
    something to filter on the day it lands.

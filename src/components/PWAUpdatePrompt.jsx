@@ -1,8 +1,8 @@
 /* global __APP_VERSION__ */
 import { useEffect, useState } from 'react';
 import { useRegisterSW } from 'virtual:pwa-register/react';
-import { useT } from '../lib/I18nContext';
-import { supabase } from '../lib/supabase';
+import { useT } from '../contexts/I18nContext';
+import { supabase } from '../lib/api/supabase';
 
 // Lightweight update toast. Paired with registerType: 'prompt' in vite.config.js.
 //

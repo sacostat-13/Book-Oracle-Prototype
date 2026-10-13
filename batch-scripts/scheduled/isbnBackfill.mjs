@@ -12,7 +12,7 @@
 // So after v38 the catalog sits with null ISBNs indefinitely and every purchase link
 // degrades to a search. This script closes that gap.
 //
-// It uses the same pickBestEdition() as the browser path (src/lib/editionPicker.js) so
+// It uses the same pickBestEdition() as the browser path (src/lib/scoring/editionPicker.js) so
 // the backfilled ISBNs are chosen by identical rules to newly-looked-up ones.
 //
 // Writes go direct to the table with the service role key rather than through
@@ -37,8 +37,8 @@ import { createServiceClient } from '../_shared/supabaseClient.mjs';
 import { readFileSync, writeFileSync } from 'fs';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
-import { pickBestEdition, EDITION_FIELDS } from '../../src/lib/editionPicker.js';
-import { titleMatches, authorMatches, titleVariants } from '../../src/lib/titleMatch.js';
+import { pickBestEdition, EDITION_FIELDS } from '../../src/lib/scoring/editionPicker.js';
+import { titleMatches, authorMatches, titleVariants } from '../../src/lib/matching/titleMatch.js';
 
 // The most-stripped variant is what we send to a relevance-ranked search: series markers
 // and subtitles are noise to the search engine even though they matter to the matcher.
@@ -599,7 +599,7 @@ async function runProbe(bookId) {
       } else {
         console.log(`!! zero editions on a book the search ranked first. Either the sub-query's`);
         console.log(`   filters exclude everything (compilation _eq false / limit / order_by) or`);
-        console.log(`   the relationship was renamed. See EDITION_FIELDS in src/lib/editionPicker.js.`);
+        console.log(`   the relationship was renamed. See EDITION_FIELDS in src/lib/scoring/editionPicker.js.`);
       }
     }
   }

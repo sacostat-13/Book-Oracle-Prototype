@@ -1,15 +1,15 @@
 // src/views/Lists.jsx — List Dashboard (DS Patterns / Lists)
 
 import { useState } from 'react';
-import { useData } from '../lib/DataContext';
-import { useRouter, RouteLink } from '../lib/RouterContext';
-import { useT, useTNode, useI18n } from '../lib/I18nContext';
-import { openBookTab } from '../lib/bookHelpers';
+import { useData } from '../contexts/DataContext';
+import { useRouter, RouteLink } from '../contexts/RouterContext';
+import { useT, useTNode, useI18n } from '../contexts/I18nContext';
+import { openBookTab } from '../lib/book/bookHelpers';
 import BookCover from '../components/BookCover';
 import Modal from '../components/primitives/Modal';
 import EmptyState from '../components/EmptyState';
 import ListMetaEditor from '../components/ListMetaEditor';
-import { useProLimits } from '../lib/proGates'; // v0.72: Free curates up to three Anthologies
+import { useProLimits } from '../hooks/useProLimits'; // v0.72: Free curates up to three Anthologies
 import ProGate from '../components/ProGate';
 import AnthologyInsights from '../components/AnthologyInsights'; // v0.74
 

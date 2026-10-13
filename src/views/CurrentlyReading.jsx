@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import { useData } from '../lib/DataContext';
-import { useRouter } from '../lib/RouterContext';
-import { useT, useTNode } from '../lib/I18nContext';
-import { bookKey } from '../lib/bookHelpers';
+import { useData } from '../contexts/DataContext';
+import { useRouter } from '../contexts/RouterContext';
+import { useT, useTNode } from '../contexts/I18nContext';
+import { bookKey } from '../lib/book/bookHelpers';
 import BookCover from '../components/BookCover';
 import RatingModal from '../components/RatingModal';
 import ProgressUpdateModal from '../components/ProgressUpdateModal';

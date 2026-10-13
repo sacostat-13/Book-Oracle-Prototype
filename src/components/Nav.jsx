@@ -4,18 +4,18 @@
 // Zero inline styles — all classes from layout/_nav.scss.
 
 import { useState, useEffect, useRef } from 'react';
-import { useData } from '../lib/DataContext';
-import { useRouter } from '../lib/RouterContext';
-import { useAuth } from '../lib/AuthContext';
-import { useI18n } from '../lib/I18nContext';
-import { useTheme } from '../lib/ThemeContext';
-import { useNotifications, notificationLabel, notificationRoute } from '../lib/useNotifications';
+import { useData } from '../contexts/DataContext';
+import { useRouter } from '../contexts/RouterContext';
+import { useAuth } from '../contexts/AuthContext';
+import { useI18n } from '../contexts/I18nContext';
+import { useTheme } from '../contexts/ThemeContext';
+import { useNotifications, notificationLabel, notificationRoute } from '../hooks/useNotifications';
 import AnnouncementModal from './AnnouncementModal';
 import ReleaseNotesModal from './ReleaseNotesModal';
-import { CURRENT_VERSION, currentRelease } from '../lib/releases';
+import { CURRENT_VERSION, currentRelease } from '../data/releases';
 import NavSearch from './NavSearch';
 import ScanModal from './ScanModal';
-import { useT } from '../lib/I18nContext';
+import { useT } from '../contexts/I18nContext';
 import { useClickOutside } from '../hooks/useClickOutside';
 import { useScrollLock } from '../hooks/useScrollLock';
 

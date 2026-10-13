@@ -15,8 +15,8 @@
 // someone has been reading and wondering about.
 
 import { useCallback, useEffect, useState } from 'react';
-import { supabase } from '../lib/supabase';
-import { useT, useI18n } from '../lib/I18nContext';
+import { supabase } from '../lib/api/supabase';
+import { useT, useI18n } from '../contexts/I18nContext';
 
 const PAGE_SIZE = 20;
 

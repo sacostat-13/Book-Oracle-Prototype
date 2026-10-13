@@ -1,9 +1,9 @@
 // src/views/BookClubs.jsx — v0.31
 
-import { useData } from '../lib/DataContext';
-import { useRouter } from '../lib/RouterContext';
-import { useAuth } from '../lib/AuthContext';
-import { useT, useTNode } from '../lib/I18nContext';
+import { useData } from '../contexts/DataContext';
+import { useRouter } from '../contexts/RouterContext';
+import { useAuth } from '../contexts/AuthContext';
+import { useT, useTNode } from '../contexts/I18nContext';
 import EmptyState from '../components/EmptyState';
 
 export default function BookClubs() {

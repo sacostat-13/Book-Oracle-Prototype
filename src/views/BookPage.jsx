@@ -4,24 +4,24 @@
 // with more room for description, series, and genre detail.
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useData } from '../lib/DataContext';
-import { resolveGenres } from '../lib/genreDisplay';
-import { supabase } from '../lib/supabase';
-import { lookUpByShareKey, lookUpByShareKeyResult, bookFromSeed } from '../lib/shareKey';
-import { readEntitySeed } from '../lib/entitySeed';
-import { useRouter, RouteLink } from '../lib/RouterContext';
-import { useT, useI18n } from '../lib/I18nContext';
-import { useDocumentMeta } from '../lib/useDocumentMeta';
-import { bookKey, findBookByTitle, openBookTab, buildBookPageParams, displayAuthor, isPlaceholderBook } from '../lib/bookHelpers';
-import { enrichBookFromOpenLibrary, fetchSeriesBooks } from '../lib/enrichmentService';
-import { hardcoverGetBook } from '../lib/hardcoverService';
-import { fetchCoverURL } from '../lib/coverService';
-import { lookupByTitle } from '../lib/bookLookup';
-import { purchaseLinks } from '../lib/purchaseLinks';
-import { fetchSeriesDescriptionFromWikipedia } from '../lib/seriesService';
-import { fetchAuthorWorks, AUTHOR_WORKS_LIMIT } from '../lib/authorWorks';
-import { collapseWorks } from '../lib/workGroups';
-import { effectivePages, editionTitle, editionIsNotable } from '../lib/editions';
+import { useData } from '../contexts/DataContext';
+import { resolveGenres } from '../lib/genres/genreDisplay';
+import { supabase } from '../lib/api/supabase';
+import { lookUpByShareKey, lookUpByShareKeyResult, bookFromSeed } from '../lib/book/shareKey';
+import { readEntitySeed } from '../lib/book/entitySeed';
+import { useRouter, RouteLink } from '../contexts/RouterContext';
+import { useT, useI18n } from '../contexts/I18nContext';
+import { useDocumentMeta } from '../hooks/useDocumentMeta';
+import { bookKey, findBookByTitle, openBookTab, buildBookPageParams, displayAuthor, isPlaceholderBook } from '../lib/book/bookHelpers';
+import { enrichBookFromOpenLibrary, fetchSeriesBooks } from '../lib/sources/enrichmentService';
+import { hardcoverGetBook } from '../lib/sources/hardcoverService';
+import { fetchCoverURL } from '../lib/sources/coverService';
+import { lookupByTitle } from '../lib/sources/bookLookup';
+import { purchaseLinks } from '../lib/book/purchaseLinks';
+import { fetchSeriesDescriptionFromWikipedia } from '../lib/api/seriesService';
+import { fetchAuthorWorks, AUTHOR_WORKS_LIMIT } from '../lib/sources/authorWorks';
+import { collapseWorks } from '../lib/book/workGroups';
+import { effectivePages, editionTitle, editionIsNotable } from '../lib/book/editions';
 import BookCover from '../components/BookCover';
 import { BookPageSkeleton } from '../components/Skeleton';
 import ReportBookForm from '../components/ReportBookForm';
@@ -31,74 +31,24 @@ import ProgressUpdateModal from '../components/ProgressUpdateModal';
 import CategoryAutocomplete from '../components/CategoryAutocomplete';
 import CoachMark from '../components/CoachMark';
 import ShareModal from '../components/ShareModal';
-import { bookShareUrl } from '../lib/shareService';
-import { noteAnthologyAdd } from '../lib/anthologyInsights'; // v0.74
-import { useAuth } from '../lib/AuthContext';
-import { fetchRecommendationReason } from '../lib/oracleProvenance';
+import { bookShareUrl } from '../lib/share/shareService';
+import { noteAnthologyAdd } from '../lib/api/anthologyInsights'; // v0.74
+import { useAuth } from '../contexts/AuthContext';
+import { fetchRecommendationReason } from '../lib/oracle/oracleProvenance';
 import OracleLongReading from '../components/OracleLongReading';
 import BookMark from '../components/BookMark';
 import { useConfirm } from '../components/primitives/ConfirmDialog';
 import StarRating from '../components/primitives/StarRating';
+import { rankSimilar } from '../lib/scoring/similarity';
+import { compactKey } from '../lib/matching/titleMatch';
 
 
 // ─── Similar books ────────────────────────────────────────────────────────────
-
-// `exclude` is a Set of bookKeys that must never be offered — in practice the
-// reader's finished books.
-//
-// The pool used to be wishlist + library + readNext, and `library` IS the read
-// shelf, so a reader with a large library got a "You might also like" made
-// almost entirely of books they had already read. The section reads as a
-// discovery surface; recommending a finished book is not a weak recommendation,
-// it is the wrong kind of answer, and it makes the Oracle look like it has not
-// been paying attention.
-//
-// Filtered rather than removed from the pool at the call site so the reason
-// travels with the code, and so read books stay available to any future scoring
-// signal that wants them as evidence without becoming candidates themselves.
-function computeSimilar(display, genresByBookId, pool, limit = 12, exclude) {
-  // Build genre ID set for the current book
-  const thisGenreIds = new Set(
-    (genresByBookId?.[display.bookId] || []).map(g => g.genreId)
-  );
-  // Fallback to legacy single genre field if no Oracle genres
-  const thisGenreLegacy = display.g || '';
-
-  const thisKey = bookKey(display);
-
-  const scored = pool
-    .filter(b => bookKey(b) !== thisKey)
-    .filter(b => !exclude || !exclude.has(bookKey(b)))
-    .map(b => {
-      let score = 0;
-
-      // Oracle genre overlap — most powerful signal
-      const bGenreIds = (genresByBookId?.[b.bookId] || []).map(g => g.genreId);
-      const overlap = bGenreIds.filter(id => thisGenreIds.has(id)).length;
-      score += overlap * 4;
-
-      // Legacy single genre fallback
-      if (!thisGenreIds.size && b.g && b.g === thisGenreLegacy) score += 3;
-
-      // Same author — strong signal
-      if (display.a && b.a && b.a === display.a) score += 3;
-
-      // Similar complexity (±1 step)
-      if (display.c && b.c && Math.abs(b.c - display.c) <= 1) score += 1;
-
-      // Similar length (within 30%)
-      if (display.pp && b.pp) {
-        const ratio = display.pp > 0 ? Math.abs(b.pp - display.pp) / display.pp : 1;
-        if (ratio < 0.3) score += 1;
-      }
-
-      return { book: b, score };
-    })
-    .filter(s => s.score > 0)
-    .sort((a, b) => b.score - a.score);
-
-  return scored.slice(0, limit).map(s => s.book);
-}
+// Scoring lives in lib/scoring/similarity.js (rankSimilar, BOOK_PAGE_WEIGHTS);
+// docs/reference/MATH.md §6. The reader's finished books are passed as
+// `exclude`: recommending a book they already read is the wrong kind of answer,
+// not a weak one. They are filtered in the ranker rather than dropped from the
+// pool so the reason travels with the code.
 
 // One cover + title + author, clickable through to its own page.
 //
@@ -256,7 +206,7 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
   // for 866 pages Search Console filed as duplicates: Google's renderer used to
   // index whatever this page showed while lookUpByShareKey was still out --
   // a skeleton, or "Book not found" when it failed -- and every such page was
-  // identical. See src/lib/entitySeed.js. Keyed on the route param, so an
+  // identical. See src/lib/book/entitySeed.js. Keyed on the route param, so an
   // in-app navigation to another book never renders this one's data.
   const seed = useMemo(() => {
     const s = readEntitySeed('book', bookKey_);
@@ -926,7 +876,7 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
   const pagesRead = currentlyReadingRow?.pagesRead ?? 0;
   // v0.65: the reader's own edition decides what progress is measured against.
   // effectivePages checks reader_editions, then the legacy
-  // currently_reading.user_page_count, then the catalog — see src/lib/editions.js.
+  // currently_reading.user_page_count, then the catalog — see src/lib/book/editions.js.
   const readerEdition = state.editionsByBookId?.[display.bookId] || null;
   const totalPages = readerEdition?.format === 'audio'
     ? null
@@ -1006,13 +956,13 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
   // v0.64: score more than we show, collapse same-work rows, then cut to twelve.
   //
   // A reader who shelved *Cien años de soledad* and *One Hundred Years of
-  // Solitude* has two rows for one novel, and every signal computeSimilar
+  // Solitude* has two rows for one novel, and every signal rankSimilar
   // scores on — genre overlap, author, complexity, length — is near-identical
   // between them, so they land next to each other at the top of the strip. The
   // collapse has to happen AFTER scoring (the score is what orders the strip)
   // and BEFORE the slice, or the duplicates simply eat two of the twelve slots.
   const similar = collapseWorks(
-    computeSimilar(display, state.genresByBookId, allBooks, 24, readKeys),
+    rankSimilar(display, allBooks, { genresByBookId: state.genresByBookId, limit: 24, exclude: readKeys }),
     { uiLang: lang }
   ).slice(0, 12);
 
@@ -1034,9 +984,8 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
     // Hardcover search can return a wrong series (e.g. searching "Bride" returns
     // "Scared Sexy"). Validate by checking the fetched books' s.name.
     const fetchedSeriesName = seriesBooks[0]?.s?.name;
-    const normalize = (s) => (s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
     const fetchedMatchesSeries = fetchedSeriesName &&
-      normalize(fetchedSeriesName) === normalize(seriesName);
+      compactKey(fetchedSeriesName) === compactKey(seriesName);
     const validSeriesBooks = fetchedMatchesSeries ? seriesBooks : [];
     for (const ob of validSeriesBooks) {
       if (!entries.some((e) => bookKey(e) === bookKey(ob))) entries.push(ob);

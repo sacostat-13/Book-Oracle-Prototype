@@ -22,7 +22,7 @@
 // WHAT THE COLUMN IS FOR
 //
 // It is the field that lets the app tell an original from a translation when it
-// holds both. src/lib/workGroups.js collapses rows that are provably the same
+// holds both. src/lib/book/workGroups.js collapses rows that are provably the same
 // work and then has to choose which one to show; `pickPreferred()` consults
 // original_language and, today, almost always finds null and falls back to
 // whichever row has a cover. Filling it is what makes that choice principled —
@@ -143,7 +143,7 @@
 // "we checked, there is nothing" — the postmortem's root cause with a date on
 // it. 971 books were declared unfindable by a broken connection once, and the
 // only thing that saved them was that nothing recorded the verdict.
-// shouldStampChecked() in src/lib/originalLanguage.js owns that decision, and
+// shouldStampChecked() in src/lib/book/originalLanguage.js owns that decision, and
 // the probe asserts on it.
 //
 // Overwrite. Write-once, matching oracleBatch's guard and for its reason: the
@@ -190,14 +190,14 @@ import { createServiceClient } from '../_shared/supabaseClient.mjs';
 import { readFileSync } from 'fs';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
-import { cleanIsbn, isValidIsbn } from '../../src/lib/isbn.js';
+import { cleanIsbn, isValidIsbn } from '../../src/lib/book/isbn.js';
 // Every rule that can be got wrong without a network call lives in the library
 // module, so batch-scripts/probes/originalLanguage.probe.mjs can exercise it
 // offline. This file is the I/O.
 import {
   normPerson, normTitleLoose, isPlaceholderAuthor, authorLikelySame,
   to6391, planPropagation, decideWrite, searchTitles, shouldStampChecked,
-} from '../../src/lib/originalLanguage.js';
+} from '../../src/lib/book/originalLanguage.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -1016,7 +1016,7 @@ async function writeAnswer(row, code, source) {
 
 // Decide what to do with an answer for a row that may already have one.
 // Returns 'write' | 'skip'.
-// Wraps decideWrite (src/lib/originalLanguage.js) with this run's bookkeeping.
+// Wraps decideWrite (src/lib/book/originalLanguage.js) with this run's bookkeeping.
 // The decision itself is in the library so the probe can assert on it; the
 // counters and the disagreement log are reporting, and belong here.
 function precedence(row, code, source) {
@@ -1087,7 +1087,7 @@ async function propagate() {
     if (page.length < PAGE) break;
   }
 
-  // planPropagation lives in src/lib/originalLanguage.js so the probe can run
+  // planPropagation lives in src/lib/book/originalLanguage.js so the probe can run
   // this exact grouping over hand-built rows with no database. A group whose
   // members disagree is poisoned and answers nobody.
   const { assignments, poisoned } = planPropagation(rows, (isbn) => isValidIsbn(isbn));

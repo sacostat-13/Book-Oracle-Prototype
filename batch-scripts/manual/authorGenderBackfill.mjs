@@ -4,7 +4,7 @@
 // ---------------
 // author_gender and author_gender_checked_at were added in v0.55 for the
 // "books by women" accomplishment (see shareMoments.js). The rules for filling
-// them live in src/lib/oracleCategorizationService.js — but that module stopped
+// them live in src/lib/oracle/oracleCategorizationService.js — but that module stopped
 // running in the browser at v0.61, and oracleBatch.mjs, which is supposed to
 // mirror its prompt, never picked the field up. Grep oracleBatch for "gender":
 // zero hits. So the column has been empty for every book since the day it
@@ -154,7 +154,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const vlog = (m) => { if (VERBOSE) process.stdout.write('    ' + m + '\n'); };
 
 // ── Validation ────────────────────────────────────────────────────────────────
-// Mirrors src/lib/oracleCategorizationService.js. Anything else → null → the
+// Mirrors src/lib/oracle/oracleCategorizationService.js. Anything else → null → the
 // field is not written and the author stays eligible for a later run. Never
 // write a value the enum doesn't have; a bad write is worse than a missing one.
 const VALID_AUTHOR_GENDERS = new Set(['female', 'male', 'nonbinary', 'mixed', 'unknown']);
@@ -312,7 +312,7 @@ function parseJSON(text) {
 
 // ── Prompt ────────────────────────────────────────────────────────────────────
 // The rules are lifted verbatim from AUTHOR GENDER RULES in
-// src/lib/oracleCategorizationService.js. Keep them that way. That block is the
+// src/lib/oracle/oracleCategorizationService.js. Keep them that way. That block is the
 // canonical statement, and this script existing at all is the direct result of
 // oracleBatch.mjs paraphrasing a prompt instead of mirroring it.
 function buildPrompt(group) {

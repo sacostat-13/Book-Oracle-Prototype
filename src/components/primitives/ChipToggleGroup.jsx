@@ -11,7 +11,7 @@
 // Cleaning up the three overlapping `.chip` definitions is styling work for
 // the CSS Modules migration, not this component.
 
-import { toggleInList } from '../../lib/selection';
+import { toggleInList } from '../../lib/util/selection';
 
 const cx = (...c) => c.filter(Boolean).join(' ');
 

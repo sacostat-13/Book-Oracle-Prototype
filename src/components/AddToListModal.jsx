@@ -3,12 +3,12 @@
 // Used by AddToListPicker (single book) and SelectionBar (bulk).
 
 import { useState } from 'react';
-import { useData } from '../lib/DataContext';
-import { useRouter } from '../lib/RouterContext';
-import { useT } from '../lib/I18nContext';
+import { useData } from '../contexts/DataContext';
+import { useRouter } from '../contexts/RouterContext';
+import { useT } from '../contexts/I18nContext';
 import Modal from './primitives/Modal';
 import ProGate from './ProGate';
-import { useProLimits } from '../lib/proGates';
+import { useProLimits } from '../hooks/useProLimits';
 
 export default function AddToListModal({ books = [], onClose }) {
   // books can be a single book object or an array

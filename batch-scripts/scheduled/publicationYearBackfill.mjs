@@ -30,7 +30,7 @@
 //
 // NEVER GUESSES
 // -------------
-// Every search hit must pass titleMatches() AND authorMatches() (src/lib/titleMatch.js).
+// Every search hit must pass titleMatches() AND authorMatches() (src/lib/matching/titleMatch.js).
 // Rows whose author is empty or a placeholder are skipped.
 //
 // Fill-only by default, resumable. `--recheck-days N` additionally re-derives
@@ -57,7 +57,7 @@ import { createServiceClient } from '../_shared/supabaseClient.mjs';
 import { readFileSync, writeFileSync, mkdirSync } from 'fs';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
-import { titleMatches, authorMatches, titleVariants } from '../../src/lib/titleMatch.js';
+import { titleMatches, authorMatches, titleVariants } from '../../src/lib/matching/titleMatch.js';
 import { decideYear, plausibleYear, TOLERANCE } from '../_shared/publicationYear.mjs';
 import { makeWikidataYear, FAILED as WD_FAILED } from '../_shared/wikidataYear.mjs';
 

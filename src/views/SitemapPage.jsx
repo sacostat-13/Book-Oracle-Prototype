@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
-import { RouteLink } from '../lib/RouterContext';
-import { useT } from '../lib/I18nContext';
-import { useDocumentMeta } from '../lib/useDocumentMeta';
-import { fetchFamilies } from '../lib/genreService';
+import { RouteLink } from '../contexts/RouterContext';
+import { useT } from '../contexts/I18nContext';
+import { useDocumentMeta } from '../hooks/useDocumentMeta';
+import { fetchFamilies } from '../lib/api/genreService';
 
 // A plain link list, grouped. Deliberately excludes personal/auth-gated
 // views (wishlist, library, currently-reading, profile settings) — those

@@ -17,13 +17,13 @@
 // ever fails we still degrade to sharing text + link — never a broken PNG.
 
 import { useRef, useState } from 'react';
-import { useData } from '../lib/DataContext';
-import { SITE_ORIGIN } from '../lib/siteUrl';
-import { useI18n } from '../lib/I18nContext';
+import { useData } from '../contexts/DataContext';
+import { SITE_ORIGIN } from '../lib/util/siteUrl';
+import { useI18n } from '../contexts/I18nContext';
 import Modal from './primitives/Modal';
 import ShareCard from './ShareCard';
-import { shareOrCopy, canShareFile } from '../lib/shareService';
-import { momentCardFile } from '../lib/shareCardImage';
+import { shareOrCopy, canShareFile } from '../lib/share/shareService';
+import { momentCardFile } from '../lib/share/shareCardImage';
 
 function momentShareText(moment, t) {
   switch (moment.type) {

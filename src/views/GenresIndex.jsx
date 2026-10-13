@@ -12,9 +12,9 @@
 // carried exactly one link, `<a href="/">`.
 
 import { useEffect, useState } from 'react';
-import { RouteLink } from '../lib/RouterContext';
-import { useDocumentMeta } from '../lib/useDocumentMeta';
-import { fetchFamilies } from '../lib/genreService';
+import { RouteLink } from '../contexts/RouterContext';
+import { useDocumentMeta } from '../hooks/useDocumentMeta';
+import { fetchFamilies } from '../lib/api/genreService';
 
 export default function GenresIndex() {
   const [families, setFamilies] = useState([]);

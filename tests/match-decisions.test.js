@@ -6,9 +6,10 @@
 
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
-import { addressKey, bookKey } from '../src/lib/bookHelpers.js';
-import { computeLocalMatch, drawWeight, DRAW_WEIGHT_POWER, UNSCORED_DRAW_MATCH } from '../src/lib/matchHelpers.js';
-import { weightedSample } from '../src/lib/random.js';
+import { addressKey, bookKey } from '../src/lib/book/bookHelpers.js';
+import { computeLocalMatch } from '../src/lib/scoring/localMatch.js';
+import { drawWeight, DRAW_WEIGHT_POWER, UNSCORED_DRAW_MATCH } from '../src/lib/scoring/drawWeight.js';
+import { weightedSample } from '../src/lib/util/random.js';
 
 describe('§1 address keys fold accents', () => {
   it('folds Spanish and other Latin diacritics instead of dropping the letter', () => {

@@ -6,9 +6,9 @@
 // captures product- and feature-name searches, rather than a modal buried in
 // About. No login required; reads straight from releases.js.
 
-import { useRouter } from '../lib/RouterContext';
-import { useI18n, useT } from '../lib/I18nContext';
-import { publishedReleases, CURRENT_VERSION } from '../lib/releases';
+import { useRouter } from '../contexts/RouterContext';
+import { useI18n, useT } from '../contexts/I18nContext';
+import { publishedReleases, CURRENT_VERSION } from '../data/releases';
 
 export default function Changelog() {
   const { go } = useRouter();

@@ -2,7 +2,7 @@
 // Single-book "Add to list" button that opens AddToListModal.
 
 import { useState } from 'react';
-import { useT } from '../lib/I18nContext';
+import { useT } from '../contexts/I18nContext';
 import AddToListModal from './AddToListModal';
 
 // v0.40: accepts an optional className so callers can demote/promote this

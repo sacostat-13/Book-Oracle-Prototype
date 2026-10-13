@@ -1,53 +1,35 @@
 import { useState, useMemo } from 'react';
 import BookLoader from '../components/BookLoader';
-import { useData } from '../lib/DataContext';
-import { useRouter } from '../lib/RouterContext';
-import { ALL_BOOKS, bookKey } from '../lib/bookHelpers';
-import { callClaude, parseJSONResponse, QuotaExceededError } from '../lib/claudeApi';
-import { logRecommendations, attachRecommendationIds } from '../lib/oracleProvenance';
+import { useData } from '../contexts/DataContext';
+import { useRouter } from '../contexts/RouterContext';
+import { ALL_BOOKS, bookKey } from '../lib/book/bookHelpers';
+import { callClaude, parseJSONResponse, QuotaExceededError } from '../lib/oracle/claudeApi';
+import { logRecommendations, attachRecommendationIds } from '../lib/oracle/oracleProvenance';
 import OracleMissButton from '../components/OracleMissButton';
-import { fetchMissHint } from '../lib/oracleReadings'; // v0.72.2
-import { useOracleQuota } from '../lib/OracleQuotaContext';
+import { fetchMissHint } from '../lib/oracle/oracleReadings'; // v0.72.2
+import { useOracleQuota } from '../contexts/OracleQuotaContext';
 import { OracleQuotaWall } from '../components/OracleQuotaBadge';
-import { useT, useI18n, langDirective } from '../lib/I18nContext';
+import { useT, useI18n, langDirective } from '../contexts/I18nContext';
 import BookCard from '../components/BookCard';
 import BookCover from '../components/BookCover';
-import { buildTasteProfile, describeTasteProfile, MATCH_SCORING_INSTRUCTIONS } from '../lib/matchHelpers';
-import { buildExcludeHint, buildShelfSignature, filterAlreadyKnown, REASON_INSTRUCTIONS, REPRESENTATION_INSTRUCTIONS } from '../lib/oraclePrompt';
-import { saveDraw, loadDraw } from '../lib/oracleDrawCache';
+import { buildTasteProfile } from '../lib/scoring/tasteProfile';
+import { describeTasteProfile, MATCH_SCORING_INSTRUCTIONS } from '../lib/oracle/tastePrompt';
+import { buildExcludeHint, buildShelfSignature, filterAlreadyKnown, REASON_INSTRUCTIONS, REPRESENTATION_INSTRUCTIONS } from '../lib/oracle/oraclePrompt';
+import { saveDraw, loadDraw } from '../lib/oracle/oracleDrawCache';
 import BookMark from '../components/BookMark';
-
-// Max possible raw score per seed book (3 for genre + 2 for complexity + 1 for
-// depth — see the scoring loop below), used to normalize into a 0-100 match %.
-const MAX_SCORE_PER_SEED = 6;
+import { rankBySeeds } from '../lib/scoring/similarity';
 
 // Ask for more than we show — the real dedupe against the whole shelf runs
 // client-side after the response and needs something to cut into.
 const SIMILAR_REQUEST = 8;
 const SIMILAR_COUNT = 5;
 
+// Local fallback (AI unavailable / wishlist mode): rank candidates against the
+// SEED books the reader picked — not their overall taste profile, since "similar
+// to these" is the point of this page. Scoring: lib/scoring/similarity.js
+// (rankBySeeds, SEED_WEIGHTS); docs/reference/MATH.md §7.
 function fallbackSimilar(selection, candidates) {
-  const scored = candidates.map((c) => {
-    let score = 0;
-    for (const s of selection) {
-      if (s.g && c.g === s.g) score += 3;
-      if (s.c && c.c && Math.abs(c.c - s.c) <= 1) score += 2;
-      if (s.p && c.p && Math.abs(c.p - s.p) <= 1) score += 1;
-    }
-    return { book: c, score };
-  });
-  scored.sort((a, b) => b.score - a.score);
-  const maxPossible = selection.length * MAX_SCORE_PER_SEED;
-  return {
-    // This score is a genuine computation against the SEED books you picked
-    // (not your overall taste profile) — "similar to these" is the whole
-    // point of this mode, so that's the more correct basis here.
-    books: scored.slice(0, SIMILAR_COUNT).map((s) => ({
-      ...s.book,
-      match: maxPossible > 0 ? Math.round((s.score / maxPossible) * 100) : undefined,
-    })),
-    source: 'fallback',
-  };
+  return { books: rankBySeeds(selection, candidates, { limit: SIMILAR_COUNT }), source: 'fallback' };
 }
 
 function SelectableCard({ book, selected, onClick }) {

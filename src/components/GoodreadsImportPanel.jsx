@@ -15,8 +15,8 @@
 // v0.59
 
 import { useState } from 'react';
-import { useT } from '../lib/I18nContext';
-import { extractGoodreadsId, fetchGoodreadsShelves, importErrorKey } from '../lib/goodreadsRss';
+import { useT } from '../contexts/I18nContext';
+import { extractGoodreadsId, fetchGoodreadsShelves, importErrorKey } from '../lib/sources/goodreadsRss';
 
 export default function GoodreadsImportPanel({ onImported, disabled }) {
   const t = useT();

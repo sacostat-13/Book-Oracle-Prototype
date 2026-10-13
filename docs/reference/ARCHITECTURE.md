@@ -14,8 +14,8 @@ in [CHANGELOG.md](../../CHANGELOG.md).
 ## The shape of the app
 
 - **Frontend** — React 18 SPA built with Vite, Sass for styles, a small custom
-  router (`src/lib/RouterContext.jsx`), bilingual EN/ES (`src/i18n/*.json`,
-  `src/lib/I18nContext.jsx`). PWA via `vite-plugin-pwa`.
+  router (`src/contexts/RouterContext.jsx`), bilingual EN/ES (`src/i18n/*.json`,
+  `src/contexts/I18nContext.jsx`). PWA via `vite-plugin-pwa`.
 - **Backend** — Supabase (Postgres + auth + RLS). Writes to the shared catalog
   go through `SECURITY DEFINER` RPCs; per-user tables are protected by RLS.
 - **Server functions** — `netlify/functions/*` proxy every third-party API that
@@ -35,7 +35,7 @@ provider may read the ones outside it:
 ThemeProvider → I18nProvider → AuthProvider → DataProvider → OracleQuotaProvider → RouterProvider → App
 ```
 
-`DataProvider` (`src/lib/DataContext.jsx`) holds the reader's shelves and every
+`DataProvider` (`src/contexts/DataContext.jsx`) holds the reader's shelves and every
 mutation on them, for both signed-in readers (Supabase) and guests
 (`localStorage`). It is the largest file in the repo and the first candidate
 for splitting — see the code-health spike.
@@ -61,11 +61,16 @@ for splitting — see the code-health spike.
 ├── docs/                      reference/ (this file, MATH.md), specs/, sql/, audits/ — see docs/README.md
 └── src/
     ├── main.jsx               Mount + providers
-    ├── App.jsx                Route switch
+    ├── App.jsx                Global overlays + route switch (pages lazy-loaded)
+    ├── contexts/              Auth, Data, I18n, OracleQuota, Router, Theme providers
+    ├── hooks/                 useX hooks: overlays, shelves, follows, Pro limits…
+    ├── lib/                   Plain modules by domain — see src/lib/README.md
+    │   ├── book/  matching/  scoring/  sources/  api/  oracle/
+    │   └── achievements/  share/  genres/  device/  util/
+    ├── data/                  Static content: releases, moods, avatars, bundled catalog
     ├── i18n/                  en.json + es.json (keys must stay in parity)
     ├── styles/                main.scss → tokens, layout/, components/, pages/
-    ├── lib/                   Contexts, hooks, services and pure helpers
-    ├── components/            Shared UI (+ landing/, constellation/, oracleSpread/)
+    ├── components/            Shared UI; primitives/ = Modal, Tabs, StarRating…
     └── views/                 One file per route
 ```
 

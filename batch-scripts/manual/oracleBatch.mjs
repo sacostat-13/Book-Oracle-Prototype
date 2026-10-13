@@ -7,7 +7,7 @@
 // v0.62 — author_gender is written here for the first time.
 //
 // It was added to the schema in v0.55 and to the prompt in
-// src/lib/oracleCategorizationService.js, which this script is supposed to
+// src/lib/oracle/oracleCategorizationService.js, which this script is supposed to
 // mirror. It was never added HERE. When v0.61 moved the work off the reader's
 // button and onto the nightly cron, that module stopped executing entirely and
 // this script became the only thing writing the column — so the field shipped,
@@ -57,7 +57,7 @@ import {
 import {
   fileURLToPath
 } from 'url';
-import { isPlaceholderGenre, normalizeGenreName } from '../../src/lib/genrePlaceholders.js';
+import { isPlaceholderGenre, normalizeGenreName } from '../../src/lib/genres/genrePlaceholders.js';
 
 const __dirname = dirname(fileURLToPath(
   import.meta.url));
@@ -565,7 +565,7 @@ function sanitizeLevel(n) {
 }
 
 // v0.62: mirrors VALID_AUTHOR_GENDERS / sanitizeAuthorGender in
-// src/lib/oracleCategorizationService.js. Anything outside the enum → null →
+// src/lib/oracle/oracleCategorizationService.js. Anything outside the enum → null →
 // the field is not written and the book stays eligible for a later run.
 const VALID_AUTHOR_GENDERS = new Set(['female', 'male', 'nonbinary', 'mixed', 'unknown']);
 

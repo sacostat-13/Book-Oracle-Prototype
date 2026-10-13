@@ -15,7 +15,7 @@
 // in every language Google holds. The collapse never had a chance, because two
 // translations share no identifier and no characters.
 
-import { googleBooksByAuthor } from '../../src/lib/googleBooksService.js';
+import { googleBooksByAuthor } from '../../src/lib/sources/googleBooksService.js';
 
 let pass = 0, fail = 0;
 const check = (n, c, e = '') => {
