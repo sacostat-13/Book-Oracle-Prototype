@@ -11,9 +11,9 @@ Moved here from README.md on 2026-10-12 (code-health spike, item O1). Entries ar
 
 # v0.72.4 — Shared UI building blocks (2026-10-13)
 
-Internal release: Sprint 2 of the 2026-10-12 code-health spike (§2), plus two fixes found in review.
-**Not announced in the app** — `releases.js` and `CURRENT_VERSION` stay at v0.72.2, so readers get
-no What's New popup. Changes a reader could notice are marked ★.
+Sprint 2 of the 2026-10-12 code-health spike (§2), plus two fixes found in review.
+**Reader-facing:** `releases.js` has a bilingual entry and `CURRENT_VERSION` is v0.72.4, so readers see
+the What's New dot (not announced on load — no `major`). Changes a reader could notice are marked ★.
 
 ### Added
 - `components/primitives/`: `Modal`, `ConfirmDialog` (`useConfirm`), `StarRating`, `ChipToggleGroup`, `Tabs`, with a README catalogue; `components/CoverThumb`, `components/BookThumb`; `hooks/useEscape`, `useClickOutside`, `useScrollLock`; `lib/selection.js`.

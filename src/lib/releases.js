@@ -16,9 +16,30 @@
 
 // The version label shown as "current" — keep in sync with package.json and
 // the README version line.
-export const CURRENT_VERSION = 'v0.72.2';
+export const CURRENT_VERSION = 'v0.72.4';
 
 export const RELEASES = [{
+    version: 'v0.72.4',
+    date: '2026-10-13',
+    // Not announced on load: fixes and polish a reader notices in passing, not
+    // a capability to go looking for. The nav dot is enough. (v0.72.3 was an
+    // internal code-health release and has no entry here — see CHANGELOG.md.)
+    titleEn: 'Smoother windows, clearer choices',
+    titleEs: 'Ventanas más prolijas, elecciones más claras',
+    bodyEn: [
+      'Every window that opens over the page — rating a book, sharing, confirming — now sits in the middle of the screen, on your phone as well as your computer. Press Escape to close it and you are right back where you were.',
+      'When you choose genres and moods for an anthology or a book club, the ones you picked are now clearly lit. Before, they looked just like the rest.',
+      'Finish a book from its own page and the card to share it appears straight away, instead of waiting until you moved somewhere else.',
+      'Removing or deleting something now asks in a proper window, in your language, with a button that says exactly what will happen.',
+    ],
+    bodyEs: [
+      'Todas las ventanas que se abren sobre la página — calificar un libro, compartir, confirmar — ahora aparecen en el centro de la pantalla, en el celular y en la compu. Con Escape la cerrás y volvés justo a donde estabas.',
+      'Cuando elegís géneros y ánimo para una antología o un club, los que marcaste ahora se ven encendidos. Antes se veían iguales al resto.',
+      'Si terminás un libro desde su propia página, la tarjeta para compartirlo aparece enseguida, en lugar de esperar a que fueras a otra parte.',
+      'Quitar o eliminar algo ahora te pregunta en una ventana como corresponde, en tu idioma, con un botón que dice exactamente qué va a pasar.',
+    ],
+  },
+  {
     version: 'v0.72.2',
     date: '2026-10-01',
     // Not announced on load: a new logo is seen, not looked for.
