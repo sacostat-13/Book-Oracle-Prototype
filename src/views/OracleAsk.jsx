@@ -17,7 +17,8 @@ import { OracleQuotaWall } from '../components/OracleQuotaBadge';
 import { useT, useTNode, useI18n, langDirective } from '../contexts/I18nContext';
 import BookCard from '../components/BookCard';
 import OracleMissButton from '../components/OracleMissButton';
-import { buildTasteProfile, describeTasteProfile, MATCH_SCORING_INSTRUCTIONS } from '../lib/scoring/matchHelpers';
+import { buildTasteProfile } from '../lib/scoring/tasteProfile';
+import { describeTasteProfile, MATCH_SCORING_INSTRUCTIONS } from '../lib/oracle/tastePrompt';
 import { buildExcludeHint, buildShelfSignature, filterAlreadyKnown, REASON_INSTRUCTIONS, REPRESENTATION_INSTRUCTIONS } from '../lib/oracle/oraclePrompt';
 import { saveDraw, loadDraw } from '../lib/oracle/oracleDrawCache';
 import { fetchMissHint } from '../lib/oracle/oracleReadings'; // v0.72.2

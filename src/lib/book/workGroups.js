@@ -52,6 +52,7 @@
 // workGroups.probe.mjs runs this file directly, and node ESM does not guess
 // extensions. Vite resolves both forms, so nothing changes in the browser.
 import { addressKey, bookKey, SHARE_KEY_AUTHOR_LENGTH } from './bookHelpers.js';
+import { scoreWorkRepresentative } from '../scoring/workRepresentative.js';
 
 // ---------- title variants ----------
 
@@ -177,47 +178,9 @@ function signalsFor(book) {
 
 // Which row of a group the reader is shown.
 //
-// The rule, from the product side: THE ROW WE SHOW IS THE ONE IN THE LANGUAGE
-// THE BOOK WAS WRITTEN IN. A reader browsing an author's work should see
-// *Cien años de soledad* under García Márquez because that is the book he
-// wrote, not because of who is looking.
-//
-// It only applies where original_language is actually known, which today means
-// books the Oracle categorisation pass has enriched — every pre-existing row
-// has NULL and always will, since nothing backfills it. So the ladder below
-// falls through to weaker rules rather than pretending, and the section gets
-// better as books are enriched instead of being wrong until they are.
-//
-// The reader's UI language is the SECOND tiebreak, not the first, and never
-// overrides a known original. Showing a Spanish reader the Spanish translation
-// of a Spanish novel is right; showing them the Spanish translation of an
-// English novel *as the canonical entry* is a different and worse claim.
-function scoreCandidate(book, uiLang) {
-  let score = 0;
+// Choosing the row that represents a work: scoring/workRepresentative.js
+// (docs/reference/MATH.md §11).
 
-  const lang = (book.language || '').toLowerCase() || null;
-  const orig = (book.originalLanguage || '').toLowerCase() || null;
-
-  // 1. Known to be the original-language edition.
-  if (lang && orig && orig !== 'unknown' && lang === orig) score += 1000;
-
-  // 2. Matches the reader's interface language.
-  if (lang && uiLang && lang === uiLang) score += 100;
-
-  // 3. Completeness, so the entry renders as something rather than a grey box.
-  //    A cover outweighs the rest because this is a strip of covers.
-  if (book.coverUrl) score += 50;
-  if (book.status === 'verified') score += 20;
-  else if (book.status && book.status !== 'unreviewed') score += 10;
-  if (book.d) score += 5;
-  if (book.pp) score += 2;
-
-  // 4. A row we hold beats one we only found through an API — it opens on a
-  //    real page with real genres rather than a lookup on arrival.
-  if (book.bookId) score += 8;
-
-  return score;
-}
 
 /**
  * Collapse same-work rows, keeping one entry per book.
@@ -278,7 +241,7 @@ export function collapseWorks(books, opts = {}) {
   const best = new Map();      // root → { index, score }
   list.forEach((b, i) => {
     const root = find(i);
-    const score = scoreCandidate(b, uiLang);
+    const score = scoreWorkRepresentative(b, uiLang);
     const cur = best.get(root);
     // Strict >: ties keep the earlier row, so a list with no distinguishing
     // signal at all comes back in exactly the order it went in.

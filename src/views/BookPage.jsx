@@ -39,66 +39,15 @@ import OracleLongReading from '../components/OracleLongReading';
 import BookMark from '../components/BookMark';
 import { useConfirm } from '../components/primitives/ConfirmDialog';
 import StarRating from '../components/primitives/StarRating';
+import { rankSimilar } from '../lib/scoring/similarity';
 
 
 // ─── Similar books ────────────────────────────────────────────────────────────
-
-// `exclude` is a Set of bookKeys that must never be offered — in practice the
-// reader's finished books.
-//
-// The pool used to be wishlist + library + readNext, and `library` IS the read
-// shelf, so a reader with a large library got a "You might also like" made
-// almost entirely of books they had already read. The section reads as a
-// discovery surface; recommending a finished book is not a weak recommendation,
-// it is the wrong kind of answer, and it makes the Oracle look like it has not
-// been paying attention.
-//
-// Filtered rather than removed from the pool at the call site so the reason
-// travels with the code, and so read books stay available to any future scoring
-// signal that wants them as evidence without becoming candidates themselves.
-function computeSimilar(display, genresByBookId, pool, limit = 12, exclude) {
-  // Build genre ID set for the current book
-  const thisGenreIds = new Set(
-    (genresByBookId?.[display.bookId] || []).map(g => g.genreId)
-  );
-  // Fallback to legacy single genre field if no Oracle genres
-  const thisGenreLegacy = display.g || '';
-
-  const thisKey = bookKey(display);
-
-  const scored = pool
-    .filter(b => bookKey(b) !== thisKey)
-    .filter(b => !exclude || !exclude.has(bookKey(b)))
-    .map(b => {
-      let score = 0;
-
-      // Oracle genre overlap — most powerful signal
-      const bGenreIds = (genresByBookId?.[b.bookId] || []).map(g => g.genreId);
-      const overlap = bGenreIds.filter(id => thisGenreIds.has(id)).length;
-      score += overlap * 4;
-
-      // Legacy single genre fallback
-      if (!thisGenreIds.size && b.g && b.g === thisGenreLegacy) score += 3;
-
-      // Same author — strong signal
-      if (display.a && b.a && b.a === display.a) score += 3;
-
-      // Similar complexity (±1 step)
-      if (display.c && b.c && Math.abs(b.c - display.c) <= 1) score += 1;
-
-      // Similar length (within 30%)
-      if (display.pp && b.pp) {
-        const ratio = display.pp > 0 ? Math.abs(b.pp - display.pp) / display.pp : 1;
-        if (ratio < 0.3) score += 1;
-      }
-
-      return { book: b, score };
-    })
-    .filter(s => s.score > 0)
-    .sort((a, b) => b.score - a.score);
-
-  return scored.slice(0, limit).map(s => s.book);
-}
+// Scoring lives in lib/scoring/similarity.js (rankSimilar, BOOK_PAGE_WEIGHTS);
+// docs/reference/MATH.md §6. The reader's finished books are passed as
+// `exclude`: recommending a book they already read is the wrong kind of answer,
+// not a weak one. They are filtered in the ranker rather than dropped from the
+// pool so the reason travels with the code.
 
 // One cover + title + author, clickable through to its own page.
 //
@@ -1006,13 +955,13 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
   // v0.64: score more than we show, collapse same-work rows, then cut to twelve.
   //
   // A reader who shelved *Cien años de soledad* and *One Hundred Years of
-  // Solitude* has two rows for one novel, and every signal computeSimilar
+  // Solitude* has two rows for one novel, and every signal rankSimilar
   // scores on — genre overlap, author, complexity, length — is near-identical
   // between them, so they land next to each other at the top of the strip. The
   // collapse has to happen AFTER scoring (the score is what orders the strip)
   // and BEFORE the slice, or the duplicates simply eat two of the twelve slots.
   const similar = collapseWorks(
-    computeSimilar(display, state.genresByBookId, allBooks, 24, readKeys),
+    rankSimilar(display, allBooks, { genresByBookId: state.genresByBookId, limit: 24, exclude: readKeys }),
     { uiLang: lang }
   ).slice(0, 12);
 

@@ -6,10 +6,11 @@ import { fetchSeriesBooks } from '../lib/sources/enrichmentService';
 import { callClaude, QuotaExceededError, parseJSONResponse } from '../lib/oracle/claudeApi';
 import { useT, useI18n, langDirective } from '../contexts/I18nContext';
 import { useOracleQuota } from '../contexts/OracleQuotaContext';
-import { goalDirective } from '../lib/scoring/matchHelpers';
+import { goalDirective } from '../lib/oracle/tastePrompt';
 import GenreSelect from '../components/GenreSelect';
 import ProGate from '../components/ProGate';
 import { useProLimits } from '../hooks/useProLimits';
+import { levelPlanSteps } from '../lib/scoring/levelPlan';
 
 const LEVEL_NAMES = ['', '', '', 'Devoted', 'Literary', 'Voracious'];
 const LEVEL_BLURB = {
@@ -153,18 +154,9 @@ export default function PlanCreate() {
     if (type === 'level') {
       const start = state.profile.readingLevel || 1;
       const end = target;
-      const sorted = [...candidates].sort((a, b) => (a.c || 3) - (b.c || 3));
-      const steps = [];
-      for (let i = 0; i < timeline; i++) {
-        const targetC = start + ((end - start) * (i / Math.max(1, timeline - 1)));
-        const cands = sorted.filter(
-          (b) => Math.abs((b.c || 3) - targetC) <= 0.7 &&
-            !steps.some((s) => s.t === b.t) &&
-            !state.library.some((l) => bookKey(l) === bookKey(b))
-        );
-        const picked = cands[Math.floor(Math.random() * Math.min(cands.length, 5))];
-        if (picked) steps.push({ ...picked, month: i + 1, reason: `A measured step toward level ${end} prose.` });
-      }
+      // Month-by-month climb in complexity: lib/scoring/levelPlan.js (MATH §9).
+      const steps = levelPlanSteps({ candidates, start, end, timeline, alreadyRead: state.library })
+        .map((s) => ({ ...s, reason: `A measured step toward level ${end} prose.` }));
       return {
         title: `From level ${start} to level ${end}`,
         intro: `A ${timeline}-month progression through gradually deeper prose.`,

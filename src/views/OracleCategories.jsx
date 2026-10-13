@@ -13,7 +13,10 @@ import { OracleQuotaBadge, OracleQuotaWall } from '../components/OracleQuotaBadg
 import { useT, useI18n, langDirective } from '../contexts/I18nContext';
 import BookCard from '../components/BookCard';
 import GenreSelect from '../components/GenreSelect';
-import { buildTasteProfile, describeTasteProfile, computeLocalMatch, drawWeight, MATCH_SCORING_INSTRUCTIONS } from '../lib/scoring/matchHelpers';
+import { buildTasteProfile } from '../lib/scoring/tasteProfile';
+import { describeTasteProfile, MATCH_SCORING_INSTRUCTIONS } from '../lib/oracle/tastePrompt';
+import { computeLocalMatch } from '../lib/scoring/localMatch';
+import { drawWeight } from '../lib/scoring/drawWeight';
 import { buildExcludeHint, buildShelfSignature, filterAlreadyKnown, REASON_INSTRUCTIONS, REPRESENTATION_INSTRUCTIONS } from '../lib/oracle/oraclePrompt';
 import { saveDraw, loadDraw } from '../lib/oracle/oracleDrawCache';
 import BookMark from '../components/BookMark';

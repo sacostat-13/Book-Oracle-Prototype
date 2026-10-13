@@ -49,7 +49,21 @@ const EBOOK_FORMAT_RX = /\b(kindle|ebook|e-book|epub|digital)\b/i;
 // Reading format IDs per Hardcover's schema: 1=Physical, 2=Audio, 3=Both, 4=Ebook.
 // Physical wins because ISBN-10 → Amazon ASIN only holds for print, and Bookshop is a
 // print-first retailer. An audiobook ISBN routes to a product neither store sells.
-const FORMAT_SCORE = { 1: 100, 3: 80, 4: 20, 2: -50 };
+export const FORMAT_SCORE = { 1: 100, 3: 80, 4: 20, 2: -50 };
+
+// The rest of the score, named (docs/reference/MATH.md §10). The ORDER of these
+// is the design: popularity is capped (POPULARITY_CAP) below both the
+// physical→ebook gap (80) and the English→foreign gap (70), so no amount of
+// popularity can promote an audiobook or a foreign printing over a US print.
+export const EDITION_WEIGHTS = Object.freeze({
+  compilationPenalty: -1000,  // flagged compilation, or format text says box set
+  validIsbn13: 10,            // Bookshop deep links need an ISBN-13
+  hasAsin: 1,                 // tie-break only
+  english: 30,                // US stores: English (language_id 1) is what we want
+  knownForeign: -40,          // a known non-English edition is actively wrong
+  popularityPerLog10: 8,      // × log10(1 + owners)
+  popularityCap: 30,
+});
 
 // Resolve the real format, letting edition_format override a contradicting id.
 function effectiveFormat(e) {
@@ -88,28 +102,28 @@ export function scoreEdition(e) {
   // Hard disqualifiers — a compilation ISBN is the exact failure we're fixing.
   // Checked client-side as well as in the query because Hardcover's `compilation`
   // flag is frequently unset even on obvious boxed sets.
-  if (e.compilation === true) score -= 1000;
-  if (e.edition_format && COMPILATION_FORMAT_RX.test(e.edition_format)) score -= 1000;
+  if (e.compilation === true) score += EDITION_WEIGHTS.compilationPenalty;
+  if (e.edition_format && COMPILATION_FORMAT_RX.test(e.edition_format)) score += EDITION_WEIGHTS.compilationPenalty;
 
   score += FORMAT_SCORE[effectiveFormat(e)] ?? 0;
 
   // Bookshop deep links need an ISBN-13; a valid ISBN-10 alone is a weaker record.
-  if (isValidIsbn(e.isbn_13)) score += 10;
+  if (isValidIsbn(e.isbn_13)) score += EDITION_WEIGHTS.validIsbn13;
 
   // An explicit ASIN is a mild convenience, NOT evidence of a better edition — for
   // 978- ISBNs purchaseLinks derives the ASIN anyway. It was +5 against a popularity
   // term that maxed out at +10, which let an obscure edition outrank a popular one on
   // metadata completeness alone: A Dowry of Blood picked a paperback with 3 owners and
   // an ASIN over the hardcover with 102. Demoted to a pure tiebreak.
-  if (e.asin) score += 1;
+  if (e.asin) score += EDITION_WEIGHTS.hasAsin;
 
   // We link to amazon.com / bookshop.org, both US stores, so English (language_id 1)
   // is what we want. A known-foreign edition is actively wrong — a Spanish or Japanese
   // ISBN produces a link to a product the US stores don't carry — so penalise it rather
   // than merely not rewarding it. null means "unknown", which is common on sparse
   // records and shouldn't be punished as if it were known-foreign.
-  if (e.language_id === 1) score += 30;
-  else if (e.language_id != null) score -= 40;
+  if (e.language_id === 1) score += EDITION_WEIGHTS.english;
+  else if (e.language_id != null) score += EDITION_WEIGHTS.knownForeign;
 
   // Within a format+language tier, how many people own an edition is the best available
   // proxy for "the one a store actually stocks". Log-scaled: the interesting distinction
@@ -119,7 +133,7 @@ export function scoreEdition(e) {
   // Capped at 30, which is deliberately below both the physical→ebook gap (80) and the
   // English→foreign gap (70), so no amount of popularity can promote an audiobook or a
   // foreign printing over a US print edition.
-  score += Math.min(Math.log10(1 + (e.users_count || 0)) * 8, 30);
+  score += Math.min(Math.log10(1 + (e.users_count || 0)) * EDITION_WEIGHTS.popularityPerLog10, EDITION_WEIGHTS.popularityCap);
 
   return score;
 }

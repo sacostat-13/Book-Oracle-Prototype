@@ -1,7 +1,8 @@
 import { useState, useMemo, useCallback } from 'react';
 import { useData } from '../contexts/DataContext';
 import { useRouter } from '../contexts/RouterContext';
-import { bookKey, getPrimaryGenre } from '../lib/book/bookHelpers';
+import { bookKey } from '../lib/book/bookHelpers';
+import { getPrimaryGenre } from '../lib/scoring/primaryGenre';
 import BulkImport from '../components/BulkImport';
 import CurationNotice from '../components/CurationNotice';
 import RatingModal from '../components/RatingModal';

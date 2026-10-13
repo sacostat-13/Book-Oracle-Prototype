@@ -23,7 +23,8 @@ import { useRouter } from '../contexts/RouterContext';
 import BookCover from './BookCover';
 import { callClaude, parseJSONResponse, QuotaExceededError } from '../lib/oracle/claudeApi';
 import { buildShelfSignature, normalizeTitle } from '../lib/oracle/oraclePrompt';
-import { buildTasteProfile, describeTasteProfile } from '../lib/scoring/matchHelpers';
+import { buildTasteProfile } from '../lib/scoring/tasteProfile';
+import { describeTasteProfile } from '../lib/oracle/tastePrompt';
 import { loadReading, saveReading } from '../lib/oracle/oracleReadings';
 
 export default function OracleLongReading({ book, reason = null }) {
