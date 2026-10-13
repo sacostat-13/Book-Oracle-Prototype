@@ -280,7 +280,6 @@ export default function ClubDirectory() {
           label={t('clubs.directory.filtersTitle')}
           layout="sections"
           brackets={false}
-          sheetOnMobile
         >
           <button className="modal__close" onClick={() => setFiltersOpen(false)} aria-label={t('common.close')}>×</button>
           <div className="modal__head">

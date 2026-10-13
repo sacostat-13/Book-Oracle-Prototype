@@ -18,7 +18,7 @@ From the 2026-10-12 code-health spike (§2). Changes a reader could notice are m
 
 ### Changed
 - ★ All 15 dialogs share one `Modal`: Escape closes only the topmost, focus is trapped and returned, page scroll is locked (the share-moment dialog and the scanner gained Escape). A text selection dragged out of a field no longer closes a dialog.
-- ★ The five older dialogs (add to anthology, new anthology, add book to list, club/list filters) take the standard backdrop and 480px card; they still dock as a bottom sheet on phones.
+- ★ Every dialog is centred horizontally and vertically, on desktop and phone. The five older dialogs (add to anthology, new anthology, add book to list, club/list filters) take the standard backdrop and 480px card and no longer dock as a bottom sheet on phones.
 - ★ The Oracle confirmation dialog now has the full-bleed header and footer its stylesheet always intended (a later rule had been overriding it).
 - ★ Every "Are you sure?" is a styled, translated dialog with a labelled red button instead of the browser's `confirm()` box.
 - ★ ReaderProfile's placeholder covers use the token-based thumbnail look.
@@ -26,6 +26,7 @@ From the 2026-10-12 code-health spike (§2). Changes a reader could notice are m
 - CSS Modules pilot on `Modal` (`:where()` rules); the old shell styles (`.rating-modal-overlay`, `.rating-modal`, `.modal-wide`, `.overlay`, `.modal`) are gone.
 
 ### Fixed
+- ★ Finishing a book on its own page now shows the share moment straight away. The book page (and the list, plan and join-club pages) render their own shell, which never mounted the share-moment dialog, the import toast or the Oracle confirmation; the moment waited, invisible, until the next page. These overlays are now mounted once around every route.
 - ★ Selected genre and mood chips (list editor, club form, directory filters) looked unselected: a later `.chip` rule erased `.chip--active`.
 - ★ "Remove [member] from this club?" showed no name — the `{name}` placeholder was missing in EN and ES.
 - ★ Four confirmations and a toast were English-only (Library/Wishlist remove, add curated books).
@@ -34,7 +35,8 @@ From the 2026-10-12 code-health spike (§2). Changes a reader could notice are m
 1. Open any dialog, press Tab repeatedly: focus stays inside; Escape closes it and focus returns to the button that opened it.
 2. Open a confirm over another dialog (e.g. delete inside a club page): Escape closes only the confirm.
 3. Create an anthology and pick genres/moods: selected chips are filled brass.
-4. On a phone, "Add to anthology" still slides up from the bottom.
+4. Dialogs sit in the middle of the screen on desktop and phone.
+5. On a book's page, mark it finished and save or skip the rating: the share card appears immediately.
 
 # v0.72.3 — Code health (2026-10-12)
 

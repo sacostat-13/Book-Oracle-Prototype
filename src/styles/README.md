@@ -104,7 +104,10 @@ Recorded so new work leans the right way (code-health spike §5):
    primitives. **Piloted on `Modal`** (S4, `components/primitives/Modal.module.scss`);
    next, view by view (S5). Two rules from the pilot:
    - wrap module rules in `:where()` so page classes passed via `className`
-     still win (module CSS is emitted after `main.scss`);
+     still win — but module CSS is emitted **before** `main.scss`, so a
+     zero-specificity rule also loses to the resets (`* { margin: 0 }`). Give
+     anything a reset also sets real class specificity (Modal's `margin: auto`
+     shipped in `:where()` and pinned every dialog to the top);
    - never look a module class up from JS or another stylesheet — it is
      hashed. Use a role/attribute (`[aria-modal="true"]`) or a prop
      (`overlayClassName`) instead.

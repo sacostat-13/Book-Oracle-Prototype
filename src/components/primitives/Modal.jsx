@@ -13,10 +13,10 @@
 // Render it only while open, as every modal here already does:
 //   {open && <Modal onClose={close} label="Rate this book">…</Modal>}
 //
-// Looks: the card is the former `.rating-modal` shell. Per-modal styling keeps
-// working through `className` (panel) and `overlayClassName` — the module's own
-// rules are wrapped in :where(), so they have zero specificity and any page
-// class wins regardless of stylesheet order. See src/styles/README.md.
+// Looks: the card is the former `.rating-modal` shell, centred on every screen.
+// Per-modal styling keeps working through `className` (panel) and
+// `overlayClassName` — the module's rules are mostly zero-specificity :where(),
+// so any page class wins. See the note at the top of Modal.module.scss.
 
 import { useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
@@ -51,7 +51,6 @@ const cx = (...c) => c.filter(Boolean).join(' ');
  *        sections: no padding; a head / body / foot stack where only the body scrolls
  *                  (children use .modal-head/.modal-body/.modal-foot or .modal__head/__body/__actions).
  *        fullscreen: no panel chrome at all (camera scanner).
- * @param {boolean}  [props.sheetOnMobile=false] dock to the bottom as a sheet below the mobile breakpoint
  * @param {boolean|'sm'} [props.brackets=true]  decorative corner brackets
  * @param {string}   [props.className]        extra class on the panel
  * @param {string}   [props.overlayClassName] extra class on the backdrop
@@ -64,7 +63,6 @@ export default function Modal({
   labelledBy,
   size = 'md',
   layout = 'card',
-  sheetOnMobile = false,
   brackets = true,
   className,
   overlayClassName,
@@ -117,7 +115,7 @@ export default function Modal({
 
   return createPortal(
     <div
-      className={cx(styles.overlay, sheetOnMobile && styles.sheetOverlay, layout === 'fullscreen' && styles.fullscreenOverlay, overlayClassName)}
+      className={cx(styles.overlay, layout === 'fullscreen' && styles.fullscreenOverlay, overlayClassName)}
       onMouseDown={onBackdropDown}
       onClick={onBackdropClick}
     >
@@ -133,7 +131,6 @@ export default function Modal({
           layout === 'fullscreen' ? styles.fullscreen : styles.panel,
           layout === 'sections' && styles.sections,
           layout !== 'fullscreen' && styles[size],
-          sheetOnMobile && styles.sheet,
           className,
         )}
       >

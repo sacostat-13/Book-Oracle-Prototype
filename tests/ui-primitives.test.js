@@ -102,3 +102,21 @@ describe('pickers and tabs use the shared primitives', () => {
     expect(sources.filter(([, s]) => /function useClickOutside\b/.test(s)).map(([p]) => p)).toEqual([]);
   });
 });
+
+describe('regressions fixed 2026-10-13', () => {
+  it('Modal centring margin has class specificity (a :where() margin loses to `* { margin: 0 }`)', () => {
+    const scss = readFileSync(new URL('../src/components/primitives/Modal.module.scss', import.meta.url), 'utf8')
+      .replace(/\/\/.*$/gm, '');
+    expect(scss).toMatch(/^\.panel\s*\{\s*margin:\s*auto;?\s*\}/m);
+    expect(scss).not.toMatch(/:where\(\.panel\)\s*\{[^}]*\bmargin\s*:/);
+  });
+
+  it('global overlays are mounted once, around every route — not inside one shell', () => {
+    const app = readFileSync(new URL('../src/App.jsx', import.meta.url), 'utf8');
+    const wrapper = app.slice(app.indexOf('export default function App()'), app.indexOf('function AppRoutes()'));
+    for (const name of ['ShareMomentModal', 'ImportProgressToast', 'OracleGateDialog']) {
+      expect((app.match(new RegExp(`<${name}\\b`, 'g')) || []).length, name).toBe(1);
+      expect(wrapper, `${name} must be rendered by App, outside AppRoutes`).toContain(`<${name}`);
+    }
+  });
+});

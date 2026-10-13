@@ -37,7 +37,7 @@ function CreateListModal({ genres, onSave, onClose }) {
     // layout="sections", not a plain card: this form grew a genre picker and a
     // mood picker, and on a phone the Create button sat below all of them. Head
     // and actions are pinned; only the middle scrolls.
-    <Modal onClose={onClose} dismissible={!saving} label={t('lists.newListBtn')} size="sm" layout="sections" sheetOnMobile>
+    <Modal onClose={onClose} dismissible={!saving} label={t('lists.newListBtn')} size="sm" layout="sections">
       <button className="modal__close" onClick={onClose} aria-label={t('common.close')}>✕</button>
       <div className="modal__head">
         <div className="bp-section__label">

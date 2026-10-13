@@ -2,12 +2,17 @@
 //
 // Moved here from pages/_social.scss (.rating-modal-overlay, .rating-modal),
 // pages/_misc.scss (.modal-wide) and components/_modal.scss (.overlay, .modal,
-// .modal--scroll and the mobile sheet). Values are unchanged.
+// .modal--scroll). Dialogs are centred on every screen size (2026-10-13: the
+// old mobile bottom sheet is gone).
 //
 // Every rule is wrapped in :where() — zero specificity — so a page class passed
 // through `className` / `overlayClassName` (e.g. .oracle-gate, .share-modal)
-// always wins, even though module CSS is emitted after main.scss.
-@use '../../styles/tokens';
+// always wins.
+//
+// BUT zero specificity also ties with the global resets (`* { margin: 0 }` in
+// _reset.scss), and module CSS is emitted BEFORE main.scss (main.jsx imports
+// App before the stylesheet), so a tie goes to the reset. Anything a reset also
+// sets must therefore NOT be in :where() — see .panel's margin below.
 
 // ── Backdrop ────────────────────────────────────────────────────────────────
 :where(.overlay) {
@@ -17,9 +22,10 @@
   backdrop-filter: blur(4px);
   z-index: 1000;
   display: flex;
-  // flex-start, not center: a centred flex item that outgrows its container
-  // spills past the top edge where nothing can scroll to it. `margin: auto` on
-  // the panel restores centring whenever it fits.
+  // Centring is done by `margin: auto` on the panel, not `align-items: center`:
+  // a centred flex item taller than the viewport spills past the top edge where
+  // nothing can scroll to it, while auto margins centre when it fits and fall
+  // back to the top (scrollable) when it doesn't.
   align-items: flex-start;
   justify-content: center;
   padding: 1rem;
@@ -30,7 +36,6 @@
 // ── Panel (card layout, the default) ────────────────────────────────────────
 :where(.panel) {
   position: relative;
-  margin: auto;
   background: var(--ro-surface);
   border: 1px solid var(--ro-border-strong);
   border-radius: var(--ro-radius-xl);
@@ -46,6 +51,10 @@
 
   &:focus { outline: none; } // focus lands here only when nothing inside is focusable
 }
+
+// Class specificity on purpose — `* { margin: 0 }` (zero specificity, emitted
+// later) would otherwise cancel it and pin every dialog to the top.
+.panel { margin: auto; }
 
 :where(.sm) { max-width: 420px; }
 :where(.md) { max-width: 480px; }
@@ -75,26 +84,6 @@
   }
 }
 
-// ── Mobile bottom sheet (opt-in: sheetOnMobile) ─────────────────────────────
-@keyframes sheet-in {
-  from { transform: translateY(100%); }
-  to   { transform: translateY(0); }
-}
-
-@include tokens.ro-down(mobile) {
-  :where(.sheetOverlay) {
-    align-items: flex-end;
-    padding: 0;
-  }
-  :where(.sheet) {
-    margin: 0;
-    max-width: none;
-    border-radius: var(--ro-radius-xl) var(--ro-radius-xl) 0 0;
-    max-height: 92vh;
-    animation: sheet-in .28s ease;
-  }
-}
-
 // ── Fullscreen (camera scanner): backdrop only, no panel chrome ─────────────
 :where(.fullscreenOverlay) {
   padding: 0;
@@ -104,8 +93,4 @@
 :where(.fullscreen) {
   width: 100%;
   &:focus { outline: none; }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  :where(.sheet) { animation: none; }
 }

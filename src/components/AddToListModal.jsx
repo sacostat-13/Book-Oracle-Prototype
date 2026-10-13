@@ -59,7 +59,6 @@ export default function AddToListModal({ books = [], onClose }) {
     <Modal
       onClose={onClose}
       label={isSingle ? t('addToList.title') : t('addToList.addMultiple', { count: bookList.length })}
-      sheetOnMobile
     >
       <button className="modal__close" onClick={onClose} aria-label={t('common.close')}>✕</button>
 

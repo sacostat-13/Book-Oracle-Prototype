@@ -72,7 +72,7 @@ function AddBookPicker({ list, onClose }) {
   }
 
   return (
-    <Modal onClose={onClose} label={t('listDetail.addBook')} sheetOnMobile>
+    <Modal onClose={onClose} label={t('listDetail.addBook')}>
       <button className="modal__close" onClick={onClose} aria-label={t('common.close')}>✕</button>
       <div className="bp-section__label">
         {t('listDetail.addBook')}
