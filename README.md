@@ -8,7 +8,7 @@ English / Spanish (rioplatense).
 React + Vite + Sass on the front, Supabase for auth and data, Netlify Functions as
 API proxies.
 
-> Current version: **v0.72.3** — release history in [CHANGELOG.md](CHANGELOG.md).
+> Current version: **v0.72.4** — release history in [CHANGELOG.md](CHANGELOG.md).
 > The app announces **v0.72.2** (`CURRENT_VERSION`): internal releases aren't shown to readers.
 
 ## Where to read next
