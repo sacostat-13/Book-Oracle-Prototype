@@ -37,6 +37,7 @@ import { useT, useTNode } from '../contexts/I18nContext';
 import { supabase } from '../lib/api/supabase';
 import { buildBookPageParams, shelfStateOf, shelfKeySets } from '../lib/book/bookHelpers';
 import { useData } from '../contexts/DataContext';
+import { useLists } from '../hooks/useLists';
 import { moodTitleKey, knownMoods } from '../data/moods';
 import BookCover from '../components/BookCover';
 import BookLoader from '../components/BookLoader';
@@ -68,7 +69,8 @@ function toAppBook(raw) {
 export default function ListView() {
   const { route, go } = useRouter();
   const { user } = useAuth();
-  const { state, markListSeen } = useData();
+  const { state } = useData();
+  const { markListSeen } = useLists();
   const t = useT();
   const tNode = useTNode();
   const [data, setData] = useState(null);

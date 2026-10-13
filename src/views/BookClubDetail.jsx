@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useData } from '../contexts/DataContext';
+import { useClubs } from '../hooks/useClubs';
 import { useRouter } from '../contexts/RouterContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useT } from '../contexts/I18nContext';
@@ -46,7 +47,8 @@ function SessionCard({ session, onClick, t }) {
 }
 
 export default function BookClubDetail() {
-  const { state, deleteClub, leaveClub, regenerateJoinToken, showToast } = useData();
+  const { state, showToast } = useData();
+  const { clubs, deleteClub, leaveClub, regenerateJoinToken } = useClubs();
   const { go, route } = useRouter();
   const { user } = useAuth();
   const t = useT();
@@ -61,7 +63,7 @@ export default function BookClubDetail() {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [shareOpen, setShareOpen] = useState(false); // v0.43: public clubs only
 
-  const stateClub = (state.clubs || []).find((c) => c.id === clubId);
+  const stateClub = clubs.find((c) => c.id === clubId);
 
   const loadDetail = useCallback(async () => {
     if (!clubId) return;

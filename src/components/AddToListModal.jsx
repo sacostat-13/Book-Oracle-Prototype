@@ -3,7 +3,7 @@
 // Used by AddToListPicker (single book) and SelectionBar (bulk).
 
 import { useState } from 'react';
-import { useData } from '../contexts/DataContext';
+import { useLists } from '../hooks/useLists';
 import { useRouter } from '../contexts/RouterContext';
 import { useT } from '../contexts/I18nContext';
 import Modal from './primitives/Modal';
@@ -13,7 +13,7 @@ import { useProLimits } from '../hooks/useProLimits';
 export default function AddToListModal({ books = [], onClose }) {
   // books can be a single book object or an array
   const bookList = Array.isArray(books) ? books : [books];
-  const { state, addBookToList, createList } = useData();
+  const { lists, addBookToList, createList } = useLists();
   const { canCreate } = useProLimits(); // v0.72
   const { go } = useRouter();
   const t = useT();
@@ -22,7 +22,6 @@ export default function AddToListModal({ books = [], onClose }) {
   const [saving, setSaving] = useState(false);
   const [results, setResults] = useState({}); // listId → 'adding' | 'done' | 'error'
 
-  const lists = state.lists || [];
   const isSingle = bookList.length === 1;
   const singleBook = isSingle ? bookList[0] : null;
 

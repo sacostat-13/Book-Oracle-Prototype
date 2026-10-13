@@ -2,11 +2,16 @@
 // wishlist, currentPlan, profile, etc.) but loads from and persists to Supabase
 // when a user is signed in. When signed out, falls back to localStorage so the
 // app still works for anonymous prototyping.
-import { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
+import { createContext, useContext, useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { supabase } from '../lib/api/supabase';
 import { fetchAllRows } from '../lib/api/supabasePaging';
 import { useAuth } from './AuthContext';
 import { ALL_BOOKS, bookKey, storableAuthor } from '../lib/book/bookHelpers';
+import { bookRowToClient } from '../lib/book/bookRow';
+import { fetchMyLists } from '../lib/api/listsApi';
+import { fetchMyClubs } from '../lib/api/clubsApi';
+import { createListActions } from './domains/lists';
+import { createClubActions } from './domains/clubs';
 import { computeCompletionMoments } from '../lib/achievements/shareMoments';
 import {
   entryFromMoment,
@@ -14,7 +19,6 @@ import {
   computeBackfillAccomplishments,
 } from '../lib/achievements/accomplishments';
 import { CURRENT_VERSION } from '../data/releases';
-import { knownMoods } from '../data/moods';
 import { resolveRecommendation, isOracleSuggested } from '../lib/oracle/oracleProvenance';
 
 const LOCAL_KEY    = 'wishlist_oracle_state_v2';
@@ -261,80 +265,6 @@ function saveLocal(state) {
   } catch {}
 }
 
-function bookRowToClient(b, extra = {}) {
-  if (!b) return null;
-  const series = b.series
-    ? {
-        name: b.series.name,
-        n: b.position_in_series || null,
-        total: b.series.total_books || null,
-        // v0.15: status replaces verified. 'oracle_categorized' counts as verified in the UI.
-        status: b.series.status || 'unreviewed',
-        verifiedSource: b.series.verified_source || null,
-        verifiedAt: b.series.verified_at || null,
-        verifiedBy: b.series.verified_by || null,
-        // v0.14: series.status was renamed to publication_status. Old API rows
-        // may still have `status` populated with publication state during the
-        // brief transition; fall back to it if publication_status is null.
-        publicationStatus: b.series.publication_status || 'unknown',
-        seriesId: b.series.id,
-        fromHardcover: b.series.source === 'hardcover',
-        fromOpenLibrary: b.series.source === 'openlibrary',
-      }
-    : undefined;
-  return {
-    t: b.title,
-    // v0.63: '' rather than the raw null. A null author is correct in the
-    // database but interpolates as the string "null" in every template literal
-    // that builds a title — see displayAuthor() in bookHelpers for what is
-    // actually rendered.
-    a: b.author || '',
-    g: b.genre || undefined,
-    // v0.55: author gender for the "books by women" accomplishment. NOT a
-    // genre — deliberately a separate column/field so it never touches the
-    // genres/genresByBookId taxonomy. 'unknown' (checked, no signal) is kept
-    // undefined here same as other unset enrichment fields.
-    ag: (b.author_gender && b.author_gender !== 'unknown') ? b.author_gender : undefined,
-    // v0.60.1: `ag` collapses 'unknown' and never-checked into undefined, which
-    // is right for display but useless for deciding whether to spend an Oracle
-    // call. Without this flag, every book the Oracle honestly answered
-    // "unknown" for would look unprocessed forever and be re-billed on every
-    // run. The timestamp is stamped for 'unknown' too, so it is the only
-    // reliable "we already asked" signal.
-    agChecked: !!b.author_gender_checked_at,
-    c: b.complexity || undefined,
-    p: b.depth || undefined,
-    d: b.description || undefined,
-    pp: b.pages || undefined,
-    coverUrl: b.cover_url || undefined,
-    isbn: b.isbn || undefined,
-    s: series,
-    // v0.15: status replaces verified. 'oracle_categorized' counts as verified in the UI.
-    status: b.status || 'unreviewed',
-    verifiedSource: b.verified_source || null,
-    verifiedAt: b.verified_at || null,
-    verifiedBy: b.verified_by || null,
-    source: b.source,
-    bookId: b.id,
-    // v0.64 — carried for collapseWorks (src/lib/book/workGroups.js), which uses
-    // them to tell a TRANSLATION of a book already on the shelf from a
-    // different book. Nothing renders these; they are identity, not display.
-    //
-    // hardcover_id is the one that matters most: Hardcover's `books` node is
-    // work-level, so two rows sharing it are the same novel even when their
-    // titles share no characters — which is the case no title comparison can
-    // ever catch.
-    hardcoverId: b.hardcover_id ?? undefined,
-    goodreadsId: b.goodreads_id ?? undefined,
-    language: b.language || undefined,
-    originalLanguage: b.original_language || undefined,
-    // Round-tripped so cacheBookFields → upsertBookOnServer re-sends what the
-    // catalog already knows rather than nothing (20260930140000).
-    fy: b.first_published_year ?? undefined,
-    ...extra,
-  };
-}
-
 // v0.15: helper for UI "verified" checks. Both 'verified' and 'oracle_categorized'
 // render as verified (gilt ☩). 'incomplete', 'unreviewed', 'flagged' don't.
 // Use this everywhere we used to check `book.verified`.
@@ -572,31 +502,10 @@ async function loadFromSupabase(userId) {
     }));
   }
 
-  // Lists loaded separately — a failure here must not break genres/library load
-  let listsRes = { data: [] };
-  try {
-    listsRes = await supabase
-      .from('lists')
-      // v0.63: genres and moods ride along on the same request. They are tiny
-      // join tables and the alternative is two more round-trips on every load
-      // to render chips the list editor needs anyway.
-      .select('*, list_items(position, note, added_at, book:books(*, position_in_series, series:series(*))), list_genres(genre_id), list_moods(mood)')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false });
-  } catch (e) {
-    console.warn('Lists query failed — continuing without lists', e);
-  }
-
-  // v0.28: Clubs — lightweight index load (no full member/session detail)
-  let clubsRes = { data: [] };
-  try {
-    clubsRes = await supabase
-      .from('book_club_members')
-      .select('role, club:book_clubs(id, name, description, join_token, created_by, created_at, visibility, join_mode, max_members)')
-      .eq('user_id', userId);
-  } catch (e) {
-    console.warn('Clubs query failed — continuing without clubs', e);
-  }
+  // Lists and clubs degrade to [] on failure (logged): neither may block the
+  // shelves. Mapping lives in lib/api/listsApi.js and clubsApi.js.
+  const lists = await fetchMyLists(userId);
+  const clubs = await fetchMyClubs(userId);
 
   const profile = profileRes.data || {};
   const wishlist = (wishlistRes.data || [])
@@ -630,18 +539,6 @@ async function loadFromSupabase(userId) {
     createdAt: r.created_at,
   }));
   const currentPlan = plans[0] || null;
-
-  const lists = (listsRes?.data || []).map((l) => ({
-    ...l,
-    books: (l.list_items || [])
-      .sort((a, b) => a.position - b.position)
-      .map((li) => li.book ? { ...bookRowToClient(li.book), _listNote: li.note, _listPos: li.position } : null)
-      .filter(Boolean),
-    // Ids, not names: the editor drives a picker keyed on genre id, and names
-    // are resolvable from `state.genres` wherever they need to be displayed.
-    genreIds: (l.list_genres || []).map((g) => g.genre_id),
-    moods: knownMoods((l.list_moods || []).map((m) => m.mood)),
-  }));
 
   // A FAILED SHELF QUERY MUST NOT BE RETURNED AS AN EMPTY SHELF.
   //
@@ -915,18 +812,7 @@ async function loadFromSupabase(userId) {
     editionsByBookId,
     memories,
     accomplishments,
-    clubs: (clubsRes.data || []).map((m) => ({
-      id: m.club?.id,
-      name: m.club?.name,
-      description: m.club?.description,
-      joinToken: m.club?.join_token,
-      createdBy: m.club?.created_by,
-      createdAt: m.club?.created_at,
-      visibility: m.club?.visibility,
-      joinMode: m.club?.join_mode,
-      maxMembers: m.club?.max_members,
-      callerRole: m.role,
-    })).filter((c) => c.id),
+    clubs,
   };
 }
 
@@ -975,6 +861,9 @@ async function savePreferences(userId, state) {
 export function DataProvider({ children }) {
   const { user, loading: authLoading } = useAuth();
   const [state, setState] = useState(() => loadLocal());
+  // Latest state for callbacks built once per user (domain actions).
+  const stateRef = useRef(state);
+  stateRef.current = state;
   // No-user (guest/logged-out) path has nothing to load from Supabase, so
   // we can render immediately. Only flip to true when fetching for a real user.
   const [loading, setLoading] = useState(false);
@@ -2956,434 +2845,14 @@ export function DataProvider({ children }) {
     [user]
   );
 
-  // ── List mutations ────────────────────────────────────────────────────────
-
-  const createList = useCallback(async (title, description = '') => {
-    if (!user) return null;
-    const { data, error } = await supabase
-      .from('lists')
-      .insert({ user_id: user.id, title, description, is_public: false })
-      .select('*')
-      .single();
-    if (error || !data) return null;
-    const newList = { ...data, books: [] };
-    setState((s) => ({ ...s, lists: [newList, ...(s.lists || [])] }));
-    return newList;
-  }, [user]);
-
-  const updateList = useCallback(async (listId, updates) => {
-    if (!user) return { error: { message: 'signed_out' } };
-    // v0.71.1: returns { error } and leaves local state alone on failure. The
-    // cover guard (pro_required:cover) can refuse a write, and an optimistic
-    // update would show a cover the server never stored.
-    const { error } = await supabase.from('lists').update(updates).eq('id', listId).eq('user_id', user.id);
-    if (error) { console.error('updateList failed:', error); return { error }; }
-    setState((s) => ({
-      ...s,
-      lists: (s.lists || []).map((l) => l.id === listId ? { ...l, ...updates } : l),
-    }));
-    return { error: null };
-  }, [user]);
-
-  const deleteList = useCallback(async (listId) => {
-    if (!user) return;
-    await supabase.from('lists').delete().eq('id', listId).eq('user_id', user.id);
-    setState((s) => ({ ...s, lists: (s.lists || []).filter((l) => l.id !== listId) }));
-  }, [user]);
-
-  const addBookToList = useCallback(async (listId, book) => {
-    if (!user || !book.bookId) return;
-    const list = (state.lists || []).find((l) => l.id === listId);
-    if (!list) return;
-    const position = (list.books || []).length;
-    const { error } = await supabase
-      .from('list_items')
-      .insert({ list_id: listId, book_id: book.bookId, position });
-    if (error) return;
-    setState((s) => ({
-      ...s,
-      lists: (s.lists || []).map((l) =>
-        l.id === listId
-          ? { ...l, books: [...(l.books || []), { ...book, _listPos: position }] }
-          : l
-      ),
-    }));
-  }, [user, state.lists]);
-
-  const removeBookFromList = useCallback(async (listId, bookId) => {
-    if (!user) return;
-    await supabase.from('list_items').delete().eq('list_id', listId).eq('book_id', bookId);
-    setState((s) => ({
-      ...s,
-      lists: (s.lists || []).map((l) =>
-        l.id === listId
-          ? { ...l, books: (l.books || []).filter((b) => b.bookId !== bookId) }
-          : l
-      ),
-    }));
-  }, [user]);
-
-  // ── v0.63: Curated Lists — genres, moods, follows ─────────────────────────
-
-  // Replace-in-full rather than diff.
-  //
-  // A list carries a handful of genres, so computing an add-set and a
-  // remove-set costs more code than it saves requests, and gets the edge cases
-  // (last genre removed, all genres swapped) wrong more often. Delete-then-
-  // insert is one round-trip each and is trivially correct.
-  const setListGenres = useCallback(async (listId, genreIds) => {
-    if (!user) return;
-    const ids = [...new Set(genreIds || [])];
-    await supabase.from('list_genres').delete().eq('list_id', listId);
-    if (ids.length) {
-      const { error } = await supabase
-        .from('list_genres')
-        .insert(ids.map((genre_id) => ({ list_id: listId, genre_id })));
-      if (error) { console.error('setListGenres failed', error); return; }
-    }
-    setState((s) => ({
-      ...s,
-      lists: (s.lists || []).map((l) => l.id === listId ? { ...l, genreIds: ids } : l),
-    }));
-  }, [user]);
-
-  const setListMoods = useCallback(async (listId, moods) => {
-    if (!user) return;
-    // Filtered against the taxonomy before it reaches the database: `mood` is a
-    // plain text column, so nothing else stops a retired id being stored and
-    // later rendering as a raw i18n key on every card.
-    const vals = knownMoods([...new Set(moods || [])]);
-    await supabase.from('list_moods').delete().eq('list_id', listId);
-    if (vals.length) {
-      const { error } = await supabase
-        .from('list_moods')
-        .insert(vals.map((mood) => ({ list_id: listId, mood })));
-      if (error) { console.error('setListMoods failed', error); return; }
-    }
-    setState((s) => ({
-      ...s,
-      lists: (s.lists || []).map((l) => l.id === listId ? { ...l, moods: vals } : l),
-    }));
-  }, [user]);
-
-  // Follows go through RPCs, not table writes: follow_list enforces "public
-  // only" and "not your own" server-side, where the UI cannot be the only
-  // thing standing between a private list and a follower who can no longer
-  // read it.
-  const followList = useCallback(async (listId) => {
-    if (!user) return false;
-    const { data, error } = await supabase.rpc('follow_list', { p_list_id: listId });
-    if (error) { console.error('followList failed', error); return false; }
-    return !!data;
-  }, [user]);
-
-  const unfollowList = useCallback(async (listId) => {
-    if (!user) return false;
-    const { error } = await supabase.rpc('unfollow_list', { p_list_id: listId });
-    if (error) { console.error('unfollowList failed', error); return false; }
-    return true;
-  }, [user]);
-
-  const markListSeen = useCallback(async (listId) => {
-    if (!user) return;
-    await supabase.rpc('mark_list_seen', { p_list_id: listId });
-  }, [user]);
-
-  const fetchFollowedLists = useCallback(async () => {
-    if (!user) return [];
-    const { data, error } = await supabase.rpc('get_followed_lists');
-    if (error) { console.error('get_followed_lists failed', error); return []; }
-    return (data || []).map((r) => ({
-      id: r.id,
-      title: r.title,
-      description: r.description,
-      ownerUsername: r.owner_username,
-      ownerDisplay: r.owner_display,
-      ownerAvatar: r.owner_avatar,
-      bookCount: Number(r.book_count) || 0,
-      followerCount: Number(r.follower_count) || 0,
-      coverUrls: r.cover_urls || [],
-      hasUpdates: !!r.has_updates,
-    }));
-  }, [user]);
-
-  // Deliberately NOT gated on `user`. Unlike the club directory, Discover is a
-  // public landing surface — a list posted on social has to render for someone
-  // who has never signed in. `caller_follows` comes back false for them.
-  const searchPublicLists = useCallback(async ({
-    query = null, genreIds = null, moods = null, sort = 'followers',
-  } = {}) => {
-    const { data, error } = await supabase.rpc('search_public_lists', {
-      p_query: query || null,
-      p_genre_ids: genreIds && genreIds.length ? genreIds : null,
-      p_moods: moods && moods.length ? moods : null,
-      p_sort: sort,
-    });
-    if (error) { console.error('searchPublicLists failed', error); return []; }
-    return (data || []).map((r) => ({
-      id: r.id,
-      title: r.title,
-      description: r.description,
-      createdAt: r.created_at,
-      ownerUsername: r.owner_username,
-      ownerDisplay: r.owner_display,
-      ownerAvatar: r.owner_avatar,
-      bookCount: Number(r.book_count) || 0,
-      followerCount: Number(r.follower_count) || 0,
-      genreNames: r.genre_names || [],
-      moods: knownMoods(r.moods || []),
-      coverUrls: r.cover_urls || [],
-      callerFollows: !!r.caller_follows,
-    }));
-  }, []);
-
-  // ── v0.28: Club mutations ─────────────────────────────────────────────────
-
-  const createClub = useCallback(async ({
-    name, description, genreIds = [],
-    // v0.40: public club directory
-    moods = [], visibility = 'private', joinMode = 'auto', maxMembers = null,
-  }) => {
-    if (!user) return null;
-    const { data, error } = await supabase
-      .from('book_clubs')
-      .insert({
-        name,
-        description: description || null,
-        visibility,
-        join_mode: joinMode,
-        max_members: maxMembers || null,
-      })
-      .select()
-      .single();
-    if (error) { console.error('createClub failed', error); return null; }
-
-    // Creator becomes admin
-    await supabase.from('book_club_members').insert({
-      club_id: data.id,
-      user_id: user.id,
-      role: 'admin',
-    });
-
-    // Attach genre tags
-    if (genreIds.length > 0) {
-      await supabase.from('book_club_genres').insert(
-        genreIds.map((gid) => ({ club_id: data.id, genre_id: gid }))
-      );
-    }
-
-    // Attach mood tags (v0.40 — same taxonomy as onboarding's mood chips)
-    if (moods.length > 0) {
-      await supabase.from('book_club_moods').insert(
-        moods.map((mood) => ({ club_id: data.id, mood }))
-      );
-    }
-
-    const newClub = {
-      id: data.id,
-      name: data.name,
-      description: data.description,
-      joinToken: data.join_token,
-      createdBy: data.created_by,
-      createdAt: data.created_at,
-      visibility: data.visibility,
-      joinMode: data.join_mode,
-      maxMembers: data.max_members,
-      callerRole: 'admin',
-    };
-    setState((s) => ({ ...s, clubs: [newClub, ...(s.clubs || [])] }));
-    return newClub;
-  }, [user]);
-
-  const updateClub = useCallback(async (clubId, updates) => {
-    if (!user) return;
-    const dbUpdates = {};
-    if (updates.name !== undefined) dbUpdates.name = updates.name;
-    if (updates.description !== undefined) dbUpdates.description = updates.description;
-    if (updates.visibility !== undefined) dbUpdates.visibility = updates.visibility;
-    if (updates.joinMode !== undefined) dbUpdates.join_mode = updates.joinMode;
-    if (updates.maxMembers !== undefined) dbUpdates.max_members = updates.maxMembers;
-    await supabase.from('book_clubs').update(dbUpdates).eq('id', clubId);
-    setState((s) => ({
-      ...s,
-      clubs: (s.clubs || []).map((c) => c.id === clubId ? { ...c, ...updates } : c),
-    }));
-  }, [user]);
-
-  const deleteClub = useCallback(async (clubId) => {
-    if (!user) return;
-    await supabase.from('book_clubs').delete().eq('id', clubId);
-    setState((s) => ({ ...s, clubs: (s.clubs || []).filter((c) => c.id !== clubId) }));
-  }, [user]);
-
-  const leaveClub = useCallback(async (clubId) => {
-    if (!user) return;
-    await supabase.from('book_club_members').delete()
-      .eq('club_id', clubId).eq('user_id', user.id);
-    setState((s) => ({ ...s, clubs: (s.clubs || []).filter((c) => c.id !== clubId) }));
-  }, [user]);
-
-  const regenerateJoinToken = useCallback(async (clubId) => {
-    if (!user) return null;
-    const { data, error } = await supabase.rpc('regenerate_join_token', { p_club_id: clubId });
-    if (error || !data) return null;
-    setState((s) => ({
-      ...s,
-      clubs: (s.clubs || []).map((c) => c.id === clubId ? { ...c, joinToken: data } : c),
-    }));
-    return data;
-  }, [user]);
-
-  // ── v0.40: Public club directory ──────────────────────────────────────────
-
-  const searchPublicClubs = useCallback(async ({
-    query = null, genreIds = null, moods = null, openOnly = false, sort = 'activity',
-  } = {}) => {
-    const { data, error } = await supabase.rpc('search_public_clubs', {
-      p_query: query || null,
-      p_genre_ids: genreIds && genreIds.length ? genreIds : null,
-      p_moods: moods && moods.length ? moods : null,
-      p_open_only: openOnly,
-      p_sort: sort,
-    });
-    if (error) { console.error('searchPublicClubs failed', error); return []; }
-    return (data || []).map((r) => ({
-      id: r.id,
-      name: r.name,
-      description: r.description,
-      joinMode: r.join_mode,
-      maxMembers: r.max_members,
-      memberCount: Number(r.member_count) || 0,
-      createdAt: r.created_at,
-      genreNames: r.genre_names || [],
-      moods: r.moods || [],
-      currentBook: r.current_book_title
-        ? { title: r.current_book_title, author: r.current_book_author, coverUrl: r.current_book_cover }
-        : null,
-      callerStatus: r.caller_status, // 'none' | 'member' | 'pending_approval' | 'waitlisted'
-    }));
-  }, []);
-
-  const joinPublicClub = useCallback(async (clubId) => {
-    if (!user) return null;
-    const { data, error } = await supabase.rpc('join_public_club', { p_club_id: clubId });
-    if (error) { console.error('joinPublicClub failed', error); return null; }
-    return data?.status || null; // 'joined' | 'pending_approval' | 'waitlisted' | 'already_member'
-  }, [user]);
-
-  const fetchClubJoinRequests = useCallback(async (clubId) => {
-    if (!user) return [];
-    const { data, error } = await supabase
-      .from('club_join_requests')
-      .select('id, user_id, status, created_at, profile:profiles(display_name, username, avatar_url)')
-      .eq('club_id', clubId)
-      .in('status', ['pending_approval', 'waitlisted'])
-      .order('created_at', { ascending: true });
-    if (error) { console.error('fetchClubJoinRequests failed', error); return []; }
-    return data || [];
-  }, [user]);
-
-  const approveJoinRequest = useCallback(async (requestId) => {
-    if (!user) return null;
-    const { data, error } = await supabase.rpc('approve_join_request', { p_request_id: requestId });
-    if (error) { console.error('approveJoinRequest failed', error); return null; }
-    return data?.status || null;
-  }, [user]);
-
-  const rejectJoinRequest = useCallback(async (requestId) => {
-    if (!user) return null;
-    const { data, error } = await supabase.rpc('reject_join_request', { p_request_id: requestId });
-    if (error) { console.error('rejectJoinRequest failed', error); return null; }
-    return data?.status || null;
-  }, [user]);
-
-  // ── v0.29: Discussion mutations ───────────────────────────────────────────
-
-  const postComment = useCallback(async ({ sessionId, clubId, body, questionId = null, parentId = null }) => {
-    if (!user || !body?.trim()) return null;
-    const { data, error } = await supabase
-      .from('session_comments')
-      .insert({ session_id: sessionId, club_id: clubId, body: body.trim(), question_id: questionId || null, parent_id: parentId || null, created_by: user.id })
-      .select()
-      .single();
-    if (error) { console.error('postComment failed', error); return null; }
-    return data;
-  }, [user]);
-
-  const deleteComment = useCallback(async (commentId) => {
-    if (!user) return;
-    const { error } = await supabase.from('session_comments').delete().eq('id', commentId);
-    if (error) console.error('deleteComment failed', error);
-  }, [user]);
-
-  const editComment = useCallback(async (commentId, body) => {
-    if (!user || !body?.trim()) return;
-    const { error } = await supabase
-      .from('session_comments')
-      .update({ body: body.trim() })
-      .eq('id', commentId)
-      .eq('created_by', user.id);
-    if (error) console.error('editComment failed', error);
-  }, [user]);
-
-  const addQuestion = useCallback(async ({ sessionId, clubId, body, position = 0 }) => {
-    if (!user || !body?.trim()) return null;
-    const { data, error } = await supabase
-      .from('session_questions')
-      .insert({ session_id: sessionId, club_id: clubId, body: body.trim(), position, created_by: user.id })
-      .select()
-      .single();
-    if (error) { console.error('addQuestion failed', error); return null; }
-    return data;
-  }, [user]);
-
-  const deleteQuestion = useCallback(async (questionId) => {
-    if (!user) return;
-    await supabase.from('session_questions').delete().eq('id', questionId);
-  }, [user]);
-
-  // ── v0.29: Poll mutations ─────────────────────────────────────────────────
-
-  const createPoll = useCallback(async ({ clubId, question, options, closesAt = null, isOraclePick = false }) => {
-    if (!user) return null;
-    const { data: poll, error: pollErr } = await supabase
-      .from('club_polls')
-      .insert({ club_id: clubId, question, closes_at: closesAt, is_oracle_pick: isOraclePick })
-      .select()
-      .single();
-    if (pollErr) { console.error('createPoll failed', pollErr); return null; }
-
-    // Insert options in order
-    const optionRows = options.map((opt, i) => ({
-      poll_id: poll.id,
-      label: opt.label,
-      book_id: opt.bookId || null,
-      book_author: opt.bookAuthor || null,
-      cover_url: opt.coverUrl || null,
-      position: i,
-    }));
-    const { error: optErr } = await supabase.from('poll_options').insert(optionRows);
-    if (optErr) console.error('poll options insert failed', optErr);
-
-    return poll;
-  }, [user]);
-
-  const castVote = useCallback(async (pollId, optionId) => {
-    if (!user) return null;
-    const { data, error } = await supabase.rpc('cast_vote', { p_poll_id: pollId, p_option_id: optionId });
-    if (error) { console.error('castVote failed', error); return null; }
-    return data; // updated vote counts for all options
-  }, [user]);
-
-  const closePoll = useCallback(async (pollId) => {
-    if (!user) return;
-    await supabase.from('club_polls').update({ closed: true }).eq('id', pollId);
-  }, [user]);
-
-  const deletePoll = useCallback(async (pollId) => {
-    if (!user) return;
-    await supabase.from('club_polls').delete().eq('id', pollId);
-  }, [user]);
+  // ── Anthologies and clubs: contexts/domains/{lists,clubs}.js ───────────────
+  // Built once per signed-in reader. addBookToList reads the CURRENT lists at
+  // call time through stateRef (it used to close over state.lists).
+  const listActions = useMemo(
+    () => createListActions({ user, setState, getLists: () => stateRef.current.lists }),
+    [user]
+  );
+  const clubActions = useMemo(() => createClubActions({ user, setState }), [user]);
 
   const deletePlan = useCallback(
     async (planId) => {
@@ -3537,41 +3006,10 @@ export function DataProvider({ children }) {
     clubs: state.clubs || [],
     setCurrentPlan,
     deletePlan,
-    createList,
-    updateList,
-    deleteList,
-    addBookToList,
-    removeBookFromList,
-    setListGenres,
-    setListMoods,
-    followList,
-    unfollowList,
-    markListSeen,
-    fetchFollowedLists,
-    searchPublicLists,
-    // v0.28: club mutations
-    createClub,
-    updateClub,
-    deleteClub,
-    leaveClub,
-    regenerateJoinToken,
-    // v0.40: public club directory
-    searchPublicClubs,
-    joinPublicClub,
-    fetchClubJoinRequests,
-    approveJoinRequest,
-    rejectJoinRequest,
-    // v0.29: discussion mutations
-    postComment,
-    deleteComment,
-    editComment,
-    addQuestion,
-    deleteQuestion,
-    // v0.29: poll mutations
-    createPoll,
-    castVote,
-    closePoll,
-    deletePoll,
+    // Anthology and club methods (same names as before; prefer useLists() /
+    // useClubs() in new code).
+    ...listActions,
+    ...clubActions,
     resetAll,
     vault,
     loadVault,

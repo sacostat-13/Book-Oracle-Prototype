@@ -4,6 +4,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useData } from '../contexts/DataContext';
+import { useClubs } from '../hooks/useClubs';
 import { useRouter } from '../contexts/RouterContext';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/api/supabase';
@@ -212,6 +213,7 @@ function EditSessionModal({ session, book, onSave, onClose }) {
 export default function SessionDetail() {
   const t = useT();
   const { state, updateReadingProgress, startReading, showToast, showShareMoment } = useData();
+  const { clubs } = useClubs();
   const { go, route } = useRouter();
   const { user } = useAuth();
 
@@ -261,7 +263,7 @@ export default function SessionDetail() {
   const { session, book, progress, caller_role } = detail;
   const isAdmin = caller_role === 'admin';
   const clubId = session.club_id;
-  const club = (state.clubs || []).find((c) => c.id === clubId);
+  const club = clubs.find((c) => c.id === clubId);
 
   const now = new Date();
   const start = new Date(session.starts_at);

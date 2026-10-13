@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useData } from '../contexts/DataContext';
+import { useLists } from '../hooks/useLists';
 import { useRouter, RouteLink } from '../contexts/RouterContext';
 import { useT, useTNode, useI18n } from '../contexts/I18nContext';
 import { openBookTab } from '../lib/book/bookHelpers';
@@ -92,7 +93,8 @@ function CreateListModal({ genres, onSave, onClose }) {
 }
 
 export default function Lists() {
-  const { state, createList, updateList, deleteList, setListGenres, setListMoods } = useData();
+  const { state } = useData();
+  const { lists, createList, updateList, deleteList, setListGenres, setListMoods } = useLists();
   const { go } = useRouter();
   const t = useT();
   const confirm = useConfirm();
@@ -101,7 +103,6 @@ export default function Lists() {
   const [creating, setCreating] = useState(false);
   const { canCreate } = useProLimits();
 
-  const lists = state.lists || [];
   const { genresByBookId } = state;
 
   async function handleCreate(title, description, genreIds, moods) {

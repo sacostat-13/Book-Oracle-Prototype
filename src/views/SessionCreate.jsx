@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useData } from '../contexts/DataContext';
+import { useClubs } from '../hooks/useClubs';
 import { useRouter } from '../contexts/RouterContext';
 import { useT, useTNode } from '../contexts/I18nContext';
 import { supabase } from '../lib/api/supabase';
@@ -14,12 +15,13 @@ import BookThumb from '../components/BookThumb';
 
 export default function SessionCreate() {
   const { state, showToast, upsertBookOnServer, showShareMoment } = useData();
+  const { clubs } = useClubs();
   const { go, route } = useRouter();
   const t = useT();
   const tNode = useTNode();
 
   const clubId = route.params?.clubId;
-  const club = (state.clubs || []).find((c) => c.id === clubId);
+  const club = clubs.find((c) => c.id === clubId);
   const today = new Date().toISOString().slice(0, 10);
   const fourWeeks = new Date(Date.now() + 28 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
 

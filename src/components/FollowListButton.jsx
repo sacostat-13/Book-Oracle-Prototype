@@ -14,11 +14,13 @@
 // button entirely hides the feature.
 import { useState } from 'react';
 import { useData } from '../contexts/DataContext';
+import { useLists } from '../hooks/useLists';
 import { useAuth } from '../contexts/AuthContext';
 import { useT } from '../contexts/I18nContext';
 
 export default function FollowListButton({ listId, following, onChange, onRequireSignIn }) {
-  const { followList, unfollowList, showToast } = useData();
+  const { showToast } = useData();
+  const { followList, unfollowList } = useLists();
   const { user } = useAuth();
   const t = useT();
   const [busy, setBusy] = useState(false);

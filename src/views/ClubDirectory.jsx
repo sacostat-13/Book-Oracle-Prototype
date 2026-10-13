@@ -6,6 +6,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useData } from '../contexts/DataContext';
+import { useClubs } from '../hooks/useClubs';
 import { useRouter } from '../contexts/RouterContext';
 import { useT, useTNode } from '../contexts/I18nContext';
 import BookCover from '../components/BookCover';
@@ -164,7 +165,8 @@ function DirectoryCard({ club, onJoin, joining }) {
 }
 
 export default function ClubDirectory() {
-  const { state, searchPublicClubs, joinPublicClub, showToast } = useData();
+  const { state, showToast } = useData();
+  const { searchPublicClubs, joinPublicClub } = useClubs();
   const { go } = useRouter();
   const t = useT();
   const tNode = useTNode();

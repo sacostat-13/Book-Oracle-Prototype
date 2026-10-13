@@ -4,6 +4,7 @@
 
 import { useState } from 'react';
 import { useData } from '../contexts/DataContext';
+import { useLists } from '../hooks/useLists';
 import { useT } from '../contexts/I18nContext';
 import AddToListModal from './AddToListModal';
 import { useConfirm } from './primitives/ConfirmDialog';
@@ -18,13 +19,8 @@ export default function SelectionBar({
   context,        // 'wishlist' | 'library' | 'list'
   listId,         // only for context='list'
 }) {
-  const {
-    removeFromWishlist,
-    removeFromLibrary,
-    markAsRead,
-    removeBookFromList,
-    showToast,
-  } = useData();
+  const { removeFromWishlist, removeFromLibrary, markAsRead, showToast } = useData();
+  const { removeBookFromList } = useLists();
   const t = useT();
   const confirm = useConfirm();
   const [showListPicker, setShowListPicker] = useState(false);

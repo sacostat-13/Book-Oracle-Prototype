@@ -11,7 +11,7 @@
 //   book       — { title, author, description } for Oracle context
 
 import { useState, useEffect, useCallback } from 'react';
-import { useData } from '../contexts/DataContext';
+import { useClubs } from '../hooks/useClubs';
 import { supabase } from '../lib/api/supabase';
 import { callClaude, QuotaExceededError } from '../lib/oracle/claudeApi';
 import CommentThread from './CommentThread';
@@ -193,7 +193,7 @@ function QuestionBlock({ question, isAdmin, onPostAnswer, onDelete, onEditCommen
 // ── Main component ────────────────────────────────────────────────────────────
 
 export default function SessionDiscussion({ sessionId, clubId, isAdmin, book = {} }) {
-  const { postComment, deleteComment, editComment, addQuestion, deleteQuestion } = useData();
+  const { postComment, deleteComment, editComment, addQuestion, deleteQuestion } = useClubs();
   const t = useT();
   const confirm = useConfirm();
   const { handleQuotaError, onCallSucceeded, confirmOracleCall } = useOracleQuota();

@@ -24,6 +24,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useData } from '../contexts/DataContext';
+import { useLists } from '../hooks/useLists';
 import { useAuth } from '../contexts/AuthContext';
 import { useRouter } from '../contexts/RouterContext';
 import { useT, useTNode } from '../contexts/I18nContext';
@@ -94,7 +95,8 @@ function ListCard({ list, onOpen, onFollowChange }) {
 }
 
 export default function ListDirectory() {
-  const { state, searchPublicLists } = useData();
+  const { state } = useData();
+  const { searchPublicLists } = useLists();
   const { user } = useAuth();
   const { go } = useRouter();
   const t = useT();

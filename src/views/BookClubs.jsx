@@ -1,19 +1,18 @@
 // src/views/BookClubs.jsx — v0.31
 
-import { useData } from '../contexts/DataContext';
+import { useClubs } from '../hooks/useClubs';
 import { useRouter } from '../contexts/RouterContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useT, useTNode } from '../contexts/I18nContext';
 import EmptyState from '../components/EmptyState';
 
 export default function BookClubs() {
-  const { state } = useData();
+  const { clubs } = useClubs();
   const { go } = useRouter();
   const { user } = useAuth();
   const t = useT();
   const tNode = useTNode();
 
-  const clubs = state.clubs || [];
 
   return (
     <>

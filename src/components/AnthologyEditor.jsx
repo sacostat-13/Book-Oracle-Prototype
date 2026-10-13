@@ -10,6 +10,7 @@
 
 import { useRef, useState } from 'react';
 import { useData } from '../contexts/DataContext';
+import { useLists } from '../hooks/useLists';
 import { useT } from '../contexts/I18nContext';
 import { useProLimits } from '../hooks/useProLimits';
 import { uploadAnthologyCover, deleteAnthologyCoverFile, CoverError } from '../lib/api/anthologyCover';
@@ -20,7 +21,8 @@ const DESC_MAX = 600;
 
 export default function AnthologyEditor({ list, onClose }) {
   const t = useT();
-  const { updateList, showToast } = useData();
+  const { showToast } = useData();
+  const { updateList } = useLists();
   const { isPro } = useProLimits();
   const fileRef = useRef(null);
 

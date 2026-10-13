@@ -3,6 +3,7 @@
 
 import { useMemo, useState } from 'react';
 import { useData } from '../contexts/DataContext';
+import { useLists } from '../hooks/useLists';
 import { useRouter, RouteLink } from '../contexts/RouterContext';
 import { useT, useI18n } from '../contexts/I18nContext';
 import { openBookTab, bookKey, shelfStateOf, shelfKeySets } from '../lib/book/bookHelpers';
@@ -18,7 +19,8 @@ import AnthologyEditor from '../components/AnthologyEditor'; // v0.71.1
 import BookMark from '../components/BookMark';
 
 function AddBookPicker({ list, onClose }) {
-  const { state, addBookToList } = useData();
+  const { state } = useData();
+  const { addBookToList } = useLists();
   const t = useT();
   const [query, setQuery] = useState('');
   const [adding, setAdding] = useState(null);
@@ -115,7 +117,8 @@ function AddBookPicker({ list, onClose }) {
 }
 
 export default function ListDetail() {
-  const { state, updateList, removeBookFromList, setListGenres, setListMoods } = useData();
+  const { state } = useData();
+  const { lists, updateList, removeBookFromList, setListGenres, setListMoods } = useLists();
   const { route, go } = useRouter();
   const t = useT();
   const { lang } = useI18n();
@@ -125,7 +128,7 @@ export default function ListDetail() {
   const [editing, setEditing] = useState(false); // v0.71.1: title, description, cover
 
   const listId = route.params?.listId;
-  const list = (state.lists || []).find(l => l.id === listId);
+  const list = lists.find(l => l.id === listId);
   const { genresByBookId } = state;
 
   // Both of these must be computed BEFORE the `!list` early return, because

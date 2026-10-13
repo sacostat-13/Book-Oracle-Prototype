@@ -12,7 +12,7 @@
 //   recentBooks — books from past sessions for Oracle context (title, author)
 
 import { useState, useEffect, useCallback } from 'react';
-import { useData } from '../contexts/DataContext';
+import { useClubs } from '../hooks/useClubs';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/api/supabase';
 import BookCover from './BookCover';
@@ -271,7 +271,7 @@ function CreatePollForm({ onAdd, onCancel }) {
 export default function ClubPolls({ clubId, clubName, clubGenres = [], isAdmin, recentBooks = [], onCreateSession }) {
   const t = useT();
   const confirm = useConfirm();
-  const { createPoll, castVote, closePoll, deletePoll } = useData();
+  const { createPoll, castVote, closePoll, deletePoll } = useClubs();
   // v0.58: hoisted out of fetchOracleSuggestions / handleOracleSuggest, which
   // were calling hooks outside render.
   const { handleQuotaError, onCallSucceeded, confirmOracleCall } = useOracleQuota();

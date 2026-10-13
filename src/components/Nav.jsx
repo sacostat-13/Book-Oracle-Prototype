@@ -5,6 +5,8 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useData } from '../contexts/DataContext';
+import { useLists } from '../hooks/useLists';
+import { useClubs } from '../hooks/useClubs';
 import { useRouter } from '../contexts/RouterContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useI18n } from '../contexts/I18nContext';
@@ -95,6 +97,8 @@ function NotifItem({ n, t, onClose, go, markOneRead, onAnnouncement }) {
 // ── Main component ─────────────────────────────────────────────────────────────
 export default function Nav({ onPreviewBook, guestMode = false }) {
   const { state, markReleasesSeen, dataHydrated } = useData();
+  const { lists } = useLists();
+  const { clubs } = useClubs();
   const { route, go } = useRouter();
   const { user, signInWithGoogle, signOut } = useAuth();
   const { lang, toggleLang, t, tNode } = useI18n();
@@ -244,8 +248,8 @@ export default function Nav({ onPreviewBook, guestMode = false }) {
 
   // Counts
   const readingCount = (state.currentlyReading?.length || 0) + (state.readNext?.length || 0);
-  const listsCount = (state.lists || []).length;
-  const clubsCount = (state.clubs || []).length;
+  const listsCount = lists.length;
+  const clubsCount = clubs.length;
 
   // Active-state helpers
   const booksActive = ['wishlist', 'library', 'currently-reading', 'read-next', 'plan-create', 'plan-list', 'plan-view'].includes(route.name);

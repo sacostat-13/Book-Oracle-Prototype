@@ -12,6 +12,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useData } from '../contexts/DataContext';
+import { useLists } from '../hooks/useLists';
 import { CardGridSkeleton } from '../components/Skeleton';
 import { useRouter } from '../contexts/RouterContext';
 import { useT, useTNode } from '../contexts/I18nContext';
@@ -45,7 +46,8 @@ function FollowedCard({ list, onOpen }) {
 }
 
 export default function CuratedLists() {
-  const { state, fetchFollowedLists } = useData();
+  const { state } = useData();
+  const { fetchFollowedLists } = useLists();
   const { go } = useRouter();
   const t = useT();
   const tNode = useTNode();

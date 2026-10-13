@@ -3,6 +3,7 @@
 
 import { useState } from 'react';
 import { useData } from '../contexts/DataContext';
+import { useClubs } from '../hooks/useClubs';
 import { useRouter } from '../contexts/RouterContext';
 import { useT, useTNode } from '../contexts/I18nContext';
 // Was a local copy of the v0.38 onboarding taxonomy. Lifted to data/moods.js
@@ -14,7 +15,8 @@ import ProGate from '../components/ProGate';
 import ChipToggleGroup from '../components/primitives/ChipToggleGroup';
 
 export default function BookClubCreate() {
-  const { createClub, state } = useData();
+  const { state } = useData();
+  const { createClub } = useClubs();
   const { go } = useRouter();
   const t = useT();
   const tNode = useTNode();
