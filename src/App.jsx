@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { lazy, Suspense, useState, useRef, useEffect } from 'react';
 import { bookKey, openBookTab } from './lib/bookHelpers';
 import { canonicalUrl } from './lib/siteUrl';
 import { useAuth } from './lib/AuthContext';
@@ -20,49 +20,60 @@ import SignInGate from './components/SignInGate';
 import PasswordResetGate from './components/PasswordResetGate';
 
 import Onboarding from './views/Onboarding';
-import Stacks from './views/Stacks';
 import Dashboard from './views/Dashboard';
 import Landing from './views/Landing';
-import Wishlist from './views/Wishlist';
-import Library from './views/Library';
-import ReadNext from './views/ReadNext';
-import CurrentlyReading from './views/CurrentlyReading';
-import Profile from './views/Profile';
-import ReaderProfile from './views/ReaderProfile';
-import Kindred from './views/Kindred';
-import About from './views/About';
-import Changelog from './views/Changelog';
-import Privacy from './views/Privacy';
-import Terms from './views/Terms';
-import Refund from './views/Refund';
-import NotFound from './views/NotFound';
-import SitemapPage from './views/SitemapPage';
-import OracleFork from './views/OracleFork';
-import OracleCategories from './views/OracleCategories';
-import OracleSimilar from './views/OracleSimilar';
-import OracleAsk from './views/OracleAsk';
-import PlanCreate from './views/PlanCreate';
-import PlanList from './views/PlanList';
-import PlanView from './views/PlanView';
 import BookPage from './views/BookPage';
-import ListView from './views/ListView';
-import Lists from './views/Lists';
-import CuratedLists from './views/CuratedLists';
-import ListDirectory from './views/ListDirectory';
-import ListDetail from './views/ListDetail';
-import SeriesPage from './views/SeriesPage';
 // v0.28: book clubs
-import BookClubs from './views/BookClubs';
-import ClubDirectory from './views/ClubDirectory';
-import BookClubCreate from './views/BookClubCreate';
-import BookClubDetail from './views/BookClubDetail';
-import SessionCreate from './views/SessionCreate';
-import SessionDetail from './views/SessionDetail';
-import JoinClub from './views/JoinClub';
 import Footer from './components/Footer';
-import GenresIndex from './views/GenresIndex';
-import FamilyPage from './views/FamilyPage';
-import GenrePage from './views/GenrePage';
+
+// Pages load on demand (code-health spike L6): each lazy page is its own chunk,
+// fetched the first time it is opened. Kept eager on purpose:
+//   Landing, Dashboard — the first screen for visitors / signed-in readers;
+//     lazy would add a second round trip before anything paints.
+//   BookPage — the most-opened page, and the target of the cover morph
+//     (coverMorph.js renders it synchronously and waits ≤450 ms for its cover).
+//   Onboarding — the first screen after sign-up.
+// Navigations run in a transition (RouterContext), so the current page stays on
+// screen while the next chunk downloads; the Suspense fallback in App only
+// shows on a cold first load.
+const Stacks = lazy(() => import('./views/Stacks'));
+const Wishlist = lazy(() => import('./views/Wishlist'));
+const Library = lazy(() => import('./views/Library'));
+const ReadNext = lazy(() => import('./views/ReadNext'));
+const CurrentlyReading = lazy(() => import('./views/CurrentlyReading'));
+const Profile = lazy(() => import('./views/Profile'));
+const ReaderProfile = lazy(() => import('./views/ReaderProfile'));
+const Kindred = lazy(() => import('./views/Kindred'));
+const About = lazy(() => import('./views/About'));
+const Changelog = lazy(() => import('./views/Changelog'));
+const Privacy = lazy(() => import('./views/Privacy'));
+const Terms = lazy(() => import('./views/Terms'));
+const Refund = lazy(() => import('./views/Refund'));
+const NotFound = lazy(() => import('./views/NotFound'));
+const SitemapPage = lazy(() => import('./views/SitemapPage'));
+const OracleFork = lazy(() => import('./views/OracleFork'));
+const OracleCategories = lazy(() => import('./views/OracleCategories'));
+const OracleSimilar = lazy(() => import('./views/OracleSimilar'));
+const OracleAsk = lazy(() => import('./views/OracleAsk'));
+const PlanCreate = lazy(() => import('./views/PlanCreate'));
+const PlanList = lazy(() => import('./views/PlanList'));
+const PlanView = lazy(() => import('./views/PlanView'));
+const ListView = lazy(() => import('./views/ListView'));
+const Lists = lazy(() => import('./views/Lists'));
+const CuratedLists = lazy(() => import('./views/CuratedLists'));
+const ListDirectory = lazy(() => import('./views/ListDirectory'));
+const ListDetail = lazy(() => import('./views/ListDetail'));
+const SeriesPage = lazy(() => import('./views/SeriesPage'));
+const BookClubs = lazy(() => import('./views/BookClubs'));
+const ClubDirectory = lazy(() => import('./views/ClubDirectory'));
+const BookClubCreate = lazy(() => import('./views/BookClubCreate'));
+const BookClubDetail = lazy(() => import('./views/BookClubDetail'));
+const SessionCreate = lazy(() => import('./views/SessionCreate'));
+const SessionDetail = lazy(() => import('./views/SessionDetail'));
+const JoinClub = lazy(() => import('./views/JoinClub'));
+const GenresIndex = lazy(() => import('./views/GenresIndex'));
+const FamilyPage = lazy(() => import('./views/FamilyPage'));
+const GenrePage = lazy(() => import('./views/GenrePage'));
 
 // Overlays that must work on EVERY screen a reader can act on. They used to be
 // mounted only in the main shell at the bottom of AppRoutes, so the early-return
@@ -75,7 +86,9 @@ import GenrePage from './views/GenrePage';
 export default function App() {
   return (
     <>
-      <AppRoutes />
+      <Suspense fallback={<BookLoader fullHeight />}>
+        <AppRoutes />
+      </Suspense>
       <ShareMomentModal />
       <ImportProgressToast />
       {/* Inside RouterProvider (main.jsx) because its upgrade CTA needs the router. */}

@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
+import { createContext, startTransition, useContext, useState, useCallback, useEffect, useRef } from 'react';
 import { navigateWithMorph } from './coverMorph';
 
 const RouterContext = createContext(null);
@@ -274,8 +274,16 @@ export function RouterProvider({ children }) {
     writingRef.current = true;
     // A Book Page opened from a cover morphs that cover into the page's hero
     // (View Transitions; see coverMorph.js). Anything else: plain setState.
-    const morphed = navigateWithMorph(() => setRouteState({ name, params }), {
-      toBookPage: name === 'book-page',
+    //
+    // Every other navigation is a transition: pages load on demand (App.jsx),
+    // and inside a transition React keeps the current page on screen while the
+    // next page's chunk downloads, instead of flashing a loading screen. The
+    // Book Page is excluded because it is eager and the morph renders it with
+    // flushSync, which a transition would defer.
+    const toBookPage = name === 'book-page';
+    const update = () => setRouteState({ name, params });
+    const morphed = navigateWithMorph(toBookPage ? update : () => startTransition(update), {
+      toBookPage,
     });
 
     // Preserve ?lang=xx across navigations — I18nContext manages it
@@ -319,7 +327,7 @@ export function RouterProvider({ children }) {
   useEffect(() => {
     function onNavigate() {
       if (writingRef.current) return;
-      setRouteState(parseLocation());
+      startTransition(() => setRouteState(parseLocation()));
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
     window.addEventListener('popstate', onNavigate);
