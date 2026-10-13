@@ -406,8 +406,9 @@ the client only displays them.
 | Pro | unlimited, with a silent fair-use ceiling of 30 per day |
 
 "None of these call to me" records a miss; a charged free draw is refunded, up
-to 2 per month. Free creation limits (`FREE_LIMITS` in `proGates.js`): 1 owned
-club, 3 Anthologies, 1 Passage. Curators count as Pro.
+to 2 per month. Free creation limits (`FREE_LIMITS` in `src/hooks/useProLimits.js`): 1 owned
+club, 3 Anthologies, 1 Passage. Pro means an active subscription only: curators
+are not Pro (decided 2026-10-13); their own exemption is unmetered categorization.
 
 ## 20. Prompt size budget
 

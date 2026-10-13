@@ -228,7 +228,8 @@ export async function handler(event) {
       // which is allowlisted above; a client that mislabels a club call as
       // 'ask' just spends an ordinary metered call, which is not a bypass of
       // anything that costs us.
-      if (PRO_ONLY_SOURCES.includes(source) && !(quota.subscription_status === 'active' || quota.is_curator)) {
+      // Pro = an active subscription; curators are not Pro (mirrors public.is_pro()).
+      if (PRO_ONLY_SOURCES.includes(source) && quota.subscription_status !== 'active') {
         return json(403, {
           error:   'pro_required',
           feature: source,

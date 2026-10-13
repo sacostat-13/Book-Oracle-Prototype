@@ -35,14 +35,23 @@ Sprint 3 of the 2026-10-12 code-health spike (§3). Internal: no reader-facing b
   output. Inline series-name normalisers in BookPage and enrichmentService → `compactKey()` in
   `matching/titleMatch.js`.
 
+- **Curators are no longer Pro.** Curator (a granted role) and Pro (a paid subscription) are separate.
+  `public.is_pro()` (migration `20261013120000_curators_are_not_pro.sql`), `isProAccount()` in
+  `hooks/useProLimits.js` and the Pro-only source check in `claude.js` now mean an active subscription
+  only. A curator without one meets the Free limits (1 club, 3 Anthologies, 1 Passage — existing rows are
+  kept), loses Anthology covers, the insights breakdown and the Pro-only Oracle features, and has the
+  Free call quota. Unchanged: the Vault and unmetered categorization. To revert, add `or is_curator`
+  back in those three places.
+
 ### Added
+- `tests/curator-not-pro.test.js` — who counts as Pro, in the SQL, the client and `claude.js`.
 - `tests/scoring.test.js` (equivalence + MATH.md example tables), `tests/consolidation.test.js`
   (equivalence for L4, plus a contract test that the client and Netlify Function copies of
   `splitGoodreadsSeriesTitle` are identical — they cannot share a file).
 - `docs/reference/MATH.md`: code paths updated; "Tested" now yes for §2–3, 5–12, 14, 16.
 
 ### Verify
-`TZ=America/Costa_Rica npm run verify` — lint, build, 535 tests.
+`TZ=America/Costa_Rica npm run verify` — lint, build, 542 tests. Apply the new migration in Supabase.
 
 ---
 

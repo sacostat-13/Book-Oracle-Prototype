@@ -24,14 +24,26 @@ export const FREE_LIMITS = {
   plans: 1,   // Passages
 };
 
+/**
+ * Is this account on Pro? A paid, active subscription — nothing else.
+ * Curators are NOT Pro (decided 2026-10-13: separate role, separate product);
+ * mirrors public.is_pro() in 20261013120000_curators_are_not_pro.sql and the
+ * check in netlify/functions/claude.js.
+ *
+ * @param {{ subscription_status?: string } | null | undefined} quota  from useOracleQuota()
+ * @returns {boolean}
+ */
+export function isProAccount(quota) {
+  return quota?.subscription_status === 'active';
+}
+
 export function useProLimits() {
   const { state } = useData();
   const { user } = useAuth();
   const { quota } = useOracleQuota();
   const { go } = useRouter();
 
-  // Curators are Pro for gating purposes, matching public.is_pro().
-  const isPro = quota?.subscription_status === 'active' || !!quota?.is_curator;
+  const isPro = isProAccount(quota);
 
   const owned = {
     clubs: (state.clubs || []).filter((c) => c.createdBy && c.createdBy === user?.id).length,
