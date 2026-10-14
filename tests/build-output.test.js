@@ -17,8 +17,11 @@
 import { describe, it, expect } from 'vitest';
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const root = new URL('..', import.meta.url).pathname;
+// fileURLToPath, not .pathname: on Windows .pathname is "/C:/..." and dist/ is never found,
+// which silently SKIPS this suite (see tests/contracts.test.js).
+const root = fileURLToPath(new URL('..', import.meta.url));
 const dist = join(root, 'dist');
 const built = existsSync(dist);
 

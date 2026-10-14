@@ -290,3 +290,16 @@ describe('the series index floor: three files, one number', () => {
       .toMatch(/noindex:\s*catalogCount != null && catalogCount < SERIES_INDEX_FLOOR/);
   });
 });
+
+// The Windows path trap above, enforced. Three tests used `.pathname` on a file
+// URL; on Windows one crashed (C:\C:\...), one skipped itself and one passed
+// having checked nothing. Use fileURLToPath (or pass the URL itself to fs).
+describe('tests build file paths portably', () => {
+  it('no test turns a file URL into a path with .pathname', () => {
+    const dir = join(root, 'tests');
+    const offenders = readdirSync(dir)
+      .filter((f) => /\.(js|jsx|mjs)$/.test(f))
+      .filter((f) => /import\.meta\.url\)?\)?\.pathname/.test(readFileSync(join(dir, f), 'utf8')));
+    expect(offenders).toEqual([]);
+  });
+});

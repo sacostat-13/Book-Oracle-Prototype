@@ -16,21 +16,28 @@
 
 import { describe, it, expect } from 'vitest';
 import { readFileSync, readdirSync, existsSync, statSync } from 'node:fs';
-import { join, dirname, normalize, relative } from 'node:path';
+import { join, posix } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const ROOT = join(dirname(new URL(import.meta.url).pathname), '..');
+// fileURLToPath, not .pathname: on Windows .pathname is "/C:/...", every
+// directory looked missing, and this test passed having checked nothing.
+const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const SOURCE_EXT = ['.js', '.jsx', '.mjs'];
 const IMPORTER_DIRS = ['src', 'netlify', 'batch-scripts', 'scripts', 'tests'];
 const ROOT_CONFIGS = ['vite.config.js', 'eslint.config.mjs'];
 const ENTRY_POINTS = new Set(['src/main.jsx']);
 
-/** Recursively list source files under `dir` (relative to ROOT). */
+// Paths inside this test are repo-relative with "/" separators on every OS, so
+// they compare equal to ENTRY_POINTS and to each other; join(ROOT, rel) turns
+// them into real paths only at the moment the filesystem is touched.
+
+/** Recursively list source files under `dir` (relative to ROOT, "/"-separated). */
 function listSourceFiles(dir) {
   const abs = join(ROOT, dir);
   if (!existsSync(abs)) return [];
   return readdirSync(abs).flatMap((name) => {
     if (name === 'node_modules' || name === 'output') return [];
-    const rel = join(dir, name);
+    const rel = `${dir}/${name}`;
     if (statSync(join(ROOT, rel)).isDirectory()) return listSourceFiles(rel);
     return SOURCE_EXT.some((ext) => name.endsWith(ext)) ? [rel] : [];
   });
@@ -44,14 +51,16 @@ function relativeSpecifiers(text) {
 
 /** Resolve a specifier the way Vite would for our extensions. */
 function resolveSpecifier(fromFile, spec) {
-  const base = normalize(join(dirname(fromFile), spec));
-  const candidates = [base, ...SOURCE_EXT.map((e) => base + e), ...SOURCE_EXT.map((e) => join(base, 'index' + e))];
+  const base = posix.normalize(posix.join(posix.dirname(fromFile), spec));
+  const candidates = [base, ...SOURCE_EXT.map((e) => base + e), ...SOURCE_EXT.map((e) => `${base}/index${e}`)];
   return candidates.find((c) => existsSync(join(ROOT, c)) && statSync(join(ROOT, c)).isFile()) || null;
 }
 
 describe('src/ has no orphan modules', () => {
   it('every src module is imported by something', () => {
     const srcFiles = listSourceFiles('src');
+    // A wrong ROOT returns no files and would pass vacuously. src/ has hundreds.
+    expect(srcFiles.length, `found only ${srcFiles.length} files under ${join(ROOT, 'src')}`).toBeGreaterThan(100);
     const importers = [...IMPORTER_DIRS.flatMap(listSourceFiles), ...ROOT_CONFIGS.filter((f) => existsSync(join(ROOT, f)))];
 
     const referenced = new Set();
@@ -59,7 +68,7 @@ describe('src/ has no orphan modules', () => {
       const text = readFileSync(join(ROOT, file), 'utf8');
       for (const spec of relativeSpecifiers(text)) {
         const target = resolveSpecifier(file, spec);
-        if (target && target !== file) referenced.add(relative('.', target));
+        if (target && target !== file) referenced.add(target);
       }
     }
 
