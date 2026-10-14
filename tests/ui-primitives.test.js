@@ -4,6 +4,7 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { toggleInList } from '../src/lib/util/selection.js';
 
 describe('toggleInList', () => {
@@ -37,7 +38,7 @@ describe('modals use the shared Modal', () => {
       if (statSync(p).isDirectory()) walk(p);
       else if (p.endsWith('.jsx') && !p.includes('primitives')) files.push(p);
     }
-  })(new URL('../src', import.meta.url).pathname);
+  })(fileURLToPath(new URL('../src', import.meta.url)));
 
   it('no component renders the old overlay shells', () => {
     const offenders = files.filter((f) => /className="[^"]*\b(rating-modal-overlay|overlay)\b/.test(readFileSync(f, 'utf8')));
@@ -75,7 +76,7 @@ describe('StarRating helpers', async () => {
         if (statSync(p).isDirectory()) walk(p);
         else if (p.endsWith('.jsx') && !p.includes('primitives') && /'★'\.repeat/.test(readFileSync(p, 'utf8'))) offenders.push(p);
       }
-    })(new URL('../src', import.meta.url).pathname);
+    })(fileURLToPath(new URL('../src', import.meta.url)));
     expect(offenders).toEqual([]);
   });
 });
@@ -88,7 +89,7 @@ describe('pickers and tabs use the shared primitives', () => {
       if (statSync(p).isDirectory()) walk(p);
       else if (p.endsWith('.jsx') && !p.includes('primitives')) sources.push([p, readFileSync(p, 'utf8')]);
     }
-  })(new URL('../src', import.meta.url).pathname);
+  })(fileURLToPath(new URL('../src', import.meta.url)));
 
   it('no hand-rolled tablists (use <Tabs>)', () => {
     expect(sources.filter(([, s]) => /role="tablist"/.test(s)).map(([p]) => p)).toEqual([]);
