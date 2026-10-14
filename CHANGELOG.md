@@ -9,10 +9,11 @@ Moved here from README.md on 2026-10-12 (code-health spike, item O1). Entries ar
 
 ---
 
-# Unreleased — Sprint 4: DataContext split into domains; Dashboard and Profile split
+# v0.72.6 — DataContext split into domains; Dashboard and Profile split (2026-10-14)
 
-Sprint 4 of the 2026-10-12 code-health spike (the "ongoing" track: L1/L2 for two domains, U4). Internal: no
-reader-facing change, so no `releases.js` entry. Dashboard and every Profile tab were screenshotted before and
+Internal release: Sprint 4 of the 2026-10-12 code-health spike (L1/L2 in full, U4).
+**Not announced in the app** — `releases.js`, `CURRENT_VERSION` and `app-version.json` stay at v0.72.4, so
+readers get no What's New popup and no update prompt. No reader-facing change. Dashboard and every Profile tab were screenshotted before and
 after at 1280px and 390px as a signed-in reader: pixel-identical, except one pixel of the blurred translucent
 nav off by 1/255 in one colour channel.
 
@@ -52,10 +53,12 @@ nav off by 1/255 in one colour channel.
 
 ---
 
-# Unreleased — Sprint 3: structure and the maths in code
+# v0.72.5 — Structure and the maths in code (2026-10-13)
 
-Sprint 3 of the 2026-10-12 code-health spike (§3). Internal: no reader-facing behaviour changes, so no
-`releases.js` entry. Every refactored formula is compared against a frozen copy of the v0.72.4 code
+Internal release: Sprint 3 of the 2026-10-12 code-health spike (§3).
+**Not announced in the app** — `releases.js`, `CURRENT_VERSION` and `app-version.json` stay at v0.72.4.
+No reader-facing change, except for curator accounts (see "Curators are no longer Pro"), which needs the
+migration `20261013120000_curators_are_not_pro.sql` applied in Supabase. Every refactored formula is compared against a frozen copy of the v0.72.4 code
 (`tests/reference/`) over thousands of seeded random inputs.
 
 ### Changed
