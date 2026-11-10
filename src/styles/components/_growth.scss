@@ -1,0 +1,224 @@
+@use "../tokens";
+
+// components/_growth.scss — The Books Oracle
+// The signed-out visitor's way in (2026-11-10):
+//   .public-bar      PublicBar.jsx — name, one line, sign-in on public pages
+//   .guest-cta       GuestShelfCta.jsx — "Save to your shelf — free"
+//   .oracle-teaser   OracleTeaser.jsx — the Oracle, once, on a book page
+//   .onb-kept        Onboarding — "{title} will be on your wishlist"
+// Tokens only (--ro-*), both themes.
+
+// ── Public bar ────────────────────────────────────────────────────────────────
+.public-bar {
+  border-bottom: 1px solid var(--ro-border);
+  background: var(--ro-surface);
+}
+
+.public-bar__inner {
+  max-width: var(--ro-rail-max);
+  margin: 0 auto;
+  padding: var(--ro-space-3) var(--ro-gutter-desktop);
+  display: flex;
+  align-items: center;
+  gap: var(--ro-space-4);
+
+  @include tokens.ro-down(mobile) {
+    padding: var(--ro-space-3) var(--ro-gutter-mobile);
+    flex-wrap: wrap;
+    gap: var(--ro-space-2) var(--ro-space-3);
+  }
+}
+
+.public-bar__brand {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ro-space-2);
+  color: var(--ro-text);
+  text-decoration: none;
+  flex-shrink: 0;
+}
+
+.public-bar__logo {
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+}
+
+.public-bar__name {
+  font-family: var(--ro-font-display);
+  font-size: 1.1rem;
+  white-space: nowrap;
+}
+
+.public-bar__tagline {
+  flex: 1;
+  margin: 0;
+  color: var(--ro-text-2);
+  font-family: var(--ro-font-body);
+  font-size: .9rem;
+  line-height: 1.4;
+
+  @include tokens.ro-down(mobile) {
+    order: 3;
+    flex-basis: 100%;
+    font-size: .82rem;
+  }
+}
+
+.public-bar__actions {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ro-space-3);
+  flex-shrink: 0;
+
+  @include tokens.ro-down(mobile) { margin-left: auto; }
+}
+
+// ── Guest call to action ──────────────────────────────────────────────────────
+.guest-cta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--ro-space-2);
+}
+
+.guest-cta__hint {
+  color: var(--ro-muted);
+  font-size: .82rem;
+  line-height: 1.4;
+  max-width: 34ch;
+}
+
+// ── Oracle teaser ─────────────────────────────────────────────────────────────
+.oracle-teaser__ask {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ro-space-4);
+  padding: var(--ro-space-4);
+  border: 1px solid var(--ro-border-strong);
+  border-radius: var(--ro-radius-lg);
+  background: var(--ro-surface);
+
+  @include tokens.ro-down(mobile) {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+
+.oracle-teaser__prompt {
+  margin: 0;
+  font-family: var(--ro-font-display);
+  font-size: 1.15rem;
+  line-height: 1.35;
+  color: var(--ro-text);
+}
+
+.oracle-teaser__lead {
+  margin: 0 0 var(--ro-space-3);
+  color: var(--ro-text-2);
+}
+
+.oracle-teaser__picks {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--ro-space-3);
+}
+
+.oracle-teaser__pick {
+  display: grid;
+  grid-template-columns: 56px 1fr auto;
+  gap: var(--ro-space-3);
+  align-items: start;
+  padding: var(--ro-space-3);
+  border: 1px solid var(--ro-border);
+  border-radius: var(--ro-radius-md);
+
+  @include tokens.ro-down(mobile) {
+    grid-template-columns: 48px 1fr;
+
+    .oracle-teaser__save { grid-column: 2; justify-self: start; }
+  }
+}
+
+.oracle-teaser__cover {
+  display: block;
+  width: 56px;
+  aspect-ratio: 2 / 3;
+  border-radius: var(--ro-radius-sm);
+  overflow: hidden;
+
+  @include tokens.ro-down(mobile) { width: 48px; }
+}
+
+.oracle-teaser__body { min-width: 0; }
+
+.oracle-teaser__title {
+  font-family: var(--ro-font-display);
+  font-size: 1.05rem;
+  color: var(--ro-text);
+  text-decoration: none;
+
+  &:hover { color: var(--ro-gold-text); }
+}
+
+.oracle-teaser__author {
+  color: var(--ro-muted);
+  font-size: .85rem;
+  margin-top: 2px;
+}
+
+.oracle-teaser__why {
+  margin: var(--ro-space-2) 0 0;
+  color: var(--ro-text-2);
+  font-style: italic;
+  line-height: 1.45;
+}
+
+.oracle-teaser__outro {
+  margin-top: var(--ro-space-4);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ro-space-4);
+
+  p { margin: 0; color: var(--ro-text-2); max-width: 52ch; }
+
+  @include tokens.ro-down(mobile) {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+
+.oracle-teaser__quiet {
+  margin: 0;
+  color: var(--ro-muted);
+  font-style: italic;
+}
+
+// ── Onboarding: the book kept from before sign-up ─────────────────────────────
+.onb-kept {
+  margin: 0 0 var(--ro-space-4);
+  padding: var(--ro-space-2) var(--ro-space-3);
+  border: 1px solid var(--ro-border);
+  border-radius: var(--ro-radius-md);
+  color: var(--ro-gold-text);
+  font-size: .9rem;
+  text-align: center;
+}
+
+// A placeholder cover (no image) at 56px: the ornaments and author line cannot
+// fit, so only the title shows, small.
+.oracle-teaser__cover .placeholder {
+  .ph-ornament,
+  .ph-author { display: none; }
+
+  .ph-title {
+    font-size: .55rem;
+    line-height: 1.15;
+    overflow: hidden;
+  }
+}

@@ -22,6 +22,7 @@ import { fetchSeriesDescriptionFromWikipedia, fetchBooksInSeriesByName, normaliz
 import BookCover from '../components/BookCover';
 import { openBookTab } from '../lib/book/bookHelpers';
 import BookMark from '../components/BookMark';
+import GuestShelfCta from '../components/GuestShelfCta';
 import ShareModal from '../components/ShareModal';
 import { seriesShareUrl } from '../lib/share/shareService';
 
@@ -378,10 +379,18 @@ export default function SeriesPage({ isAuthed = true, authPending = false, dataR
           {authPending ? null : !isAuthed ? (
             // Same shape as BookPage's action block: the page is fully readable
             // signed out, and the only thing behind the wall is DOING something
-            // with it.
-            <a href={window.location.pathname} className="btn-primary">
-              {t('bookPage.signInToAdd')}
-            </a>
+            // with it. 2026-11-10: that used to be a link to this same page
+            // (it reloaded). Now it opens sign-up, keeps book 1, and brings the
+            // new reader back here with it on their wishlist — where the
+            // progress bar starts counting.
+            <GuestShelfCta
+              book={entries[0] || null}
+              cta="series_start"
+              label={entries.length > 0 ? t('growth.series.start') : t('growth.bar.start')}
+              context={t('growth.auth.startSeries', { series: seriesName })}
+              hint={t('growth.series.hint')}
+              returnTo={{ name: 'series-page', params: { seriesName: route.params?.seriesName || seriesName } }}
+            />
           ) : (
           <button
             className="btn-primary"
@@ -390,7 +399,8 @@ export default function SeriesPage({ isAuthed = true, authPending = false, dataR
             {t('seriesPage.createPlan')}
           </button>
           )}
-          {readCount === 0 && entries.length > 0 && (
+          {/* Signed-in only: for a visitor, GuestShelfCta above IS this action. */}
+          {isAuthed && readCount === 0 && entries.length > 0 && (
             <button
               className="btn-primary"
               onClick={() => handleAction(entries[0], 'wishlist')}

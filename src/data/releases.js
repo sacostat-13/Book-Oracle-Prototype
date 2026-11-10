@@ -16,9 +16,27 @@
 
 // The version label shown as "current" — keep in sync with package.json and
 // the README version line.
-export const CURRENT_VERSION = 'v0.72.4';
+export const CURRENT_VERSION = 'v0.73';
 
 export const RELEASES = [{
+    version: 'v0.73',
+    date: '2026-11-10',
+    // Not announced on load: written for visitors who are not readers yet.
+    // Readers notice it only as a fairer privacy page.
+    titleEn: 'A way in from every book',
+    titleEs: 'Una puerta de entrada en cada libro',
+    bodyEn: [
+      'Anyone who opens a book or a series without an account can now save it to a new shelf in one step — after signing up, the book is waiting on their wishlist and they land back on the same page.',
+      'Visitors can ask the Oracle, once, what might follow a book they are looking at, and get three picks with the reason for each.',
+      'The privacy page now explains the visit statistics we keep for people browsing without an account, and what we never keep.',
+    ],
+    bodyEs: [
+      'Quien abre un libro o una saga sin cuenta ahora puede guardarlo en un estante nuevo en un paso: después de registrarse, el libro lo espera en su lista de deseos y vuelve a la misma página.',
+      'Las visitas pueden preguntarle al Oráculo, una vez, qué podría seguir al libro que están mirando, y reciben tres sugerencias con el porqué de cada una.',
+      'La página de privacidad ahora explica qué estadísticas de visitas guardamos de quienes navegan sin cuenta, y qué no guardamos nunca.',
+    ],
+  },
+  {
     version: 'v0.72.4',
     date: '2026-10-13',
     // Not announced on load: fixes and polish a reader notices in passing, not

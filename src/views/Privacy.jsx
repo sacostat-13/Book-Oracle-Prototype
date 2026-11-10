@@ -1,4 +1,4 @@
-// src/views/Privacy.jsx — v0.37
+// src/views/Privacy.jsx — v0.37 · visit statistics + public Oracle teaser 2026-11-10
 import { useRouter } from '../contexts/RouterContext';
 import { useT, useTNode, useI18n } from '../contexts/I18nContext';
 
@@ -40,6 +40,9 @@ export default function Privacy() {
               content, this one holds book titles, and collapsing them would
               contradict a promise already made to users. */}
           <p>{tNode('privacy.whatDataWeCollectPara6')}</p>
+          {/* 2026-11-10: visitor funnel (src/lib/api/funnel.js). Every claim in
+              this paragraph is enforced in code — keep them in step. */}
+          <p>{tNode('privacy.whatDataWeCollectPara7')}</p>
         </S>
         <S title={t('privacy.whatDataWeDoNotCollectTitle')}>
           <p>{tNode('privacy.whatDataWeDoNotCollectPara1')}</p>
@@ -47,6 +50,8 @@ export default function Privacy() {
         <S title={t('privacy.howDoWeUseYourDataTitle')}>
           <p>{tNode('privacy.howDoWeUseYourDataPara1')}</p>
           <p>{tNode('privacy.howDoWeUseYourDataPara2')}</p>
+          {/* 2026-11-10: the book-page Oracle teaser (netlify/functions/book-teaser.js). */}
+          <p>{tNode('privacy.howDoWeUseYourDataPara3')}</p>
 
         </S>
         <S title={t('privacy.dataStorageTitle')}>

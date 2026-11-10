@@ -19,6 +19,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useT, useTNode } from '../contexts/I18nContext';
 import CornerBrackets from './CornerBrackets';
 import Tabs from './primitives/Tabs';
+import { trackEvent } from '../lib/api/funnel';
 
 // signin  — email + password (default)
 // signup  — create an account with a password
@@ -39,7 +40,29 @@ function looksLikeGoogleAccount(email) {
   return GOOGLE_DOMAINS.has(email.slice(at + 1).trim().toLowerCase());
 }
 
-export default function SignInGate({ onClose }) {
+// Which bucket a failure falls in, for the visitor funnel. Never the message:
+// it can contain the address that was typed.
+export function authErrorKind(err) {
+  const msg = (err?.message || '').toLowerCase();
+  if (msg.includes('invalid login credentials')) return 'bad_credentials';
+  if (msg.includes('email not confirmed')) return 'unconfirmed';
+  if (msg.includes('already registered') || msg.includes('already been registered')) return 'already_registered';
+  if (msg.includes('password')) return 'password_rejected';
+  if (msg.includes('rate limit') || msg.includes('too many')) return 'rate_limited';
+  return 'other';
+}
+
+/**
+ * @param {{
+ *   onClose?: () => void,
+ *   initialMode?: 'signin' | 'signup',  // 2026-11-10: a visitor who pressed "Save
+ *                                       // to your shelf" is creating an account,
+ *                                       // so the window opens on that tab
+ *   contextLine?: string | null,        // why they are being asked, e.g. "…{title}
+ *                                       // will be waiting on your wishlist"
+ * }} props
+ */
+export default function SignInGate({ onClose, initialMode = 'signin', contextLine = null }) {
   const {
     signInWithGoogle,
     signInWithEmail,
@@ -51,7 +74,7 @@ export default function SignInGate({ onClose }) {
   const t = useT();
   const tNode = useTNode();
 
-  const [mode, setMode] = useState('signin');
+  const [mode, setMode] = useState(MODES.includes(initialMode) ? initialMode : 'signin');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
@@ -106,6 +129,7 @@ export default function SignInGate({ onClose }) {
 
     setBusy(true);
     let err = null;
+    trackEvent('auth_submit', { method: mode === 'signup' ? 'password_signup' : mode === 'signin' ? 'password_signin' : mode });
 
     if (mode === 'signin') {
       ({ error: err } = await signInWithPassword(email.trim(), password));
@@ -163,7 +187,10 @@ export default function SignInGate({ onClose }) {
     }
 
     setBusy(false);
-    if (err) setError(describe(err));
+    if (err) {
+      setError(describe(err));
+      trackEvent('auth_error', { method: mode, kind: authErrorKind(err) });
+    }
     // On success for signin/signup-with-session, onAuthStateChange swaps the
     // whole view out from under this component. Nothing to do here.
   }
@@ -195,6 +222,11 @@ export default function SignInGate({ onClose }) {
   // password to reset.
   const showGoogleNudge = mode === 'signup' && looksLikeGoogleAccount(email);
 
+  function continueWithGoogle() {
+    trackEvent('auth_submit', { method: 'google', mode });
+    signInWithGoogle();
+  }
+
   const inboxTitle = sent?.kind === 'maybeExisting'
     ? t('signIn.maybeExistingTitle')
     : t('signIn.checkInboxTitle');
@@ -210,7 +242,7 @@ export default function SignInGate({ onClose }) {
         <h1 className="onb-title">
           {tNode('app.brand', { wishlist: <span className="accent">{t('app.brandAccent')}</span> })}
         </h1>
-        <p className="onb-desc">{t('signIn.desc')}</p>
+        <p className="onb-desc">{contextLine || t('signIn.desc')}</p>
 
         {sent ? (
           <div className="sign-in-confirm">
@@ -226,7 +258,7 @@ export default function SignInGate({ onClose }) {
                   {t('signIn.forgotLink')}
                 </button>
                 <span className="sign-in-legal__sep">·</span>
-                <button className="btn-text" onClick={signInWithGoogle}>
+                <button className="btn-text" onClick={continueWithGoogle}>
                   {t('signIn.continueGoogle')}
                 </button>
               </div>
@@ -238,7 +270,7 @@ export default function SignInGate({ onClose }) {
         ) : (
           <>
             <div className="sso-stack">
-              <button className="btn-secondary btn--block" onClick={signInWithGoogle}>
+              <button className="btn-secondary btn--block" onClick={continueWithGoogle}>
                 {t('signIn.continueGoogle')}
               </button>
             </div>
@@ -294,7 +326,7 @@ export default function SignInGate({ onClose }) {
               {showGoogleNudge && (
                 <div className="sign-in-nudge">
                   <span className="sign-in-nudge__text">{t('signIn.googleNudge')}</span>
-                  <button type="button" className="btn-text" onClick={signInWithGoogle}>
+                  <button type="button" className="btn-text" onClick={continueWithGoogle}>
                     {t('signIn.googleNudgeAction')}
                   </button>
                 </div>
@@ -365,11 +397,13 @@ export default function SignInGate({ onClose }) {
         )}
 
         <div className="sign-in-legal">
-          <a className="btn btn-text" href="#privacy" target="_blank" rel="noopener noreferrer">{t('footer.privacy') || 'Privacy Policy'}</a>
+          {/* Paths, not '#privacy': routes have been paths since v0.39 and the
+              hash links opened the home page. */}
+          <a className="btn btn-text" href="/privacy" target="_blank" rel="noopener noreferrer">{t('footer.privacy') || 'Privacy Policy'}</a>
           <span className="sign-in-legal__sep">·</span>
-          <a className="btn btn-text" href="#terms" target="_blank" rel="noopener noreferrer">{t('footer.terms') || 'Terms of Service'}</a>
+          <a className="btn btn-text" href="/terms" target="_blank" rel="noopener noreferrer">{t('footer.terms') || 'Terms of Service'}</a>
           <span className="sign-in-legal__sep">·</span>
-          <a className="btn btn-text" href="#refund" target="_blank" rel="noopener noreferrer">{t('footer.refund') || 'Refund Policy'}</a>
+          <a className="btn btn-text" href="/refund" target="_blank" rel="noopener noreferrer">{t('footer.refund') || 'Refund Policy'}</a>
         </div>
       </div>
     </div>

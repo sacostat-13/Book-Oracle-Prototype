@@ -598,7 +598,6 @@
     "seriesComplete": "Completa",
     "loadingLibrary": "Cargando tu biblioteca…",
     "loadingBook": "Cargando libro...",
-    "signInToAdd": "Iniciar sesión para agregar ↗",
     "verified": "☩ Verificado",
     "inWishlistShort": "En tu lista",
     "inReadNextShort": "En tu cola",
@@ -1965,7 +1964,7 @@
   "privacy": {
     "breadcrumbs": "Política de privacidad",
     "title": "<span class=\"accent\">Política</span> de privacidad",
-    "lastUpdated": "Última actualización: 23 de septiembre de 2026",
+    "lastUpdated": "Última actualización: 10 de noviembre de 2026",
     "whoWeAreTitle": "Quiénes somos",
     "whoWeArePara1": "The Books Oracle (accesible en thebooksoracle.com) es una aplicación de acompañamiento de lectura personal operada por un desarrollador individual basado en Costa Rica.",
     "whoWeArePara2": "Para preguntas relacionadas con la privacidad: support@thebooksoracle.com",
@@ -1987,12 +1986,14 @@
     "yourRightsTitle": "Tus derechos",
     "yourRightsPara1": "Puedes eliminar tu cuenta y todos tus datos en cualquier momento desde Perfil → Restablecer perfil. Puedes solicitar una copia de tus datos o pedirnos que eliminemos registros específicos enviando un correo electrónico a support@thebooksoracle.com. Responderemos en un plazo de 30 días. Los usuarios del EEE (Espacio Económico Europeo) tienen los derechos del RGPD, incluidos el acceso, la rectificación, la supresión y la portabilidad.",
     "cookiesTitle": "Cookies",
-    "cookiesPara1": "La aplicación usa localStorage y sessionStorage del navegador para guardar en caché los datos de lectura localmente por motivos de rendimiento. Cuando abrís una Antología compartida por otra persona, también guarda un número de visitante aleatorio en este navegador para que quien la curó pueda ver a cuántas personas distintas llegó — ese número no está vinculado a tu cuenta y nunca se le muestra a nadie. Con No rastrear o Global Privacy Control activados, no se cuenta nada. No son cookies publicitarias y no te rastrean en otros sitios. No se configuran cookies de rastreo de terceros.",
+    "cookiesPara1": "La aplicación usa localStorage y sessionStorage del navegador para guardar en caché los datos de lectura localmente por motivos de rendimiento. Cuando abrís una Antología compartida por otra persona, también guarda un número de visitante aleatorio en este navegador para que quien la curó pueda ver a cuántas personas distintas llegó — ese número no está vinculado a tu cuenta y nunca se le muestra a nadie. Las estadísticas de visitas usan un número aleatorio en sessionStorage que se borra al cerrar la pestaña, y una nota en localStorage sobre desde dónde llegó tu primera visita, que se guarda 7 días. Si tocás «Guardar» en un libro antes de tener cuenta, ese libro se guarda en localStorage hasta 2 horas, para poder agregarlo a tu estante cuando te registres. Con No rastrear o Global Privacy Control activados, no se cuenta nada. No son cookies publicitarias y no te rastrean en otros sitios. No se configuran cookies de rastreo de terceros.",
     "childrenTitle": "Menores",
     "childrenPara1": "The Books Oracle no está dirigido a niños menores de 13 años. Si crees que un menor ha proporcionado datos personales, ponte en contacto con nosotros y los eliminaremos de inmediato.",
     "changesTitle": "Cambios",
     "changesPara1": "Es posible que actualicemos esta política de vez en cuando. Los cambios significativos se indicarán en las notas de la versión dentro de la aplicación.",
-    "whatDataWeCollectPara6": "<strong>Historial de recomendaciones.</strong> Cuando el Oráculo te sugiere libros, registramos los títulos que ofreció y si los agregaste. Esto es producción de la app, no algo que vos nos hayas contado, y lo guardamos por un solo motivo: es la única manera de saber si las sugerencias del Oráculo son buenas. Cuando le decís al Oráculo que ninguna sugerencia te sirve, registramos eso y el motivo que elegiste, y lo usamos para orientar tus próximas sugerencias. Solo vos podés verlo, y se elimina junto con tu cuenta."
+    "whatDataWeCollectPara6": "<strong>Historial de recomendaciones.</strong> Cuando el Oráculo te sugiere libros, registramos los títulos que ofreció y si los agregaste. Esto es producción de la app, no algo que vos nos hayas contado, y lo guardamos por un solo motivo: es la única manera de saber si las sugerencias del Oráculo son buenas. Cuando le decís al Oráculo que ninguna sugerencia te sirve, registramos eso y el motivo que elegiste, y lo usamos para orientar tus próximas sugerencias. Solo vos podés verlo, y se elimina junto con tu cuenta.",
+    "whatDataWeCollectPara7": "<strong>Estadísticas de visitas.</strong> Cuando recorrés las páginas públicas sin haber iniciado sesión, registramos qué tipo de página abriste (un libro, una saga, la página de inicio), la dirección de las páginas públicas de libros, sagas y géneros, el sitio desde el que llegaste solo por su nombre (por ejemplo «Google» — nunca el enlace ni lo que buscaste), tu idioma, si usás un celular o una computadora, y qué botones del camino hacia una cuenta usaste. Esos registros comparten un número aleatorio guardado en esa pestaña del navegador, que desaparece cuando la cerrás. Cuando creás una cuenta o iniciás sesión, ese único evento se vincula a tu cuenta, para que podamos ver qué páginas traen lectores. Una vez que iniciaste sesión, las páginas que visitás no se registran. No guardamos tu dirección IP ni datos de tu dispositivo con estos registros, no se comparten con nadie, no se registra nada si tu navegador envía No rastrear o Global Privacy Control, y los registros se eliminan a los 12 meses.",
+    "howDoWeUseYourDataPara3": "Cuando alguien le pregunta al Oráculo por un libro en su página pública, solo se envían el título, el autor y la descripción de ese libro. La respuesta es sobre el libro, se le muestra a todas las personas que preguntan y no se vincula con nadie."
   },
   "terms": {
     "breadcrumbs": "Términos y Condiciones",
@@ -2387,6 +2388,41 @@
       "signed_out": "Volvé a iniciar sesión para subir una portada.",
       "pro_required": "Las portadas propias son parte de Pro.",
       "upload_failed": "No se pudo subir la portada. Probá de nuevo en un momento."
+    }
+  },
+  "growth": {
+    "bar": {
+      "tagline": "Tu lectura en orden, y un Oráculo que te sugiere qué sigue — con el porqué.",
+      "start": "Empezá gratis",
+      "signIn": "Ingresar",
+      "home": "Inicio"
+    },
+    "book": {
+      "save": "Guardalo en tu estante — gratis",
+      "saveHint": "Con una cuenta gratis, tu lista de deseos, tu biblioteca y tus sagas quedan en orden."
+    },
+    "series": {
+      "start": "Empezá esta saga — guardá el libro 1 gratis",
+      "hint": "Con una cuenta gratis, esta página lleva la cuenta de cuánto leíste."
+    },
+    "auth": {
+      "saveBook": "Creá una cuenta gratis y {title} te va a estar esperando en tu lista de deseos.",
+      "startSeries": "Creá una cuenta gratis para empezar {series}: el libro 1 va a tu lista de deseos."
+    },
+    "teaser": {
+      "label": "La lectura del Oráculo",
+      "prompt": "¿Te gustó {title}? Preguntale al Oráculo qué podrías leer después.",
+      "ask": "Preguntale al Oráculo",
+      "asking": "El Oráculo está leyendo…",
+      "lead": "Tres libros que podrían seguir a {title}:",
+      "save": "Guardar",
+      "outro": "Eso fue el Oráculo leyendo un solo libro. Con tu estante, los lee todos — y te dice por qué cada sugerencia te puede gustar.",
+      "outroCta": "Abrí tu estante — gratis",
+      "quiet": "El Oráculo todavía no tiene nada seguro para decir sobre este libro.",
+      "busy": "El Oráculo está descansando. Probá de nuevo en un rato."
+    },
+    "onboarding": {
+      "kept": "{title} va a estar en tu lista de deseos cuando termines."
     }
   }
 }

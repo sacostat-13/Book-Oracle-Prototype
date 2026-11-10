@@ -6,6 +6,8 @@ import { useData } from './contexts/DataContext';
 import { useRouter } from './contexts/RouterContext';
 import { useT, useTNode } from './contexts/I18nContext';
 import { useDocumentMeta } from './hooks/useDocumentMeta';
+import { useVisitorFunnel } from './hooks/useVisitorFunnel';
+import { AuthPromptProvider, useAuthPrompt } from './contexts/AuthPromptContext';
 
 import Nav from './components/Nav';
 import LandingNav from './components/LandingNav';
@@ -18,6 +20,8 @@ import ImportProgressToast from './components/ImportProgressToast';
 import OracleGateDialog from './components/OracleGateDialog';
 import SignInGate from './components/SignInGate';
 import PasswordResetGate from './components/PasswordResetGate';
+import IntentResumer from './components/IntentResumer';
+import PublicBar from './components/PublicBar';
 
 import Onboarding from './views/Onboarding';
 import Dashboard from './views/Dashboard';
@@ -83,9 +87,14 @@ const GenrePage = lazy(() => import('./views/GenrePage'));
 // book page could wait on a confirmation dialog that wasn't mounted. Rendering
 // them once, around every route, makes that class of bug impossible. Each one
 // renders nothing until its state says otherwise.
+//
+// AuthPromptProvider (2026-11-10) owns the one sign-in window every public page
+// opens; IntentResumer finishes, after sign-up, what the visitor clicked before
+// it ("save this book"). Both sit outside the routes so a public page and the
+// signed-in shell share them.
 export default function App() {
   return (
-    <>
+    <AuthPromptProvider>
       <Suspense fallback={<BookLoader fullHeight />}>
         <AppRoutes />
       </Suspense>
@@ -93,7 +102,8 @@ export default function App() {
       <ImportProgressToast />
       {/* Inside RouterProvider (main.jsx) because its upgrade CTA needs the router. */}
       <OracleGateDialog />
-    </>
+      <IntentResumer />
+    </AuthPromptProvider>
   );
 }
 
@@ -101,7 +111,11 @@ function AppRoutes() {
   const { state, loading, upsertDiscoveredBook } = useData();
   const { route, go } = useRouter();
   const { user, loading: authLoading, recoveringPassword } = useAuth();
+  const { openAuth } = useAuthPrompt();
   const t = useT();
+
+  // Visitor funnel (2026-11-10): a signed-out visitor's pages, nothing else.
+  useVisitorFunnel(route, user, authLoading);
 
   // v0.55.4: bump to re-read the DEV onboarding-replay session flag (see effect below).
   const [, forceRerender] = useState(0);
@@ -286,9 +300,14 @@ function AppRoutes() {
     const authPending = authLoading; // still checking session
     const dataReady = isAuthed && !loading && state.onboarded;
     if (route.name === 'book-page') {
+      // 2026-11-10: a signed-out visitor gets the PublicBar (what this site is,
+      // and the way in) and the marketing footer. Before, they got the book and
+      // nothing else — no name, no link home, no way to sign up.
+      const guest = !isAuthed && !authPending;
       return (
         <div className="app">
           {isAuthed && <Nav onPreviewBook={setPreviewBook} />}
+          {guest && <PublicBar from="book" />}
           <div className="container">
             <BookPage
               previewBookRef={previewBookRef}
@@ -297,6 +316,7 @@ function AppRoutes() {
               dataReady={dataReady}
             />
           </div>
+          {guest && <LandingFooter />}
           <Toast />
         </div>
       );
@@ -331,6 +351,7 @@ function AppRoutes() {
     if (route.name === 'series-page' && !isAuthed) {
       return (
         <div className="app">
+          {!authPending && <PublicBar from="series" />}
           <div className="container">
             <SeriesPage
               isAuthed={isAuthed}
@@ -403,7 +424,7 @@ function AppRoutes() {
       const View = route.name === 'about' ? About : Changelog;
       return (
         <div className="app lp-root">
-          <LandingNav onOpenAuth={(mode) => go('dashboard', { auth: mode })} />
+          <LandingNav onOpenAuth={(mode) => openAuth({ mode, from: `${route.name}_nav` })} />
           <div className="container lp-legal-container">
             <View />
           </div>
@@ -437,7 +458,7 @@ function AppRoutes() {
       }
       return (
         <div className="app lp-root">
-          <LandingNav onOpenAuth={(mode) => go('dashboard', { auth: mode })} />
+          <LandingNav onOpenAuth={(mode) => openAuth({ mode, from: `${route.name}_nav` })} />
           <div className="container lp-legal-container">
             <View />
           </div>

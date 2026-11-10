@@ -11,7 +11,7 @@
 // Composition + Lenis provider + the GoldThread anchor wiring live here.
 // Acts: I Spread (pinned hero) → II Rite I Suggestion → III Rite II Path →
 // IV Companions → V Offering (pricing) → VI Questions (FAQ) → Epilogue Claim.
-import { createRef, useEffect, useMemo, useRef, useState } from 'react';
+import { createRef, useCallback, useEffect, useMemo, useRef } from 'react';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import Lenis from 'lenis';
@@ -21,7 +21,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import { useDocumentMeta } from '../hooks/useDocumentMeta';
 import LandingNav from '../components/LandingNav';
 import LandingFooter from '../components/LandingFooter';
-import SignInGate from '../components/SignInGate';
+import { useAuthPrompt } from '../contexts/AuthPromptContext';
 import GoldThread from '../components/landing/GoldThread';
 import StarField from '../components/landing/StarField';
 import ActSpread from '../components/landing/ActSpread';
@@ -41,7 +41,13 @@ export default function Landing() {
   const { lang } = useI18n();
   const { theme } = useTheme();
   const t = useT();
-  const [authMode, setAuthMode] = useState(null); // null | 'login' | 'signup'
+  // The sign-in window is shared with every public page (AuthPromptContext).
+  // Landing's CTAs say 'login' or 'signup'; the label tells the funnel which.
+  const { openAuth } = useAuthPrompt();
+  const setAuthMode = useCallback(
+    (mode) => openAuth({ mode, from: `landing_${mode}` }),
+    [openAuth]
+  );
 
   // ── GoldThread anchors, in document order after the Act I ignition ──────
   const rite1Ref = useRef(null);
@@ -149,7 +155,7 @@ export default function Landing() {
   useEffect(() => {
     const auth = route.params?.auth;
     if (auth === 'login' || auth === 'signup') setAuthMode(auth);
-  }, [route.params?.auth]);
+  }, [route.params?.auth, setAuthMode]);
 
   return (
     <div className="lps-root">
@@ -193,16 +199,6 @@ export default function Landing() {
         </button>
       </div>
 
-      {authMode && (
-        <div
-          className="lp-auth-modal"
-          role="dialog"
-          aria-modal="true"
-          onClick={(e) => { if (e.target === e.currentTarget) setAuthMode(null); }}
-        >
-          <SignInGate onClose={() => setAuthMode(null)} />
-        </div>
-      )}
     </div>
   );
 }

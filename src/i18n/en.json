@@ -598,7 +598,6 @@
     "seriesComplete": "Complete",
     "loadingLibrary": "Loading your library…",
     "loadingBook": "Loading book information...",
-    "signInToAdd": "Sign in to add to your library ↗",
     "verified": "☩ Verified",
     "inWishlistShort": "In wishlist",
     "inReadNextShort": "In Read Next",
@@ -1965,7 +1964,7 @@
   "privacy": {
     "breadcrumbs": "Privacy Policy",
     "title": "Privacy <span class=\"accent\">Policy</span>",
-    "lastUpdated": "Last updated: September 23, 2026",
+    "lastUpdated": "Last updated: November 10, 2026",
     "whoWeAreTitle": "Who we are",
     "whoWeArePara1": "The Books Oracle (accessible at thebooksoracle.com) is a personal reading companion application operated by an individual developer based in Costa Rica. ",
     "whoWeArePara2": "For privacy - related questions: support @thebooksoracle.com",
@@ -1987,12 +1986,14 @@
     "yourRightsTitle": "Your rights",
     "yourRightsPara1": "You can delete your account and all data at any time from Profile → Reset profile. You can request a copy of your data or ask us to delete specific records by emailing support@thebooksoracle.com. We respond within 30 days. EEA users have GDPR rights including access, rectification, erasure, and portability.",
     "cookiesTitle": "Cookies",
-    "cookiesPara1": "The app uses browser localStorage and sessionStorage to cache reading data locally for performance. When you open someone's shared Anthology, it also keeps a random visitor number in this browser so the curator can see how many different people it reached — the number is not linked to your account and never shown to anyone. With Do Not Track or Global Privacy Control turned on, nothing is counted. These are not advertising cookies and do not track you across other sites. No third-party tracking cookies are set.",
+    "cookiesPara1": "The app uses browser localStorage and sessionStorage to cache reading data locally for performance. When you open someone's shared Anthology, it also keeps a random visitor number in this browser so the curator can see how many different people it reached — the number is not linked to your account and never shown to anyone. Visit statistics use a random number in sessionStorage that is deleted when you close the tab, and a note in localStorage of where your first visit came from, kept for 7 days. If you press \"Save\" on a book before you have an account, that book is kept in localStorage for up to 2 hours so it can be added to your shelf after you sign up. With Do Not Track or Global Privacy Control turned on, nothing is counted. These are not advertising cookies and do not track you across other sites. No third-party tracking cookies are set.",
     "childrenTitle": "Children",
     "childrenPara1": "The Books Oracle is not directed at children under 13. If you believe a child has provided personal data, contact us and we will delete it promptly.",
     "changesTitle": "Changes",
     "changesPara1": "We may update this policy from time to time. Significant changes will be noted in the in-app release notes.",
-    "whatDataWeCollectPara6": "<strong>Recommendation history.</strong> When the Oracle suggests books to you, we record the titles it offered and whether you added them. This is the app's own output rather than anything you told us, and we keep it for one reason: it is the only way to tell whether the Oracle's suggestions are any good. When you tell the Oracle none of its suggestions fit, we record that and the reason you picked, and use it to steer your next suggestions. It is visible only to you, and it is deleted with your account."
+    "whatDataWeCollectPara6": "<strong>Recommendation history.</strong> When the Oracle suggests books to you, we record the titles it offered and whether you added them. This is the app's own output rather than anything you told us, and we keep it for one reason: it is the only way to tell whether the Oracle's suggestions are any good. When you tell the Oracle none of its suggestions fit, we record that and the reason you picked, and use it to steer your next suggestions. It is visible only to you, and it is deleted with your account.",
+    "whatDataWeCollectPara7": "<strong>Visit statistics.</strong> When you browse the public pages without being signed in, we record which kind of page you opened (a book, a series, the home page), the address of public book, series and genre pages, the site you arrived from as a name only (for example \"Google\" — never the link or what you searched for), your language, whether you are on a phone or a computer, and which buttons on the way to an account you used. These records share a random number kept in that browser tab, which disappears when you close it. When you create an account or sign in, that one event is linked to your account, so we can see which pages bring readers in. Once you are signed in, the pages you visit are not recorded. We store no IP address and no device details with these records, they are not shared with anyone, nothing is recorded if your browser sends Do Not Track or Global Privacy Control, and records are deleted after 12 months.",
+    "howDoWeUseYourDataPara3": "When a visitor asks the Oracle about a book on its public page, only that book's title, author and description are sent. The answer is about the book, is shown to everyone who asks, and is not linked to anyone."
   },
   "terms": {
     "breadcrumbs": "Terms & Conditions",
@@ -2387,6 +2388,41 @@
       "signed_out": "Sign in again to upload a cover.",
       "pro_required": "Custom covers are part of Pro.",
       "upload_failed": "The cover couldn't be uploaded. Try again in a moment."
+    }
+  },
+  "growth": {
+    "bar": {
+      "tagline": "Keep your reading in order — and let the Oracle suggest what comes next, with the reason why.",
+      "start": "Start free",
+      "signIn": "Sign in",
+      "home": "Home"
+    },
+    "book": {
+      "save": "Save to your shelf — free",
+      "saveHint": "A free account keeps your wishlist, library and series in order."
+    },
+    "series": {
+      "start": "Start this series — save book 1 free",
+      "hint": "With a free account, this page keeps count of how far you've read."
+    },
+    "auth": {
+      "saveBook": "Create a free account and {title} will be waiting on your wishlist.",
+      "startSeries": "Create a free account to start {series} — book 1 goes on your wishlist."
+    },
+    "teaser": {
+      "label": "The Oracle's reading",
+      "prompt": "Liked {title}? Ask the Oracle what you might read next.",
+      "ask": "Ask the Oracle",
+      "asking": "The Oracle is reading…",
+      "lead": "Three books that might follow {title}:",
+      "save": "Save",
+      "outro": "That was the Oracle reading one book. With your shelf, it reads all of them — and tells you why each pick might fit.",
+      "outroCta": "Open your shelf — free",
+      "quiet": "The Oracle has nothing certain to say about this one yet.",
+      "busy": "The Oracle is resting. Try again in a little while."
+    },
+    "onboarding": {
+      "kept": "{title} will be on your wishlist when you finish."
     }
   }
 }

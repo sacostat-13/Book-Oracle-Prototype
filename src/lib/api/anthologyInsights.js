@@ -22,21 +22,13 @@
 
 import { supabase } from './supabase';
 import { bookKey } from '../book/bookHelpers';
+import { trackingAllowed } from '../util/trackingAllowed';
 
 const VISITOR_KEY  = 'tbo_vid';
 const REF_KEY      = 'tbo_ref';
 const CTX_KEY      = 'tbo_anthology_ctx';
 const REF_TTL_MS   = 7 * 86400e3;
 const CTX_TTL_MS   = 2 * 3600e3;
-
-function trackingAllowed() {
-  try {
-    if (typeof navigator === 'undefined') return false;
-    if (navigator.globalPrivacyControl) return false;
-    const dnt = navigator.doNotTrack || window.doNotTrack || navigator.msDoNotTrack;
-    return !(dnt === '1' || dnt === 'yes');
-  } catch { return false; }
-}
 
 function visitorId() {
   try {

@@ -37,6 +37,8 @@ import { useAuth } from '../contexts/AuthContext';
 import { fetchRecommendationReason } from '../lib/oracle/oracleProvenance';
 import OracleLongReading from '../components/OracleLongReading';
 import BookMark from '../components/BookMark';
+import GuestShelfCta from '../components/GuestShelfCta';
+import OracleTeaser from '../components/OracleTeaser';
 import { useConfirm } from '../components/primitives/ConfirmDialog';
 import StarRating from '../components/primitives/StarRating';
 import { rankSimilar } from '../lib/scoring/similarity';
@@ -822,9 +824,13 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
                   {t('bookPage.loadingBook')}
                 </span>
               ) : !isAuthed ? (
-                <a href={window.location.pathname} className="btn-secondary">
-                  {t('bookPage.signInToAdd')}
-                </a>
+                <GuestShelfCta
+                  book={snapshotBook}
+                  cta="book_save"
+                  label={t('growth.book.save')}
+                  context={t('growth.auth.saveBook', { title: snapshotBook.t })}
+                  returnTo={{ name: 'book-page', params: { bookKey: bookKey_ } }}
+                />
               ) : null}
             </div>
           </div>
@@ -1049,7 +1055,8 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
     <div className="bp-page">
       {/* Breadcrumb */}
       <div className="breadcrumb">
-        <a onClick={() => go(from)}>{fromLabel}</a>
+        {/* A visitor has no dashboard: 'dashboard' is the home page for them. */}
+        <a onClick={() => go(from)}>{!isAuthed && from === 'dashboard' ? t('growth.bar.home') : fromLabel}</a>
         {' · '}
         <span className="lv-hl-muted">{display.t}</span>
       </div>
@@ -1243,13 +1250,18 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
                 {t('common.loading')}
               </span>
             ) : !isAuthed ? (
-              // Confirmed not signed in — show sign-in prompt
-              <a
-                href={window.location.pathname}
-                className="btn-secondary"
-              >
-                {t('bookPage.signInToAdd')}
-              </a>
+              // Confirmed not signed in. 2026-11-10: this was a link to the
+              // page it sat on (it reloaded), so a visitor from search had no
+              // way to sign up from where they landed. Now it opens the
+              // sign-up window, keeps the book, and IntentResumer shelves it
+              // and brings them back here once they have an account.
+              <GuestShelfCta
+                book={display}
+                cta="book_save"
+                label={t('growth.book.save')}
+                context={t('growth.auth.saveBook', { title: display.t })}
+                returnTo={{ name: 'book-page', params: { bookKey: bookKey_ } }}
+              />
             ) : !dataReady ? (
               // Signed in but data still loading
               <span className="bp-loading-note">
@@ -1494,64 +1506,70 @@ export default function BookPage({ previewBookRef, isAuthed = true, authPending 
         </div>
       )}
 
-      {/* Categories */}
-      <div className="bp-section">
-        <div className="bp-section__head" style={{ position: 'relative' }}>
-          <span className="bp-section__label">
-            {t('bookModal.categories')}
-            {categories.length > 0 && (
-              <span className="bp-section__count">· {categories.length}/10</span>
+      {/* Categories — a reader's own tags. Hidden for a signed-out visitor,
+          who has none and can add none ("No categories yet" was noise). */}
+      {isAuthed && (
+        <div className="bp-section">
+          <div className="bp-section__head" style={{ position: 'relative' }}>
+            <span className="bp-section__label">
+              {t('bookModal.categories')}
+              {categories.length > 0 && (
+                <span className="bp-section__count">· {categories.length}/10</span>
+              )}
+            </span>
+            {canAddCategories && !atCategoryCap && (
+              <button
+                className="btn-text"
+                onClick={() => { dismissCoachmark('bookpage-categories'); setAdderOpen((v) => !v); }}
+              >
+                {adderOpen ? t('bookModal.done') : t('bookModal.addCategory')}
+              </button>
             )}
-          </span>
-          {canAddCategories && !atCategoryCap && (
-            <button
-              className="btn-text"
-              onClick={() => { dismissCoachmark('bookpage-categories'); setAdderOpen((v) => !v); }}
-            >
-              {adderOpen ? t('bookModal.done') : t('bookModal.addCategory')}
-            </button>
+            {/* v0.46: one-time hint — user categories are easy to miss */}
+            {canAddCategories && !atCategoryCap && categories.length === 0 && !adderOpen && (
+              <CoachMark
+                id="bookpage-categories"
+                placement="bottom"
+                title={t('coachmark.categoriesTitle')}
+                body={t('coachmark.categoriesBody')}
+              />
+            )}
+          </div>
+
+          {categories.length === 0 && !adderOpen ? (
+            <div className="bp-no-rating">
+              {t('categories.noCategories')}
+            </div>
+          ) : (
+            <div className="bp-cats">
+              {categories.map((c) => (
+                <CategoryPill
+                  key={c.categoryId}
+                  category={c}
+                  removing={pendingRemoveId === c.categoryId}
+                  canRemove={adderOpen}
+                  onRemove={() => handleRemoveCategory(c.categoryId)}
+                />
+              ))}
+            </div>
           )}
-          {/* v0.46: one-time hint — user categories are easy to miss */}
-          {canAddCategories && !atCategoryCap && categories.length === 0 && !adderOpen && (
-            <CoachMark
-              id="bookpage-categories"
-              placement="bottom"
-              title={t('coachmark.categoriesTitle')}
-              body={t('coachmark.categoriesBody')}
-            />
+          {adderOpen && canAddCategories && (
+            <div>
+              <CategoryAutocomplete
+                book={display}
+                existingIds={existingCategoryIds}
+                onCapHit={() => setAdderOpen(false)}
+              />
+              <div className="bp-cat-help">
+                {t('categories.removeHelp')}
+              </div>
+            </div>
           )}
         </div>
+      )}
 
-        {categories.length === 0 && !adderOpen ? (
-          <div className="bp-no-rating">
-            {t('categories.noCategories')}
-          </div>
-        ) : (
-          <div className="bp-cats">
-            {categories.map((c) => (
-              <CategoryPill
-                key={c.categoryId}
-                category={c}
-                removing={pendingRemoveId === c.categoryId}
-                canRemove={adderOpen}
-                onRemove={() => handleRemoveCategory(c.categoryId)}
-              />
-            ))}
-          </div>
-        )}
-        {adderOpen && canAddCategories && (
-          <div>
-            <CategoryAutocomplete
-              book={display}
-              existingIds={existingCategoryIds}
-              onCapHit={() => setAdderOpen(false)}
-            />
-            <div className="bp-cat-help">
-              {t('categories.removeHelp')}
-            </div>
-          </div>
-        )}
-      </div>
+      {/* 2026-11-10: the Oracle, once, for a visitor — see OracleTeaser. */}
+      {!isAuthed && !authPending && <OracleTeaser book={display} bookKey={canonicalKey || bookKey_} />}
 
       <AuthorWorks books={authorWorks} author={displayAuthor(display)} />
 

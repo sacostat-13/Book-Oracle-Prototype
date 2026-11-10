@@ -9,6 +9,80 @@ Moved here from README.md on 2026-10-12 (code-health spike, item O1). Entries ar
 
 ---
 
+# v0.73 — Visitor funnel: a way in from every book (2026-11-10)
+
+Search Console showed clicks but no signups. The signed-out book and series pages — where search
+visitors land — had no way to sign up: the only call to action, "Sign in to add to your library ↗",
+was `<a href={window.location.pathname}>`, a link to the page it sat on. It reloaded. The pages
+also had no nav, so there was no name, no link home and no door. And there was no way to see what
+visitors did after the click. **Reader-facing:** `releases.js` v0.73 (not `major`).
+
+### Added
+- **Visitor funnel tracking** (`src/lib/api/funnel.js`, `hooks/useVisitorFunnel.js`, migration
+  `20261110120000_visitor_funnel.sql`). Signed-out sessions only: `landing` (with source — a site
+  name like `search:google`, never the referring URL), `page_view`, `cta_click`, `auth_open`,
+  `auth_submit`, `auth_error` (a bucket, never the message), `signup_completed` /
+  `signin_completed` (with first-touch source, so magic-link signups in a new tab are attributed),
+  `onboarding_completed`, `intent_resumed`, `teaser_open/result/save`. Random per-tab session id in
+  sessionStorage; `user_id` only on the account milestones; paths only for public catalogue pages;
+  no IP, no user agent; skipped under DNT/GPC and for automated browsers; 12-month retention
+  (`prune_funnel_events()`, weekly via pg_cron when installed). Written through
+  `log_funnel_event()` (security definer, validates everything, 300 events/session/day cap). The
+  table and `funnel_sessions` view have no API grants — read them with
+  `supabase/diagnostics/funnel_report.sql`.
+- **One sign-in window for every public page** (`contexts/AuthPromptContext.jsx`). Landing now
+  uses it too. `SignInGate` takes `initialMode` (Landing's "signup" buttons used to open on the
+  sign-in tab — the prop was ignored) and a `contextLine`.
+- **Sign-up intent** (`lib/util/pendingIntent.js`, `components/IntentResumer.jsx`). "Save to your
+  shelf" keeps the book (catalogue fields only, localStorage, 2 h); after sign-up and onboarding
+  it is added to the wishlist and the reader is taken back to the page. Onboarding says so
+  ("{title} will be on your wishlist when you finish") and no longer sends them to the dashboard
+  over the top of that.
+- **PublicBar** on signed-out book and series pages: name, one line on what the site is,
+  Sign in / Start free. Book pages also get the landing footer, as series pages already had.
+- **Oracle teaser** on signed-out book pages (`components/OracleTeaser.jsx`,
+  `netlify/functions/book-teaser.js`, migration `20261110130000_book_teasers.sql`). Three picks
+  with reasons, generated once per book and language and shared by every later visitor; picks are
+  kept only if they resolve to a catalogue row (`resolve_teaser_picks`), so each links to a real
+  page. No visitor data in the prompt. Per-IP throttle and a daily cap on new generations
+  (`BOOK_TEASER_DAILY_CAP`, default 150).
+- `tests/visitor-funnel.test.js` — source classification, kept paths/props, bot check, account
+  arrival, client/SQL whitelist contracts, privacy copy vs. retention, intent validation, teaser
+  parsing/merging/throttle, and no self-links left on public pages.
+
+### Changed
+- Book page (signed out): GuestShelfCta replaces the self-link; the categories section (a reader's
+  own tags — always "No categories" for a visitor) is hidden. The breadcrumb says "Home", not "Dashboard".
+- Series page (signed out): "Start this series — save book 1 free" replaces the self-link. The
+  "Add first book" button is signed-in only — for a visitor it added to a shelf that did not
+  persist.
+- Legal/About pages (signed out): the nav's sign-in opens the window in place instead of
+  bouncing to `/`.
+- `trackingAllowed()` moved to `lib/util/trackingAllowed.js`, shared by anthology insights and
+  the funnel.
+- Privacy page (EN/ES): new "Visit statistics" paragraph, a paragraph on the public Oracle
+  teaser, and the storage paragraph names the session id, first-touch note and saved book.
+  Last updated 2026-11-10.
+
+### Fixed
+- SignInGate's Privacy/Terms/Refund links were `#privacy` etc. — dead since v0.39's path
+  routing. Now `/privacy`, `/terms`, `/refund`.
+
+### Deploy
+1. Apply both migrations (`npm run push:db`).
+2. Netlify env: nothing new required (`ANTHROPIC_API_KEY`, `SUPABASE_URL`,
+   `SUPABASE_SERVICE_ROLE_KEY` exist). Optional `BOOK_TEASER_DAILY_CAP`.
+3. If pg_cron is not enabled, run `select public.prune_funnel_events();` monthly.
+
+### Verify
+`TZ=America/Costa_Rica npm run verify`. Then, signed out in a private window: open a book from
+Google → PublicBar shows; "Save to your shelf" opens the window on *Create account*; sign up →
+onboarding shows the kept book → finish → back on the book page with it on the wishlist.
+`funnel_report.sql` §8 with that session id shows landing → cta_click → auth_open → auth_submit
+→ signup_completed → onboarding_completed → intent_resumed.
+
+---
+
 # Unreleased — Sprint 3: structure and the maths in code
 
 Sprint 3 of the 2026-10-12 code-health spike (§3). Internal: no reader-facing behaviour changes, so no

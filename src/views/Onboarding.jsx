@@ -12,6 +12,8 @@ import { supabase } from '../lib/api/supabase';
 import { findBookByTitle } from '../lib/book/bookHelpers';
 import { validateUsername, checkUsernameAvailability } from '../hooks/useFollows';
 import { claimAnthologyReferral } from '../lib/api/anthologyInsights';
+import { readIntent } from '../lib/util/pendingIntent';
+import { trackEvent } from '../lib/api/funnel';
 import ChipToggleGroup from '../components/primitives/ChipToggleGroup';
 
 // v0.38: fixed set of mood/intent chips for the "what are you looking for right now" step.
@@ -30,6 +32,9 @@ export default function Onboarding() {
   const { go } = useRouter();
   const t = useT();
   const tNode = useTNode();
+  // 2026-11-10: a book the visitor pressed "Save" on before signing up. Read
+  // once: IntentResumer clears it the moment onboarding finishes.
+  const [keptIntent] = useState(() => readIntent());
   const [step, setStep] = useState(1);
   // v0.55.4: identity step — collected first so this setting is never lost.
   const [displayName, setDisplayName] = useState(state.profile?.displayName || '');
@@ -134,6 +139,11 @@ export default function Onboarding() {
   }
 
   async function finish() {
+    // Captured BEFORE anything else: setOnboarded(true) below lets
+    // IntentResumer run (and clear the intent), and it navigates back to the
+    // page the visitor came from. Sending them to the dashboard afterwards
+    // would undo that.
+    const resumesElsewhere = !!readIntent()?.route;
     // v0.55.4: persist identity first so display name + username survive even if
     // the reader never opens their Profile. Written straight to the profiles row.
     const trimmedName = displayName.trim();
@@ -178,8 +188,9 @@ export default function Onboarding() {
 
     // v0.74: credit the shared Anthology that brought this reader, if any.
     claimAnthologyReferral();
+    trackEvent('onboarding_completed', { type: keptIntent ? 'with_intent' : 'plain' });
 
-    setTimeout(() => go('dashboard'), 50);
+    if (!resumesElsewhere) setTimeout(() => go('dashboard'), 50);
   }
 
   return (
@@ -187,6 +198,9 @@ export default function Onboarding() {
 
       <div className="onboarding-card onboarding-card--wide">
         <CornerBrackets />
+        {keptIntent?.book?.t && (
+          <p className="onb-kept">{t('growth.onboarding.kept', { title: keptIntent.book.t })}</p>
+        )}
         <div className="onb-steps">
           {Array.from({ length: TOTAL_STEPS }, (_, i) => i + 1).map((n) => (
             <div key={n} className={`onb-step-dot ${step === n ? 'active' : step > n ? 'done' : ''}`}></div>

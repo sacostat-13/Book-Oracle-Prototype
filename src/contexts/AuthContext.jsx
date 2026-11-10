@@ -1,5 +1,6 @@
-import { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { supabase } from '../lib/api/supabase';
+import { markAuthAttempt, noteAccountArrival } from '../lib/api/funnel';
 
 const AuthContext = createContext(null);
 
@@ -17,9 +18,21 @@ export function AuthProvider({ children }) {
   // the client consumes and clears the hash fragment before any component
   // mounts, so PASSWORD_RECOVERY is the only reliable signal.
   const [recoveringPassword, setRecoveringPassword] = useState(false);
+  // Whose session we last saw, so a session APPEARING (sign-in, sign-up, the
+  // return from Google) can be told apart from one merely restored on load or
+  // refreshed on tab focus. Visitor funnel: src/lib/api/funnel.js.
+  const lastUserIdRef = useRef(undefined);
 
   useEffect(() => {
+    function noteSession(nextSession) {
+      const prev = lastUserIdRef.current;
+      const next = nextSession?.user?.id || null;
+      lastUserIdRef.current = next;
+      if (next && !prev) noteAccountArrival(nextSession.user);
+    }
+
     supabase.auth.getSession().then(({ data }) => {
+      noteSession(data.session);
       setSession(data.session);
       setLoading(false);
     });
@@ -31,6 +44,7 @@ export function AuthProvider({ children }) {
       // app would drop them on the dashboard and the password they came to
       // change would stay as it was.
       if (event === 'PASSWORD_RECOVERY') setRecoveringPassword(true);
+      noteSession(newSession);
 
       // Only update session state when the user identity actually changes.
       // Supabase fires TOKEN_REFRESHED and similar events on tab focus, which
@@ -57,11 +71,13 @@ export function AuthProvider({ children }) {
     return () => subscription.unsubscribe();
   }, []);
 
-  const signInWithGoogle = () =>
-    supabase.auth.signInWithOAuth({
+  const signInWithGoogle = () => {
+    markAuthAttempt();
+    return supabase.auth.signInWithOAuth({
       provider: 'google',
       options: { redirectTo: window.location.origin },
     });
+  };
 
   // const signInWithApple = () =>
   //   supabase.auth.signInWithOAuth({
@@ -83,29 +99,35 @@ export function AuthProvider({ children }) {
   // link was not much use as the ONLY option — leaving the inbox round-trip in
   // place as a fallback costs nothing and is the escape hatch for anyone who
   // signed up through Google and never set a password.
-  const signInWithEmail = (email) =>
-    supabase.auth.signInWithOtp({
+  const signInWithEmail = (email) => {
+    markAuthAttempt();
+    return supabase.auth.signInWithOtp({
       email,
       options: { emailRedirectTo: window.location.origin },
     });
+  };
 
   // ── Password auth ───────────────────────────────────────────────────────────
   //
   // Supabase enforces its own minimum server-side, but the client checks too so
   // the reader is told before the round-trip rather than after it. One shared
   // constant so the form hint, the validator and the account screen agree.
-  const signInWithPassword = (email, password) =>
-    supabase.auth.signInWithPassword({ email: email.trim(), password });
+  const signInWithPassword = (email, password) => {
+    markAuthAttempt();
+    return supabase.auth.signInWithPassword({ email: email.trim(), password });
+  };
 
   // `emailRedirectTo` matters even when confirmations are off: if the project
   // ever turns them on, an unset redirect sends people to Supabase's own host
   // instead of back here.
-  const signUpWithPassword = (email, password) =>
-    supabase.auth.signUp({
+  const signUpWithPassword = (email, password) => {
+    markAuthAttempt();
+    return supabase.auth.signUp({
       email: email.trim(),
       password,
       options: { emailRedirectTo: window.location.origin },
     });
+  };
 
   const sendPasswordReset = (email) =>
     supabase.auth.resetPasswordForEmail(email.trim(), {
