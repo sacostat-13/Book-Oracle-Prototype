@@ -43,6 +43,9 @@ export default function Privacy() {
           {/* 2026-11-10: visitor funnel (src/lib/api/funnel.js). Every claim in
               this paragraph is enforced in code — keep them in step. */}
           <p>{tNode('privacy.whatDataWeCollectPara7')}</p>
+          {/* v0.74: share tracking (src/lib/share/shareTracking.js, og-prerender
+              unfurls). Every claim here is enforced in code — keep in step. */}
+          <p>{tNode('privacy.whatDataWeCollectPara8')}</p>
         </S>
         <S title={t('privacy.whatDataWeDoNotCollectTitle')}>
           <p>{tNode('privacy.whatDataWeDoNotCollectPara1')}</p>

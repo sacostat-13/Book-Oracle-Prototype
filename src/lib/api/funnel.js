@@ -242,8 +242,11 @@ async function send(event, { routeName = null, pathname = null, source = null, p
  * A signed-out visitor's page. The first one in a tab is the `landing`
  * (with where they came from); every later one is a `page_view`.
  * @param {string} routeName  route.name from RouterContext
+ * @param {string|null} [shareToken]  v0.74: the ?s= token this page load
+ *   arrived with (src/lib/share/shareTracking.js). The landing's source is then
+ *   `share:<token>`, and through first touch so is the signup's.
  */
-export function trackPage(routeName) {
+export function trackPage(routeName, shareToken = null) {
   if (!enabled()) return;
   let landed = false;
   try { landed = sessionStorage.getItem(LANDED_KEY) === '1'; } catch { /* treat as first */ }
@@ -255,7 +258,9 @@ export function trackPage(routeName) {
   try { sessionStorage.setItem(LANDED_KEY, '1'); } catch { /* ignore */ }
   let utm = null;
   try { utm = new URLSearchParams(window.location.search).get('utm_source'); } catch { /* ignore */ }
-  const source = classifySource(document.referrer, window.location.hostname, utm);
+  const source = shareToken && /^[0-9A-Za-z]{8}$/.test(shareToken)
+    ? `share:${shareToken}`
+    : classifySource(document.referrer, window.location.hostname, utm);
   rememberFirstTouch(source, pageTypeFor(routeName));
   send('landing', { routeName, pathname, source });
 }

@@ -5,6 +5,12 @@
 // netlify/edge-functions/og-prerender.js — this modal only has to get the
 // URL into the right app.
 //
+// v0.74: every link leaving this modal carries its own ?s= token
+// (src/lib/share/shareTracking.js), made at render so the intent hrefs and
+// navigator.share stay inside the tap. A share is recorded when it happens:
+// on the intent click, on copy (the button or a hand-selection of the visible
+// URL), and after navigator.share resolves — not when the modal opens.
+//
 // Props:
 //   title   — share sheet title (usually the entity name)
 //   text    — one-line pitch used by intents and navigator.share
@@ -20,6 +26,7 @@ import {
   whatsappIntent,
   telegramIntent,
 } from '../lib/share/shareService';
+import { prepareShare, recordShare } from '../lib/share/shareTracking';
 
 export default function ShareModal({ title, text, url, onClose }) {
   const t = useT();
@@ -28,12 +35,28 @@ export default function ShareModal({ title, text, url, onClose }) {
 
   const titleId = useId();
 
+  // One token per way out, fixed for the life of the modal.
+  const [links] = useState(() => ({
+    copy: prepareShare(url),
+    native: prepareShare(url),
+    x: prepareShare(url),
+    whatsapp: prepareShare(url),
+    telegram: prepareShare(url),
+  }));
+
   async function copyLink() {
     try {
-      await navigator.clipboard.writeText(url);
+      await navigator.clipboard.writeText(links.copy.url);
+      recordShare(links.copy, 'copy');
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch { /* clipboard unavailable — the visible URL is selectable */ }
+  }
+
+  async function nativeShare() {
+    const result = await shareOrCopy({ title, text, url: links.native.url });
+    if (result === 'shared') recordShare(links.native, 'native');
+    else if (result === 'copied') recordShare(links.native, 'copy');
   }
 
   return (
@@ -42,7 +65,7 @@ export default function ShareModal({ title, text, url, onClose }) {
       <h2 className="rating-modal__title" id={titleId}>{title}</h2>
 
       <div className="share-modal__url-row">
-        <code className="share-modal__url">{url}</code>
+        <code className="share-modal__url" onCopy={() => recordShare(links.copy, 'copy')}>{links.copy.url}</code>
         <button className="btn-tertiary btn--sm" onClick={copyLink}>
           {copied ? t('share.copied') : t('share.copyLink')}
         </button>
@@ -52,18 +75,18 @@ export default function ShareModal({ title, text, url, onClose }) {
         {hasNativeShare && (
           <button
             className="btn-primary"
-            onClick={() => shareOrCopy({ title, text, url })}
+            onClick={nativeShare}
           >
             {t('share.native')}
           </button>
         )}
-        <a className="btn-secondary" href={twitterIntent({ text, url })} target="_blank" rel="noopener noreferrer">
+        <a className="btn-secondary" href={twitterIntent({ text, url: links.x.url })} onClick={() => recordShare(links.x, 'x')} target="_blank" rel="noopener noreferrer">
           {t('share.onX')}
         </a>
-        <a className="btn-secondary" href={whatsappIntent({ text, url })} target="_blank" rel="noopener noreferrer">
+        <a className="btn-secondary" href={whatsappIntent({ text, url: links.whatsapp.url })} onClick={() => recordShare(links.whatsapp, 'whatsapp')} target="_blank" rel="noopener noreferrer">
           WhatsApp
         </a>
-        <a className="btn-secondary" href={telegramIntent({ text, url })} target="_blank" rel="noopener noreferrer">
+        <a className="btn-secondary" href={telegramIntent({ text, url: links.telegram.url })} onClick={() => recordShare(links.telegram, 'telegram')} target="_blank" rel="noopener noreferrer">
           Telegram
         </a>
       </div>

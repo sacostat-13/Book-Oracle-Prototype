@@ -8,7 +8,7 @@ English / Spanish (rioplatense).
 React + Vite + Sass on the front, Supabase for auth and data, Netlify Functions as
 API proxies.
 
-> Current version: **v0.73** — release history in [CHANGELOG.md](CHANGELOG.md).
+> Current version: **v0.74** — release history in [CHANGELOG.md](CHANGELOG.md).
 
 ## Where to read next
 

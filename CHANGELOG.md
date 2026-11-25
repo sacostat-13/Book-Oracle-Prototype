@@ -9,6 +9,61 @@ Moved here from README.md on 2026-10-12 (code-health spike, item O1). Entries ar
 
 ---
 
+# v0.74 — Share tracking: what gets shared, and what comes back (2026-11-25)
+
+Share windows existed for every public page since v0.43/v0.48, but nothing recorded a share or
+what it brought back. Third-party share platforms were considered and rejected (spec:
+`claude/share-tracking-v1-spec.md`): SoSha is an advocacy toolkit priced per post; ShareThis /
+AddToAny load third-party JS and cookies and would replace the branded modal and OG cards.
+**Reader-facing:** `releases.js` v0.74 (not `major`).
+
+### Added
+- **Share tracking** (`src/lib/share/shareTracking.js`, migration
+  `20261125120000_share_tracking.sql`). Every link leaving `ShareModal` / `ShareMomentModal`
+  carries `?s=<8-char base62 token>`, made in the browser at render/tap time so `window.open`
+  and `navigator.share` stay inside the user gesture. A share is registered with `log_share()`
+  when it happens — intent click, copy (button or hand-selection of the visible URL), or after
+  `navigator.share` resolves; a closed sheet records nothing. Row: entity type + public key
+  (parsed from the URL), channel (`x`, `whatsapp`, `telegram`, `copy`, `native`, …), surface
+  (`page`, `moment_link`, `moment_image`), locale, `sharer_id` when signed in (cascade on
+  account delete). Caps: 200 shares/reader/day, 2,000 signed-out/day.
+- **Link-preview counting** in `og-prerender.js`: a known preview crawler (`unfurlAgent()`:
+  WhatsApp, iMessage, Facebook/Meta, X, Telegram, Slack, Discord, LinkedIn, Bluesky, Reddit,
+  others) fetching a URL with a valid `s` → `share_hits` row, `kind='unfurl'`. Search crawlers
+  are not previews. Awaited before responding. `log_share_hit()` accepts `unfurl` only from
+  the service role.
+- **Click counting**: `captureIncomingShare()` in `main.jsx` reads `?s=` and removes it from the
+  address (`history.replaceState`) before the router reads the URL; `useIncomingShare` reports
+  the click once per load after the auth check (`kind='click'`, referrer host only, signed in or
+  not). The server drops the sharer's own click. Caps: 500 hits/share/day.
+- **Funnel attribution**: a signed-out landing with a token gets `source = 'share:<token>'`, so
+  first touch carries it to `signup_completed` with no funnel schema change.
+- `supabase/diagnostics/share_report.sql` — channels, surfaces, top entities, where copy/native
+  shares went, preview apps, share → visitor → signup, top sharers, weekly trend.
+- Privacy page EN/ES: new "Shared links" paragraph (`privacy.whatDataWeCollectPara8`); last
+  updated 2026-11-25.
+- `tests/share-tracking.test.js` — tokens, tagged URLs, entity parsing, boot capture, DNT/GPC/bot
+  skips, unfurl agents, client/SQL/edge whitelist contracts, no query in canonicals, privacy copy.
+
+### Changed
+- `shareOrCopy()` returns `'cancelled'` on `AbortError` (was `'shared'`). `ShareMomentModal`
+  treats it as no feedback.
+
+### Privacy shape
+No IP, user agent, user id or session id on a hit. Nothing new on the device. Nothing under DNT /
+GPC or from automated browsers. Tables have RLS on, no policies, grants revoked; read in the SQL
+editor. Hits pruned after 12 months (`prune_share_hits()`, weekly via pg_cron when installed —
+otherwise run it monthly next to `prune_funnel_events()`).
+
+### Deploy
+1. `npm run push:db` (migration `20261125120000_share_tracking.sql`).
+2. No new env vars (`og-prerender.js` already has `SUPABASE_SERVICE_ROLE_KEY`).
+3. Check: share a book to WhatsApp, then `select * from shares order by created_at desc limit 5;`
+   and `select * from share_hits order by created_at desc limit 5;` — expect one share, a
+   `whatsapp` unfurl, and a click once the link is opened from another account or signed out.
+
+---
+
 # v0.73 — Visitor funnel: a way in from every book (2026-11-10)
 
 Search Console showed clicks but no signups. The signed-out book and series pages — where search

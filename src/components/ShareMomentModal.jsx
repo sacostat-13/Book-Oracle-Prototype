@@ -16,7 +16,7 @@
 // gone. The on-screen <ShareCard> is now purely a preview. If the function
 // ever fails we still degrade to sharing text + link — never a broken PNG.
 
-import { useRef, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { useData } from '../contexts/DataContext';
 import { SITE_ORIGIN } from '../lib/util/siteUrl';
 import { useI18n } from '../contexts/I18nContext';
@@ -24,6 +24,7 @@ import Modal from './primitives/Modal';
 import ShareCard from './ShareCard';
 import { shareOrCopy, canShareFile } from '../lib/share/shareService';
 import { momentCardFile } from '../lib/share/shareCardImage';
+import { prepareShare, recordShare } from '../lib/share/shareTracking';
 
 function momentShareText(moment, t) {
   switch (moment.type) {
@@ -53,11 +54,21 @@ export default function ShareMomentModal() {
   const [busy, setBusy] = useState(false);
   const [feedback, setFeedback] = useState(null); // 'shared' | 'copied' | 'downloaded' | 'image_failed'
 
-  if (!shareMoment) return null;
+  // v0.74: one ?s= token for the image, one for the link, per moment
+  // (src/lib/share/shareTracking.js). Before the early return: hooks run every render.
+  // A new moment is a new share, even when it points at the same page.
+  const links = useMemo(() => {
+    if (!shareMoment) return null;
+    const baseUrl = shareMoment.url || SITE_ORIGIN; // v0.61.2: was the apex, which 301s
+    return { image: prepareShare(baseUrl), link: prepareShare(baseUrl) };
+  }, [shareMoment]);
+
+  if (!shareMoment || !links) return null;
 
   const moment = shareMoment;
   const text = momentShareText(moment, t);
-  const url = moment.url || SITE_ORIGIN; // v0.61.2: was the apex, which 301s
+  const imageUrl = links.image.url;
+  const linkUrl = links.link.url;
 
   async function handleShareImage() {
     setBusy(true);
@@ -68,7 +79,8 @@ export default function ShareMomentModal() {
       const file = await momentCardFile(moment, t, lang);
       if (canShareFile(file)) {
         try {
-          await navigator.share({ files: [file], title: 'The Books Oracle', text: `${text} ${url}` });
+          await navigator.share({ files: [file], title: 'The Books Oracle', text: `${text} ${imageUrl}` });
+          recordShare(links.image, 'native', 'moment_image');
           setFeedback('shared');
           return;
         } catch (err) {
@@ -82,7 +94,10 @@ export default function ShareMomentModal() {
       a.href = objectUrl;
       a.download = 'books-oracle-card.png';
       a.click();
-      try { await navigator.clipboard.writeText(`${text} ${url}`); } catch { /* optional */ }
+      try {
+        await navigator.clipboard.writeText(`${text} ${imageUrl}`);
+        recordShare(links.image, 'copy', 'moment_image');
+      } catch { /* optional */ }
       setFeedback('downloaded');
     } catch (err) {
       // Function unreachable / render error. Degrade to text + link.
@@ -95,8 +110,10 @@ export default function ShareMomentModal() {
   }
 
   async function handleShareLink() {
-    const result = await shareOrCopy({ title: 'The Books Oracle', text, url });
-    setFeedback(result === 'failed' ? null : result);
+    const result = await shareOrCopy({ title: 'The Books Oracle', text, url: linkUrl });
+    if (result === 'shared') recordShare(links.link, 'native', 'moment_link');
+    else if (result === 'copied') recordShare(links.link, 'copy', 'moment_link');
+    setFeedback(result === 'failed' || result === 'cancelled' ? null : result);
   }
 
   return (

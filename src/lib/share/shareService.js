@@ -43,7 +43,9 @@ export function sessionShareUrl(sessionId) {
 }
 
 // Native share with clipboard fallback.
-// Returns 'shared' | 'copied' | 'failed' so callers can pick the right toast.
+// Returns 'shared' | 'cancelled' | 'copied' | 'failed' so callers can pick the
+// right toast. v0.74: 'cancelled' was reported as 'shared' — harmless for a
+// toast, wrong for share tracking, which must not count a closed sheet.
 export async function shareOrCopy({ title, text, url }) {
   if (navigator.share) {
     try {
@@ -51,7 +53,7 @@ export async function shareOrCopy({ title, text, url }) {
       return 'shared';
     } catch (err) {
       // AbortError = user closed the share sheet — not a failure, do nothing.
-      if (err?.name === 'AbortError') return 'shared';
+      if (err?.name === 'AbortError') return 'cancelled';
       // Fall through to clipboard on anything else.
     }
   }

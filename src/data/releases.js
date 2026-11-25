@@ -16,9 +16,26 @@
 
 // The version label shown as "current" — keep in sync with package.json and
 // the README version line.
-export const CURRENT_VERSION = 'v0.73';
+export const CURRENT_VERSION = 'v0.74';
 
 export const RELEASES = [{
+    version: 'v0.74',
+    date: '2026-11-25',
+    // Not announced on load: nothing changes in what a reader can do. They
+    // notice it as a short code at the end of shared links, explained here and
+    // on the privacy page.
+    titleEn: 'Knowing which shares reach readers',
+    titleEs: 'Saber qué enlaces compartidos llegan a otros lectores',
+    bodyEn: [
+      'Links you share from a book, series, list, plan, club, profile or accomplishment card now end with a short code. It lets us count how often things are shared, through which app, and whether the link was opened, so we can tell which pages bring new readers to the Oracle.',
+      'We never record who opened a link. The privacy page has a new paragraph that says exactly what is kept, and nothing is recorded if your browser asks not to be tracked.',
+    ],
+    bodyEs: [
+      'Los enlaces que compartís desde un libro, una saga, una lista, un plan, un club, un perfil o una tarjeta de logro ahora terminan con un código corto. Nos permite contar cuántas veces se comparte algo, con qué app, y si alguien abrió el enlace, para saber qué páginas traen lectores nuevos al Oráculo.',
+      'Nunca registramos quién abrió un enlace. La página de privacidad tiene un párrafo nuevo que dice exactamente qué se guarda, y no se registra nada si tu navegador pide que no te rastreen.',
+    ],
+  },
+  {
     version: 'v0.73',
     date: '2026-11-10',
     // Not announced on load: written for visitors who are not readers yet.

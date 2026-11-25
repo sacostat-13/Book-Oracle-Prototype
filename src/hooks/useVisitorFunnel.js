@@ -7,6 +7,7 @@
 
 import { useEffect } from 'react';
 import { trackPage } from '../lib/api/funnel';
+import { incomingShareToken } from '../lib/share/shareTracking';
 
 /**
  * @param {{ name: string }} route   current route (a new object per navigation)
@@ -16,6 +17,6 @@ import { trackPage } from '../lib/api/funnel';
 export function useVisitorFunnel(route, user, authLoading) {
   useEffect(() => {
     if (authLoading || user) return;
-    trackPage(route.name);
+    trackPage(route.name, incomingShareToken());
   }, [route, user, authLoading]);
 }

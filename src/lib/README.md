@@ -12,7 +12,7 @@ about, so the folder name tells you where to look.
 | `api/` | Our own backend (Supabase reads/RPCs) | `supabase`, `genreService`, `seriesService`, `anthologyInsights` |
 | `oracle/` | Talking to the Oracle: prompts, the Claude proxy, provenance, cached draws | `claudeApi`, `oraclePrompt`, `oracleProvenance` |
 | `achievements/` | Milestones, the accomplishments ledger, reader ranks | `shareMoments`, `accomplishments`, `readerRanks` |
-| `share/` | Sharing: Web Share / clipboard, share-card images | `shareService`, `shareCardImage` |
+| `share/` | Sharing: Web Share / clipboard, share-card images, share tracking (`?s=` tokens) | `shareService`, `shareCardImage`, `shareTracking` |
 | `genres/` | How genres are displayed and which names are not genres | `genreDisplay`, `genrePlaceholders` |
 | `device/` | Browser capabilities: camera scanning, PWA install, WebGL, view transitions | `barcodeScanner`, `installPrompt`, `webgl`, `coverMorph` |
 | `util/` | Small generic helpers | `random`, `dates`, `selection`, `siteUrl` |

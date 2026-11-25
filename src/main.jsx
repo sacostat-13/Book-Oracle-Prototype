@@ -12,6 +12,11 @@ import { ConfirmProvider } from './components/primitives/ConfirmDialog.jsx';
 import './styles/main.scss';
 // Side-effect import: must register beforeinstallprompt before any view mounts.
 import './lib/device/installPrompt';
+import { captureIncomingShare } from './lib/share/shareTracking';
+
+// v0.74: read ?s= (a shared link's token) and take it out of the address
+// before RouterProvider reads the URL. See src/lib/share/shareTracking.js.
+captureIncomingShare();
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>

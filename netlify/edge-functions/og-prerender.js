@@ -41,6 +41,33 @@
 // about exactly the pages you go there to debug.
 const BOT_UA_PATTERN = /bot|crawl|spider|slurp|google-inspectiontool|googleother|facebookexternalhit|slackbot|twitterbot|whatsapp|telegrambot|discordbot|linkedinbot|pinterest|embedly|quora link preview|w3c_validator|redditbot|skypeuripreview|vkshare|outbrain|nuzzel|flipboard|tumblr|bitlybot|applebot|semrushbot|ahrefsbot/i;
 
+// v0.74 share tracking: which link-preview crawler is fetching a shared link
+// (?s=<token>, src/lib/share/shareTracking.js). A preview fetch is the best
+// available sign that a share left the modal and was actually posted. Search
+// crawlers are NOT previews and return null — Googlebot following a shared
+// link says nothing about the share. Order matters: Apple's Messages preview
+// sends "facebookexternalhit/1.1 Facebot Twitterbot/1.0" and would otherwise
+// count as Facebook.
+const UNFURL_AGENTS = [
+  [/facebot twitterbot/i, 'imessage'],
+  [/whatsapp/i, 'whatsapp'],
+  [/telegrambot/i, 'telegram'],
+  [/slackbot-linkexpanding|slack-imgproxy|slackbot/i, 'slack'],
+  [/discordbot/i, 'discord'],
+  [/linkedinbot/i, 'linkedin'],
+  [/bluesky|cardyb/i, 'bluesky'],
+  [/redditbot/i, 'reddit'],
+  [/twitterbot/i, 'x'],
+  [/facebookexternalhit|meta-externalagent|facebot|facebookcatalog/i, 'facebook'],
+  [/embedly|skypeuripreview|vkshare|pinterest|tumblr|flipboard|nuzzel|quora link preview|bitlybot|outbrain/i, 'other_preview'],
+];
+export function unfurlAgent(userAgent) {
+  const ua = String(userAgent || '');
+  for (const [re, agent] of UNFURL_AGENTS) if (re.test(ua)) return agent;
+  return null;
+}
+export const SHARE_TOKEN_RE = /^[0-9A-Za-z]{8}$/;
+
 // v0.61.2 — www, matching Netlify's primary domain. thebooksoracle.com 301s
 // here, so the previous non-www value meant every URL emitted by this file
 // redirected. Google treats a redirecting sitemap entry and a canonical that
@@ -335,6 +362,16 @@ export default async (request, context) => {
     } catch {
       return null;
     }
+  }
+
+  // v0.74: a link-preview crawler fetching a shared link. Counted before any
+  // entity lookup — a preview of a page that later fails to resolve still means
+  // the link was posted. Awaited: work after the response is not guaranteed to
+  // finish. log_share_hit accepts 'unfurl' only from the service role.
+  const shareToken = url.searchParams.get('s');
+  if (shareToken && SHARE_TOKEN_RE.test(shareToken)) {
+    const agent = unfurlAgent(userAgent);
+    if (agent) await callRpc('log_share_hit', { p_share: shareToken, p_kind: 'unfurl', p_agent: agent });
   }
 
   // Shared tail for every match: get the SPA HTML, inject, respond.

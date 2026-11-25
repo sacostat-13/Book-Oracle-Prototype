@@ -7,6 +7,7 @@ import { useRouter } from './contexts/RouterContext';
 import { useT, useTNode } from './contexts/I18nContext';
 import { useDocumentMeta } from './hooks/useDocumentMeta';
 import { useVisitorFunnel } from './hooks/useVisitorFunnel';
+import { useIncomingShare } from './hooks/useIncomingShare';
 import { AuthPromptProvider, useAuthPrompt } from './contexts/AuthPromptContext';
 
 import Nav from './components/Nav';
@@ -116,6 +117,8 @@ function AppRoutes() {
 
   // Visitor funnel (2026-11-10): a signed-out visitor's pages, nothing else.
   useVisitorFunnel(route, user, authLoading);
+  // v0.74: a visit through a shared link (?s=), signed in or not.
+  useIncomingShare(user, authLoading);
 
   // v0.55.4: bump to re-read the DEV onboarding-replay session flag (see effect below).
   const [, forceRerender] = useState(0);
